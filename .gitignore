@@ -15,3 +15,9 @@ venv/
 
 # Notebook outputs we don't want versioned
 *.ipynb_checkpoints
+
+# Archives / large downloads, wherever they land
+*.zip
+*.7z
+*.gpkg
+*.gdb/

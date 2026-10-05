@@ -1,0 +1,38 @@
+# Pinned with `pip freeze` on 2026-10-05 (Python 3.13, Windows 11).
+# pandas 2.2.3 / pyarrow 18.1.0 / numpy<2.3 / pyogrio 0.10.0 are deliberately
+# older than latest: Windows Smart App Control blocks the newest wheels' DLLs
+# (no reputation yet). See docs/notes/step01_environment.md before upgrading.
+backports.zstd==1.7.0
+brotli==1.2.0
+certifi==2026.7.22
+charset-normalizer==3.5.2
+contourpy==1.4.0
+cycler==0.12.1
+fonttools==4.66.1
+geopandas==1.2.0
+idna==3.20
+inflate64==1.0.4
+kiwisolver==1.5.1
+matplotlib==3.11.2
+multivolumefile==0.2.3
+numpy==2.2.6
+packaging==26.3
+pandas==2.2.3
+pillow==12.3.0
+psutil==7.2.2
+py7zr==1.1.3
+pyarrow==18.1.0
+pybcj==1.0.8
+pycryptodomex==3.24.0
+pyogrio==0.10.0
+pyparsing==3.3.3
+pyppmd==1.3.1
+pyproj==3.8.0
+python-dateutil==2.9.0.post0
+pytz==2026.5
+requests==2.34.2
+shapely==2.1.2
+six==1.17.0
+texttable==1.7.0
+tzdata==2026.5
+urllib3==2.8.0

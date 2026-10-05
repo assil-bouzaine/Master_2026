@@ -1,4 +1,17 @@
+# Hidden files and folders (.venv, .vscode, .ipynb_checkpoints, ...)
 .*
 !.gitignore
-!.git
 !.gitattributes
+!.gitkeep
+
+# Data never goes into git -- only the data log does
+data/*
+!data/README.md
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+
+# Notebook outputs we don't want versioned
+*.ipynb_checkpoints

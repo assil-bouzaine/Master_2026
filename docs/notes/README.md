@@ -16,7 +16,7 @@ the PFE report (the "Méthodologie" and "Données" chapters).
 |---|---|---|---|
 | 1 | Repo and environment | done | [step01_environment.md](step01_environment.md) |
 | 4 | Hub'Eau piezometers | done | [step04_piezometers.md](step04_piezometers.md) |
-| 5 | RPG agricultural parcels | to do | step05_rpg.md |
+| 5 | RPG agricultural parcels | done | [step05_rpg.md](step05_rpg.md) |
 | 6a | BNPE water abstraction | to do | step06a_bnpe.md |
 | 6b | BD LISA aquifer entities (manual download) | to do | step06b_bdlisa.md |
 | 7 | Gate 1 feasibility memo | to do | ../memo_gate1_feasibility.md |
@@ -41,3 +41,6 @@ Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 | **Pliocene multilayer** | Deep sand/clay layers (~2–5 million years old) under the plain; the main drinking-water aquifer (BD LISA `671AA00`). |
 | **Quaternary alluvium** | Shallow gravels and sands left by the Têt, Agly, Réart and Tech rivers; sits above the Pliocene. |
 | **Karst** | Limestone dissolved into conduits; water moves fast and unpredictably (Corbières, `681AM00`). |
+| **CAP / PAC** | EU Common Agricultural Policy. Farmers declare their parcels every year to get subsidies; the RPG is built from these declarations. |
+| **CODE_GROUP** | One of ~25 crop groups in the RPG (21 = vines, 20 = orchards, 23 = olives...). `CODE_CULTU` is the detailed crop code (~370 values). |
+| **Centroid** | The geometric centre of a polygon. Used to assign each parcel to exactly one zone. |

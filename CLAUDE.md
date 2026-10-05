@@ -69,6 +69,39 @@ Do not change these without asking Assil first.
 - Use `pyogrio` to read geodata, and `pyogrio.list_layers()` to inspect a
   FileGDB or GeoPackage.
 
+**Learned during the rebuild (October 2026):**
+
+- **Interpreter.** `uv` is not installed. The venv is `.venv` (Python
+  3.13), created with `python -m venv`. Run scripts with
+  `.venv/Scripts/python -m src.<pkg>.<module>`. Set `PYTHONIOENCODING=utf-8`
+  when printing French text.
+- **Windows Smart App Control is ON** and blocks the DLLs of brand-new
+  wheels ("An Application Control policy has blocked this file"). Working
+  pins:
+  - pandas 2.2.3
+  - pyarrow 18.1.0
+  - numpy 2.2.6 (< 2.3)
+  - pyogrio 0.10.0 (GDAL 3.9.1)
+
+  Never `pip install --upgrade` blindly. If a new package is blocked, pin an
+  older release. Do not suggest turning Smart App Control off: Windows can
+  only turn it back on with a full reset.
+- **Hub'Eau prélèvements API.** `size=5000` got the connection reset, and
+  then the whole hubeau.eaufrance.fr refused this machine for about 10
+  minutes. Use `size=2000` there. `niveaux_nappes` works with 5000.
+- **IGN Géoplateforme.** The `/resource/RPG` listing is paginated (35 pages)
+  and returns HTTP 429 when requests come too fast; pause 1 s per page. RPG
+  reference tables (crop code → group) live at
+  `https://data.geopf.fr/annexes/ressources/documentation/`.
+- **Shared modules:**
+  - `src/config.py`: paths, CRS, window.
+  - `src/web.py`: retrying `requests` session.
+  - `src/ingest/hubeau_piezo.fetch_all()`: follows Hub'Eau `next` links.
+- **Learning notes.** Assil wants one note per step in
+  `docs/notes/stepNN_<topic>.md` (what was done / why / what to consider),
+  plus the progress table and glossary in `docs/notes/README.md`. Write it
+  before reporting a step as done.
+
 ---
 
 ## 5. Repository layout
@@ -129,6 +162,96 @@ notebooks/       exploration only; anything that matters moves into src/
 The data from the first run was lost. Re-download everything and redo roadmap
 Steps 1 and 4–7, in order. Track progress with a task list. Stop after Step 7
 and wait for Assil.
+
+### ▶ STATUS (last updated 2026-10-05). Read this first in a new session
+
+| Step | Status | Commit | Note |
+|---|---|---|---|
+| 1 Repo and environment | ✅ done | `eac175f` | `docs/notes/step01_environment.md` |
+| 4 Hub'Eau piezometers | ✅ done | `245c2f7` | `docs/notes/step04_piezometers.md` |
+| 5 RPG parcels | ✅ done | `33ccaa4` | `docs/notes/step05_rpg.md` |
+| 6a BNPE abstraction | ✅ done | `a2b842f` | `docs/notes/step06a_bnpe.md` |
+| **6b BD LISA** | **⏳ in progress — START HERE** | n/a | to write: `docs/notes/step06b_bdlisa.md` |
+| 7 Gate 1 memo | ⬜ to do | n/a | `docs/memo_gate1_feasibility.md` |
+
+**Where Step 6b stands:**
+
+1. **Done.** Assil downloaded `data/raw/bdlisa/BDLISA_V3_OCC-gpkg.zip`
+   (GeoPackage, 169 MB).
+2. **Done.** `src/ingest/bdlisa.py` unzips it to
+   `data/raw/bdlisa/BDLISA_V3_OCC-gpkg/BDLISA_V3.gpkg` and lists the layers.
+   It runs and is committed.
+3. **Done.** The official description
+   (`.../Descriptif_donnees_BDLISA_V3.pdf`) confirms:
+   - `milieueh`: 1 porous, 2 fissured, 3 karstic, 4–10 mixed porosity,
+     11 fractured (SANDRE nomenclature 353).
+   - `themeeh`: 1 alluvial, 2 sedimentary, 3 basement, 4 intensely folded,
+     5 volcanic.
+   - `natureeh` (level 3): 5 aquifer unit, 6 semi-permeable unit,
+     7 impermeable unit.
+   - Order 1 = outcropping (the layer at the surface).
+   - `TABLE_GENEALOGIE` is a version changelog, not a hierarchy.
+4. **Layers available:**
+
+   | Layer | Fields | Rows |
+   |---|---|---|
+   | `ENTITES_NIVEAU3_ORDRES` | `CodeEH`, `ordreabseh`, `ordrereleh`, `incluseh`, `milieueh`, … | 1,475 |
+   | `ENTITES_NIVEAU3_EXTENSION` | n/a | 568 |
+   | `POLYG_ELEMENTAIRES` | `codepoly` | 16,789 |
+   | `TABLE_PILE_ENTITES_NIV3` | `CodePoly`, `CodeEH`, `OrdRelatif` | 124,734 |
+   | `TME` | attributes for all levels | n/a |
+   | `TABLE_LITHOLOGIE_NIV3` | n/a | n/a |
+   | `ZONE_KARSTIQUE` | n/a | n/a |
+
+**Next actions for 6b:**
+
+1. Write `src/analysis/bdlisa_profile.py`. Print the columns and a sample
+   row of each layer used before writing logic against it.
+2. Join the 33 working-set stations (`data/interim/piezo_working_set.parquet`,
+   column `code_bdlisa`) to the entities. Check which station entities are
+   missing from the Occitanie extract (first run: `760AE09`).
+3. Build the vertical order of the plain's entities, shallow → deep, and
+   the superposed pairs from `TABLE_PILE_ENTITES_NIV3`. These become the
+   `overlies` edges.
+4. Find vertical well pairs within 5 km in superposed entities (first
+   run: 13).
+5. Write the map/figure, the data log entry, `docs/notes/step06b_bdlisa.md`
+   and the progress table, then commit.
+
+Then do Step 7, the memo. Then **stop and wait for Assil.**
+
+**Rebuild results so far (compare with section 8):**
+
+- **Piezometers.**
+  - 101 stations; 43 with ≥ 8 y record and active in 2024+; **33 in the
+    working set**.
+  - By layer: 20 `671AA00` Pliocene (median record 35.6 y); 6 alluvium
+    (`718BP01-03`, `671AB01-02`); **6** Corbières karst `681AM00`; 1
+    `760AE09`.
+  - 115,443 measurements over 2016–2025.
+  - Plain = bbox lon 2.55–3.06, lat 42.50–42.88 (`PLAIN_BBOX` in
+    `src/analysis/piezo_profile.py`, documented in `data/README.md`).
+  - 19% of window values are "Non qualifié", rising to 52% in 2025.
+- **RPG within 3 km** (parcel centroid rule).
+  - 2023: 10,222 parcels, 14,021 ha, median 0.74 ha; vines 32% (4,511 ha),
+    orchards 19%, olives 2.3%.
+  - 2016: 7,914 parcels, 11,697 ha.
+  - Vines are stable in hectares. The share drop is a denominator effect:
+    ~2,300 ha of newly *declared* land (pasture/landes, grassland,
+    orchards). Always compare hectares, not just shares.
+- **BNPE, plain 2012–2023 (Mm³).**
+  - Irrigation: 741 surface / 144 groundwater → 84% surface (93% if
+    canal intakes count).
+  - Drinking water: 3 / 475 → 99% groundwater.
+  - Canal intakes ("CANAUX"): 1,245 Mm³, reported separately.
+  - 2018 reporting break: boreholes declaring groundwater irrigation jump
+    from 370 to 950.
+  - 2023 under-reported; canal intakes falling since 2017.
+- **Open questions for the supervisor** (go in the Step 7 memo):
+  - Keep or drop the 6 karst stations (core = 26 stations).
+  - Which framing: use conflict on the Pliocene, or canal-return recharge.
+  - Whether a more recent RPG year is wanted (2024/2025 are available, as
+    GeoPackage v4.0).
 
 ### Step 1 — Repo and environment
 
@@ -272,7 +395,9 @@ Use these to sanity-check the rebuild, not as targets.
     20 stations; median record 35 years)
   - about 7 shallow, in the Quaternary alluvium
   - 2 in the Corbières karst
-- About 309k measurements over 2016–2025.
+- About 309k measurements over 2016–2025. **Correction (rebuild):** this
+  was mislabelled. 33 daily stations give at most ~120k values in 10 years.
+  The working set's *full* history is 303k; the 2016–2025 window is 115k.
 
 **RPG parcels:**
 - About 11,000 parcels and 15,800 ha within 3 km; median parcel 0.75 ha.

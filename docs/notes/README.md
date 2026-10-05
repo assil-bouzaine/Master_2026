@@ -18,7 +18,7 @@ the PFE report (the "Méthodologie" and "Données" chapters).
 | 4 | Hub'Eau piezometers | done | [step04_piezometers.md](step04_piezometers.md) |
 | 5 | RPG agricultural parcels | done | [step05_rpg.md](step05_rpg.md) |
 | 6a | BNPE water abstraction | done | [step06a_bnpe.md](step06a_bnpe.md) |
-| 6b | BD LISA aquifer entities (manual download) | to do | step06b_bdlisa.md |
+| 6b | BD LISA aquifer entities (manual download) | in progress (file downloaded and extracted) | step06b_bdlisa.md |
 | 7 | Gate 1 feasibility memo | to do | ../memo_gate1_feasibility.md |
 
 Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.

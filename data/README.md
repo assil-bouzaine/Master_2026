@@ -83,3 +83,24 @@ Scripts: `python -m src.ingest.rpg` (cached, resumable) and
 | `interim/rpg_plain_<year>.parquet` | parcels in the plain bbox + 3 km | 27,271 | 32,795 |
 | `interim/rpg_3km_<year>.parquet` | parcel centroid within 3 km of a working-set piezometer | 7,914 | 10,222 |
 | `interim/rpg_3km_groups.csv` | share and hectares by `CODE_GROUP` | n/a | n/a |
+
+### BNPE water abstraction (Step 6a)
+
+| Date | Source | Endpoint / URL | Parameters | Output | Rows | Size |
+|---|---|---|---|---|---|---|
+| 2026-10-05 | Hub'Eau Prélèvements v1 (API 1.0.3) | `https://hubeau.eaufrance.fr/api/v1/prelevements/referentiel/points_prelevement` | `code_departement=66`, `size=2000`, follow `next` | `raw/hubeau_bnpe/points_prelevement_66.parquet` | 3,061 points (987 CONT, 2,074 SOUT) | 120 KB |
+| 2026-10-05 | Hub'Eau Prélèvements v1 | `.../prelevements/chroniques` | `code_departement=66`, `size=2000` | `raw/hubeau_bnpe/chroniques_66.parquet` | 16,965 ouvrage×year×usage rows, 2012–2023 | 243 KB |
+
+Notes:
+- **Page size.** A first attempt with `size=5000` got the connection reset.
+  Hub'Eau then refused every request for about 10 minutes. Use `size=2000`.
+- **`code_bdlisa`** is null for all 3,061 points; never use it.
+- **Facilities vs points.** Each ouvrage has exactly one point, hence one
+  water source.
+- **Coordinates.** Only the chroniques table has them (`longitude`,
+  `latitude`).
+- **Unmatched rows.** Two volume rows have an ouvrage absent from the points
+  table; they are dropped.
+
+Script: `python -m src.analysis.bnpe_profile` writes
+`interim/bnpe_annual.csv` and `interim/bnpe_cumulative.csv`.

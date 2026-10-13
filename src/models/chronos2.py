@@ -32,7 +32,9 @@ def main():
     from chronos import Chronos2Pipeline
 
     torch.set_num_threads(4)
-    pipe = Chronos2Pipeline.from_pretrained(MODEL, device_map="cpu")
+    device = "cuda" if torch.cuda.is_available() else "cpu"  # GPU when present
+    print(f"Chronos-2 on {device}", flush=True)
+    pipe = Chronos2Pipeline.from_pretrained(MODEL, device_map=device)
     P = build_panel()
     P = P[P["mu"].notna()].sort_values(["code_bss", "week"])
     out = RESULTS / RUN / "wells"

@@ -275,29 +275,130 @@ notebooks/       exploration only; anything that matters moves into src/
 
 ---
 
-## 7. CURRENT TASK: Phase 0 (finish the data foundation) → Phase 1
+## 7. CURRENT TASK: Step 10, improve the baselines (dataset v2)
 
-Assil said "let's start the work" on 2026-10-13. Work through the phases in
-`docs/roadmap.md`. Track progress with a task list. **Stop at each gate**
-(Gate 1 = after the Step 7 memo) and wait for Assil before starting work that
-depends on the supervisor's answers. Phase 1 data ingestion does not depend
-on them, so it may start while the memo is out.
+Assil chose option **B** on 2026-10-13: make the baselines as strong as
+possible before Gate 2 and the ontology phase. Work through the steps
+below in order and track them with a task list. **GPU work runs on Assil's
+Camber node through the Claude-in-Chrome extension** (see §4 and
+`docs/gpu_howto.md`).
 
-### ▶ STATUS (last updated 2026-10-13). Read this first in a new session
+### ▶ Where we are (read this first in a new session)
 
-| Step | Status | Commit | Note |
-|---|---|---|---|
-| 1 Repo and environment | ✅ done (Linux venv rebuilt 2026-10-13) | `eac175f` | `docs/notes/step01_environment.md` |
-| 4 Hub'Eau piezometers | ✅ done | `245c2f7` | `docs/notes/step04_piezometers.md` |
-| 5 RPG parcels | ✅ done | `33ccaa4` | `docs/notes/step05_rpg.md` |
-| 6a BNPE abstraction | ✅ done | `a2b842f` | `docs/notes/step06a_bnpe.md` |
-| 6b BD LISA | ✅ done | see git log | `docs/notes/step06b_bdlisa.md` |
-| 7 Gate 1 memo (+ paper plan) | ✅ written; **waiting for the supervisor's answers (Gate 1)** | see git log | `docs/memo_gate1_feasibility.md` |
-| 8 Phase 1: forcings + weekly dataset v1 | ✅ done | see git log | `docs/notes/step08_dataset.md` |
-| 9 Phase 2: baselines | ✅ all done (ST-GNN + Chronos-2 on the Camber GPU) | see git log | `docs/notes/step09_baselines.md`, `docs/results_baselines.md` |
-| **10 Next** | **⬜ Gate 2 (supervisor) or baseline improvements (2005 start, all stations, LSTM tuning), then Phase 3 ontology — ASK ASSIL** | n/a | n/a |
+- **Data:** all layers are built.
+  - piezometers, RPG, BNPE, BD LISA, SAFRAN climate, rivers
+  - weekly dataset v1 (`data/processed/dataset_v1/`, 47 wells, 2012–2026)
+- **Gate 1 memo** written (`docs/memo_gate1_feasibility.md`). Waiting for
+  the supervisor. Consortium questions are parked in
+  `docs/savewater_consortium_notes.md`.
+- **Phase 2 baselines done on v1** (`docs/results_baselines.md`; median
+  test NSE over 33 core wells, test = May 2022–2026 drought):
 
-### Step 6b: BD LISA V3 aquifer entities
+  | Task | Best baseline | Test NSE |
+  |---|---|---|
+  | simulation | distance-graph ST-GNN (5 seeds) | 0.26 (RMSE 0.58 m) |
+  | simulation | LSTM 0.25 · Pastas 0.13 · LightGBM 0.03 · climatology −0.25 | |
+  | forecast 4 wk | Chronos-2 zero-shot | 0.83 (anomaly-persistence floor 0.78) |
+  | forecast 12 wk | Chronos-2 zero-shot | 0.42 (floor 0.11) |
+
+- **Key findings so far:**
+  - no head-ordering rule (the vertical gradient flips)
+  - flat drinking-water pumping is wrong; seasonal is better
+  - canal recharge helps the alluvium only
+  - plain-wide pumping does not help, so the graph must be selective by
+    aquifer unit
+  - **every model misses the deepening Pliocene summer drawdowns in the
+    drought** (Pliocene test NSE 0.07)
+
+### ▶ STATUS
+
+| Step | Status | Note |
+|---|---|---|
+| 1 Repo and environment | ✅ done | `docs/notes/step01_environment.md` |
+| 4 Hub'Eau piezometers | ✅ done | `docs/notes/step04_piezometers.md` |
+| 5 RPG parcels | ✅ done | `docs/notes/step05_rpg.md` |
+| 6a BNPE abstraction | ✅ done | `docs/notes/step06a_bnpe.md` |
+| 6b BD LISA | ✅ done | `docs/notes/step06b_bdlisa.md` |
+| 7 Gate 1 memo | ✅ written; waiting for the supervisor | `docs/memo_gate1_feasibility.md` |
+| 8 Phase 1: dataset v1 | ✅ done | `docs/notes/step08_dataset.md` |
+| 9 Phase 2: baselines on v1 | ✅ done | `docs/notes/step09_baselines.md` |
+| **10 Improve baselines (dataset v2)** | **⏳ in progress — START HERE** | `docs/notes/step10_baselines_v2.md` |
+| 11 Gate 2: results to the supervisor | ⬜ after step 10 | update the memo with the v1→v2 table |
+| 12 Phase 3: ontology + knowledge graph | ⬜ after Gate 2 (may start in parallel) | `docs/roadmap.md` §4 Phase 3 |
+
+### Step 10: improve the baselines (spec)
+
+**Rule:** v1 stays untouched for reproducibility. Everything new goes to
+**dataset v2** and **`results/v2/`**. The validation and test periods and
+the 33 core wells are identical, so v1 and v2 are directly comparable.
+
+1. **Versioned paths.**
+   - `src/config.py` gets `DATASET` (env var `PFE_DATASET`, default `v2`),
+     `DATASET_DIR = data/processed/dataset_<v>/` and
+     `RESULTS_DIR = results/<v>/`.
+   - Every module reads these; nothing hard-codes `dataset_v1`.
+   - Move the existing v1 runs to `results/v1/`.
+2. **SAFRAN 2000–2004:** `python -m src.ingest.safran --start 2000`
+   (resumable; about 0.7 GB downloaded, under the 2 GB rule). Gives warm-up
+   for training from 2005.
+3. **Dataset v2** (`python -m src.dataset.build --version v2`):
+   - training starts **2005-01-01** (v1: 2012); forcings from 2000
+   - **all usable dept-66 stations** for training (v1: plain only);
+     `core` = the same 33 wells for reporting
+   - pumping points: the **whole département** (v1: the plain + 3 km)
+   - BNPE starts in 2012: years 2005–2011 are filled with each ouvrage's
+     2012–2014 mean and flagged `imputed`
+   - splits: train 2005–2019 · validation 2020-01 → 2022-04 · test
+     2022-05 → latest (same as v1)
+4. **Re-run on v2:**
+   - on the laptop: naive, Pastas (`pastas_seasonal_canal` + `pastas`),
+     LightGBM
+   - on the Camber GPU: LSTM, distance ST-GNN, Chronos-2
+5. **LSTM tuning on the GPU** (`src/models/tune_lstm.py`, Optuna):
+   - search over lookback 104/156/208 weeks, hidden 64/128, dropout,
+     learning rate
+   - **select on the validation median NSE only**
+   - retrain the best configuration with 5 seeds
+6. **Ensemble** (`src/models/ensemble.py`): the mean of the best simulation
+   models, with members chosen on validation.
+7. **Report:**
+   - `src/analysis/baseline_report.py` with a v1 vs v2 comparison table
+   - note `docs/notes/step10_baselines_v2.md`
+   - commit
+
+**Done when:** the v2 table exists for every baseline. Each change
+(2005 start, all stations, tuning, ensemble) is reported against v1, honestly,
+including changes that did not help.
+
+### Step 11: Gate 2
+
+Send the supervisor the Gate 1 memo plus a one-page results summary:
+- the v1/v2 table
+- the hydrograph figure
+- the 3 findings
+
+Ask the Gate 1 questions again. Wait for answers before committing the
+framing.
+
+### Step 12: Phase 3, ontology and knowledge graph
+
+As in `docs/roadmap.md` Phase 3:
+1. competency questions
+2. reuse GWML2 / SOSA / HY_Features / GeoSPARQL / HILUCS / AGROVOC /
+   WHOW-KG
+3. the `lulcw:` bridging module
+4. alignments (manual gold set + OntoAligner)
+5. SHACL
+6. SPARQL → PyG `HeteroData`
+
+**Priority from the baselines:** link every abstraction point to its aquifer
+unit (BSS depth, usage), because that is the information all models lack.
+
+---
+
+## 7b. Completed steps (details kept for re-runs)
+
+### ✅ Step 6b: BD LISA V3 aquifer entities
 
 **Done so far**
 - Assil downloaded `data/raw/bdlisa/BDLISA_V3_OCC-gpkg.zip` (GeoPackage,
@@ -344,7 +445,7 @@ on them, so it may start while the memo is out.
 5. Write the figure, the data log entry, `docs/notes/step06b_bdlisa.md` and
    the progress table, then commit.
 
-### Step 7: Gate 1 memo
+### ✅ Step 7: Gate 1 memo
 
 Write `docs/memo_gate1_feasibility.md`. Keep it short and plain; Assil may
 translate it to French. It covers:
@@ -368,7 +469,7 @@ Context for the framing question: irrigation in the plain is about 84%
 surface water (the historic Têt/Agly canals), while drinking water is 99%
 groundwater. This contradicts the subject's "crops pump groundwater" chain.
 
-### Step 8: Phase 1, forcings and the weekly dataset (details in `docs/roadmap.md` §4)
+### ✅ Step 8: Phase 1, forcings and the weekly dataset
 
 1. **SAFRAN / SIM2** (Météo-France, data.gouv.fr, "Données changement
    climatique – SIM quotidienne").
@@ -435,7 +536,7 @@ groundwater. This contradicts the subject's "crops pump groundwater" chain.
   - Pastas 2.0.0 installed and pinned.
 - Open questions for the supervisor: see Step 7 above.
 
-### Step 9: Phase 2, baselines (next; details in `docs/roadmap.md` §4)
+### ✅ Step 9: Phase 2, baselines on v1
 
 1. Seasonal-naive and persistence floors.
 2. **Pastas** per well:

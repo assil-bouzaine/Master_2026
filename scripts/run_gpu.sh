@@ -30,6 +30,19 @@ fi
   "$VENV/bin/python" -m pip install -q --no-deps -r "$VENV/req_gpu.txt"
 }
 PY="$VENV/bin/python"
+# Some images ship torchaudio/torchvision built for another torch; transformers
+# imports them if present and crashes. Shadow them with versions matching the
+# system torch (installed --no-deps into the venv; torch itself is untouched).
+TV=$(python3 -c "import torch; print(torch.__version__.split('+')[0])")
+TMINOR=$(echo "$TV" | cut -d. -f2)
+if ! $PY -c "import torchaudio" 2>/dev/null; then
+  echo "torchaudio broken or missing: installing torchaudio==$TV in the venv"
+  $PY -m pip install -q --no-deps "torchaudio==$TV" || true
+fi
+if ! $PY -c "import torchvision" 2>/dev/null; then
+  echo "torchvision broken or missing: installing torchvision==0.$((TMINOR + 15)).0 in the venv"
+  $PY -m pip install -q --no-deps "torchvision==0.$((TMINOR + 15)).0" || true
+fi
 $PY -c "import torch, pandas, numpy; print('venv: torch', torch.__version__, 'cuda', torch.cuda.is_available(), '| pandas', pandas.__version__, '| numpy', numpy.__version__)"
 export PYTHONIOENCODING=utf-8
 $PY -m src.models.stgnn          # distance-graph ST-GNN, 5 seeds

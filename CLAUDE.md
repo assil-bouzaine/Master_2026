@@ -337,8 +337,8 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
 | 8 Phase 1: dataset v1 | ✅ done | `docs/notes/step08_dataset.md` |
 | 9 Phase 2: baselines on v1 | ✅ done | `docs/notes/step09_baselines.md` |
 | 10 Improve baselines (dataset v2) | ✅ done (tuning, ensemble, ablation, Wilcoxon) | `docs/notes/step10_baselines_v2.md` |
-| **11 Gate 2: results to the supervisor** | **⬜ next — START HERE** | update the memo with the v1→v2 table |
-| 12 Phase 3: ontology + knowledge graph | ⬜ after Gate 2 (may start in parallel) | `docs/roadmap.md` §4 Phase 3 |
+| **11 Gate 2: results to the supervisor** | **✅ summary written; Assil sends it with the Gate 1 memo — waiting for answers** | `docs/summary_gate2_results.md` + `docs/memo_gate1_feasibility.md` |
+| **12 Phase 3: ontology + knowledge graph** | **⬜ next — START HERE (may start before the answers)** | `docs/roadmap.md` §4 Phase 3 |
 
 ### Step 10: improve the baselines (spec)
 
@@ -384,15 +384,18 @@ the 33 core wells are identical, so v1 and v2 are directly comparable.
 (2005 start, all stations, tuning, ensemble) is reported against v1, honestly,
 including changes that did not help.
 
-### Step 11: Gate 2
+### Step 11: Gate 2 (summary written 2026-10-13)
 
-Send the supervisor the Gate 1 memo plus a one-page results summary:
-- the v1/v2 table
-- the hydrograph figure
-- the 3 findings
+`docs/summary_gate2_results.md` (one page) goes with the Gate 1 memo. It
+asks three new questions:
+1. Focus the contribution on simulation and explanation, with Chronos-2
+   as the forecasting reference?
+2. Can the project obtain monthly drinking-water production for the
+   Roussillon boreholes?
+3. May Phase 3 start now?
 
-Ask the Gate 1 questions again. Wait for answers before committing the
-framing.
+**When the answers arrive:** record them here, then update §1 (venue),
+§2 (demo site), §3 (framing, karst) and `docs/roadmap.md`.
 
 ### Step 12: Phase 3, ontology and knowledge graph
 
@@ -582,7 +585,8 @@ wells.
 - Pliocene wells: test NSE 0.07 for the best simulation model
 
 GPU work runs on Assil's Camber XSMALL GPU node (JupyterLab; CLI jobs are
-blocked on the free tier). See `docs/gpu_howto.md`; Stash path
+blocked on the free tier). **Always STOP the node when a GPU run ends**
+(1.5 credits/h while on; the node was stopped on 2026-10-13 after step 10). See `docs/gpu_howto.md`; Stash path
 `stash://assil0723/pfe/`.
 
 **Done so far (2026-10-13):**

@@ -10,11 +10,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "gpu_bundle.zip"
-INCLUDE = [ROOT / "src", ROOT / "requirements.txt", ROOT / "data" / "processed" / "dataset_v1",
-           ROOT / "results" / "_cache" / "panel.parquet"]
+INCLUDE = [ROOT / "src", ROOT / "scripts" / "run_gpu.sh", ROOT / "requirements.txt",
+           ROOT / "data" / "processed" / "dataset_v1", ROOT / "results" / "_cache" / "panel.parquet",
+           ROOT / "results" / "chronos2" / "wells",       # wells already done (resume)
+           ROOT / "results" / "stgnn_distance"]           # seeds already done, if any
 
 with zipfile.ZipFile(OUT, "w", zipfile.ZIP_DEFLATED) as z:
     for item in INCLUDE:
+        if not item.exists():
+            continue
         files = [item] if item.is_file() else sorted(p for p in item.rglob("*") if p.is_file())
         for f in files:
             if "__pycache__" not in f.parts:

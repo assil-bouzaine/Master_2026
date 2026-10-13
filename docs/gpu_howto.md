@@ -47,3 +47,92 @@ Copy `pfe/results/lstm/` and `pfe/results/stgnn_distance/` (the
   with `--seeds 99 --epochs 2`.
 - **Record which GPU and how long** each sweep took. The paper's
   reproducibility section needs it.
+
+---
+
+## Camber (checked 2026-10-13 against docs.cambercloud.com)
+
+**What Camber offers:**
+- GPU = NVIDIA L4 (24 GB). The `XSMALL` GPU node (1 L4, 8 CPU, 32 GB) costs
+  **1.5 credits/hour** (1 credit = 1 US$).
+- New accounts get **100 free credits**. The GitHub Student Pack offer is
+  described as 200 CPU hours + 75 GB storage + 300 LLM queries; GPU hours
+  are not mentioned, so **GPU time uses credits**.
+- Credits are consumed only while a job is `RUNNING`.
+- Our ST-GNN (5 seeds) + the rest of Chronos-2 should take a few GPU-hours
+  at most, i.e. **a few credits**. Check the balance in the Camber web app
+  before and after.
+
+**What the Camber MCP can and cannot do:**
+- It is real: `claude mcp add --transport http --scope user --client-id
+  IPUNLiAS5zj2ZS8B --callback-port 17653 camber-mcp
+  https://camber-mcp.cambercloud.com/mcp`, then `claude mcp login
+  camber-mcp`.
+- Its tools only manage Camber AI agents and teams (`agents_chat`,
+  `agents_create`, `teams_list`…). **It cannot upload files or submit
+  compute jobs**, so the GPU run is done with the CLI + the Camber web app
+  below.
+
+### Step 1: install the CLI and log in (once, on the laptop)
+
+```bash
+curl -sL https://cli.cambercloud.com/install-v2.sh | bash
+camber login          # opens the browser
+camber me             # shows your username = <user> below
+```
+
+### Step 2: upload the bundle (from the project folder)
+
+```bash
+.venv/bin/python scripts/make_gpu_bundle.py
+camber stash cp gpu_bundle.zip stash://<user>/pfe/
+```
+
+### Step 3: start the GPU job (in the Camber web app)
+
+Open app.cambercloud.com → JupyterLab. Your Stash is the notebook's file
+system. In a notebook cell:
+
+```python
+!cd ~ && mkdir -p pfe && cd pfe && unzip -oq gpu_bundle.zip   # adjust if the zip sits elsewhere
+!ls ~/pfe                                                       # should show src/ scripts/ data/ results/
+```
+
+Then submit the job on one L4 GPU:
+
+```python
+import camber
+help(camber.mpi.create_job)        # check the current signature first (docs are partial)
+job = camber.mpi.create_job(
+    command="cd ~/pfe && bash scripts/run_gpu.sh",
+    node_size="XSMALL",
+    num_nodes=1,
+    with_gpu=True,
+)
+job                                # shows job id and status
+```
+
+If `create_job` has changed, use Camber's assistant instead (documented
+way to run code on a GPU node):
+
+```
+@nova Run "cd ~/pfe && bash scripts/run_gpu.sh" on an XSMALL node with GPU
+```
+
+The job writes its log to `~/pfe/results/gpu_run.log`. The first line says
+`CUDA available: True NVIDIA L4` if the GPU was attached.
+
+### Step 4: bring the results back (on the laptop)
+
+```bash
+camber stash cp -r stash://<user>/pfe/results/stgnn_distance ./results/
+camber stash cp -r stash://<user>/pfe/results/chronos2 ./results/
+camber stash cp stash://<user>/pfe/results/gpu_run.log ./results/
+.venv/bin/python -m src.models.evaluate stgnn_distance chronos2
+.venv/bin/python -m src.analysis.baseline_report
+```
+
+### If the job stops
+
+Run Step 3 again. Finished seeds and wells are skipped, so nothing is
+recomputed and few credits are wasted.

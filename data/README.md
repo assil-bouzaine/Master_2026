@@ -104,3 +104,28 @@ Notes:
 
 Script: `python -m src.analysis.bnpe_profile` writes
 `interim/bnpe_annual.csv` and `interim/bnpe_cumulative.csv`.
+
+### BD LISA V3 aquifer entities (Step 6b)
+
+| Date | Source | Endpoint / URL | Parameters | Output | Rows | Size |
+|---|---|---|---|---|---|---|
+| 2026-10-05 | BD LISA V3, Occitanie extract (manual download by Assil) | `https://bdlisa.eaufrance.fr` → Téléchargement | GeoPackage, region OCC | `raw/bdlisa/BDLISA_V3_OCC-gpkg.zip` → `BDLISA_V3_OCC-gpkg/BDLISA_V3.gpkg` | 1,475 level-3 polygons; 16,789 elementary polygons; 124,734 stack rows | 169 MB zip |
+
+Notes:
+- **Layers used:** `TME` (attributes for all levels), `POLYG_ELEMENTAIRES`
+  (`codepoly`), `TABLE_PILE_ENTITES_NIV3` (`CodePoly`, `CodeEH`,
+  `OrdRelatif`; 1 = top of the stack). Codes decoded with SANDRE
+  nomenclatures (see `src/analysis/bdlisa_profile.py`).
+- **Plain extent.** The same `PLAIN_BBOX` as the piezometers; 180 elementary
+  polygons intersect it (3,104 km²).
+- **Missing entity.** `760AE09` (station CARRIE) is not in the Occitanie
+  extract. Its well sits in a `699AD01` (granite) polygon.
+
+Script: `python -m src.analysis.bdlisa_profile` (re-run 2026-10-13) writes:
+
+| File | Content | Rows |
+|---|---|---|
+| `interim/bdlisa_entities_plain.csv` | level-3 entities under the plain + decoded attributes, outcrop and total area | 30 |
+| `interim/bdlisa_overlies_plain.csv` | direct `upper → lower` edges from the stacks, with polygon count and area | 26 |
+| `interim/bdlisa_station_stacks.csv` | per working-set well: entity, stack under the well, position, % artesian days | 33 |
+| `interim/bdlisa_vertical_pairs.csv` | shallow/deep well pairs ≤ 5 km + weekly head-ordering statistics | 17 |

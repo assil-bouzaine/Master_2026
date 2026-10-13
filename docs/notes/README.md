@@ -18,7 +18,7 @@ the PFE report (the "Méthodologie" and "Données" chapters).
 | 4 | Hub'Eau piezometers | done | [step04_piezometers.md](step04_piezometers.md) |
 | 5 | RPG agricultural parcels | done | [step05_rpg.md](step05_rpg.md) |
 | 6a | BNPE water abstraction | done | [step06a_bnpe.md](step06a_bnpe.md) |
-| 6b | BD LISA aquifer entities (manual download) | in progress (file downloaded and extracted) | step06b_bdlisa.md |
+| 6b | BD LISA aquifer entities, overlies edges, vertical pairs | done | [step06b_bdlisa.md](step06b_bdlisa.md) |
 | 7 | Gate 1 feasibility memo | to do | ../memo_gate1_feasibility.md |
 
 Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
@@ -47,4 +47,11 @@ Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 | **Mm³** | Million cubic metres (1 Mm³ = 1 billion litres). Annual abstraction volumes are given in Mm³. |
 | **AEP** | Alimentation en Eau Potable, i.e. drinking-water supply. |
 | **Ouvrage** | The abstraction facility (borehole, river intake…) to which BNPE volumes are attached. |
+| **Elementary polygon (BD LISA)** | Smallest map unit of BD LISA; each carries a vertical *stack* of aquifer entities, ordered from the surface down (`OrdRelatif` 1 = top). |
+| **Overlies edge** | "Entity A lies directly on top of entity B" somewhere in the plain. Becomes a relation in the knowledge graph and an edge in the model's graph. |
+| **Head (charge hydraulique)** | Water level in a well expressed as an altitude (m NGF). Water flows from high head to low head. |
+| **Vertical gradient** | Difference in head between a shallow and a deep layer at the same place. Shallow > deep means water tends to go down; deep > shallow means up. |
+| **Nested piezometers** | Two or more wells at the same site screened at different depths (e.g. C2-1/C2-2). The only clean way to measure a vertical gradient. |
+| **Artesian** | The head is above the ground surface: the water would flow out of the well by itself. Sign of a confined, pressurised aquifer. |
+| **Confined vs unconfined** | Unconfined: the water table is free (alluvium). Confined: the aquifer sits under a clay layer and is under pressure (deep Pliocene). |
 | **Prise (dans la Têt)** | A river intake: the head of an irrigation canal that diverts river water. |

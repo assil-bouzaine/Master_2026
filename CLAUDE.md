@@ -291,8 +291,8 @@ on them, so it may start while the memo is out.
 | 4 Hub'Eau piezometers | ✅ done | `245c2f7` | `docs/notes/step04_piezometers.md` |
 | 5 RPG parcels | ✅ done | `33ccaa4` | `docs/notes/step05_rpg.md` |
 | 6a BNPE abstraction | ✅ done | `a2b842f` | `docs/notes/step06a_bnpe.md` |
-| **6b BD LISA** | **⏳ in progress — START HERE** | n/a | to write: `docs/notes/step06b_bdlisa.md` |
-| 7 Gate 1 memo (+ paper plan) | ⬜ to do | n/a | `docs/memo_gate1_feasibility.md` |
+| 6b BD LISA | ✅ done | see git log | `docs/notes/step06b_bdlisa.md` |
+| **7 Gate 1 memo (+ paper plan)** | **⏳ in progress — START HERE** | n/a | `docs/memo_gate1_feasibility.md` |
 | 8 Phase 1: forcings + weekly dataset | ⬜ to do | n/a | `docs/notes/step08_*.md` |
 
 ### Step 6b: BD LISA V3 aquifer entities
@@ -411,6 +411,17 @@ groundwater. This contradicts the subject's "crops pump groundwater" chain.
   - 2018 reporting break: boreholes declaring groundwater irrigation jump
     from 370 to 950.
   - 2023 under-reported; canal intakes falling since 2017.
+- **BD LISA (Step 6b).**
+  - 32/33 station entities found (`760AE09` missing).
+  - 9 overlies pairs between station entities (= first run); 26 in the
+    whole plain.
+  - **17 vertical well pairs** ≤ 5 km (first run 13; the stack is now
+    followed transitively).
+  - **Head ordering: shallow above deep in only 50.5% of 17,124
+    pair-weeks.** Nested C2-1/C2-2 (Têt) is downward 100%; nested BARQUA/F
+    (Agly) is upward 94.5%, with seasonal flips under summer pumping.
+  - 4 Pliocene wells are sometimes artesian.
+  - ⇒ **no head-ordering rule**. `overlies` edges carry no sign.
 - Open questions for the supervisor: see Step 7 above.
 
 ### Specs of finished steps (kept for re-runs; the scripts implement them)

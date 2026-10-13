@@ -129,3 +129,67 @@ Script: `python -m src.analysis.bdlisa_profile` (re-run 2026-10-13) writes:
 | `interim/bdlisa_overlies_plain.csv` | direct `upper → lower` edges from the stacks, with polygon count and area | 26 |
 | `interim/bdlisa_station_stacks.csv` | per working-set well: entity, stack under the well, position, % artesian days | 33 |
 | `interim/bdlisa_vertical_pairs.csv` | shallow/deep well pairs ≤ 5 km + weekly head-ordering statistics | 17 |
+
+### SAFRAN / SIM2 climate forcing (Step 8, Phase 1)
+
+| Date | Source | Endpoint / URL | Parameters | Output | Rows | Size |
+|---|---|---|---|---|---|---|
+| 2026-10-13 | Météo-France SIM2 (SAFRAN-ISBA) daily, data.gouv.fr dataset `6569b27598256cc583c917a7` ("Données changement climatique - SIM quotidienne") | `https://meteofrance.s3.sbg.io.cloud.ovh.net/data/REF_CC/SIM/QUOT_SIM2_<year>.csv.gz` + `QUOT_SIM2_latest.csv.gz` | years 2005–2026; cells with lon 1.65–3.25, lat 42.30–43.00 (`DEPT_BBOX`); variables PRELIQ, PRENEI, T, ETP, EVAP, PE, SWI, DRAINC, RUNC | `raw/safran/sim2_66_<year>.parquet` (+ `.json` with server Last-Modified), `raw/safran/grid_cells_66.parquet` | 141 cells; 1,121,655 cell-days, 2005-01-01 .. 2026-10-12 | ~3.0 GB downloaded (≈ 137 MB per national year file, deleted after filtering); 8.6 MB kept |
+
+Notes:
+- **Approved by Assil** (2026-10-13) for the 2005–2026 period, above the 2 GB
+  rule.
+- **Grid:** 8 km SAFRAN cells; coordinates file
+  `coordonnees_grille_safran_lambert-2-etendu.csv` (Lambert II étendu in hm,
+  decimal commas).
+- **Parameters:** see `raw/safran/sim-quotidienne-parametres-20260331.pdf`.
+  - `ETP` = Penman-Monteith FAO-56
+  - `PE` = effective rain
+  - `DRAINC` = drainage below the root zone (a recharge proxy)
+- **Updates:** the current year file is updated monthly. The script
+  re-downloads a year only when the server's Last-Modified changes, and
+  merges the rolling `latest` file into the current year.
+
+### Hub'Eau hydrometry: river and canal flows (Step 8)
+
+| Date | Source | Endpoint / URL | Parameters | Output | Rows | Size |
+|---|---|---|---|---|---|---|
+| 2026-10-13 | Hub'Eau Hydrométrie v2 | `https://hubeau.eaufrance.fr/api/v2/hydrometrie/referentiel/stations` | `code_departement=66`, `size=200` | `raw/hubeau_hydro/stations_66.parquet` | 105 stations | 14 KB |
+| 2026-10-13 | Hub'Eau Hydrométrie v2 | `.../hydrometrie/obs_elab` | `code_entite=<station>`, `grandeur_hydro_elab=QmnJ` (daily mean flow, L/s), `date_debut_obs_elab=2005-01-01`, `size=5000`, follow `next` | `raw/hubeau_hydro/qmnj/<code_station>.parquet` | 72 stations open since 2005: 45 with data, 27 empty | 3.4 MB |
+
+Notes:
+- **Swapped coordinates:** two stations have lon/lat swapped in the
+  referential (Y021401101, Y043642201); fixed on ingest.
+- **Canals:** 6 canal stations are open since 2005, but only the "canal
+  adducteur" (Y030521001) returns data, and only 9 weeks of it. **There is
+  effectively no gauged canal flow in Hub'Eau.** The canal signal must come
+  from the BNPE canal-intake volumes.
+- **Slow API:** about 2,000 records per page at ~1 page/s. The full pull
+  took about 40 min.
+
+### Model-ready dataset v1 (Step 8)
+
+Script: `python -m src.dataset.build` (2026-10-13) →
+`data/processed/dataset_v1/` (5.6 MB). Loader:
+`src.dataset.load.load_arrays()`.
+
+| File | Content | Rows |
+|---|---|---|
+| `wells.parquet` | 47 plain wells (33 core = working set): attributes, BD LISA group and stack, nearest SAFRAN cell, leave-wells-out fold | 47 |
+| `heads_weekly.parquet` | well × week (W-SUN): mean head, days observed, share "Non qualifié", monthly SGI, IPS class | 37,671 |
+| `forcing_weekly.parquet` | SAFRAN cell × week (sums: rain, ETP, EVAP, PE, DRAINC, RUNC; means: T, SWI) | 160,176 |
+| `gauges.parquet`, `rivers_weekly.parquet` | 45 gauges; weekly mean flow (m³/s) | 37,714 |
+| `pumping_points.parquet`, `pumping_weekly.parquet` | 2,046 BNPE ouvrages within ~3 km of the plain box; weekly volumes (m³) by use | 817,595 |
+| `splits.json`, `meta.json` | time splits, 5 stratified leave-wells-out folds, parameters | n/a |
+
+**Assumptions** (all flagged and documented in the module docstring):
+- **SGI reference:** the training period only.
+- **IPS bounds:** standard-normal quantiles at 10/20/40/60/80/90 %, from the
+  return periods in the BRGM/DREAL Rhône-Méditerranée bulletin table.
+- **Weekly pumping:**
+  - irrigation and canal intakes follow the April–October climatic deficit
+    max(ETP − rain, 0)
+  - other uses are spread uniformly
+  - years after 2023 are imputed (mean 2020–2022, missing years count as
+    zero, irrigation scaled by that year's deficit)
+- **Excluded:** 5 plain stations with no measurement at all.

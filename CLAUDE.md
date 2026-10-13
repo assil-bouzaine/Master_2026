@@ -293,7 +293,8 @@ on them, so it may start while the memo is out.
 | 6a BNPE abstraction | ✅ done | `a2b842f` | `docs/notes/step06a_bnpe.md` |
 | 6b BD LISA | ✅ done | see git log | `docs/notes/step06b_bdlisa.md` |
 | 7 Gate 1 memo (+ paper plan) | ✅ written; **waiting for the supervisor's answers (Gate 1)** | see git log | `docs/memo_gate1_feasibility.md` |
-| **8 Phase 1: forcings + weekly dataset** | **⏳ in progress — START HERE** (does not depend on Gate 1) | n/a | `docs/notes/step08_*.md` |
+| 8 Phase 1: forcings + weekly dataset v1 | ✅ done | see git log | `docs/notes/step08_dataset.md` |
+| **9 Phase 2: baselines** | **⬜ next — START HERE** | n/a | `docs/notes/step09_baselines.md` |
 
 ### Step 6b: BD LISA V3 aquifer entities
 
@@ -422,7 +423,40 @@ groundwater. This contradicts the subject's "crops pump groundwater" chain.
     (Agly) is upward 94.5%, with seasonal flips under summer pumping.
   - 4 Pliocene wells are sometimes artesian.
   - ⇒ **no head-ordering rule**. `overlies` edges carry no sign.
+- **Phase 1 dataset v1** (`data/processed/dataset_v1`, loader `src.dataset.load.load_arrays()`).
+  - 47 wells (33 core), 1,135 weeks (2005–2026, model window from 2012).
+  - Observed well-weeks: train 14,013 / validation 4,960 / test 9,195.
+  - The test period is 43.5% IPS "très bas" and 35% not validated.
+  - 141 SAFRAN cells.
+  - 45 river gauges. **No usable canal flow series** (only 9 weeks of
+    one canal), so the canal signal = BNPE canal-intake volumes.
+  - 2,046 abstraction ouvrages, spread weekly; 2024+ imputed.
+  - Pastas 2.0.0 installed and pinned.
 - Open questions for the supervisor: see Step 7 above.
+
+### Step 9: Phase 2, baselines (next; details in `docs/roadmap.md` §4)
+
+1. Seasonal-naive and persistence floors.
+2. **Pastas** per well:
+   - inputs: rain, ETP and the weekly pumping near the well
+   - warm-up from 2005
+   - calibrate on train, report validation and test
+   - save the response-function gains: they are the "physics reference"
+     for the counterfactual tests in Phase 4
+3. LSTM per well and global EA-LSTM (PyTorch; install the CPU wheel and pin
+   it).
+4. **Chronos-2** zero-shot with covariates.
+5. Distance-graph ST-GNN (Taccari-style).
+
+**Metrics:**
+- NSE, KGE, RMSE per well and per aquifer group
+- on test, with and without "Non qualifié" weeks
+- on the leave-wells-out folds
+- with 25/50/100% of the training data
+- 5 seeds for the neural models
+
+Also check the spring-rise signature (canal recharge?) on all alluvium
+wells.
 
 ### Specs of finished steps (kept for re-runs; the scripts implement them)
 

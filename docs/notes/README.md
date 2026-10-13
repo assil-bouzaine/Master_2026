@@ -19,7 +19,8 @@ the PFE report (the "Méthodologie" and "Données" chapters).
 | 5 | RPG agricultural parcels | done | [step05_rpg.md](step05_rpg.md) |
 | 6a | BNPE water abstraction | done | [step06a_bnpe.md](step06a_bnpe.md) |
 | 6b | BD LISA aquifer entities, overlies edges, vertical pairs | done | [step06b_bdlisa.md](step06b_bdlisa.md) |
-| 7 | Gate 1 feasibility memo | to do | ../memo_gate1_feasibility.md |
+| 7 | Gate 1 feasibility memo | done (waiting for the supervisor) | [../memo_gate1_feasibility.md](../memo_gate1_feasibility.md) |
+| 8 | Phase 1: climate, rivers, weekly pumping, dataset v1 | done | [step08_dataset.md](step08_dataset.md) |
 
 Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 
@@ -54,4 +55,11 @@ Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 | **Nested piezometers** | Two or more wells at the same site screened at different depths (e.g. C2-1/C2-2). The only clean way to measure a vertical gradient. |
 | **Artesian** | The head is above the ground surface: the water would flow out of the well by itself. Sign of a confined, pressurised aquifer. |
 | **Confined vs unconfined** | Unconfined: the water table is free (alluvium). Confined: the aquifer sits under a clay layer and is under pressure (deep Pliocene). |
+| **SAFRAN / SIM2** | Météo-France's gridded reconstruction of daily weather (8 km cells) and of the soil water balance (model ISBA). Our source for rain and evapotranspiration. |
+| **ETP** | Potential evapotranspiration: how much water the air *could* take from a well-watered surface (mm). Actual ET (EVAP) is what was really evaporated. |
+| **Effective rain / drainage** | Rain left after evaporation (PE), and the part that drains below the roots (DRAINC) towards the water table: a proxy for recharge. |
+| **SGI** | Standardised Groundwater Index: a level converted to "how unusual for this month at this well", on a normal scale (0 = typical, −1.28 = driest 10%). |
+| **IPS classes** | BRGM's 7 classes of the standardised level, from "très bas" (driest 10%) to "très haut". Used in the official drought bulletins. |
+| **Warm-up** | The period of input data a model needs *before* its first prediction, because groundwater remembers past rain. |
+| **Data leakage** | When information from the test period sneaks into training (e.g. defining "normal" with test years). It makes results look better than they are. |
 | **Prise (dans la Têt)** | A river intake: the head of an irrigation canal that diverts river water. |

@@ -24,10 +24,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from src.config import PROCESSED, ROOT
+from src.config import DATASET_DIR, RESULTS_DIR
 
-DS = PROCESSED / "dataset_v1"
-RESULTS = ROOT / "results"
+DS = DATASET_DIR
+RESULTS = RESULTS_DIR
 MIN_WEEKS = 26  # a well needs half a year of weeks in a split to be scored
 
 

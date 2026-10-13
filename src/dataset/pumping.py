@@ -8,9 +8,9 @@ unchanged. canal_series: plain-wide surface irrigation + canal intakes.
 """
 import pandas as pd
 
-from src.config import PROCESSED
+from src.config import DATASET_DIR
 
-DS = PROCESSED / "dataset_v1"
+DS = DATASET_DIR
 SEASONAL_SHARE = 0.5
 
 

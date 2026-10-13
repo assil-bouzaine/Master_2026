@@ -45,6 +45,15 @@ if ! $PY -c "import torchvision" 2>/dev/null; then
 fi
 $PY -c "import torch, pandas, numpy; print('venv: torch', torch.__version__, 'cuda', torch.cuda.is_available(), '| pandas', pandas.__version__, '| numpy', numpy.__version__)"
 export PYTHONIOENCODING=utf-8
-$PY -m src.models.stgnn          # distance-graph ST-GNN, 5 seeds
-$PY -m src.models.chronos2       # Chronos-2 zero-shot, remaining wells
+export PFE_DATASET=${PFE_DATASET:-v2}
+echo "dataset: $PFE_DATASET"
+STEPS=${STEPS:-"stgnn chronos2 lstm tune_lstm"}   # e.g. STEPS="stgnn lstm" for ablations
+for s in $STEPS; do
+  case $s in
+    stgnn)     $PY -m src.models.stgnn ;;                   # distance-graph ST-GNN, 5 seeds
+    chronos2)  $PY -m src.models.chronos2 ;;                # Chronos-2 zero-shot
+    lstm)      $PY -m src.models.lstm ;;                    # default LSTM, 5 seeds
+    tune_lstm) $PY -m src.models.tune_lstm --trials 24 ;;   # Optuna + tuned LSTM, 5 seeds
+  esac
+done
 echo "== $(date -u) done"

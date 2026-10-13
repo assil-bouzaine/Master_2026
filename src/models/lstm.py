@@ -17,6 +17,7 @@ results/lstm/seed_<k>.parquet, so an interrupted run resumes; the reported
 prediction is the mean over seeds.
 """
 import argparse
+import json
 import time
 
 import numpy as np
@@ -33,6 +34,12 @@ LOOKBACK = 104
 RUN = "lstm"
 # Runs on a GPU automatically when one is present (Colab/Kaggle/Camber), else CPU.
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def set_lookback(weeks):
+    """Change the input window length (used by tune_lstm.py and the CLI)."""
+    global LOOKBACK
+    LOOKBACK = int(weeks)
 
 
 class Net(nn.Module):
@@ -75,10 +82,12 @@ def median_nse(pred_z, Z, split, core, mu, sd, head, name="validation"):
     return float(np.median(scores))
 
 
-def predict_all(net, X, batch=2048):
+def predict_all(net, X, batch=2048, mask=None):
+    """Predict every (well, week), or only where `mask` (N, T) is True."""
     N, T, _ = X.shape
     out = np.full((N, T), np.nan, dtype=np.float32)
-    idx = [(i, t) for i in range(N) for t in range(LOOKBACK - 1, T)]
+    idx = [(i, t) for i in range(N) for t in range(LOOKBACK - 1, T)
+           if mask is None or mask[i, t]]
     net.eval()
     with torch.no_grad():
         for k in range(0, len(idx), batch):
@@ -89,7 +98,8 @@ def predict_all(net, X, batch=2048):
     return out
 
 
-def train_seed(seed, X, Z, split, core, mu, sd, head, epochs, patience=8):
+def train_seed(seed, X, Z, split, core, mu, sd, head, epochs, patience=8,
+               hidden=64, dropout=0.2, lr=1e-3):
     torch.manual_seed(seed)
     np.random.seed(seed)
     torch.set_num_threads(4)
@@ -99,8 +109,10 @@ def train_seed(seed, X, Z, split, core, mu, sd, head, epochs, patience=8):
     counts = pd.Series([i for i, _ in tr_idx]).value_counts()
     w = np.array([1.0 / counts[i] for i, _ in tr_idx])
     w = w / w.sum()
-    net = Net(F).to(DEVICE)
-    opt = torch.optim.Adam(net.parameters(), lr=1e-3, weight_decay=1e-5)
+    net = Net(F, hidden=hidden, dropout=dropout).to(DEVICE)
+    opt = torch.optim.Adam(net.parameters(), lr=lr, weight_decay=1e-5)
+    # during training, score only core wells on validation weeks (fast)
+    val_mask = (split == "validation") & core
     best, best_state, bad = -np.inf, None, 0
     steps = max(1, len(tr_idx) // 256)
     for ep in range(epochs):
@@ -116,7 +128,7 @@ def train_seed(seed, X, Z, split, core, mu, sd, head, epochs, patience=8):
             loss.backward()
             nn.utils.clip_grad_norm_(net.parameters(), 1.0)
             opt.step()
-        pz = predict_all(net, X)
+        pz = predict_all(net, X, mask=val_mask)
         score = median_nse(pz, Z, split, core, mu, sd, head)
         print(f"    seed {seed} epoch {ep + 1:3d} loss {loss.item():.3f} "
               f"val median NSE {score:.3f} ({time.time() - t0:.0f}s)", flush=True)
@@ -134,18 +146,26 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seeds", type=int, nargs="*", default=[0, 1, 2, 3, 4])
     ap.add_argument("--epochs", type=int, default=60)
+    ap.add_argument("--run", default=RUN, help="results sub-folder name")
+    ap.add_argument("--lookback", type=int, default=LOOKBACK)
+    ap.add_argument("--hidden", type=int, default=64)
+    ap.add_argument("--dropout", type=float, default=0.2)
+    ap.add_argument("--lr", type=float, default=1e-3)
     args = ap.parse_args()
+    set_lookback(args.lookback)
     P = build_panel()
     P = P[P["mu"].notna()]
     codes, weeks, X, Z, split, core, mu, sd, head = arrays(P)
-    out = RESULTS / RUN
+    out = RESULTS / args.run
     out.mkdir(parents=True, exist_ok=True)
+    (out / "config.json").write_text(json.dumps(vars(args), indent=1))
     for s in args.seeds:
         path = out / f"seed_{s}.parquet"
         if path.exists():
             print(f"seed {s}: cached")
             continue
-        pz, best = train_seed(s, X, Z, split, core, mu, sd, head, args.epochs)
+        pz, best = train_seed(s, X, Z, split, core, mu, sd, head, args.epochs,
+                              hidden=args.hidden, dropout=args.dropout, lr=args.lr)
         df = pd.DataFrame(pz, index=codes, columns=pd.DatetimeIndex(weeks)).stack(future_stack=True)
         df.rename("z").rename_axis(["code_bss", "week"]).reset_index().to_parquet(path, index=False)
         print(f"seed {s}: best validation median NSE {best:.3f}", flush=True)
@@ -157,9 +177,9 @@ def main():
                          "pred_seed_sd": zz["sd"] * zz["std"], "task": "simulation",
                          "horizon": 0}).dropna(subset=["pred"])
     pred.to_parquet(out / "predictions.parquet", index=False)
-    s = evaluate_run(RUN)
+    s = evaluate_run(args.run)
     core_s = s[(s["group"] == "all core") & (s["variant"] == "all")]
-    print(f"== {RUN} ({len(seeds)} seeds)")
+    print(f"== {args.run} ({len(seeds)} seeds)")
     print(core_s[["split", "n_wells", "NSE", "KGE", "RMSE"]].round(3).to_string(index=False))
 
 

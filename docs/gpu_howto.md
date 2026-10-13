@@ -153,3 +153,8 @@ recomputed and few credits are wasted.
   `!ps aux | grep -E "[r]un_gpu|[s]rc.models"; tail -4 results/gpu_runN.log; nvidia-smi`
 - **Bring results back** with `camber stash cp -r stash://assil0723/pfe/results/<run>/ results/<run>/`.
 - **Press STOP on the node** when done (1.5 credits/hour while on).
+- **Folders uploaded from the laptop are read-only for the job**
+  (`Permission denied`). Write results to a fresh folder:
+  `PFE_DATASET=v2a PFE_RESULTS=results_abl/v2a STEPS="stgnn lstm" bash scripts/run_gpu.sh`
+  after `mkdir -p results_abl/v2a/_cache && cp results/v2a/_cache/panel.parquet results_abl/v2a/_cache/`.
+- `run_gpu.sh` takes `STEPS` (any of `stgnn chronos2 lstm tune_lstm`).

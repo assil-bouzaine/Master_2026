@@ -21,7 +21,8 @@ the PFE report (the "Méthodologie" and "Données" chapters).
 | 6b | BD LISA aquifer entities, overlies edges, vertical pairs | done | [step06b_bdlisa.md](step06b_bdlisa.md) |
 | 7 | Gate 1 feasibility memo | done (waiting for the supervisor) | [../memo_gate1_feasibility.md](../memo_gate1_feasibility.md) |
 | 8 | Phase 1: climate, rivers, weekly pumping, dataset v1 | done | [step08_dataset.md](step08_dataset.md) |
-| 9 | Phase 2: baselines (naive + Pastas done; LSTM, Chronos-2, ST-GNN next) | in progress | [step09_baselines.md](step09_baselines.md) |
+| 9 | Phase 2: baselines on v1 | done | [step09_baselines.md](step09_baselines.md) |
+| 10 | Baselines v2: more data, tuning, ensemble, ablation | done | [step10_baselines_v2.md](step10_baselines_v2.md) |
 
 Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 
@@ -69,4 +70,8 @@ Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 | **KGE** | Kling–Gupta efficiency: combines correlation, variability and bias; 1 = perfect. |
 | **Pastas / TFN model** | Transfer-function noise model: the level = sum of each stress (rain, pumping) convolved with a response curve, plus noise. The hydrologists' standard. |
 | **Anomaly persistence** | Forecast "the level will be as far from normal in h weeks as it is today". Hard to beat at short horizons. |
+| **Ablation** | Changing one thing at a time to see which change caused an effect (here: longer history vs more wells). |
+| **Wilcoxon test (paired)** | Checks whether one model beats another *well by well* more often than chance would. p < 0.05 is the usual bar for "significant". |
+| **Hyperparameter tuning** | Searching the model's settings (window length, size, learning rate) automatically; chosen on validation, never on test. |
+| **Ensemble** | Averaging several models; their errors partly cancel. |
 | **Prise (dans la Têt)** | A river intake: the head of an irrigation canal that diverts river water. |

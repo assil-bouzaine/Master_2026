@@ -25,7 +25,7 @@ import torch
 from torch import nn
 
 from src.config import CRS_L93, CRS_WGS84
-from src.models.evaluate import RESULTS, evaluate_run
+from src.models.evaluate import DS, RESULTS, evaluate_run
 from src.models.features import build_panel
 from src.models.lstm import DEVICE, LOOKBACK, arrays, median_nse
 
@@ -133,7 +133,7 @@ def main():
     P = build_panel()
     P = P[P["mu"].notna()]
     codes, weeks, X, Z, split, core, mu, sd, head = arrays(P)
-    wells = pd.read_parquet(RESULTS.parent / "data" / "processed" / "dataset_v1" / "wells.parquet")
+    wells = pd.read_parquet(DS / "wells.parquet")
     A = distance_adjacency(codes, wells)
     out = RESULTS / RUN
     out.mkdir(parents=True, exist_ok=True)

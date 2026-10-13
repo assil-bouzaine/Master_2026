@@ -1,6 +1,12 @@
-"""Build the model-ready weekly dataset (dataset_v1) that every model reads.
+"""Build the model-ready weekly dataset that every model reads.
 
-    python -m src.dataset.build
+    python -m src.dataset.build                 # version from src.config.DATASET (default v2)
+    PFE_DATASET=v1 python -m src.dataset.build  # rebuild v1 exactly as in Phase 2
+
+Versions (VERSIONS below): v1 = plain wells, training from 2012, pumping within
+the plain + 3 km. v2 = every usable dept-66 station (core = same 33 wells),
+training from 2005, forcings from 2000, pumping over the whole departement with
+2005-2011 back-filled from each ouvrage's 2012-2014 mean (flagged imputed).
 
 Inputs (all produced by src.ingest.* and src.analysis.*):
     piezometer series, station table, BD LISA station stacks, SAFRAN/SIM2,
@@ -29,7 +35,7 @@ Design (CLAUDE.md section 3, docs/roadmap.md Phase 1)
   filled with the mean of the three last complete years and flagged.
   These are assumptions; the flag lets Phase 2 test their sensitivity.
 
-Outputs (data/processed/dataset_v1/)
+Outputs (data/processed/dataset_<version>/)
     wells.parquet            static well attributes
     heads_weekly.parquet     well x week: head, n_days, share not validated, SGI, class
     forcing_weekly.parquet   SAFRAN cell x week
@@ -49,13 +55,25 @@ import pandas as pd
 from src.analysis.bdlisa_profile import group_of
 from src.analysis.bnpe_profile import load as load_bnpe
 from src.analysis.piezo_profile import PLAIN_BBOX
-from src.config import CRS_L93, CRS_WGS84, INTERIM, PROCESSED, RAW
+from src.config import CRS_L93, CRS_WGS84, DATASET, DATASET_DIR, INTERIM, RAW
 from src.ingest.hubeau_piezo import CHRON, safe_name
 
-OUT = PROCESSED / "dataset_v1"
+OUT = DATASET_DIR
 WEEK = "W-SUN"
-FORCING_START = "2005-01-01"
-MODEL_START = "2012-01-01"
+VERSIONS = {
+    "v1": {"forcing_start": "2005-01-01", "model_start": "2012-01-01",
+           "all_stations": False, "pump_scope": "plain", "backfill": False},
+    "v2": {"forcing_start": "2000-01-01", "model_start": "2005-01-01",
+           "all_stations": True, "pump_scope": "dept", "backfill": True},
+    # ablations that separate the two v2 changes (step 10)
+    "v2a": {"forcing_start": "2000-01-01", "model_start": "2005-01-01",   # longer history only
+            "all_stations": False, "pump_scope": "plain", "backfill": True},
+    "v2b": {"forcing_start": "2005-01-01", "model_start": "2012-01-01",   # more wells only
+            "all_stations": True, "pump_scope": "dept", "backfill": False},
+}
+CFG = VERSIONS[DATASET]
+FORCING_START = CFG["forcing_start"]
+MODEL_START = CFG["model_start"]
 TRAIN_END = "2019-12-31"
 VAL_END = "2022-04-30"
 MIN_WEEKS = 104          # at least two years of weekly values in the model window
@@ -77,7 +95,10 @@ MEAN_VARS = ["T", "SWI"]
 # --------------------------------------------------------------------- wells
 def build_wells():
     t = pd.read_parquet(INTERIM / "piezo_stations.parquet")
-    t = t[t["ok_plain"] & (t["n_obs"] > 0)].copy()  # 5 plain stations have no data at all
+    keep = t["n_obs"] > 0  # some stations have no data at all
+    if not CFG["all_stations"]:
+        keep &= t["ok_plain"]
+    t = t[keep].copy()
     stacks = pd.read_csv(INTERIM / "bdlisa_station_stacks.csv")
     # stacks were computed for the core wells; the group comes from the code for all
     t = t.merge(stacks[["code_bss", "stack_str", "pos_in_stack", "pct_days_artesian"]],
@@ -182,7 +203,8 @@ def build_pumping(forcing):
     d = load_bnpe()
     lon0, lat0, lon1, lat1 = PLAIN_BBOX
     m = PLAIN_MARGIN_DEG
-    d = d[d["longitude"].between(lon0 - m, lon1 + m) & d["latitude"].between(lat0 - m, lat1 + m)]
+    if CFG["pump_scope"] == "plain":
+        d = d[d["longitude"].between(lon0 - m, lon1 + m) & d["latitude"].between(lat0 - m, lat1 + m)]
     d = d[~d["usage"].str.startswith("hydropower")]
     pts = (d.groupby("code_ouvrage")
              .agg(nom_ouvrage=("nom_ouvrage", "first"), longitude=("longitude", "first"),
@@ -203,6 +225,12 @@ def build_pumping(forcing):
     fill = (annual[annual["annee"].between(last - 3, last - 1)]
             .groupby(["code_ouvrage", "usage"])["volume"].sum().div(3).reset_index())
     filled = [fill.assign(annee=y) for y in range(last + 1, end_year + 1)]
+    first = int(annual["annee"].min())
+    if CFG["backfill"]:  # years before the first BNPE year: 3-year mean, zeros counted
+        back = (annual[annual["annee"].between(first, first + 2)]
+                .groupby(["code_ouvrage", "usage"])["volume"].sum().div(3).reset_index())
+        start_year = int(MODEL_START[:4]) - 2  # cover the sequence models' look-back too
+        filled += [back.assign(annee=y) for y in range(start_year, first)]
     annual["imputed"] = False
     annual = pd.concat([annual] + [f.assign(imputed=True) for f in filled], ignore_index=True)
 
@@ -216,9 +244,9 @@ def build_pumping(forcing):
     # current year) are divided by the mean annual deficit of the reported years,
     # so their irrigation scales with that year's climatic demand, and a partial
     # year is not squeezed into fewer weeks. Flat weights are 7/365.25 per week.
-    reported = f["year"] <= last
+    reported = f["year"].between(first, last)
     annual_def = f.groupby(["cell_id", "year"])["deficit"].transform("sum")
-    clim_def = (f[reported & (f["year"] >= int(annual["annee"].min()))]
+    clim_def = (f[reported]
                 .groupby(["cell_id", "year"])["deficit"].sum().groupby("cell_id").mean())
     denom = annual_def.where(reported, f["cell_id"].map(clim_def))
     f["w_irr"] = f["deficit"] / denom

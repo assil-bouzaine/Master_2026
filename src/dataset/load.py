@@ -1,4 +1,4 @@
-"""Single loader for dataset_v1: aligned weekly arrays for every model.
+"""Single loader for the model-ready dataset (version in src.config.DATASET): aligned weekly arrays for every model.
 
     from src.dataset.load import load_arrays
     d = load_arrays()            # all wells
@@ -21,9 +21,9 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 
-from src.config import CRS_L93, CRS_WGS84, FIGURES, PROCESSED
+from src.config import CRS_L93, CRS_WGS84, DATASET, DATASET_DIR, FIGURES
 
-DS = PROCESSED / "dataset_v1"
+DS = DATASET_DIR
 FORCING_VARS = ["rain", "ETP", "EVAP", "PE", "DRAINC", "RUNC", "T", "SWI"]
 PUMP_RADIUS_KM = 3.0
 PUMP_USES = ["drinking water", "irrigation", "canals", "industry"]
@@ -134,7 +134,7 @@ def main():
         print(f"  {name:<10} {sel.sum():4d} weeks, observed well-weeks {int(d['M'][sel].sum()):,}")
     assert not np.isnan(d["X"][d["split"] != "warmup"][..., :len(FORCING_VARS)]).any(), \
         "missing forcing inside the model window"
-    out = FIGURES / "dataset_v1_series.png"
+    out = FIGURES / f"dataset_{DATASET}_series.png"
     plot_series(d, out)
     print("figure ->", out)
 

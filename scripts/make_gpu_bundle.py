@@ -5,15 +5,18 @@
 Contains src/, requirements.txt, data/processed/dataset_v1/ and the cached
 feature panel. Raw data is not needed. See docs/gpu_howto.md.
 """
+import sys
 import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from src.config import DATASET_DIR, RESULTS_DIR  # noqa: E402
 OUT = ROOT / "gpu_bundle.zip"
 INCLUDE = [ROOT / "src", ROOT / "scripts" / "run_gpu.sh", ROOT / "requirements.txt",
-           ROOT / "data" / "processed" / "dataset_v1", ROOT / "results" / "_cache" / "panel.parquet",
-           ROOT / "results" / "chronos2" / "wells",       # wells already done (resume)
-           ROOT / "results" / "stgnn_distance"]           # seeds already done, if any
+           DATASET_DIR, RESULTS_DIR / "_cache" / "panel.parquet",
+           RESULTS_DIR / "chronos2" / "wells",       # wells already done (resume)
+           RESULTS_DIR / "stgnn_distance"]           # seeds already done, if any
 
 with zipfile.ZipFile(OUT, "w", zipfile.ZIP_DEFLATED) as z:
     for item in INCLUDE:

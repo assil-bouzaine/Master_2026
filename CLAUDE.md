@@ -275,7 +275,7 @@ notebooks/       exploration only; anything that matters moves into src/
 
 ---
 
-## 7. CURRENT TASK: Step 10, improve the baselines (dataset v2)
+## 7. CURRENT TASK: Step 11 (Gate 2) and Step 12 (Phase 3 ontology)
 
 Assil chose option **B** on 2026-10-13: make the baselines as strong as
 possible before Gate 2 and the ontology phase. Work through the steps
@@ -301,6 +301,20 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
   | forecast 4 wk | Chronos-2 zero-shot | 0.83 (anomaly-persistence floor 0.78) |
   | forecast 12 wk | Chronos-2 zero-shot | 0.42 (floor 0.11) |
 
+- **Step 10 done (dataset v2, tuning, ensemble, ablation; see
+  `docs/notes/step10_baselines_v2.md`):**
+  - more data (2005 start, 65 wells) does **not** significantly change
+    drought skill (Wilcoxon p = 0.24–0.82)
+  - LSTM tuning improves validation significantly (0.63, p < 0.001) but not
+    the test
+  - **every model is stuck near test NSE 0.25**, so the bottleneck is
+    missing information, not data
+  - baselines of record:
+    - simulation: ensemble LightGBM + tuned LSTM, test 0.25 / RMSE 0.587 m
+    - hydrology reference: Pastas v1, 0.13
+    - forecast: Chronos-2, 0.83 at 4 wk and 0.42 at 12 wk
+  - default dataset is now **v2** (`PFE_DATASET`); v1 results are in
+    `results/v1/`
 - **Key findings so far:**
   - no head-ordering rule (the vertical gradient flips)
   - flat drinking-water pumping is wrong; seasonal is better
@@ -322,8 +336,8 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
 | 7 Gate 1 memo | ✅ written; waiting for the supervisor | `docs/memo_gate1_feasibility.md` |
 | 8 Phase 1: dataset v1 | ✅ done | `docs/notes/step08_dataset.md` |
 | 9 Phase 2: baselines on v1 | ✅ done | `docs/notes/step09_baselines.md` |
-| **10 Improve baselines (dataset v2)** | **⏳ in progress — START HERE** | `docs/notes/step10_baselines_v2.md` |
-| 11 Gate 2: results to the supervisor | ⬜ after step 10 | update the memo with the v1→v2 table |
+| 10 Improve baselines (dataset v2) | ✅ done (tuning, ensemble, ablation, Wilcoxon) | `docs/notes/step10_baselines_v2.md` |
+| **11 Gate 2: results to the supervisor** | **⬜ next — START HERE** | update the memo with the v1→v2 table |
 | 12 Phase 3: ontology + knowledge graph | ⬜ after Gate 2 (may start in parallel) | `docs/roadmap.md` §4 Phase 3 |
 
 ### Step 10: improve the baselines (spec)

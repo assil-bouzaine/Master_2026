@@ -16,6 +16,9 @@ echo "== $(date -u) start on $(hostname)"
 python3 -c "import torch; print('system torch', torch.__version__, '| CUDA available:', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else '')"
 if [ ! -x "$VENV/bin/python" ]; then
   python3 -m venv --system-site-packages "$VENV"
+fi
+# (re)install the pins every start: fast when already satisfied, repairs a broken venv
+{
   EXCL='^(torch|nvidia-|triton)'
   # if the system torch was built for numpy 1.x, keep the system numpy
   if python3 -c "import numpy, sys; sys.exit(0 if numpy.__version__.startswith('1.') else 1)"; then
@@ -25,7 +28,7 @@ if [ ! -x "$VENV/bin/python" ]; then
   grep -v -E "$EXCL" requirements.txt > "$VENV/req_gpu.txt"
   "$VENV/bin/python" -m pip install -q --upgrade pip
   "$VENV/bin/python" -m pip install -q --no-deps -r "$VENV/req_gpu.txt"
-fi
+}
 PY="$VENV/bin/python"
 $PY -c "import torch, pandas, numpy; print('venv: torch', torch.__version__, 'cuda', torch.cuda.is_available(), '| pandas', pandas.__version__, '| numpy', numpy.__version__)"
 export PYTHONIOENCODING=utf-8

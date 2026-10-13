@@ -69,3 +69,17 @@ safetensors==0.8.0
 tokenizers==0.23.3
 transformers==5.19.0
 typer==0.27.3
+# Added 2026-10-13: remaining dependencies of chronos-forecasting / huggingface-hub
+# (missing pins made the Camber GPU run fail on `import httpx2`)
+annotated-doc==0.0.5
+anyio==4.15.1
+click==8.5.0
+h11==0.16.0
+hf-xet==1.7.0
+httpcore2==2.13.1
+httpx2==2.13.1
+markdown-it-py==4.2.0
+mdurl==0.1.2
+pygments==2.21.0
+shellingham==1.5.4
+truststore==0.10.5

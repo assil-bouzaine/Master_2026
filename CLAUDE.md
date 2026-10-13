@@ -52,7 +52,7 @@ are future work (one optional Tunisia demo at the very end).
 |---|---|---|
 | Primary | **Plaine du Roussillon**, Pyrénées-Orientales (dept 66), France | Chosen for open data on every layer |
 | Secondary | Campo de Cartagena / Segura, Spain | Generalisation; later |
-| Demo | Cap Bon or Kairouan, Tunisia | Transfer demonstration only; later |
+| Demo | Cap Bon or Kairouan, Tunisia | Transfer demonstration only; later. **Likely to change** to a SAVE Water Living Lab (Manouba or Charf El Akab): see `docs/savewater_consortium_notes.md`, on hold until Assil contacts the consortium |
 
 ---
 

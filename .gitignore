@@ -25,3 +25,4 @@ venv/
 # Publisher PDFs (copyright) and run outputs
 Articles/
 results/
+gpu_bundle.zip

@@ -23,6 +23,10 @@ Each well's weekly head is explained as the sum of responses to stresses:
   abstraction as an extra stress: tests whether a well feels pumping beyond
   3 km (regional drawdown of the confined Pliocene). If it helps, local
   radius features are not enough, which is the argument for a graph.
+- variant "pastas_flex" = seasonal + canal with the nonlinear FlexModel
+  recharge (soil-water reservoir; Collenteur et al. 2021,
+  doi:10.5194/hess-25-2931-2021), suited to semi-arid climates where summer
+  rain barely recharges the aquifer.
 
 Calibration on the training period (2012-2019) with an AR(1) noise model and
 warm-up from 2005; the deterministic simulation (no noise model, no observed
@@ -44,12 +48,12 @@ import pandas as pd
 
 from src.config import RAW
 from src.dataset.load import _pumping_near_wells
+from src.dataset.pumping import seasonal_drinking_water
 from src.models.evaluate import DS, RESULTS, evaluate_run
 
 MIN_TRAIN_WEEKS = 52
 VARIANTS = ("pastas", "pastas_canal", "pastas_seasonal", "pastas_seasonal_canal",
-            "pastas_regional")
-SEASONAL_SHARE = 0.5
+            "pastas_regional", "pastas_flex")
 
 
 def daily_forcing():
@@ -76,12 +80,17 @@ def build_model(code, variant, obs, prec, evap, pump, canal, simple, regional=No
     import pastas as ps
 
     ml = ps.Model(obs, name=code)
-    ml.add_stressmodel(ps.RechargeModel(prec, evap, rfunc=ps.Exponential() if simple else ps.Gamma(),
-                                        name="recharge", recharge=ps.rch.Linear()))
+    if variant == "pastas_flex":
+        ml.add_stressmodel(ps.RechargeModel(prec, evap, rfunc=ps.Exponential(), name="recharge",
+                                            recharge=ps.rch.FlexModel()))
+    else:
+        ml.add_stressmodel(ps.RechargeModel(prec, evap,
+                                            rfunc=ps.Exponential() if simple else ps.Gamma(),
+                                            name="recharge", recharge=ps.rch.Linear()))
     if pump is not None and pump.sum() > 0:
         ml.add_stressmodel(ps.StressModel(pump, rfunc=ps.Exponential() if simple else ps.Hantush(),
                                           name="pumping", up=False, settings="well"))
-    if variant.endswith("canal") or variant == "pastas_regional":
+    if variant.endswith("canal") or variant in ("pastas_regional", "pastas_flex"):
         ml.add_stressmodel(ps.StressModel(canal, rfunc=ps.Exponential(), name="canal", up=True,
                                           settings="well"))
     if regional is not None:
@@ -118,25 +127,6 @@ def fit_well(args):
              "has_pumping": "pumping" in ml.stressmodels, "error": " | ".join(errors)}
     stats.update({f"p_{k}": v for k, v in p.items()})
     return code, weekly, stats
-
-
-def seasonal_drinking_water(pw, pts):
-    """Re-spread drinking-water volumes: SEASONAL_SHARE follows the Apr-Oct deficit."""
-    f = pd.read_parquet(DS / "forcing_weekly.parquet", columns=["cell_id", "week", "ETP", "rain"])
-    f["year"] = f["week"].dt.year
-    f["deficit"] = (f["ETP"] - f["rain"]).clip(lower=0)
-    f.loc[~f["week"].dt.month.between(4, 10), "deficit"] = 0.0
-    tot = f.groupby(["cell_id", "year"])["deficit"].transform("sum")
-    f["w"] = f["deficit"] / tot
-    d = pw.merge(pts[["code_ouvrage", "cell_id"]], on="code_ouvrage")
-    dw = d["usage"] == "drinking water"
-    d["year"] = d["week"].dt.year
-    annual = d[dw].groupby(["code_ouvrage", "year"])["volume_m3"].transform("sum")
-    d = d.merge(f[["cell_id", "week", "w"]], on=["cell_id", "week"], how="left")
-    flat = d.loc[dw, "volume_m3"]
-    d.loc[dw, "volume_m3"] = ((1 - SEASONAL_SHARE) * flat
-                              + SEASONAL_SHARE * annual * d.loc[dw, "w"].fillna(0))
-    return d[pw.columns]
 
 
 def run_variant(variant, wells, heads, forcing, pump_near, canal, splits, end, workers,
@@ -207,7 +197,8 @@ def main():
     regional = weekly_to_daily(gw_w / 1e6, forcing.index.get_level_values("date").min(),  # Mm3/d
                                forcing.index.get_level_values("date").max())
     for v in args.variant:
-        pump_near = pump_seasonal if ("seasonal" in v or v == "pastas_regional") else pump_flat
+        pump_near = pump_seasonal if ("seasonal" in v or v in ("pastas_regional", "pastas_flex")) \
+            else pump_flat
         s = run_variant(v, wells, heads, forcing, pump_near, canal, splits, end, args.workers,
                         regional)
         core = s[(s["group"] == "all core") & (s["variant"] == "all")]

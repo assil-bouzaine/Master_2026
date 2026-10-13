@@ -292,8 +292,8 @@ on them, so it may start while the memo is out.
 | 5 RPG parcels | ✅ done | `33ccaa4` | `docs/notes/step05_rpg.md` |
 | 6a BNPE abstraction | ✅ done | `a2b842f` | `docs/notes/step06a_bnpe.md` |
 | 6b BD LISA | ✅ done | see git log | `docs/notes/step06b_bdlisa.md` |
-| **7 Gate 1 memo (+ paper plan)** | **⏳ in progress — START HERE** | n/a | `docs/memo_gate1_feasibility.md` |
-| 8 Phase 1: forcings + weekly dataset | ⬜ to do | n/a | `docs/notes/step08_*.md` |
+| 7 Gate 1 memo (+ paper plan) | ✅ written; **waiting for the supervisor's answers (Gate 1)** | see git log | `docs/memo_gate1_feasibility.md` |
+| **8 Phase 1: forcings + weekly dataset** | **⏳ in progress — START HERE** (does not depend on Gate 1) | n/a | `docs/notes/step08_*.md` |
 
 ### Step 6b: BD LISA V3 aquifer entities
 

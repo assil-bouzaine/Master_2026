@@ -21,3 +21,7 @@ venv/
 *.7z
 *.gpkg
 *.gdb/
+
+# Publisher PDFs (copyright) and run outputs
+Articles/
+results/

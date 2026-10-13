@@ -9,21 +9,40 @@ rules, and the current task.
 
 Master's PFE (projet de fin d'études) by Assil Bouzaine, Master in Data Science
 and Information Retrieval, ISAMM (Université de la Manouba). It contributes to
-the SAVE Water project. Goal: a neuro-symbolic pipeline that predicts
-groundwater risk in a Mediterranean aquifer. A LULC-Water ontology describes
-land use, aquifers and water use. A heterogeneous spatio-temporal graph neural
-network learns groundwater levels with ontology-derived constraints. The
-outputs are explained in terms of the ontology.
+the SAVE Water project (PRIMA 2023). Goal: forecast groundwater levels in a
+Mediterranean multilayer aquifer with a spatio-temporal graph neural network
+whose **graph and constraints come from a LULC-Water knowledge graph**. Test
+whether the model uses that knowledge or takes shortcuts. Explain its
+predictions in ontology terms.
 
-Four phases:
-1. Knowledge engineering: ontology reuse and alignment
-2. Semantic land use from Earth observation
-3. Knowledge-constrained spatio-temporal GNN
-4. Ontology-grounded explanations
+Scope is a **Master's, not a PhD**: one aquifer system (Roussillon plain) and
+one target variable (weekly groundwater level, plus its derived drought state),
+built end to end. Nitrate, socio-economics, the dashboard, Spain and Tunisia
+are future work (one optional Tunisia demo at the very end).
 
-Scope is a **Master's, not a PhD**: one aquifer system and one target variable
-(groundwater level), built end to end. Everything else is documented as future
-work.
+### End goal: a peer-reviewed paper as well as the thesis
+
+- **Working title:** *Right for the right reasons? Ontology-derived graphs and
+  constraints for groundwater-level forecasting in a Mediterranean multilayer
+  aquifer.*
+- **Research questions:**
+
+  | RQ | Question | Experiment that answers it |
+  |---|---|---|
+  | RQ1 | Does a graph built from the knowledge graph beat a distance-only graph and strong non-graph baselines? | Model comparison on 3 regimes: drought test period, held-out wells, reduced training data |
+  | RQ2 | Do ontology-derived constraints improve physical plausibility and out-of-distribution skill? | None / soft / hard constraints; violation rate; counterfactual sign tests |
+  | RQ3 | Does the model use the semantics or take shortcuts? | Semantic ablation (rewired or shuffled knowledge graph); concept accuracy on SGI drought states |
+  | RQ4 | Can explanations be stated in ontology terms *and* be faithful? | Attributions → ontology templates; fidelity metrics; documented events |
+
+- **Venue** (confirm with the supervisor): first choice *Environmental
+  Modelling & Software*; second *JGR: Machine Learning and Computation*;
+  fallback *Earth Science Informatics* or *Computers & Geosciences*.
+- **Authorship:** Assil first author, supervisors as co-authors. Acknowledge
+  SAVE Water / PRIMA.
+- **Target:** submitted by the end of April 2027, assuming a June 2027 defence.
+  Check the real date at Gate 1.
+- **Plan:** `docs/roadmap.md` (phases, tools, risks).
+- **Literature:** `docs/literature/reading_list.md` (verdicts, verified IDs).
 
 ---
 
@@ -37,70 +56,150 @@ work.
 
 ---
 
-## 3. Design decisions already made
+## 3. Design decisions
 
-Do not change these without asking Assil first.
+Adopted on 2026-10-13. Assil approved the researcher's recommendations; the
+reasons are in `docs/roadmap.md` §2. Do not change them without asking
+Assil. Items marked **(supervisor)** go in the Gate 1 memo for confirmation.
 
-- **Ontology alignment:** OntoAligner (ESWC 2025), not PROMPT or OntoMerge.
-- **Rules and validation:** SHACL (GeoSPARQL 1.1 ships a validator), not SWRL.
-- **Ontology architecture:** a network of ontologies linked by alignment axioms
-  (the WHOW-KG pattern, Scientific Data 2025), not one merged file.
-- **Ontologies to reuse:** GWML2, HY_Features, SOSA/SSN, GeoSPARQL, HILUCS,
-  AGROVOC.
-- **Earth observation:** AlphaEarth Satellite Embedding (64-d, 10 m, Google
-  Earth Engine) instead of training a Sentinel classifier from scratch.
-- **Explanations:** templated text generated from ontology triples. An LLM may
-  polish fluency only and never invents content.
-- **Validity check:** the model must be tested for reasoning shortcuts
-  (Marconato et al., NeurIPS 2023). Satisfying the constraints is not proof
-  that the model learned the right concepts.
+**Knowledge side**
+- **Ontology architecture:** a network of small ontologies linked by alignment
+  axioms (WHOW-KG pattern, *Scientific Data* 2025,
+  doi:10.1038/s41597-025-04537-4), not one merged file.
+- **Reuse:** GWML2 (wells, aquifer units, `overlies`), SOSA/SSN
+  (observations), HY_Features (rivers), GeoSPARQL 1.1 (geometry), HILUCS +
+  AGROVOC (land use, crops), WHOW-KG (water use). Write only a **bridging
+  module** `lulcw:` holding the causal relations with their polarity
+  (`lulcw:decreasesHead`, `lulcw:increasesHead`, `lulcw:rechargesFrom`, …).
+- **Scope of the ontology:** driven by 10–15 competency questions that the
+  model and the explanations need. Time-box: 6 weeks.
+- **Alignment:** a small manual gold set (~50 mappings), then OntoAligner
+  (fuzzy, retrieval, LLM matchers) evaluated against it with P/R/F1. A
+  supporting contribution, not the main one. LLM matchers run on a local open
+  model (GPU credits), never a paid API.
+- **Rules and validation:** SHACL for validation and **SHACL-AF rules** for
+  derived concepts (pySHACL). No SWRL.
+- **The graph the model sees is generated from the knowledge graph** by SPARQL →
+  PyG `HeteroData`. Never hand-code edges in model code.
+
+**Data and target**
+- **Time step: weekly.** Keep daily data in `interim/`.
+- **Window:** extended to the latest available date (2026). Push the start
+  back to about 2010 if forcings and abstraction allow; the minimum is
+  2016–2026.
+- **Splits:**
+  - train ≤ 2019, validation 2020–2021
+  - **test May 2022 → latest** (record drought, then the recovery)
+  - plus 5-fold **leave-wells-out**
+  - plus 25/50/100% training-data subsets
+- **Target:** groundwater level (m NGF) per well, plus its **SGI** drought
+  class (Bloomfield & Marchant 2013, doi:10.5194/hess-17-4769-2013) as the
+  discrete concept layer.
+- **Training wells:** use all usable dept-66 stations with a masked loss; report
+  on the core working set. Karst stations: **(supervisor)**.
+- **Land use:** RPG is the primary source in France. Earth observation is a
+  **feature source only**: AlphaEarth annual embeddings (Google Earth Engine,
+  arXiv:2507.22291), with TESSERA (arXiv:2506.20380) as the open backup.
+  WorldCereal irrigation layer if useful. No Sentinel classifier, no Prithvi.
+
+**Model and constraints**
+- **Baselines (mandatory):**
+  - seasonal naive
+  - **Pastas** (doi:10.1111/gwat.12925)
+  - LSTM per well
+  - EA-LSTM global
+  - **Chronos-2** zero-shot (arXiv:2510.15821)
+  - a distance-graph ST-GNN, Taccari-style (doi:10.1038/s41598-024-75385-2)
+- **Main model:** heterogeneous ST-GNN (HGT/RGCN in space, gated temporal
+  convolutions or a GRU in time) on the knowledge-graph-derived graph.
+- **Constraints come from ontology causal links, as response signs:**
+  - abstraction lowers head
+  - effective rain raises head
+  - canal irrigation raises alluvium head
+- **Applying the constraints:**
+  - *soft:* counterfactual penalties in the loss, plus a semantic loss on
+    SGI states
+  - *hard:* PiShield linear inequalities (doi:10.24963/ijcai.2024/1037),
+    only for rules the data supports
+- **No head-ordering rule ("water flows down") unless the Step 6b pair check
+  shows the shallow head is consistently above the deep head.**
+
+**Validity and explanations**
+- **Reasoning shortcuts** (Marconato et al., arXiv:2305.19951) are tested in
+  three ways:
+  - **semantic ablation**: rewire the knowledge-graph edges with degrees
+    preserved, and shuffle attributes. If skill does not drop, the model
+    ignores the semantics (cf. Heudorfer et al. 2024,
+    doi:10.5194/hess-28-525-2024).
+  - SGI concept accuracy versus constraint satisfaction
+  - counterfactual sign accuracy, with Pastas response gains as the reference
+- **Explanations:**
+  1. Integrated Gradients and GNNExplainer, aggregated by node type and
+     relation
+  2. SPARQL on the knowledge graph for the chain of entities
+  3. **templated text**
+  4. faithfulness metrics (fidelity+/−; Azzolin et al., arXiv:2406.15156)
+
+  An LLM may polish fluency only and never invents content. A test checks
+  that every entity named in the text exists in the knowledge graph.
+
+**Research framing (supervisor):** use conflict on the Pliocene (drinking
+water vs agriculture) or canal-return recharge. Both are expressible as
+ontology causal links, so the pipeline does not wait for this answer.
 
 ---
 
 ## 4. Environment
 
-- Windows 11 laptop: i5-1035G1, 16 GB RAM, GeForce MX330. Runs on mains power
-  only, so save progress often and make long jobs resumable.
-- Shell: Git Bash. Use `pathlib` for every path. Never hard-code `/` or `\`.
-- Python 3.11+ in a project venv. Prefer `uv` (`uv venv`, `uv pip install`)
-  for speed; fall back to `python -m venv` + pip if `uv` is unavailable.
-- Pin dependencies in `requirements.txt`.
-- Use `py7zr` to extract `.7z` archives, so 7-Zip is not needed on PATH.
-- Use `pyogrio` to read geodata, and `pyogrio.list_layers()` to inspect a
-  FileGDB or GeoPackage.
+**Current machine (since October 2026): Arch Linux**
+- 4 cores, 11 GB RAM, no NVIDIA GPU; shell zsh
+- Venv: `.venv`, Python 3.12, created with
+  `uv venv --python 3.12 .venv`. Install with
+  `uv pip install --python .venv/bin/python -r requirements.txt`.
+- Run scripts as `.venv/bin/python -m src.<pkg>.<module>`. Set
+  `PYTHONIOENCODING=utf-8`.
+- Cold-start check passed on 2026-10-13: Steps 4–6a re-ran from the cache
+  with identical numbers.
+- Use `pathlib` for every path. Pin dependencies in `requirements.txt`.
+- Use `py7zr` for `.7z` and `pyogrio` for geodata
+  (`pyogrio.list_layers()` to inspect a GeoPackage or FileGDB).
 
-**Learned during the rebuild (October 2026):**
+**Compute plan** (`docs/roadmap.md` §5)
+- The laptop CPU is enough for the data work, the knowledge graph, Pastas and
+  single model runs. The graph is tiny: about 33–101 nodes × about 900
+  weeks.
+- The GPU credits (GitHub Student Pack, Kaggle, Colab) go to:
+  - the ablation sweep (~300 runs)
+  - Optuna tuning
+  - BEARS ensembles
+  - local open LLMs (vLLM/Ollama) for alignment and text extraction
+- AlphaEarth runs server-side on Google Earth Engine.
+- Every sweep is resumable: one result file per run, skipped if it exists.
+  Checkpoints go to persistent storage.
 
-- **Interpreter.** `uv` is not installed. The venv is `.venv` (Python
-  3.13), created with `python -m venv`. Run scripts with
-  `.venv/Scripts/python -m src.<pkg>.<module>`. Set `PYTHONIOENCODING=utf-8`
-  when printing French text.
-- **Windows Smart App Control is ON** and blocks the DLLs of brand-new
-  wheels ("An Application Control policy has blocked this file"). Working
-  pins:
-  - pandas 2.2.3
-  - pyarrow 18.1.0
-  - numpy 2.2.6 (< 2.3)
-  - pyogrio 0.10.0 (GDAL 3.9.1)
-
-  Never `pip install --upgrade` blindly. If a new package is blocked, pin an
-  older release. Do not suggest turning Smart App Control off: Windows can
-  only turn it back on with a full reset.
-- **Hub'Eau prélèvements API.** `size=5000` got the connection reset, and
-  then the whole hubeau.eaufrance.fr refused this machine for about 10
-  minutes. Use `size=2000` there. `niveaux_nappes` works with 5000.
-- **IGN Géoplateforme.** The `/resource/RPG` listing is paginated (35 pages)
-  and returns HTTP 429 when requests come too fast; pause 1 s per page. RPG
-  reference tables (crop code → group) live at
+**API lessons (still valid)**
+- **Hub'Eau prélèvements:** `size=5000` got the connection reset, and then
+  hubeau.eaufrance.fr refused the machine for about 10 minutes. Use
+  `size=2000`. `niveaux_nappes` accepts 5000.
+- **IGN Géoplateforme:** the `/resource/RPG` listing is paginated (35 pages)
+  and returns 429 if requests come too fast; pause 1 s per page. Crop
+  code → group tables:
   `https://data.geopf.fr/annexes/ressources/documentation/`.
 - **Shared modules:**
-  - `src/config.py`: paths, CRS, window.
-  - `src/web.py`: retrying `requests` session.
-  - `src/ingest/hubeau_piezo.fetch_all()`: follows Hub'Eau `next` links.
-- **Learning notes.** Assil wants one note per step in
-  `docs/notes/stepNN_<topic>.md` (what was done / why / what to consider),
-  plus the progress table and glossary in `docs/notes/README.md`. Write it
-  before reporting a step as done.
+  - `src/config.py`: paths, CRS, window
+  - `src/web.py`: retrying `requests` session
+  - `src/ingest/hubeau_piezo.fetch_all()`: follows Hub'Eau `next` links
+
+**Old Windows laptop (legacy, only if work moves back there)**
+- Windows Smart App Control blocks brand-new wheels. Hence the pins: pandas
+  2.2.3, pyarrow 18.1.0, numpy 2.2.6, pyogrio 0.10.0.
+- Never `pip install --upgrade` blindly there, and don't suggest turning
+  Smart App Control off.
+
+**Learning notes.** Assil wants one note per step in
+`docs/notes/stepNN_<topic>.md` (what was done / why / what to consider), plus
+the progress table and glossary in `docs/notes/README.md`. Write it before
+reporting a step as done.
 
 ---
 
@@ -109,13 +208,23 @@ Do not change these without asking Assil first.
 ```
 src/ingest/      one script per source, runnable as python -m src.ingest.<name>
 src/analysis/    profiling, joins, figures
+src/dataset/     model-ready dataset builder (weekly tensors, masks, splits)
+src/kg/          ontology modules, KG instantiation, SHACL, SPARQL → HeteroData
+src/models/      baselines and the knowledge-guided ST-GNN
+src/explain/     attributions, faithfulness, templates
+configs/         one YAML per experiment
+ontology/        lulcw bridging module (.ttl), alignments, SHACL shapes
+tests/           competency-question queries, unit tests
 data/raw/        untouched downloads             (gitignored)
 data/interim/    cleaned / filtered tables       (gitignored)
 data/processed/  model-ready datasets            (gitignored)
 data/README.md   data log — committed
-docs/            roadmap, memos, literature notes
-docs/literature/ literature-review outputs (Feynman reports, state of the art)
-reports/figures/ maps and plots
+results/         run outputs, one folder per run (gitignored)
+docs/            roadmap, memos, notes
+docs/literature/ reading list, comparison table
+paper/           LaTeX manuscript (from Phase 6)
+reports/figures/ maps and plots, each made by a script
+Articles/        publisher PDFs (gitignored: never push them)
 notebooks/       exploration only; anything that matters moves into src/
 ```
 
@@ -154,73 +263,128 @@ notebooks/       exploration only; anything that matters moves into src/
    - Never invent a reference.
    - Every paper cited in code comments or docs needs a DOI or arXiv ID that
      you have checked.
+10. **Experiments are paper-grade from the first run:**
+    - every run comes from a config file
+    - 5 seeds for neural models
+    - results written to `results/<run_id>/`
+    - metrics include NSE, KGE and RMSE, with separate scores for the drought
+      period
+    - every figure is produced by a script, never by hand
+11. **Honest baselines.** Tune baselines with the same budget as our model.
+    If a baseline wins, report it.
 
 ---
 
-## 7. CURRENT TASK — rebuild the data foundation from scratch
+## 7. CURRENT TASK: Phase 0 (finish the data foundation) → Phase 1
 
-The data from the first run was lost. Re-download everything and redo roadmap
-Steps 1 and 4–7, in order. Track progress with a task list. Stop after Step 7
-and wait for Assil.
+Assil said "let's start the work" on 2026-10-13. Work through the phases in
+`docs/roadmap.md`. Track progress with a task list. **Stop at each gate**
+(Gate 1 = after the Step 7 memo) and wait for Assil before starting work that
+depends on the supervisor's answers. Phase 1 data ingestion does not depend
+on them, so it may start while the memo is out.
 
-### ▶ STATUS (last updated 2026-10-05). Read this first in a new session
+### ▶ STATUS (last updated 2026-10-13). Read this first in a new session
 
 | Step | Status | Commit | Note |
 |---|---|---|---|
-| 1 Repo and environment | ✅ done | `eac175f` | `docs/notes/step01_environment.md` |
+| 1 Repo and environment | ✅ done (Linux venv rebuilt 2026-10-13) | `eac175f` | `docs/notes/step01_environment.md` |
 | 4 Hub'Eau piezometers | ✅ done | `245c2f7` | `docs/notes/step04_piezometers.md` |
 | 5 RPG parcels | ✅ done | `33ccaa4` | `docs/notes/step05_rpg.md` |
 | 6a BNPE abstraction | ✅ done | `a2b842f` | `docs/notes/step06a_bnpe.md` |
 | **6b BD LISA** | **⏳ in progress — START HERE** | n/a | to write: `docs/notes/step06b_bdlisa.md` |
-| 7 Gate 1 memo | ⬜ to do | n/a | `docs/memo_gate1_feasibility.md` |
+| 7 Gate 1 memo (+ paper plan) | ⬜ to do | n/a | `docs/memo_gate1_feasibility.md` |
+| 8 Phase 1: forcings + weekly dataset | ⬜ to do | n/a | `docs/notes/step08_*.md` |
 
-**Where Step 6b stands:**
+### Step 6b: BD LISA V3 aquifer entities
 
-1. **Done.** Assil downloaded `data/raw/bdlisa/BDLISA_V3_OCC-gpkg.zip`
-   (GeoPackage, 169 MB).
-2. **Done.** `src/ingest/bdlisa.py` unzips it to
-   `data/raw/bdlisa/BDLISA_V3_OCC-gpkg/BDLISA_V3.gpkg` and lists the layers.
-   It runs and is committed.
-3. **Done.** The official description
-   (`.../Descriptif_donnees_BDLISA_V3.pdf`) confirms:
-   - `milieueh`: 1 porous, 2 fissured, 3 karstic, 4–10 mixed porosity,
-     11 fractured (SANDRE nomenclature 353).
-   - `themeeh`: 1 alluvial, 2 sedimentary, 3 basement, 4 intensely folded,
-     5 volcanic.
-   - `natureeh` (level 3): 5 aquifer unit, 6 semi-permeable unit,
-     7 impermeable unit.
-   - Order 1 = outcropping (the layer at the surface).
-   - `TABLE_GENEALOGIE` is a version changelog, not a hierarchy.
-4. **Layers available:**
+**Done so far**
+- Assil downloaded `data/raw/bdlisa/BDLISA_V3_OCC-gpkg.zip` (GeoPackage,
+  169 MB).
+- `src/ingest/bdlisa.py` unzips it to
+  `data/raw/bdlisa/BDLISA_V3_OCC-gpkg/BDLISA_V3.gpkg` and lists the layers.
 
-   | Layer | Fields | Rows |
-   |---|---|---|
-   | `ENTITES_NIVEAU3_ORDRES` | `CodeEH`, `ordreabseh`, `ordrereleh`, `incluseh`, `milieueh`, … | 1,475 |
-   | `ENTITES_NIVEAU3_EXTENSION` | n/a | 568 |
-   | `POLYG_ELEMENTAIRES` | `codepoly` | 16,789 |
-   | `TABLE_PILE_ENTITES_NIV3` | `CodePoly`, `CodeEH`, `OrdRelatif` | 124,734 |
-   | `TME` | attributes for all levels | n/a |
-   | `TABLE_LITHOLOGIE_NIV3` | n/a | n/a |
-   | `ZONE_KARSTIQUE` | n/a | n/a |
+**Confirmed by the official description** (`Descriptif_donnees_BDLISA_V3.pdf`):
+- `milieueh`: 1 porous, 2 fissured, 3 karstic, 4–10 mixed porosity,
+  11 fractured (SANDRE nomenclature 353).
+- `themeeh`: 1 alluvial, 2 sedimentary, 3 basement, 4 intensely folded,
+  5 volcanic.
+- `natureeh` (level 3): 5 aquifer unit, 6 semi-permeable unit, 7 impermeable
+  unit.
+- Order 1 = outcropping (the layer at the surface).
+- `TABLE_GENEALOGIE` is a version changelog, not a hierarchy. Use `incluseh`
+  for the hierarchy.
 
-**Next actions for 6b:**
+**Layers**
 
-1. Write `src/analysis/bdlisa_profile.py`. Print the columns and a sample
-   row of each layer used before writing logic against it.
-2. Join the 33 working-set stations (`data/interim/piezo_working_set.parquet`,
-   column `code_bdlisa`) to the entities. Check which station entities are
-   missing from the Occitanie extract (first run: `760AE09`).
-3. Build the vertical order of the plain's entities, shallow → deep, and
-   the superposed pairs from `TABLE_PILE_ENTITES_NIV3`. These become the
-   `overlies` edges.
-4. Find vertical well pairs within 5 km in superposed entities (first
-   run: 13).
-5. Write the map/figure, the data log entry, `docs/notes/step06b_bdlisa.md`
-   and the progress table, then commit.
+| Layer | Fields | Rows |
+|---|---|---|
+| `ENTITES_NIVEAU3_ORDRES` | `CodeEH`, `ordreabseh`, `ordrereleh`, `incluseh`, `milieueh`, … | 1,475 |
+| `ENTITES_NIVEAU3_EXTENSION` | n/a | 568 |
+| `POLYG_ELEMENTAIRES` | `codepoly` | 16,789 |
+| `TABLE_PILE_ENTITES_NIV3` | `CodePoly`, `CodeEH`, `OrdRelatif` | 124,734 |
+| `TME` | `codeeh`, `libelleeh`, `ordreabseh`, `niveaueh`, `incluseh`, `natureeh`, `themeeh`, `milieueh`, … | 842 |
+| `TABLE_LITHOLOGIE_NIV3` | `CodeEH`, `CdLitho`, `LbLitho`, `LithoPrinc` | 900 |
 
-Then do Step 7, the memo. Then **stop and wait for Assil.**
+**Next actions**
+1. `src/analysis/bdlisa_profile.py`: print the columns and a sample row of
+   each layer used before writing logic against it.
+2. Join the 33 working-set stations
+   (`data/interim/piezo_working_set.parquet`, column `code_bdlisa`) to the
+   entities. Report which are missing from the Occitanie extract (first run:
+   `760AE09`).
+3. Vertical order of the plain's entities (shallow → deep) and the superposed
+   pairs from `TABLE_PILE_ENTITES_NIV3`. These become the `overlies` edges.
+   Save them as a table in `data/interim/` for the knowledge graph.
+4. Vertical well pairs within 5 km in superposed entities (first run: 13).
+   **For each pair, report how often the shallow head is above the deep
+   head, overall and by season.** That decides whether a head-ordering rule
+   is allowed (§3).
+5. Write the figure, the data log entry, `docs/notes/step06b_bdlisa.md` and
+   the progress table, then commit.
 
-**Rebuild results so far (compare with section 8):**
+### Step 7: Gate 1 memo
+
+Write `docs/memo_gate1_feasibility.md`. Keep it short and plain; Assil may
+translate it to French. It covers:
+- the data inventory and counts
+- the surface vs groundwater finding and what it implies
+- caveats:
+  - the latest BNPE year is under-reported
+  - small boreholes are missing, so groundwater irrigation is a lower bound
+  - the 2018 reporting break
+  - the rising share of "Non qualifié" values
+- **the paper plan:** title, RQ1–4, venue
+- **the design changes in §3**, with one line of why each
+- **questions for the supervisor:**
+  - framing: use conflict on the Pliocene, or canal-return recharge
+  - keep or drop the 6 karst stations (core = 26)
+  - a newer RPG year (2024/2025, GeoPackage v4.0)
+  - venue and publication fees (SAVE Water committed to gold open access)
+  - the real defence date
+
+Context for the framing question: irrigation in the plain is about 84%
+surface water (the historic Têt/Agly canals), while drinking water is 99%
+groundwater. This contradicts the subject's "crops pump groundwater" chain.
+
+### Step 8: Phase 1, forcings and the weekly dataset (details in `docs/roadmap.md` §4)
+
+1. **SAFRAN / SIM2** (Météo-France, data.gouv.fr, "Données changement
+   climatique – SIM quotidienne").
+   - Variables: rain, ETP, effective rain, soil-moisture index, on the 8 km
+     grid.
+   - Keep only the cells covering dept 66.
+   - Check the file sizes first: ask before downloading more than 2 GB.
+2. **Hub'Eau hydrometrie:** daily discharge for the Têt, Agly, Réart and
+   Tech.
+3. **Monthly pumping per aquifer unit:** BNPE annual volumes × usage profiles
+   (assumption documented, plus a sensitivity flag).
+4. **Piezometer series extended to the latest date:** re-run the ingest; the
+   cache makes it incremental, but re-fetch stations whose end date is
+   recent.
+5. **Weekly resampling, gap masks, quality flags, SGI, splits** →
+   `data/processed/dataset_v1/`.
+
+### Rebuild results so far (compare with section 8)
 
 - **Piezometers.**
   - 101 stations; 43 with ≥ 8 y record and active in 2024+; **33 in the
@@ -247,140 +411,26 @@ Then do Step 7, the memo. Then **stop and wait for Assil.**
   - 2018 reporting break: boreholes declaring groundwater irrigation jump
     from 370 to 950.
   - 2023 under-reported; canal intakes falling since 2017.
-- **Open questions for the supervisor** (go in the Step 7 memo):
-  - Keep or drop the 6 karst stations (core = 26 stations).
-  - Which framing: use conflict on the Pliocene, or canal-return recharge.
-  - Whether a more recent RPG year is wanted (2024/2025 are available, as
-    GeoPackage v4.0).
+- Open questions for the supervisor: see Step 7 above.
 
-### Step 1 — Repo and environment
+### Specs of finished steps (kept for re-runs; the scripts implement them)
 
-- Check that `git` and `python` work, then create the venv.
-- Install: `pandas geopandas pyogrio shapely pyarrow requests matplotlib py7zr`.
-- Create the folder layout from section 5 and a `.gitignore` that excludes
-  `data/` except `data/README.md`.
-- **Done when:** the imports succeed and the first commit exists.
-
-### Step 4 — Hub'Eau piezometers (groundwater levels)
-
-**API.** Base URL: `https://hubeau.eaufrance.fr/api/v1/niveaux_nappes`
-- `/stations` with `code_departement=66` returns the station list, coordinates,
-  BSS codes and BD LISA codes.
-- `/chroniques` per `code_bss` returns the full historical series.
-- Pagination: HTTP **206** means more pages. Follow the `next` URL in the JSON
-  body; don't increment page numbers yourself.
-- Use a `requests.Session` with `Retry` (429/5xx, exponential backoff).
-
-**Caching.** Cache each station's series separately at
-`data/raw/hubeau/chroniques/<code_bss>.parquet`. Last time a single paginated
-pull timed out, so a crash must never restart the whole download.
-
-**Per-station table.** One row per station with:
-- start and end date
-- number of observations and observations per year
-- percentage of missing days
-- BD LISA entity code
-
-**Working set.** Keep stations that meet all of:
-- record of at least 8 years
-- still reporting in 2024 or later
-- at least 50 measurements per year
-- inside the Roussillon plain
-
-Define the plain's extent explicitly, either from BD LISA entities or a
-bounding box, and record it in `data/README.md`. Common analysis window:
-2016–2025.
-
-**Outputs:** the stations table, the working-set table, and a map of stations
-coloured by record length.
-
-### Step 5 — RPG agricultural parcels
-
-**Source:** IGN Géoplateforme, `https://data.geopf.fr/telechargement`
-- `/resource/RPG` returns **Atom XML, not JSON**. Regex the raw text for names
-  like `RPG_..._SHP_LAMB93_R76_YYYY-01-01`.
-- Download from `/download/RPG/{name}/{name}.7z`.
-- Region `R76` (Occitanie), editions **2016 and 2023**. If the naming has
-  changed, list what is available and ask.
-
-The archive may extract flat rather than into a folder, so find the shapefiles
-with a recursive glob.
-
-**Profile.** Use parcels within 3 km of the working-set piezometers, for both
-years:
-- parcel count, total area, median parcel size
-- share of area by `CODE_GROUP`
-
-Compare the two years at `CODE_GROUP` level. Changes at `CODE_CULTU` level are
-mostly nomenclature drift.
-
-### Step 6a — BNPE water abstraction
-
-**API.** Base URL: `https://hubeau.eaufrance.fr/api/v1/prelevements`
-- `referentiel/points_prelevement` with `code_departement=66` returns the
-  abstraction points.
-- `chroniques` with `code_departement=66` returns annual volumes.
-
-**Surface vs groundwater.** Classify by `code_type_milieu` (CONT = surface,
-SOUT = groundwater). **Do not use `code_bdlisa`**: it is always null, and last
-time it produced a false 0% groundwater share.
-
-**Summary.** Volumes by usage × water source inside the plain, cumulative over
-about 2012–2023.
-
-**Caveats to state in the memo:**
-- The most recent year is under-reported (consolidation lag).
-- Small boreholes below the declaration threshold are missing, so groundwater
-  irrigation is a lower bound.
-
-### Step 6b — BD LISA V3 aquifer entities (manual download)
-
-**What Assil does.** Download the Occitanie extract from
-`https://bdlisa.eaufrance.fr` (Téléchargement section) and save it under
-`data/raw/bdlisa/`. Prefer GeoPackage if offered. Last time the file was
-`BDLISA-V3-OCC-gdb.zip`, an Esri FileGDB, which is readable with pyogrio.
-
-**What Claude Code does.**
-1. Unzip the archive.
-2. List the layers with `pyogrio.list_layers()`.
-3. Read them. Non-spatial tables load as plain DataFrames, so don't call
-   `.crs` on them.
-
-**What the first run learned about the layers:**
-- Entity codes look like `671AA00` (level 3, which is the level station codes
-  use).
-- `ordreabseh` gives the vertical order, shallow to deep.
-- `milieueh` appears to encode the medium: 1 porous, 2 fissured, 3 karstic.
-  Confirm this.
-- `TABLE_PILE_ENTITES_NIV3` (`CodePoly`, `CodeEH`, `OrdRelatif`) gives
-  spatially explicit superposition. These become the `overlies` edges.
-- `TABLE_GENEALOGIE` is a changelog, not a hierarchy. Use the `incluseh`
-  column for hierarchy.
-
-**Joins and pairs.**
-- Join stations to entities.
-- Find vertical well pairs within 5 km that sit in superposed entities. These
-  pairs decide whether the monotonic-drainage constraint is viable.
-
-### Step 7 — Gate 1 feasibility memo
-
-Write `docs/memo_gate1_feasibility.md`. Keep it short and plain; Assil will
-translate it to French if needed and send it to his supervisor. It covers:
-- the data inventory and counts
-- the surface vs groundwater finding and what it implies
-- caveats
-- the questions for the supervisor
-
-**The key framing.** In the first run, irrigation in the plain was about 85%
-surface water (the historic Têt/Agly canals), while groundwater was mostly
-drinking water. This partly contradicts the subject document's "crops pump
-groundwater" causal chain. Sharper framings:
-- the drinking-water vs agriculture use conflict on the Pliocene aquifer
-- canal-return infiltration as a recharge term
-
-Ask the supervisor which framing to commit to.
-
-**Then stop.** Summarise what changed versus section 8 and wait for Assil.
+- **Hub'Eau piezometers** (`niveaux_nappes`):
+  - `/stations?code_departement=66`, then `/chroniques` per `code_bss`
+  - HTTP 206 means more pages: follow the `next` URL, never increment pages
+    yourself
+  - cache one parquet per station in `data/raw/hubeau/chroniques/`
+  - working set: ≥ 8 y of record, reporting in 2024+, ≥ 50 measurements per
+    year, inside `PLAIN_BBOX`
+- **RPG:**
+  - `https://data.geopf.fr/telechargement/resource/RPG` returns Atom XML;
+    regex the names `RPG_..._R76_YYYY-01-01`, then
+    `/download/RPG/{name}/{name}.7z`
+  - archives may extract flat, so glob recursively
+  - compare years at `CODE_GROUP` level and in hectares
+- **BNPE** (`prelevements`): classify by `code_type_milieu`
+  (CONT = surface, SOUT = groundwater). **Never use `code_bdlisa`**: it is
+  always null.
 
 ---
 
@@ -421,36 +471,52 @@ Use these to sanity-check the rebuild, not as targets.
   4. Corbières limestone (`681AM00`)
   5. Côte Vermeille gneiss (`699AA01`)
 - 9 distinct superposed entity pairs across 33 polygons.
-- **13 vertical well pairs within 5 km**, which makes the monotonic-drainage
-  constraint viable.
+- **13 vertical well pairs within 5 km.** The first run concluded that this
+  makes a monotonic-drainage constraint viable. The rebuild must check the
+  head ordering on these pairs before any such rule is used (§3).
 
 ---
 
-## 9. After the rebuild (only on Assil's go)
+## 9. Roadmap
 
-Roadmap continues:
-- 8: six architecture papers
-- 9: four method papers
-- 10: ingestion module
-- 11: distance graph + baseline GNN
-- 12: Gate 2, commit to the target variable
-- 13: competency questions
-- 14–17: ontology reuse, bridging module, SHACL, alignment experiment
-- 19–22: AlphaEarth embeddings, heterogeneous graph, Gate 3
-- 23–24: semantic constraint + low-data ablation; explanations
-- 26–29: evaluation, writing, defence
+Follow **`docs/roadmap.md`**. It replaces the old step list 8–29.
+
+| Phase | Weeks | Content |
+|---|---|---|
+| 0 | 1–2 | Finish 6b + Step 7 memo, recreate the env on Linux. **Gate 1** |
+| 1 | 3–5 | Forcings (SAFRAN SIM2, river flows, monthly pumping), weekly dataset, splits |
+| 2 | 6–9 | Baselines: naive, Pastas, LSTM/EA-LSTM, Chronos-2, distance ST-GNN. **Gate 2** |
+| 3 | 8–13 | Competency questions, ontology reuse + bridging module, alignment, KG, SHACL, SPARQL → HeteroData. **Gate 3** |
+| 4 | 14–19 | Heterogeneous ST-GNN, soft and hard constraints, ablations, shortcut tests. **Gate 4** (results frozen) |
+| 5 | 20–22 | Attributions → ontology templates; faithfulness; case studies |
+| 6 | 23–27 | Paper, submitted by end of April 2027 |
+| 7 | 28–34 | Thesis, defence; optional Tunisia demo |
 
 ---
 
 ## 10. Literature anchors
 
-Full notes live in `docs/literature/`. Papers to keep in mind when writing
+Verdicts on every PDF in `Articles/` and verified additions:
+`docs/literature/reading_list.md`. Papers to keep in mind when writing
 code or docs:
-- Wu et al., *Water Resources Research* 2025 — graph Fourier deep learning for
-  groundwater levels, Yellow River Basin. The closest published analogue.
+- Wu et al., *JGR: Machine Learning and Computation* 2025
+  (doi:10.1029/2024JH000520) — T-GCN with several spatial-dependency
+  graphs for groundwater levels, North China Plain. *(Corrected
+  2026-10-13: earlier text said "WRR, graph Fourier, Yellow River"; that
+  did not match the paper.)*
+- Taccari et al., *Scientific Reports* 2024 (doi:10.1038/s41598-024-75385-2)
+  — ST-GNN for a multi-aquifer system with pumping, river and rain nodes.
+  The closest setting to ours.
+- Heudorfer et al., *HESS* 2024 (doi:10.5194/hess-28-525-2024) — global
+  groundwater models use static features as IDs, not semantics. Motivates
+  our semantic-ablation test.
+- Collenteur et al., *Groundwater* 2019 (doi:10.1111/gwat.12925) — Pastas,
+  the mandatory hydrological baseline.
 - Marconato et al., NeurIPS 2023 (arXiv 2305.19951) — reasoning shortcuts.
-- OntoAligner, ESWC 2025 — ontology alignment toolkit.
-- WHOW-KG, *Scientific Data* 2025 — network-of-ontologies pattern for water.
+- OntoAligner, ESWC 2025 (arXiv 2503.21902) — ontology alignment toolkit.
+- WHOW-KG, *Scientific Data* 2025 (doi:10.1038/s41597-025-04537-4) —
+  network-of-ontologies pattern for water. (The PDF in `Articles/` is the
+  2023 preprint.)
 - Clark et al., *WRR* 2025 (doi:10.1029/2025WR041303) — XAI for
   spatio-temporal groundwater predictions.
 - Dai et al., *JGR: Machine Learning and Computation* 2025

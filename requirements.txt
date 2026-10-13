@@ -1,7 +1,8 @@
 # Pinned with `pip freeze` on 2026-10-05 (Python 3.13, Windows 11).
-# pandas 2.2.3 / pyarrow 18.1.0 / numpy<2.3 / pyogrio 0.10.0 are deliberately
-# older than latest: Windows Smart App Control blocks the newest wheels' DLLs
-# (no reputation yet). See docs/notes/step01_environment.md before upgrading.
+# Verified on 2026-10-13 on Arch Linux, Python 3.12 (uv venv): same pins, and
+# Steps 4-6a reproduce identically. The old pins (pandas 2.2.3, pyarrow 18.1.0,
+# numpy<2.3, pyogrio 0.10.0) were forced by Windows Smart App Control; keep them
+# until a deliberate upgrade so results stay comparable.
 backports.zstd==1.7.0
 brotli==1.2.0
 certifi==2026.7.22

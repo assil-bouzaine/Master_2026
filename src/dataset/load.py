@@ -30,9 +30,13 @@ PUMP_USES = ["drinking water", "irrigation", "canals", "industry"]
 STATIC_VARS = ["altitude_station", "profondeur_investigation", "x", "y"]
 
 
-def _pumping_near_wells(wells):
+def _pumping_near_wells(wells, pw=None):
+    """Weekly abstraction within PUMP_RADIUS_KM of each well, by source x use.
+
+    `pw` overrides the dataset's pumping_weekly table (used by sensitivity runs)."""
     pts = pd.read_parquet(DS / "pumping_points.parquet")
-    pw = pd.read_parquet(DS / "pumping_weekly.parquet")
+    if pw is None:
+        pw = pd.read_parquet(DS / "pumping_weekly.parquet")
     gw = gpd.GeoDataFrame(wells[["code_bss"]], geometry=gpd.points_from_xy(wells["x"], wells["y"]),
                           crs=CRS_WGS84).to_crs(CRS_L93)
     gp = gpd.GeoDataFrame(pts, geometry=gpd.points_from_xy(pts["longitude"], pts["latitude"]),

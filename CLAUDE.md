@@ -294,7 +294,7 @@ on them, so it may start while the memo is out.
 | 6b BD LISA | ✅ done | see git log | `docs/notes/step06b_bdlisa.md` |
 | 7 Gate 1 memo (+ paper plan) | ✅ written; **waiting for the supervisor's answers (Gate 1)** | see git log | `docs/memo_gate1_feasibility.md` |
 | 8 Phase 1: forcings + weekly dataset v1 | ✅ done | see git log | `docs/notes/step08_dataset.md` |
-| **9 Phase 2: baselines** | **⬜ next — START HERE** | n/a | `docs/notes/step09_baselines.md` |
+| **9 Phase 2: baselines** | **⏳ naive + Pastas done; next: LSTM/EA-LSTM, Chronos-2, distance ST-GNN — START HERE** | see git log | `docs/notes/step09_baselines.md` |
 
 ### Step 6b: BD LISA V3 aquifer entities
 
@@ -457,6 +457,24 @@ groundwater. This contradicts the subject's "crops pump groundwater" chain.
 
 Also check the spring-rise signature (canal recharge?) on all alluvium
 wells.
+
+**Done so far (2026-10-13):**
+- `src/models/evaluate.py` (shared scoring), `naive.py`,
+  `pastas_baseline.py` (5 variants).
+- **Reference baselines:**
+  - simulation `pastas_seasonal_canal`: median core NSE train 0.57 / val
+    0.51 / **test 0.13**
+  - forecast 4 wk `naive_anomaly_persist`: **test NSE 0.78**
+- Findings:
+  - flat drinking-water pumping makes Pastas fake the summer drop with
+    evaporation
+  - a canal-recharge input helps the alluvium only
+  - plain-wide pumping does not help, so the graph must be selective by
+    aquifer unit
+- torch 2.14.1 CPU installed (`--extra-index-url
+  https://download.pytorch.org/whl/cpu`).
+- Neural sweeps (5 seeds × variants) go to GPU credits (Colab/Kaggle);
+  development and single runs stay on the laptop.
 
 ### Specs of finished steps (kept for re-runs; the scripts implement them)
 

@@ -21,6 +21,7 @@ the PFE report (the "Méthodologie" and "Données" chapters).
 | 6b | BD LISA aquifer entities, overlies edges, vertical pairs | done | [step06b_bdlisa.md](step06b_bdlisa.md) |
 | 7 | Gate 1 feasibility memo | done (waiting for the supervisor) | [../memo_gate1_feasibility.md](../memo_gate1_feasibility.md) |
 | 8 | Phase 1: climate, rivers, weekly pumping, dataset v1 | done | [step08_dataset.md](step08_dataset.md) |
+| 9 | Phase 2: baselines (naive + Pastas done; LSTM, Chronos-2, ST-GNN next) | in progress | [step09_baselines.md](step09_baselines.md) |
 
 Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 
@@ -62,4 +63,10 @@ Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 | **IPS classes** | BRGM's 7 classes of the standardised level, from "très bas" (driest 10%) to "très haut". Used in the official drought bulletins. |
 | **Warm-up** | The period of input data a model needs *before* its first prediction, because groundwater remembers past rain. |
 | **Data leakage** | When information from the test period sneaks into training (e.g. defining "normal" with test years). It makes results look better than they are. |
+| **Baseline** | A simpler, standard model the new method must beat. Without baselines, "NSE 0.6" means nothing. |
+| **Simulation vs forecast** | Simulation: level predicted from weather + pumping only. Forecast: level h weeks ahead, knowing today's level. |
+| **NSE** | Nash–Sutcliffe efficiency: 1 = perfect, 0 = no better than the mean level, < 0 = worse than the mean. |
+| **KGE** | Kling–Gupta efficiency: combines correlation, variability and bias; 1 = perfect. |
+| **Pastas / TFN model** | Transfer-function noise model: the level = sum of each stress (rain, pumping) convolved with a response curve, plus noise. The hydrologists' standard. |
+| **Anomaly persistence** | Forecast "the level will be as far from normal in h weeks as it is today". Hard to beat at short horizons. |
 | **Prise (dans la Têt)** | A river intake: the head of an irrigation canal that diverts river water. |

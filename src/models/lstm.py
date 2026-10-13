@@ -146,7 +146,7 @@ def main():
             print(f"seed {s}: cached")
             continue
         pz, best = train_seed(s, X, Z, split, core, mu, sd, head, args.epochs)
-        df = pd.DataFrame(pz, index=codes, columns=pd.DatetimeIndex(weeks)).stack(dropna=False)
+        df = pd.DataFrame(pz, index=codes, columns=pd.DatetimeIndex(weeks)).stack(future_stack=True)
         df.rename("z").rename_axis(["code_bss", "week"]).reset_index().to_parquet(path, index=False)
         print(f"seed {s}: best validation median NSE {best:.3f}", flush=True)
     seeds = [pd.read_parquet(f) for f in sorted(out.glob("seed_*.parquet"))]

@@ -136,3 +136,20 @@ camber stash cp stash://<user>/pfe/results/gpu_run.log ./results/
 
 Run Step 3 again. Finished seeds and wells are skipped, so nothing is
 recomputed and few credits are wasted.
+
+---
+
+## What actually worked on Camber (2026-10-13)
+
+- **CLI batch jobs are blocked on the free tier:** `camber job create` →
+  "Job creation is not available on the free tier".
+- **Use the interactive GPU node instead.** In the web app: start the
+  **GPU · Xsmall** node → `</>` (top right) → **Open from Stash** → select
+  `pfe/` → **Select**. A notebook opens in `/home/jovyan/pfe` (= your
+  Stash).
+- **Start the run detached** (from a notebook cell):
+  `!setsid nohup bash scripts/run_gpu.sh > results/gpu_runN.log 2>&1 < /dev/null &`
+- **Check progress** (from a notebook cell):
+  `!ps aux | grep -E "[r]un_gpu|[s]rc.models"; tail -4 results/gpu_runN.log; nvidia-smi`
+- **Bring results back** with `camber stash cp -r stash://assil0723/pfe/results/<run>/ results/<run>/`.
+- **Press STOP on the node** when done (1.5 credits/hour while on).

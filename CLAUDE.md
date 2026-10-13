@@ -294,7 +294,8 @@ on them, so it may start while the memo is out.
 | 6b BD LISA | ✅ done | see git log | `docs/notes/step06b_bdlisa.md` |
 | 7 Gate 1 memo (+ paper plan) | ✅ written; **waiting for the supervisor's answers (Gate 1)** | see git log | `docs/memo_gate1_feasibility.md` |
 | 8 Phase 1: forcings + weekly dataset v1 | ✅ done | see git log | `docs/notes/step08_dataset.md` |
-| **9 Phase 2: baselines** | **⏳ naive, Pastas, LightGBM, LSTM done; Chronos-2 + distance ST-GNN running/next — START HERE** | see git log | `docs/notes/step09_baselines.md`, `docs/results_baselines.md` |
+| 9 Phase 2: baselines | ✅ all done (ST-GNN + Chronos-2 on the Camber GPU) | see git log | `docs/notes/step09_baselines.md`, `docs/results_baselines.md` |
+| **10 Next** | **⬜ Gate 2 (supervisor) or baseline improvements (2005 start, all stations, LSTM tuning), then Phase 3 ontology — ASK ASSIL** | n/a | n/a |
 
 ### Step 6b: BD LISA V3 aquifer entities
 
@@ -457,6 +458,17 @@ groundwater. This contradicts the subject's "crops pump groundwater" chain.
 
 Also check the spring-rise signature (canal recharge?) on all alluvium
 wells.
+
+**Final baseline references (2026-10-13), median over 33 core wells:**
+- simulation: distance-graph ST-GNN, test NSE 0.26 / RMSE 0.58 m (LSTM 0.25,
+  Pastas 0.13)
+- forecast 4 wk: Chronos-2 zero-shot, test NSE 0.83
+- forecast 12 wk: Chronos-2 zero-shot, test NSE 0.42
+- Pliocene wells: test NSE 0.07 for the best simulation model
+
+GPU work runs on Assil's Camber XSMALL GPU node (JupyterLab; CLI jobs are
+blocked on the free tier). See `docs/gpu_howto.md`; Stash path
+`stash://assil0723/pfe/`.
 
 **Done so far (2026-10-13):**
 - `src/models/evaluate.py` (shared scoring), `naive.py`,

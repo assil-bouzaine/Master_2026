@@ -1,8 +1,9 @@
 # Step 9 (Phase 2): baselines
 
 **Date:** 2026-10-13 · **Status:**
-- done: naive, Pastas, LightGBM, LSTM
-- running: Chronos-2, distance ST-GNN
+- done: all baselines (naive, Pastas, LightGBM, LSTM, distance ST-GNN,
+  Chronos-2)
+- ST-GNN and Chronos-2 ran on the Camber GPU (NVIDIA L4), 2026-10-13
 
 Full table: `docs/results_baselines.md`. Figures:
 `reports/figures/baselines_nse.png`,
@@ -182,3 +183,49 @@ Full table: `docs/results_baselines.md`. Figures:
   "AutoML" reference)
 - PyTorch Geometric (heterogeneous graphs, Phase 4)
 - Captum (attributions, Phase 5)
+
+
+---
+
+## Part 3: GPU runs on Camber (2026-10-13)
+
+The distance-graph ST-GNN (5 seeds) and Chronos-2 ran on Assil's Camber
+XSMALL GPU node (NVIDIA L4, 23 GB, torch 2.8 cu128) through
+`scripts/run_gpu.sh`. The results were downloaded with the Camber CLI and
+scored locally with the same `evaluate.py`; local scores reproduce the GPU
+scores exactly. Logs: `results/camber_gpu_run*.log`.
+
+| Task | Model | Validation NSE | Test NSE | Test RMSE |
+|---|---|---|---|---|
+| simulation | **distance-graph ST-GNN, 5 seeds** | 0.58 | **0.26** | **0.58 m** |
+| simulation | LSTM, 5 seeds | 0.58 | 0.25 | 0.65 m |
+| forecast 4 wk | **Chronos-2 zero-shot** | 0.80 | **0.83** | **0.26 m** |
+| forecast 12 wk | **Chronos-2 zero-shot** | 0.45 | **0.42** | **0.45 m** |
+
+**What it means**
+- **The distance graph helps a little in simulation.** It has the lowest
+  error of all simulation models (0.58 m vs 0.65 m for the LSTM). By aquifer,
+  test NSE is 0.42 karst, 0.37 recent alluvium, 0.25 ancient alluvium, and
+  only **0.07 Pliocene**: the deep drinking-water wells remain the hard
+  part. This is the bar for the knowledge-graph graph (RQ1).
+- **Chronos-2 is the forecasting reference.** Zero-shot, with no training
+  on our data, it beats every other forecaster, and at 12 weeks it reaches
+  0.42 where everything else is near 0. Any forecasting claim in the paper
+  must be made against Chronos-2.
+- **The paper's story is clearer:**
+  - for *forecasting*, pretrained foundation models are already strong
+  - for *simulation and explanation* (what drives the level; unseen wells;
+    the drought), no model captures the Pliocene drawdowns
+  - knowledge (layer-aware pumping, the aquifer graph) is the missing piece
+
+**Lessons from running on Camber** (also in `docs/gpu_howto.md`)
+- CLI batch jobs (`camber job create`) are blocked on the free tier; the
+  interactive JupyterLab GPU node works.
+- Start background runs with `setsid nohup … < /dev/null &`. A plain
+  `nohup … &` died when the notebook cell ended.
+- Never `pkill -f <pattern>` from a shell whose own command line contains
+  the pattern: it kills itself. Use PIDs or `grep "[p]attern"`.
+- Stash does not sync a log file while it is being written; check progress
+  on the node, or wait for result files.
+- Camber's image has a torchaudio that does not match its torch;
+  `run_gpu.sh` shadows it with the matching version inside the venv.

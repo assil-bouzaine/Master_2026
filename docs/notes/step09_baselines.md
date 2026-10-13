@@ -1,7 +1,12 @@
-# Step 9 (Phase 2): baselines, part 1 (naive and Pastas)
+# Step 9 (Phase 2): baselines
 
-**Date:** 2026-10-13 · **Status:** in progress (naive + Pastas done; LSTM,
-Chronos-2, distance ST-GNN to do)
+**Date:** 2026-10-13 · **Status:**
+- done: naive, Pastas, LightGBM, LSTM
+- running: Chronos-2, distance ST-GNN
+
+Full table: `docs/results_baselines.md`. Figures:
+`reports/figures/baselines_nse.png`,
+`reports/figures/baselines_hydrographs.png`.
 
 ## What was done
 
@@ -91,3 +96,89 @@ Chronos-2, distance ST-GNN to do)
   4–8 m and dominate any average in metres.
 - **Compute:** Pastas runs in about 2 minutes per variant on this laptop. A
   test LSTM: 20 training steps in 2.4 s on CPU (torch 2.14.1 CPU).
+
+
+---
+
+## Part 2: machine-learning baselines (2026-10-13)
+
+| Script | What it does |
+|---|---|
+| `src/models/features.py` | One feature table for all ML models: weather averaged over 1 month to 2 years, seasonal pumping, canals, season, well attributes, training-only climatology. |
+| `src/models/lgbm.py` | LightGBM. Configuration and target chosen on validation only. Every well weighs the same. The forecast learns a correction to anomaly persistence. |
+| `src/models/lstm.py` | Global LSTM over the last 104 weeks plus well attributes; 5 seeds, averaged. |
+| `src/models/chronos2.py` | Chronos-2 zero-shot, rolling forecasts with past covariates. |
+| `src/models/stgnn.py` | GRU + 2 graph-convolution layers on a 3-nearest-wells distance graph (Taccari-style); 5 seeds. |
+| `src/analysis/baseline_report.py` | Table + figures from all runs. |
+
+### Results (median over 33 core wells)
+
+| Task | Model | Validation NSE | Test NSE (drought) |
+|---|---|---|---|
+| simulation | climatology | 0.12 | −0.25 |
+| simulation | Pastas (best variant) | 0.50 | 0.13 |
+| simulation | LightGBM | 0.54 | 0.03 |
+| simulation | **LSTM, 5 seeds** | **0.58** | **0.25** |
+| forecast 4 wk | anomaly persistence | 0.78 | 0.78 |
+| forecast 4 wk | LightGBM | 0.78 | 0.77 |
+| forecast 12 wk | anomaly persistence | 0.29 | 0.11 |
+| forecast 12 wk | LightGBM | **0.44** | 0.04 |
+
+### What we learned
+
+1. **Trees cannot extrapolate.** LightGBM's level forecasts collapsed in the
+   drought (below the training range). Predicting a *correction* to a good
+   naive forecast fixed it.
+2. **Weighting matters.** A pooled loss is dominated by the flashy karst
+   wells. Weighting every well equally made LightGBM match the 4-week floor.
+3. **Averaging seeds helps most in the drought.** Single LSTMs reach
+   validation 0.42–0.60; the 5-seed mean has the best test score.
+4. **At 4 weeks, anomaly persistence is close to unbeatable.** Groundwater
+   is slow. The value of models is at longer horizons and in simulation.
+5. **The key finding** (hydrographs): **every model gets the timing right
+   but misses how deep summer drawdowns became in the drought.** At
+   Sabirou (Pliocene) the observed level falls to 19.5–20 m while all
+   models stop near 22 m; at Millas, 2022–24 lows are 1–1.5 m below every
+   model. The pumping inputs (annual totals, assumed profiles, imputed after
+   2023) cannot show that pumping intensified in hot, dry summers. Missing
+   information, not a missing algorithm.
+6. **Negative results kept:**
+   - nonlinear recharge (FlexModel) made Pastas worse
+   - one plain-wide pumping series made Pastas worse
+   - dropping identity-like statics did not help LightGBM
+
+### How to improve (ordered by expected gain)
+
+**A. Data: the biggest lever** (finding 5)
+1. **Monthly drinking-water production** from the water utilities or the
+   SAGE nappes plio-quaternaires syndicate, to replace the assumed profile.
+   Ask through the supervisor.
+2. **Link each abstraction point to its aquifer layer** (BSS borehole
+   depth; drinking-water boreholes vs shallow wells). This is Phase 3
+   knowledge-graph work, and it will help every model, including Pastas.
+3. **Drought restriction orders** (irrigation bans) as an input; check the
+   VigiEau/Propluvia open data first.
+4. **Train from 2005 instead of 2012:** heads and weather exist; pumping
+   would be held at its 2012–2014 level. Seven more years, including dry
+   ones.
+5. **Use all 101 dept-66 stations for training** the global models
+   (evaluate on the core set).
+
+**B. Models**
+1. Tune the LSTM with Optuna on a GPU, selecting on validation only:
+   lookback 156/208 weeks (the Pliocene has a long memory), hidden size,
+   dropout.
+2. Average across model families (LSTM + LightGBM + Pastas); often the best
+   single baseline.
+3. Robustness: a second test window (rolling origin) and per-well paired
+   tests (Wilcoxon) between models, so claims are statistically supported.
+
+**C. Tools worth adding**
+- Optuna (tuning)
+- Weights & Biases or MLflow (run tracking)
+- NeuralHydrology (EA-LSTM family by config)
+- Nixtla NeuralForecast or Darts (N-HiTS, TFT, TiDE in a few lines)
+- AutoGluon-TimeSeries (an automatic ensemble including Chronos-2: a strong
+  "AutoML" reference)
+- PyTorch Geometric (heterogeneous graphs, Phase 4)
+- Captum (attributions, Phase 5)

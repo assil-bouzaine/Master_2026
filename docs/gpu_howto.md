@@ -209,3 +209,14 @@ comes last.
 - To patch code on a running node: upload to a new path (`.../pfe_v3_run/patch/`), copy it
   over from a notebook cell and compare `md5sum` (an overwrite through the CLI may not
   reach the node's copy).
+- **The Student plan has a monthly GPU allowance, not a credit balance you can see on the
+  node.** Check Account Settings → Billing & Usage ("GPU usage x % used", renews on the 13th)
+  before a long sweep (the Personal Usage page crashed on 2026-10-20). When the allowance
+  runs out the platform stops the node with no message in our logs (2026-10-20, 16:22 CET,
+  after step 10 and ~4 h of the v3 sweep).
+- **Never type long text into a notebook cell through the extension**: a 7 KB command froze
+  the tab for minutes and was never run. Upload files (CLI or the Stash panel) and keep
+  typed commands to one short line.
+- EA-LSTM now runs with the fused LSTM kernel (cuDNN; commit `e09a482`, exact, 9–12× on
+  CPU). Run `python -m tests.test_ealstm` first on any new GPU: it checks the cuDNN path
+  against the explicit loop and times both.

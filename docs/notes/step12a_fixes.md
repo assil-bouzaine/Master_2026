@@ -97,7 +97,64 @@ labels of the wells (e.g. which entity each well belongs to), rebuilds every pai
 attribute and refits; the p-value is the share of permutations with an effect at least
 as large.
 
-## 5b. State at 2026-10-20 ~13:20 (after a PC crash at ~12:52) — RESUME HERE
+## 5c. State at 2026-10-20 ~19:30 — RESUME HERE
+
+**The Camber GPU allowance is used up.** Account Settings → Billing & Usage (Student plan):
+GPU usage 99 %, CPU usage 100 % for the period 13 Oct – 13 Nov 2026 (renews 2026-11-13).
+The platform stopped the node at 15:22 UTC (16:22 CET) during EA-LSTM trial 19; the
+auto-stop watcher logged nothing because the sweep never ended. Steps 10 (2026-10-13) and
+~4 h of the v3 sweep consumed the month's allowance.
+
+**On the Stash** (`stash://assil0723/pfe_v3_run/results_gpu/v3/`, log `results_gpu/run_v3.log`):
+- finished and already copied to `results/v3/`: `lstm`, `stgnn_distance`, `chronos2`,
+  `chronos2_xl`, `chronos2_ft`, `lstm_tuned` + its four regimes, `stgnn_tuned`;
+- finished, **not yet copied**: `stgnn_tuned_lwo`, `_f25`, `_f50`, `_refit`;
+- `ealstm_tuning`: 19 of 24 trials complete in `study.db` (TorchScript loop version, before
+  the fused kernel); best single-seed validation 0.604 (trial 18), 0.599 (trial 12).
+
+**Not run yet:** EA-LSTM (5 trials, re-selection, 5 final seeds, 4 regimes) and Taccari
+(default, tuning, regimes): about 56 + 80 training runs. With the fused EA-LSTM (`e09a482`)
+and the strided Taccari (`b3a8b74`), roughly 1 h + 5 h on an L4 (estimate: the Taccari
+epoch time on a GPU after `b3a8b74` has not been measured). If the runs move to another
+GPU, restart the EA-LSTM tuning from trial 0 there, so that all 24 trials share one
+implementation and one GPU; keep the Camber study as a record. On Camber after 13 Nov it
+can resume (Optuna storage; the interrupted trial 19 stays RUNNING and is ignored).
+`tests/test_ealstm.py` now also checks the GPU path (cuDNN, TF32 off during the check):
+run it first on any new GPU.
+
+**Laptop chain finished at 16:01** (`results/v3/cpu_runs5.log`), median over 33 core wells:
+
+| Run | val NSE | drought NSE | drought skill | recovery NSE |
+|---|---|---|---|---|
+| LightGBM tuned, no own-climatology input | 0.56 | −0.12 | 0.47 | 0.58 |
+| (LightGBM tuned with `clim_z`, for comparison) | 0.51 | −0.18 | 0.44 | 0.42 |
+| LightGBM no-clim, leave-wells-out | 0.30 | −0.75 | 0.24 | 0.26 |
+| LightGBM no-clim, 25 % / 50 % training data | 0.56 / 0.59 | −0.26 / −0.32 | 0.34 / 0.50 | 0.35 / 0.48 |
+| Pastas WellModel | 0.51 | −0.68 | n/a in the log | −0.03 |
+
+- Re-selection worked as intended again: single-seed best trial 18 (0.583) fell to a
+  3-seed mean of 0.528; trial 17 (3-seed 0.541) was kept.
+- **Dropping `clim_z` did not cost skill; it improved every split.** So the like-for-like
+  LightGBM (no own-climatology input) can be the LightGBM baseline with no loss; the `clim_z`
+  version stays as a sensitivity row. Decision still for Assil and the supervisor.
+- The WellModel (pumping wells as separate stresses) is no better than the summed 3 km
+  stress of `pastas_seasonal_canal` (drought −0.68 vs −0.73). Reported either way.
+
+**Camber CLI:** still "authentication error: failed to get token" at 19:05 (Assil had logged
+in to the web app). Assil runs `! camber login` in the Claude Code prompt (if it fails
+again: `! camber update`, then `! camber login`).
+
+**Resume checklist:**
+1. CLI login, then bring back `stgnn_tuned_{lwo,f25,f50,refit}`, `ealstm_tuning` and
+   `run_v3.log` (`camber stash cp -r stash://assil0723/pfe_v3_run/results_gpu/v3/<run>
+   results/v3/<run>`), rescore with `src.models.evaluate`.
+2. Assil chooses where the remaining GPU runs go (Kaggle, Colab, or Camber after 13 Nov).
+3. `python -m src.models.ensemble`, `python -m src.analysis.baseline_report` with what
+   exists (EA-LSTM and Taccari marked pending), this note, `docs/results_baselines.md`,
+   the Gate 2 addendum.
+4. Phase 3 (ontology, CPU only) does not wait for the GPU runs.
+
+## 5b. State at 2026-10-20 ~13:20 (after a PC crash at ~12:52)
 
 **Laptop** (`results/v3/cpu_runs3.log`): naive ✅, LightGBM default ✅, Pastas ✅,
 LightGBM re-selection running (resumable, `lgbm_tuned/reselect.json`), then WellModel.

@@ -305,7 +305,12 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
     new GPU code passed except Chronos-2 `xl`/`ft` (not finished).
   - **Found at the end:** single-seed Optuna trials pick lucky seeds (LightGBM: best
     trial 0.573 on validation, same config over 5 seeds 0.431 < default 0.509).
-  - **2026-10-20 ~13:20 — RESUME FROM `docs/notes/step12a_fixes.md` §5b** (current state:
+  - **2026-10-20 ~19:30 — RESUME FROM `docs/notes/step12a_fixes.md` §5c.** The Camber GPU
+    allowance is used up until 2026-11-13 (node stopped by the platform during EA-LSTM
+    tuning, 19/24 trials saved). Laptop chain done (LightGBM without `clim_z` is better on
+    every split; WellModel ≈ Pastas). Waiting for Assil: `! camber login` (CLI token still
+    invalid) and the choice of GPU for EA-LSTM + Taccari (Kaggle, Colab or wait).
+  - 2026-10-20 ~13:20 — older state in `docs/notes/step12a_fixes.md` §5b (then:
     GPU sweep running on the Camber node in `~/pfe_v3_run` with an auto-stop watcher;
     Taccari speed-up `b3a8b74` must be uploaded before its step; laptop chain running;
     after the PC crash the Camber CLI needs `! camber login`). Older checklist below.
@@ -372,7 +377,7 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
 | 9 Phase 2: baselines on v1 | ✅ done | `docs/notes/step09_baselines.md` |
 | 10 Improve baselines (dataset v2) | ✅ done (tuning, ensemble, ablation, Wilcoxon) | `docs/notes/step10_baselines_v2.md` |
 | **11 Gate 2: results to the supervisor** | **✅ summary written; Assil sends it with the Gate 1 memo — waiting for answers** | `docs/summary_gate2_results.md` + `docs/memo_gate1_feasibility.md` |
-| **12a Fixes from the critical review** | **🔄 in progress — START HERE** (evaluation ✅, analysis plan ✅, dataset v3 ✅, laptop baselines v3 running, GPU sweep pending) | `docs/feedback.md`, `docs/analysis_plan.md`, `docs/notes/step12a_fixes.md` |
+| **12a Fixes from the critical review** | **🔄 in progress — START HERE** (evaluation ✅, analysis plan ✅, dataset v3 ✅, laptop baselines v3 ✅, GPU sweep partly done: EA-LSTM + Taccari wait for a GPU) | `docs/feedback.md`, `docs/analysis_plan.md`, `docs/notes/step12a_fixes.md` |
 | **12 Phase 3: ontology + knowledge graph** | ⬜ after 12a (the knowledge-graph pre-check in `docs/feedback.md` §5.1 comes first) | `docs/roadmap.md` §4 Phase 3 |
 
 ### Step 10: improve the baselines (spec)

@@ -40,17 +40,18 @@ def grads(net, fn, x):
     return [p.grad.clone() for p in net.parameters()]
 
 
-def test_equal_to_eager_loop():
+def test_equal_to_eager_loop(device="cpu"):
     torch.manual_seed(0)
-    net = EALSTM(12, hidden=32, n_static=4).eval()
+    net = EALSTM(12, hidden=32, n_static=4).to(device).eval()
     for L in (1, 5, 104, 156):
-        x = batch(8, L, 12, 4)
+        x = batch(8, L, 12, 4, device)
         with torch.no_grad():
             err = (net(x) - reference_forward(net, x)).abs().max().item()
         gerr = max((a - b).abs().max().item() for a, b in
                    zip(grads(net, net, x), grads(net, lambda z: reference_forward(net, z), x)))
-        assert err < 1e-5 and gerr < 1e-4, (L, err, gerr)
-        print(f"lookback {L:3d}: max |output diff| {err:.1e}, max |gradient diff| {gerr:.1e}")
+        assert err < 1e-5 and gerr < 1e-4, (device, L, err, gerr)
+        print(f"[{device}] lookback {L:3d}: max |output diff| {err:.1e}, "
+              f"max |gradient diff| {gerr:.1e}")
 
 
 def time_both(n=256, L=156, hidden=64, reps=3):
@@ -76,5 +77,11 @@ def time_both(n=256, L=156, hidden=64, reps=3):
 if __name__ == "__main__":
     torch.set_num_threads(2)
     test_equal_to_eager_loop()
+    if torch.cuda.is_available():
+        # cuDNN runs the fused cell in TF32 by default (PyTorch's default for cuDNN, as for
+        # nn.LSTM); switched off here so that the check compares the assembly only
+        torch.backends.cudnn.allow_tf32 = False
+        test_equal_to_eager_loop("cuda")
+        torch.backends.cudnn.allow_tf32 = True
     time_both()
     print("ok")

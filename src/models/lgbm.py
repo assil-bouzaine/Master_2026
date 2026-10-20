@@ -3,6 +3,14 @@
     python -m src.models.lgbm                 # select config on validation, then 5 seeds
     python -m src.models.lgbm --tune 24       # Optuna, same budget as the neural models
                                               # (docs/analysis_plan.md section 5) -> lgbm_tuned
+    python -m src.models.lgbm --tune 24 --no-clim              # -> lgbm_noclim_tuned
+    python -m src.models.lgbm --no-clim --regimes lwo f25 f50  # RQ1 regimes of that config
+
+clim_z (each well's training climatology of z, its dominant feature) is computed from the
+well's own observed heads. Fine for the temporal test of a monitored well, but the neural
+models do not get it, and it leaks in the regimes: held-out wells' heads (lwo) and the
+training years that f25/f50 remove. --no-clim gives LightGBM the networks' information set;
+the regimes require it.
 
 Configurations (chosen on the VALIDATION median NSE only, never on test):
     base     num_leaves 31, min_data_in_leaf 40
@@ -40,7 +48,7 @@ import lightgbm as lgb
 import numpy as np
 import pandas as pd
 
-from src.models.evaluate import RESULTS, evaluate_run
+from src.models.evaluate import DS, RESULTS, evaluate_run
 from src.models.features import build_panel, input_columns, lagged_panel
 
 SEEDS = (0, 1, 2, 3, 4)
@@ -53,12 +61,16 @@ LIN = dict(REG, linear_tree=True, linear_lambda=1.0)
 CONFIGS = {"base": (BASE, False), "reg": (REG, False), "reg_nostatic": (REG, True),
            "reg_linear": (LIN, False)}
 SIM_TARGETS = ("z", "anom")
+N_FOLDS = 5
+FRACTIONS = {"f25": "2016-04-01", "f50": "2012-07-01"}   # as src.models.regimes
 
 
-def fit_predict(D, cols, seed, params, target):
+def fit_predict(D, cols, seed, params, target, train_mask=True, es_mask=True):
+    """train_mask / es_mask (boolean Series aligned with D) restrict the training rows and
+    the early-stopping (validation) rows, for the RQ1 regimes."""
     ok = D[target].notna()
-    tr = D[(D["split"] == "train") & ok]
-    va = D[(D["split"] == "validation") & ok]
+    tr = D[(D["split"] == "train") & ok & train_mask]
+    va = D[(D["split"] == "validation") & ok & es_mask]
     params = dict(params, seed=seed, bagging_seed=seed, feature_fraction_seed=seed)
     booster = lgb.train(params, lgb.Dataset(tr[cols], tr[target], weight=well_weights(tr, target)),
                         num_boost_round=4000,
@@ -91,7 +103,7 @@ def val_nse(D, z):
     return float(np.median(r))
 
 
-def tune(D, cols, n_trials, out):
+def tune(D, cols, n_trials, out, targets=SIM_TARGETS):
     """Optuna TPE (seed 2026) over 4 hyperparameters + the target, scored by the median
     validation NSE over core wells; then the best configuration with 5 seeds."""
     import optuna
@@ -111,7 +123,7 @@ def tune(D, cols, n_trials, out):
                       "min_data_in_leaf": trial.suggest_int("min_data_in_leaf", 20, 400, log=True),
                       "feature_fraction": trial.suggest_float("feature_fraction", 0.3, 0.9),
                       "lambda_l2": trial.suggest_float("lambda_l2", 0.1, 30.0, log=True),
-                      "target": trial.suggest_categorical("target", list(SIM_TARGETS))}, 0)
+                      "target": trial.suggest_categorical("target", list(targets))}, 0)
 
     from src.models.tune import reselect
 
@@ -135,6 +147,46 @@ def tune(D, cols, n_trials, out):
     o["pred_seed_sd"] = D["sd"].values * Z.std(axis=0)
     o["task"], o["horizon"] = "simulation", 0
     return o.dropna(subset=["pred"])
+
+
+def regimes(D, cols, run, which):
+    """RQ1 regimes (docs/analysis_plan.md section 4) with the tuned configuration of `run`:
+    lwo = 5 leave-wells-out folds (early stopping on the training wells only), f25 / f50 =
+    shorter training period. One file per fold and seed (resumable); 5 seeds averaged."""
+    b = json.loads((RESULTS / run / "best.json").read_text())["params"]
+    params = dict(BASE, **{k: v for k, v in b.items() if k != "target"})
+    fold_of = json.loads((DS / "splits.json").read_text())["leave_wells_out"]["fold_of_well"]
+    fold = D["code_bss"].map(fold_of)
+    keys = D[["code_bss", "week"]]
+    for name in which:
+        out = RESULTS / f"{run}_{name}"
+        jobs = ([(f"fold_{k}", fold != k, fold == k) for k in range(N_FOLDS)] if name == "lwo"
+                else [("", D["week"] >= pd.Timestamp(FRACTIONS[name]), None)])
+        preds = []
+        for sub, train_mask, keep in jobs:
+            d = out / sub
+            d.mkdir(parents=True, exist_ok=True)
+            zs = []
+            for s in SEEDS:
+                f = d / f"seed_{s}.parquet"
+                if not f.exists():
+                    z, _ = fit_predict(D, cols, s, params, b["target"], train_mask,
+                                       train_mask if name == "lwo" else True)
+                    keys.assign(z=z).to_parquet(f, index=False)
+                    print(f"    {out.name} {sub} seed {s} done", flush=True)
+                zs.append(keys.merge(pd.read_parquet(f), on=["code_bss", "week"], how="left")["z"]
+                          .to_numpy())
+            Z = np.vstack(zs)
+            o = keys.copy()
+            o["pred"] = D["mu"].values + D["sd"].values * Z.mean(axis=0)
+            o["pred_seed_sd"] = D["sd"].values * Z.std(axis=0)
+            preds.append(o if keep is None else o[keep.to_numpy()])
+        p = pd.concat(preds).dropna(subset=["pred"]).assign(task="simulation", horizon=0)
+        p.to_parquet(out / "predictions.parquet", index=False)
+        s = evaluate_run(out.name)
+        c = s[(s["group"] == "all core") & (s["variant"] == "all")]
+        print(f"== {out.name}\n" + c[["split", "n_wells", "NSE", "skill", "KGE", "RMSE"]]
+              .round(3).to_string(index=False), flush=True)
 
 
 def run(task, h, D, cols, run_id, seeds=SEEDS):
@@ -170,15 +222,28 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--refresh-panel", action="store_true")
     ap.add_argument("--tune", type=int, default=0, help="Optuna trials (simulation task)")
+    ap.add_argument("--no-clim", action="store_true",
+                    help="without the well's own training climatology (clim_z): the inputs of "
+                         "the neural models -> lgbm_noclim_tuned")
+    ap.add_argument("--regimes", nargs="+", choices=["lwo", "f25", "f50"],
+                    help="RQ1 regimes with the tuned --no-clim configuration")
     args = ap.parse_args()
     P = build_panel(refresh=args.refresh_panel)
-    P = P[P["mu"].notna()]  # wells with training data
+    P = P[P["mu"].notna()].reset_index(drop=True)  # wells with training data
     P["resid"] = np.nan
+    cols = [c for c in input_columns(P) if c != "resid" and not (args.no_clim and c == "clim_z")]
+    tuned = "lgbm_noclim_tuned" if args.no_clim else "lgbm_tuned"
+    if args.regimes:
+        if not args.no_clim:
+            ap.error("the regimes need --no-clim: clim_z is computed from the held-out wells' "
+                     "heads (lwo) and from the training years that f25/f50 remove")
+        regimes(P, cols, tuned, args.regimes)
+        return
     if args.tune:
-        out = RESULTS / "lgbm_tuned"
-        pred = tune(P, [c for c in input_columns(P) if c != "resid"], args.tune, out)
+        out = RESULTS / tuned
+        pred = tune(P, cols, args.tune, out, ("z",) if args.no_clim else SIM_TARGETS)
         pred.to_parquet(out / "predictions.parquet", index=False)
-        s = evaluate_run("lgbm_tuned")
+        s = evaluate_run(tuned)
         c = s[(s["group"] == "all core") & (s["variant"] == "all")]
         print(c[["split", "n_wells", "NSE", "skill", "KGE", "RMSE"]].round(3).to_string(index=False))
         return

@@ -94,7 +94,11 @@ rule was fixed; its numbers are superseded by `docs/results_baselines.md`.
   Taccari-graph ST-GNN, and later the knowledge-graph models. Pastas variants
   are hypothesis tests chosen on validation, not tuned.
 - **Ensembles:** members chosen on validation only; the number of candidate
-  subsets is reported.
+  subsets is reported. **Rule fixed 2026-10-20, before the v3 ensemble:** one
+  candidate per model family (Pastas, LightGBM, recurrent, graph), the family's
+  best run on validation; then every subset of the family winners (11 subsets
+  for 4 families) is scored on validation. A search over all v3 runs (2,036
+  subsets) would favour runs that are lucky on validation.
 - **Reported prediction of a neural model:** the mean of its 5 seeds; the mean
   ± sd of the single-seed scores is reported next to it.
 - **Refit on train + validation (secondary):** after selection, the chosen

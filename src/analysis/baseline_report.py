@@ -25,10 +25,12 @@ SIM = [("naive_climatology", "Climatology (floor)"),
        ("pastas_seasonal_canal", "Pastas (seasonal + canal)"),
        ("pastas_wellmodel", "Pastas WellModel (distance-scaled pumping)"),
        ("lgbm_sim", "LightGBM"), ("lgbm_tuned", "LightGBM tuned (Optuna)"),
+       ("lgbm_noclim_tuned", "LightGBM tuned, without the own-climatology input"),
        ("lstm", "LSTM (5 seeds)"), ("lstm_tuned", "LSTM tuned (Optuna, 5 seeds)"),
        ("ealstm_tuned", "EA-LSTM tuned (Optuna, 5 seeds)"),
        ("stgnn_distance", "Distance-graph ST-GNN (5 seeds)"),
        ("stgnn_tuned", "Distance-graph ST-GNN tuned (5 seeds)"),
+       ("taccari", "Taccari-graph ST-GNN (5 seeds)"),
        ("taccari_tuned", "Taccari-graph ST-GNN tuned (5 seeds)"),
        ("ensemble_sim", "Ensemble (members chosen on validation)")]
 FC = [("naive_persistence", "Persistence"), ("naive_anomaly_persist", "Anomaly persistence (floor)"),
@@ -36,6 +38,13 @@ FC = [("naive_persistence", "Persistence"), ("naive_anomaly_persist", "Anomaly p
       ("chronos2_xl", "Chronos-2 zero-shot, cross-learning"),
       ("chronos2_ft", "Chronos-2 fine-tuned")]
 REFERENCE = "pastas_seasonal_canal"   # hydrology reference for the significance table
+# RQ1 regimes (docs/analysis_plan.md section 4) of the tuned models: run-name suffixes
+REGIME_MODELS = [("lgbm_noclim", "LightGBM (no own-climatology input)"), ("lstm", "LSTM"),
+                 ("ealstm", "EA-LSTM"),
+                 ("stgnn", "Distance-graph ST-GNN"), ("taccari", "Taccari-graph ST-GNN")]
+REGIMES = [("", "R1 all wells, full training"), ("_lwo", "R2 unseen wells (5 folds)"),
+           ("_f50", "R3 50 % of the training period"), ("_f25", "R3 25 % of the training period"),
+           ("_refit", "refit on train + validation")]
 GROUPS = ["Pliocene multilayer", "recent alluvium", "ancient alluvium", "Corbières karst", "other"]
 # validated categorical palette (dataviz skill), fixed order
 SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"]
@@ -116,6 +125,23 @@ def group_table():
     t.columns = [f"{c} ({counts[c]:.0f})" if c in counts and not np.isnan(counts[c]) else c
                  for c in t.columns]
     return t
+
+
+def regimes_table():
+    """Drought and recovery scores of every tuned model under each RQ1 regime."""
+    rows = []
+    for m, label in REGIME_MODELS:
+        for suffix, regime in REGIMES:
+            s = summary(f"{m}_tuned{suffix}")
+            if s is None:
+                continue
+            rows.append({"model": label, "regime": regime,
+                         "NSE drought": pick(s, "simulation", 0, "test_drought"),
+                         "skill drought": pick(s, "simulation", 0, "test_drought", "skill"),
+                         "NSE recovery": pick(s, "simulation", 0, "test_recovery"),
+                         "skill recovery": pick(s, "simulation", 0, "test_recovery", "skill"),
+                         "wells": pick(s, "simulation", 0, "test_drought", "n_wells")})
+    return pd.DataFrame(rows)
 
 
 def significance_table():
@@ -251,6 +277,7 @@ def main():
     t = main_table()
     g = group_table()
     sig = significance_table()
+    reg = regimes_table()
     cmp_ = compare_versions()
     sig_cols = ["model", "period", "metric", "n_wells", "median_a", "median_b", "median_diff",
                 "ci_lo", "ci_hi", "share_a_better", "p_wilcoxon", "p_holm"]
@@ -273,6 +300,11 @@ def main():
         "models of each period × metric.\n",
         (fmt(sig[sig_cols], signed=("median_diff", "ci_lo", "ci_hi")).to_markdown(index=False)
          if len(sig) else "(reference run missing)"), "",
+        "## RQ1 regimes of the tuned models\n",
+        "R2 scores held-out wells in the \"dynamics\" convention (each well's own training "
+        "mean and sd convert z to metres); R3 shortens the training period, validation and "
+        "test unchanged; refit = secondary rows (`docs/analysis_plan.md` sections 4–5).\n",
+        (fmt(reg).to_markdown(index=False) if len(reg) else "(no regime runs yet)"), "",
         "## Across dataset versions (drought phase)\n",
         fmt(cmp_).to_markdown(index=False), ""]
     md.write_text("\n".join(parts), encoding="utf-8")

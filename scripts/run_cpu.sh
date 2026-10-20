@@ -14,6 +14,8 @@ for s in $STEPS; do
     naive)      $PY -m src.models.naive ;;
     lgbm)       $PY -m src.models.lgbm ;;
     lgbm_tuned) $PY -m src.models.lgbm --tune 24 ;;          # Optuna study is resumable
+    lgbm_noclim)  $PY -m src.models.lgbm --tune 24 --no-clim ;;   # networks' inputs (no clim_z)
+    lgbm_regimes) $PY -m src.models.lgbm --no-clim --regimes lwo f25 f50 ;;   # RQ1, resumable
     pastas)     $PY -m src.models.pastas_baseline --variant pastas pastas_seasonal_canal ;;
     wellmodel)  $PY -m src.models.pastas_baseline --variant pastas_wellmodel ;;   # ~2-6 min/well
     *)          echo "unknown step $s" ;;

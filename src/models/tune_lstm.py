@@ -45,7 +45,7 @@ def main():
             hidden = trial.suggest_categorical("hidden", [64, 128])
             dropout = trial.suggest_float("dropout", 0.1, 0.4)
             lr = trial.suggest_float("lr", 3e-4, 3e-3, log=True)
-            _, best = lstm.train_seed(0, X, Z, split, core, mu, sd, head, args.epochs,
+            _, best, _ = lstm.train_seed(0, X, Z, split, core, mu, sd, head, args.epochs,
                                       patience=6, hidden=hidden, dropout=dropout, lr=lr)
             print(f"trial {trial.number}: {trial.params} -> validation median NSE {best:.3f}",
                   flush=True)

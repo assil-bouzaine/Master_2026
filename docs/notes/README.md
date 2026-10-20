@@ -23,6 +23,7 @@ the PFE report (the "Méthodologie" and "Données" chapters).
 | 8 | Phase 1: climate, rivers, weekly pumping, dataset v1 | done | [step08_dataset.md](step08_dataset.md) |
 | 9 | Phase 2: baselines on v1 | done | [step09_baselines.md](step09_baselines.md) |
 | 10 | Baselines v2: more data, tuning, ensemble, ablation | done | [step10_baselines_v2.md](step10_baselines_v2.md) |
+| 12a | Fixes from the critical review: evaluation, analysis plan, dataset v3, new baselines, knowledge-graph pre-check | in progress | [step12a_fixes.md](step12a_fixes.md) |
 
 Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 

@@ -97,6 +97,43 @@ labels of the wells (e.g. which entity each well belongs to), rebuilds every pai
 attribute and refits; the p-value is the share of permutations with an effect at least
 as large.
 
+## 5. Where we stopped (2026-10-20, ~10:35) and how to resume
+
+**Results so far on v3 (laptop):** naive floors; LightGBM default (validation 0.51,
+drought NSE −0.28, drought skill 0.39) and LightGBM tuned (validation 0.43, drought
+−0.36, skill 0.40). Pastas variants were running when the PC was shut down (they
+resume per well).
+
+**Finding: single-seed tuning picks lucky seeds.** The best of the 24 LightGBM trials
+scored 0.573 on validation with seed 0, but the same configuration averaged over 5
+seeds scored only 0.431, below the untuned default (0.509). Each Optuna trial uses one
+seed, so the maximum over 24 trials favours a configuration that was lucky once (the
+"winner's curse"). **Fix before the GPU sweep:** in `src/models/tune.py` and
+`lgbm.tune()`, re-evaluate the 3 best trials with 2 more seeds (validation only) and
+keep the best 3-seed mean; record it in `docs/analysis_plan.md` §5 (same rule for every
+model, so the budget stays equal).
+
+**Smoke tests (1 seed, 1 epoch, results in a scratch folder):** passed for LSTM,
+EA-LSTM, leave-wells-out fold, refit, 25 % data, distance ST-GNN, Taccari, the tuner
+(EA-LSTM; Taccari through a fixed small trial) and the regimes driver (5 LSTM folds
+assembled and scored). Not finished: Chronos-2 `--mode xl` and `--mode ft` (they will
+run first on the GPU; check the log).
+
+**Resume checklist (next session):**
+1. Restart the laptop chain (resumable): `nohup bash scripts/run_cpu.sh > results/v3/cpu_runs2.log 2>&1 &`
+   with `STEPS="lgbm_tuned pastas wellmodel"` after the tuner fix of item 2.
+2. Implement the top-3 × 3-seed re-selection (above), rerun `lgbm --tune 24` (the
+   Optuna study is cached; only the selection and the final seeds rerun).
+3. Assil: `! camber login` (OAuth in the browser; the CLI token expired on 2026-10-20).
+4. `PFE_DATASET=v3 .venv/bin/python scripts/make_gpu_bundle.py`, upload with
+   `camber stash cp gpu_bundle.zip stash://assil0723/pfe_v3/`, start the GPU node in the
+   web app (Chrome), run `scripts/run_gpu.sh` (v3 section of `docs/gpu_howto.md`),
+   **stop the node** at the end.
+5. Bring the runs back, `python -m src.models.ensemble`, `python -m
+   src.analysis.baseline_report`, update this note, `docs/results_baselines.md`, the Gate
+   2 addendum.
+6. Then Phase 3 (the knowledge-graph pre-check is done: `docs/kg_precheck.md`).
+
 ## What to consider
 
 - The WellModel is slow (minutes per well) and, on a first test, fitted Millas worse

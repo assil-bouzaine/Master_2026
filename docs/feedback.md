@@ -986,16 +986,13 @@ nothing.
 ## Appendix A: how the numbers in this review were produced
 
 All numbers come from the saved files of dataset v2 and `results/v2/`. The
-only exception is the one-off BNPE 2024 pull. The scripts are in this
-session's scratch folder, which is temporary, so ask me to move them into
-`src/analysis/diagnostics.py` if you want to keep them:
+only exception is the one-off BNPE 2024 pull. The scripts are kept in
+`notebooks/review_2026-10-20/` (exploration only; what matters has moved into
+`src/`):
 
-- `/tmp/claude-1000/-home-mclovin-Projects-Master-2026/5c1502e3-ccf7-4ed4-a349-57f50e9eeb3f/scratchpad/diag.py`:
-  sub-period NSE, error decomposition, out-of-range share, KGE datum check
-- `/tmp/claude-1000/-home-mclovin-Projects-Master-2026/5c1502e3-ccf7-4ed4-a349-57f50e9eeb3f/scratchpad/diag2.py`:
-  plain pumping by year, pumping–deficit correlation
-- `/tmp/claude-1000/-home-mclovin-Projects-Master-2026/5c1502e3-ccf7-4ed4-a349-57f50e9eeb3f/scratchpad/bnpe2024.py`:
-  BNPE 2024 vs 2019–2023 (Hub'Eau `prelevements/chroniques`,
+- `diag.py`: sub-period NSE, error decomposition, out-of-range share, KGE datum check
+- `diag2.py`: plain pumping by year, pumping–deficit correlation
+- `bnpe2024.py`: BNPE 2024 vs 2019–2023 (Hub'Eau `prelevements/chroniques`,
   `code_departement=66&annee=2024&size=2000`, 1,846 rows, 2026-10-20)
 - Inline computations: skill relative to climatology; bias by year and
   season; Pastas parameters; the knowledge-graph pre-check (anomaly

@@ -1,6 +1,8 @@
 """LightGBM baseline: one global gradient-boosted tree model for all wells.
 
     python -m src.models.lgbm                 # select config on validation, then 5 seeds
+    python -m src.models.lgbm --tune 24       # Optuna, same budget as the neural models
+                                              # (docs/analysis_plan.md section 5) -> lgbm_tuned
 
 Configurations (chosen on the VALIDATION median NSE only, never on test):
     base     num_leaves 31, min_data_in_leaf 40
@@ -32,6 +34,7 @@ no observed head is used. Forecast h: inputs taken at the issue week t-h,
 plus the head anomaly observed at t-h (src.models.features.lagged_panel).
 """
 import argparse
+import json
 
 import lightgbm as lgb
 import numpy as np
@@ -88,6 +91,46 @@ def val_nse(D, z):
     return float(np.median(r))
 
 
+def tune(D, cols, n_trials, out):
+    """Optuna TPE (seed 2026) over 4 hyperparameters + the target, scored by the median
+    validation NSE over core wells; then the best configuration with 5 seeds."""
+    import optuna
+
+    out.mkdir(parents=True, exist_ok=True)
+    study = optuna.create_study(direction="maximize", study_name="lgbm",
+                                storage=f"sqlite:///{out / 'study.db'}", load_if_exists=True,
+                                sampler=optuna.samplers.TPESampler(seed=2026))
+
+    def objective(trial):
+        params = dict(BASE, num_leaves=trial.suggest_int("num_leaves", 7, 63, log=True),
+                      min_data_in_leaf=trial.suggest_int("min_data_in_leaf", 20, 400, log=True),
+                      feature_fraction=trial.suggest_float("feature_fraction", 0.3, 0.9),
+                      lambda_l2=trial.suggest_float("lambda_l2", 0.1, 30.0, log=True))
+        target = trial.suggest_categorical("target", list(SIM_TARGETS))
+        z, _ = fit_predict(D, cols, 0, params, target)
+        return val_nse(D, z)
+
+    done = len([t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE])
+    study.optimize(objective, n_trials=max(0, n_trials - done))
+    b = study.best_trial.params
+    print(f"    best trial {study.best_trial.number}: {b} validation {study.best_value:.3f}",
+          flush=True)
+    params = dict(BASE, **{k: v for k, v in b.items() if k != "target"})
+    (out / "best.json").write_text(json.dumps({"params": b, "validation_median_nse":
+                                               study.best_value, "n_trials": len(study.trials)},
+                                              indent=1))
+    preds = []
+    for s in SEEDS:
+        z, _ = fit_predict(D, cols, s, params, b["target"])
+        preds.append(z)
+    Z = np.vstack(preds)
+    o = D[["code_bss", "week"]].copy()
+    o["pred"] = D["mu"].values + D["sd"].values * Z.mean(axis=0)
+    o["pred_seed_sd"] = D["sd"].values * Z.std(axis=0)
+    o["task"], o["horizon"] = "simulation", 0
+    return o.dropna(subset=["pred"])
+
+
 def run(task, h, D, cols, run_id, seeds=SEEDS):
     targets = SIM_TARGETS if task == "simulation" else ("resid",)
     best = None
@@ -120,10 +163,19 @@ def run(task, h, D, cols, run_id, seeds=SEEDS):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--refresh-panel", action="store_true")
+    ap.add_argument("--tune", type=int, default=0, help="Optuna trials (simulation task)")
     args = ap.parse_args()
     P = build_panel(refresh=args.refresh_panel)
     P = P[P["mu"].notna()]  # wells with training data
     P["resid"] = np.nan
+    if args.tune:
+        out = RESULTS / "lgbm_tuned"
+        pred = tune(P, [c for c in input_columns(P) if c != "resid"], args.tune, out)
+        pred.to_parquet(out / "predictions.parquet", index=False)
+        s = evaluate_run("lgbm_tuned")
+        c = s[(s["group"] == "all core") & (s["variant"] == "all")]
+        print(c[["split", "n_wells", "NSE", "skill", "KGE", "RMSE"]].round(3).to_string(index=False))
+        return
     jobs = {"lgbm_sim": [("simulation", 0, P, [c for c in input_columns(P) if c != "resid"])]}
     jobs["lgbm_fc"] = []
     for h in (4, 12):

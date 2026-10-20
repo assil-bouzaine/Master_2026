@@ -297,9 +297,23 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
   - **New baselines code:** LightGBM `--tune`, EA-LSTM, `tune.py` (equal budget),
     `regimes.py` (leave-wells-out, 25/50 %, refit), `taccari.py` (Taccari graph),
     Pastas WellModel, Chronos-2 cross-learning / fine-tuning.
-  - **Next:** GPU sweep on Camber (`scripts/run_gpu.sh`, v3 section of
-    `docs/gpu_howto.md`), then the report, then the knowledge-graph pre-check, then
-    Phase 3. Design decisions still open: `docs/feedback.md` §11.
+  - **Knowledge-graph pre-check done** (`docs/kg_precheck.md`): same BD LISA entity +
+    within 5 km and similar screen depth explain co-variation beyond distance (QAP
+    p = 0.048 and 0.002); the 3-NN distance graph crosses entities in 53 % of edges.
+  - **Stopped 2026-10-20 ~10:35 (PC shut down).** Laptop: naive, LightGBM default and
+    tuned on v3 done; Pastas variants were running (resume per well). Smoke tests of all
+    new GPU code passed except Chronos-2 `xl`/`ft` (not finished).
+  - **Found at the end:** single-seed Optuna trials pick lucky seeds (LightGBM: best
+    trial 0.573 on validation, same config over 5 seeds 0.431 < default 0.509).
+  - **RESUME HERE — checklist in `docs/notes/step12a_fixes.md` §5:**
+    1. fix the tuner (re-evaluate the top 3 trials with 2 more seeds, keep the best
+       3-seed mean; `tune.py` + `lgbm.tune()`; note it in `docs/analysis_plan.md` §5)
+    2. restart the laptop runs: `STEPS="lgbm_tuned pastas wellmodel" nohup bash scripts/run_cpu.sh > results/v3/cpu_runs2.log 2>&1 &`
+    3. Assil runs `! camber login` (OAuth; never click the consent for him)
+    4. bundle + upload + GPU sweep on Camber via Chrome (`docs/gpu_howto.md`, v3
+       section), **stop the node** when done
+    5. ensemble, `baseline_report`, notes, Gate 2 addendum; then Phase 3.
+    Design decisions still open: `docs/feedback.md` §11.
 
 - **Data:** all layers are built.
   - piezometers, RPG, BNPE, BD LISA, SAFRAN climate, rivers

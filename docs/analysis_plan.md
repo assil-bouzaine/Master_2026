@@ -99,6 +99,14 @@ rule was fixed; its numbers are superseded by `docs/results_baselines.md`.
   best run on validation; then every subset of the family winners (11 subsets
   for 4 families) is scored on validation. A search over all v3 runs (2,036
   subsets) would favour runs that are lucky on validation.
+- **LightGBM inputs (decided 2026-10-20 by Assil, before the v3 ensemble and
+  report):** the LightGBM baseline is the tuned run **without** each well's own
+  training climatology as input (`lgbm_noclim_tuned`), so it gets the same
+  information as the networks; that input would also leak into the
+  unseen-wells regime. The runs with it (`lgbm_sim`, `lgbm_tuned`) are reported
+  as sensitivity rows and are not ensemble candidates. On v3 the like-for-like
+  run is also the better one on every split (validation 0.56 vs 0.51, drought
+  NSE −0.12 vs −0.18).
 - **Reported prediction of a neural model:** the mean of its 5 seeds; the mean
   ± sd of the single-seed scores is reported next to it.
 - **Refit on train + validation (secondary):** after selection, the chosen

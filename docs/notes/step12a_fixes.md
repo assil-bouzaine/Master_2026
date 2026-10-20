@@ -136,7 +136,8 @@ run it first on any new GPU.
   3-seed mean of 0.528; trial 17 (3-seed 0.541) was kept.
 - **Dropping `clim_z` did not cost skill; it improved every split.** So the like-for-like
   LightGBM (no own-climatology input) can be the LightGBM baseline with no loss; the `clim_z`
-  version stays as a sensitivity row. Decision still for Assil and the supervisor.
+  version stays as a sensitivity row. **Decided (Assil, 19:40):** `lgbm_noclim_tuned` is the
+  LightGBM row and the only LightGBM ensemble candidate (`docs/analysis_plan.md` §5).
 - The WellModel (pumping wells as separate stresses) is no better than the summed 3 km
   stress of `pastas_seasonal_canal` (drought −0.68 vs −0.73). Reported either way.
 
@@ -148,7 +149,10 @@ again: `! camber update`, then `! camber login`).
 1. CLI login, then bring back `stgnn_tuned_{lwo,f25,f50,refit}`, `ealstm_tuning` and
    `run_v3.log` (`camber stash cp -r stash://assil0723/pfe_v3_run/results_gpu/v3/<run>
    results/v3/<run>`), rescore with `src.models.evaluate`.
-2. Assil chooses where the remaining GPU runs go (Kaggle, Colab, or Camber after 13 Nov).
+2. **Decided (Assil, 19:40): Kaggle.** Assil makes a phone-verified Kaggle account and runs
+   `! .venv/bin/kaggle auth login`; then `.venv/bin/python scripts/kaggle_gpu.py push`
+   (EA-LSTM tuning from trial 0 + regimes + Taccari default on one T4, Taccari tuning +
+   regimes on the other), `status` / `log`, `pull` (docs/gpu_howto.md, Kaggle section).
 3. `python -m src.models.ensemble`, `python -m src.analysis.baseline_report` with what
    exists (EA-LSTM and Taccari marked pending), this note, `docs/results_baselines.md`,
    the Gate 2 addendum.

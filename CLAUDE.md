@@ -308,8 +308,10 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
   - **2026-10-20 ~19:30 — RESUME FROM `docs/notes/step12a_fixes.md` §5c.** The Camber GPU
     allowance is used up until 2026-11-13 (node stopped by the platform during EA-LSTM
     tuning, 19/24 trials saved). Laptop chain done (LightGBM without `clim_z` is better on
-    every split; WellModel ≈ Pastas). Waiting for Assil: `! camber login` (CLI token still
-    invalid) and the choice of GPU for EA-LSTM + Taccari (Kaggle, Colab or wait).
+    every split; WellModel ≈ Pastas). Assil chose **Kaggle** for EA-LSTM + Taccari
+    (`scripts/kaggle_gpu.py`, `docs/gpu_howto.md` Kaggle section) and the LightGBM row
+    without `clim_z`. Waiting for Assil: Kaggle account + `! .venv/bin/kaggle auth login`,
+    and `! camber login` (to bring back the distance ST-GNN regimes from the Stash).
   - 2026-10-20 ~13:20 — older state in `docs/notes/step12a_fixes.md` §5b (then:
     GPU sweep running on the Camber node in `~/pfe_v3_run` with an auto-stop watcher;
     Taccari speed-up `b3a8b74` must be uploaded before its step; laptop chain running;

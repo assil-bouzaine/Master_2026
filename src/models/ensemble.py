@@ -19,7 +19,8 @@ import pandas as pd
 from src.models.evaluate import RESULTS, evaluate_run, score
 
 FAMILIES = {"Pastas": ["pastas_seasonal_canal", "pastas_wellmodel"],
-            "LightGBM": ["lgbm_sim", "lgbm_tuned", "lgbm_noclim_tuned"],
+            # without its own-climatology input, like the networks (decision 2026-10-20)
+            "LightGBM": ["lgbm_noclim_tuned"],
             "recurrent": ["lstm", "lstm_tuned", "ealstm_tuned"],
             "graph": ["stgnn_distance", "stgnn_tuned", "taccari", "taccari_tuned"]}
 

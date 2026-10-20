@@ -18,7 +18,8 @@ if [ ! -x "$VENV/bin/python" ]; then
   python3 -m venv --system-site-packages "$VENV"
 fi
 # (re)install the pins every start: fast when already satisfied, repairs a broken venv
-{
+# (SKIP_PIP=1: the venv is known to be ready, e.g. two sweeps started in parallel)
+[ -n "${SKIP_PIP:-}" ] || {
   EXCL='^(torch|nvidia-|triton)'
   # if the system torch was built for numpy 1.x, keep the system numpy
   if python3 -c "import numpy, sys; sys.exit(0 if numpy.__version__.startswith('1.') else 1)"; then
@@ -60,6 +61,7 @@ STEPS=${STEPS:-"lstm stgnn taccari chronos2 chronos2_xl chronos2_ft tune:lstm tu
 for s in $STEPS; do
   echo "== $(date -u) step $s"
   case $s in
+    setup)       ;;                                           # venv and pins only
     stgnn)       $PY -m src.models.stgnn ;;                   # distance-graph ST-GNN, 5 seeds
     taccari)     $PY -m src.models.taccari ;;                 # Taccari-graph ST-GNN, 5 seeds
     lstm)        $PY -m src.models.lstm ;;                    # default LSTM, 5 seeds

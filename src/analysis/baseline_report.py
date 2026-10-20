@@ -24,8 +24,11 @@ from src.models.evaluate import DS, RESULTS, score
 SIM = [("naive_climatology", "Climatology (floor)"),
        ("pastas_seasonal_canal", "Pastas (seasonal + canal)"),
        ("pastas_wellmodel", "Pastas WellModel (distance-scaled pumping)"),
-       ("lgbm_sim", "LightGBM"), ("lgbm_tuned", "LightGBM tuned (Optuna)"),
-       ("lgbm_noclim_tuned", "LightGBM tuned, without the own-climatology input"),
+       ("lgbm_noclim_tuned", "LightGBM tuned (Optuna)"),
+       # with each well's own training climatology as input (clim_z): sensitivity rows only,
+       # the networks never get it (decision 2026-10-20, docs/notes/step12a_fixes.md 5c)
+       ("lgbm_sim", "LightGBM + own-climatology input (sensitivity)"),
+       ("lgbm_tuned", "LightGBM tuned + own-climatology input (sensitivity)"),
        ("lstm", "LSTM (5 seeds)"), ("lstm_tuned", "LSTM tuned (Optuna, 5 seeds)"),
        ("ealstm_tuned", "EA-LSTM tuned (Optuna, 5 seeds)"),
        ("stgnn_distance", "Distance-graph ST-GNN (5 seeds)"),
@@ -39,7 +42,7 @@ FC = [("naive_persistence", "Persistence"), ("naive_anomaly_persist", "Anomaly p
       ("chronos2_ft", "Chronos-2 fine-tuned")]
 REFERENCE = "pastas_seasonal_canal"   # hydrology reference for the significance table
 # RQ1 regimes (docs/analysis_plan.md section 4) of the tuned models: run-name suffixes
-REGIME_MODELS = [("lgbm_noclim", "LightGBM (no own-climatology input)"), ("lstm", "LSTM"),
+REGIME_MODELS = [("lgbm_noclim", "LightGBM"), ("lstm", "LSTM"),
                  ("ealstm", "EA-LSTM"),
                  ("stgnn", "Distance-graph ST-GNN"), ("taccari", "Taccari-graph ST-GNN")]
 REGIMES = [("", "R1 all wells, full training"), ("_lwo", "R2 unseen wells (5 folds)"),
@@ -236,7 +239,8 @@ def plot_hydrographs():
     heads = pd.read_parquet(DS / "heads_weekly.parquet")
     wells = pd.read_parquet(DS / "wells.parquet").set_index("code_bss")
     picks = ["10975X0032/SABIRO", "10906X0039/C2-1", "10912X0134/BARQUA"]
-    cand = ("pastas_seasonal_canal", "lgbm_sim", "lstm_tuned", "stgnn_distance", "ensemble_sim")
+    cand = ("pastas_seasonal_canal", "lgbm_noclim_tuned", "lstm_tuned", "stgnn_distance",
+            "ensemble_sim")
     runs = [r for r in cand if (RESULTS / r / "predictions.parquet").exists()][:5]
     labels = dict(SIM)
     preds = {r: pd.read_parquet(RESULTS / r / "predictions.parquet") for r in runs}

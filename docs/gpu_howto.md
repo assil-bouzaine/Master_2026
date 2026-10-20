@@ -220,3 +220,37 @@ comes last.
 - EA-LSTM now runs with the fused LSTM kernel (cuDNN; commit `e09a482`, exact, 9–12× on
   CPU). Run `python -m tests.test_ealstm` first on any new GPU: it checks the cuDNN path
   against the explicit loop and times both.
+
+## Kaggle (from 2026-10-20, after the Camber allowance ran out)
+
+Kaggle gives a weekly GPU quota (`kaggle_gpu.py quota` shows it) and runs a pushed kernel
+**in the background**: the laptop can be off, which matters with its dead battery. Sessions
+stop at 12 h, so the runner stops cleanly after 11 h and a new push resumes.
+
+**Once (Assil):** a Kaggle account, phone-verified (Settings → Phone verification; needed
+for GPU and internet), then in the Claude Code prompt `! .venv/bin/kaggle auth login`
+(browser login, no key file to handle). CLI: `kaggle` 2.2.4 in `.venv` (a tool, not in
+`requirements.txt`).
+
+```bash
+.venv/bin/python scripts/kaggle_gpu.py push      # bundle -> private dataset, kernel starts
+.venv/bin/python scripts/kaggle_gpu.py status    # queued / running / complete / error
+.venv/bin/python scripts/kaggle_gpu.py log       # execution log of the latest run
+.venv/bin/python scripts/kaggle_gpu.py pull      # finished runs -> results/v3/<run>, rescored
+.venv/bin/python scripts/kaggle_gpu.py push      # again, if the log says "push again"
+```
+
+- `push --steps "a b | c d"`: chains separated by `|` run in parallel, one GPU each (the T4
+  machine has two T4s; quota counts session hours, not GPUs). Default: EA-LSTM tuning +
+  regimes + Taccari default on GPU 0, Taccari tuning + regimes on GPU 1.
+- The kernel (`scripts/kaggle_run.py`) first builds the venv with the pinned packages, then
+  runs `tests/test_ealstm.py` on the GPU; if the cuDNN path does not match the loop, the
+  EA-LSTM steps are dropped (check the log).
+- `pull` keeps the whole output in `results/v3/_kaggle/output`; the next `push` ships it
+  back as `state.zip`, so finished seeds, trials and folds are not recomputed.
+- **T4, not P100:** recent PyTorch CUDA builds no longer include kernels for Pascal GPUs
+  (P100), so the P100 may fail with the image's PyTorch.
+- Datasets are created with `-t` (`--keep-tabular`): by default Kaggle converts uploaded
+  tables to CSV.
+- The EA-LSTM tuning restarts from trial 0 on Kaggle (the 19 Camber trials ran the older
+  loop on another GPU): all 24 trials then share one implementation and one GPU type.

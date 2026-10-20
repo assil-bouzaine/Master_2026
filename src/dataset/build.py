@@ -56,6 +56,7 @@ from src.analysis.bdlisa_profile import group_of
 from src.analysis.bnpe_profile import load as load_bnpe
 from src.analysis.piezo_profile import PLAIN_BBOX
 from src.config import CRS_L93, CRS_WGS84, DATASET, DATASET_DIR, INTERIM, RAW
+from src.dataset.bnpe_v3 import harmonise, restricted_years
 from src.ingest.hubeau_piezo import CHRON, safe_name
 
 OUT = DATASET_DIR
@@ -70,6 +71,15 @@ VERSIONS = {
             "all_stations": False, "pump_scope": "plain", "backfill": True},
     "v2b": {"forcing_start": "2005-01-01", "model_start": "2012-01-01",   # more wells only
             "all_stations": True, "pump_scope": "dept", "backfill": False},
+    # v3 (step 12a, docs/notes/step12a_dataset_v3.md): v2 + BNPE snapshot of 2026-10-20 (real
+    # 2024), the documented BNPE rules of src/dataset/bnpe_v3.py (missing usage codes, 2018
+    # reporting break, consolidation lag, unpublished years decided by the surface-water
+    # drought orders), irrigation weights summing to 1 in every complete year (no scaling of
+    # imputed totals by the climatic deficit), artesian share on the training period only,
+    # surface-water restriction levels stored for analysis (not a model input).
+    "v3": {"forcing_start": "2000-01-01", "model_start": "2005-01-01",
+           "all_stations": True, "pump_scope": "dept", "backfill": True,
+           "bnpe_snapshot": "2026-10-20", "bnpe_rules": "v3", "artesian_train_only": True},
 }
 CFG = VERSIONS[DATASET]
 FORCING_START = CFG["forcing_start"]
@@ -105,7 +115,20 @@ def build_wells():
                 on="code_bss", how="left")
     t["group"] = t["code_bdlisa"].map(group_of)
     t["core"] = t["working_set"]
+    if CFG.get("artesian_train_only"):  # v1/v2: share over the whole record (test included)
+        t["pct_days_artesian"] = t["code_bss"].map(artesian_share_train)
     return t
+
+
+def artesian_share_train(code):
+    """% of days with the head above ground (depth < 0), training period only."""
+    f = CHRON / f"{safe_name(code)}.parquet"
+    if not f.exists():
+        return np.nan
+    df = pd.read_parquet(f, columns=["date_mesure", "profondeur_nappe"])
+    df["date_mesure"] = pd.to_datetime(df["date_mesure"])
+    df = df[df["date_mesure"].between(MODEL_START, TRAIN_END)].dropna(subset=["profondeur_nappe"])
+    return round(100 * (df["profondeur_nappe"] < 0).mean(), 1) if len(df) else np.nan
 
 
 def weekly_heads(code):
@@ -200,23 +223,27 @@ def build_rivers():
 
 # ------------------------------------------------------------------ pumping
 def build_pumping(forcing):
-    d = load_bnpe()
+    d = load_bnpe(CFG.get("bnpe_snapshot"))
     lon0, lat0, lon1, lat1 = PLAIN_BBOX
     m = PLAIN_MARGIN_DEG
     if CFG["pump_scope"] == "plain":
         d = d[d["longitude"].between(lon0 - m, lon1 + m) & d["latitude"].between(lat0 - m, lat1 + m)]
-    d = d[~d["usage"].str.startswith("hydropower")]
+    if CFG.get("bnpe_rules") != "v3":  # v3 first restores missing usage codes (bnpe_v3 rule 1)
+        d = d[~d["usage"].str.startswith("hydropower")]
     pts = (d.groupby("code_ouvrage")
              .agg(nom_ouvrage=("nom_ouvrage", "first"), longitude=("longitude", "first"),
                   latitude=("latitude", "first"), source=("source", "first"))
              .reset_index())
-    bnpe_pts = pd.read_parquet(RAW / "hubeau_bnpe" / "points_prelevement_66.parquet")
+    bnpe_pts = pd.read_parquet(RAW / "hubeau_bnpe" / CFG.get("bnpe_snapshot", "")
+                               / "points_prelevement_66.parquet")
     pts = pts.merge(bnpe_pts.groupby("code_ouvrage")["code_bss_point_eau"].first(),
                     on="code_ouvrage", how="left")
     gp = gpd.GeoDataFrame(pts, geometry=gpd.points_from_xy(pts["longitude"], pts["latitude"]),
                           crs=CRS_WGS84)
     pts["cell_id"] = nearest_cell(gp)["cell_id"].values
 
+    if CFG.get("bnpe_rules") == "v3":
+        return build_pumping_v3(d, pts, forcing)
     annual = d.groupby(["code_ouvrage", "usage", "annee"])["volume"].sum().reset_index()
     last = int(annual["annee"].max())
     end_year = date.today().year
@@ -259,6 +286,62 @@ def build_pumping(forcing):
     out["volume_m3"] = out["volume"] * np.where(seasonal, out["w_irr"], out["w_flat"])
     out = out[["code_ouvrage", "usage", "week", "volume_m3", "imputed"]]
     return pts, out, last
+
+
+def build_pumping_v3(d, pts, forcing):
+    """BNPE rules of src/dataset/bnpe_v3.py; weekly spread with weights summing to 1."""
+    lon0, lat0, lon1, lat1 = PLAIN_BBOX
+    m = PLAIN_MARGIN_DEG
+    plain = pts["longitude"].between(lon0 - m, lon1 + m) & pts["latitude"].between(lat0 - m, lat1 + m)
+    pts["zone"] = np.where(plain, "plain", "outside")
+    end_year = int(forcing["week"].max().year)
+    annual, log = harmonise(d, restricted_years(), int(MODEL_START[:4]) - 2, end_year,
+                            pts.set_index("code_ouvrage")["zone"])
+    for line in log:
+        print("  bnpe", line)
+    last = int(d["annee"].max())
+    pts = pts[pts["code_ouvrage"].isin(annual["code_ouvrage"])].reset_index(drop=True)
+
+    f = forcing[["cell_id", "week", "ETP", "rain"]].copy()
+    f["year"] = f["week"].dt.year
+    f["deficit"] = (f["ETP"] - f["rain"]).clip(lower=0)
+    f.loc[~f["week"].dt.month.between(4, 10), "deficit"] = 0.0
+    # complete years: irrigation weights sum to 1 (the annual total is kept as declared or
+    # imputed); the current, partial year: denominator = deficit observed so far + the mean
+    # deficit of the weeks still to come, so the annual total is neither squeezed into the
+    # weeks available nor scaled by the year's demand
+    last_week = f["week"].max()
+    partial = last_week.year if last_week < pd.Timestamp(last_week.year, 12, 24) else None
+    annual_def = f.groupby(["cell_id", "year"])["deficit"].transform("sum")
+    denom = annual_def.copy()
+    if partial is not None:
+        woy = f["week"].dt.isocalendar().week.astype(int)
+        later = (f["year"] < partial) & (woy > int(last_week.isocalendar().week))
+        to_come = f[later].groupby(["cell_id", "year"])["deficit"].sum().groupby("cell_id").mean()
+        cur = f["year"] == partial
+        denom[cur] = annual_def[cur] + f.loc[cur, "cell_id"].map(to_come).fillna(0)
+    f["w_irr"] = f["deficit"] / denom
+    f["w_flat"] = 7 / 365.25
+
+    a = annual.merge(pts[["code_ouvrage", "cell_id"]], on="code_ouvrage")
+    out = a.merge(f[["cell_id", "year", "week", "w_irr", "w_flat"]],
+                  left_on=["cell_id", "annee"], right_on=["cell_id", "year"])
+    seasonal = out["usage"].isin(["irrigation", "canals"])
+    out["volume_m3"] = out["volume"] * np.where(seasonal, out["w_irr"], out["w_flat"])
+    out = out[["code_ouvrage", "usage", "week", "volume_m3", "imputed", "imputation"]]
+    return pts, out, last
+
+
+def build_restrictions():
+    """Weekly max level (0-4) per SURFACE-water alert zone (VigiEau); analysis only."""
+    f = INTERIM / "vigieau_levels_daily_66.parquet"
+    if not f.exists():
+        return None
+    lv = pd.read_parquet(f)
+    lv = lv[lv["type"] == "SUP"]
+    w = (lv.set_index("day").groupby("zone")["level"].resample(WEEK).max().reset_index()
+         .rename(columns={"day": "week"}))
+    return w
 
 
 # --------------------------------------------------------------------- main
@@ -313,8 +396,11 @@ def main():
     rivers.to_parquet(OUT / "rivers_weekly.parquet", index=False)
     pts.to_parquet(OUT / "pumping_points.parquet", index=False)
     pumping.to_parquet(OUT / "pumping_weekly.parquet", index=False)
+    restr = build_restrictions() if CFG.get("bnpe_rules") == "v3" else None
+    if restr is not None:
+        restr.to_parquet(OUT / "restrictions_weekly.parquet", index=False)
     (OUT / "splits.json").write_text(json.dumps(splits, indent=1))
-    meta = {"version": "v1", "built": date.today().isoformat(),
+    meta = {"version": DATASET, "built": date.today().isoformat(), "config": CFG,
             "rows": {"wells": len(wells), "core_wells": int(wells["core"].sum()),
                      "heads_weekly": len(heads), "forcing_weekly": len(forcing),
                      "gauges": len(gauges), "rivers_weekly": len(rivers),

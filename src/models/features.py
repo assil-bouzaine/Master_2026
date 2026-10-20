@@ -14,15 +14,19 @@ Columns
                 remembers: 1 month to 2 years), climatic deficit, local
                 groundwater pumping (3 km), plain-wide canal volume, season
     static      altitude, screen depth, x, y, aquifer group code, artesian share
+    rivers      (dataset v3 on) log discharge of the Têt in the plain, the Agly, the Tech
+                and of the main-stem gauge nearest to the well, plus 13/52-week means
 For the forecast task, `lagged_panel(P, h)` shifts every input to the issue
 week t-h and adds the observed head anomaly known at t-h (operational setup:
 nothing after t-h is used except the calendar).
 """
 import json
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 
+from src.config import CRS_L93, CRS_WGS84, DATASET
 from src.dataset.load import FORCING_VARS, _pumping_near_wells
 from src.dataset.pumping import canal_series, seasonal_drinking_water
 from src.models.evaluate import DS, RESULTS
@@ -34,6 +38,13 @@ GROUP_CODE = {"recent alluvium": 0, "ancient alluvium": 1, "Pliocene multilayer"
 STATIC = ["altitude_station", "profondeur_investigation", "x", "y", "group_code",
           "pct_days_artesian"]
 CACHE = RESULTS / "_cache" / "panel.parquet"
+# River inputs from dataset v3 (v1/v2 panels stay as they were). Main-stem gauges with a
+# full 2005-2026 record (dataset gauges.parquet): the Têt in the plain at Perpignan
+# Pont-Joffre, the Agly at Estagel, the Tech at Argelès Pont d'Elne; plus Têt at Rodès and
+# Tech at Le Boulou as candidates for the nearest gauge.
+WITH_RIVERS = DATASET >= "v3"
+RIVERS = {"river_tet": "Y047403001", "river_agly": "Y066404001", "river_tech": "Y028406001"}
+NEAR_CANDIDATES = ["Y047403001", "Y046403001", "Y066404001", "Y027401001", "Y028406001"]
 
 
 def _split_labels(weeks, splits):
@@ -42,6 +53,30 @@ def _split_labels(weeks, splits):
         a, b = splits[name]
         lab[(weeks >= a) & (weeks <= b)] = name
     return lab
+
+
+def river_series(weeks, train_end):
+    """log(1 + weekly mean discharge) per candidate gauge; gaps <= 8 weeks interpolated,
+    longer ones filled with the gauge's training-period median for that week of year."""
+    r = pd.read_parquet(DS / "rivers_weekly.parquet")
+    out = {}
+    for code in set(NEAR_CANDIDATES) | set(RIVERS.values()):
+        s = np.log1p(r[r["code_station"] == code].set_index("week")["q_m3s"]).reindex(weeks)
+        s = s.interpolate(limit=8, limit_area="inside")
+        woy = pd.Series(weeks.isocalendar().week.clip(upper=52).to_numpy(), index=weeks)
+        clim = s[weeks <= train_end].groupby(woy[weeks <= train_end]).median()
+        out[code] = s.fillna(woy.map(clim))
+    return pd.DataFrame(out, index=weeks)
+
+
+def nearest_gauge(wells):
+    g = pd.read_parquet(DS / "gauges.parquet").set_index("code_station").loc[NEAR_CANDIDATES]
+    gx = gpd.GeoSeries(gpd.points_from_xy(g["longitude_station"], g["latitude_station"]),
+                       crs=CRS_WGS84).to_crs(CRS_L93)
+    wx = gpd.GeoSeries(gpd.points_from_xy(wells["x"], wells["y"]), crs=CRS_WGS84).to_crs(CRS_L93)
+    d = np.hypot(wx.x.to_numpy()[:, None] - gx.x.to_numpy()[None],
+                 wx.y.to_numpy()[:, None] - gx.y.to_numpy()[None])
+    return dict(zip(wells["code_bss"], np.array(NEAR_CANDIDATES)[d.argmin(axis=1)]))
 
 
 def build_panel(refresh=False):
@@ -71,9 +106,18 @@ def build_panel(refresh=False):
     gcols = [c for c in near.columns if c.startswith("pump_gr_")]
     canal = canal_series(pw, pts).reindex(weeks).fillna(0.0) / 1e6  # Mm3/week
 
+    if WITH_RIVERS:
+        riv = river_series(weeks, splits["train"][1])
+        near_of = nearest_gauge(wells)
     parts = []
     for _, w in wells.iterrows():
         g = cells[w["cell_id"]].copy()
+        if WITH_RIVERS:
+            for name, code in RIVERS.items():
+                g[name] = riv[code]
+            g["river_near"] = riv[near_of[w["code_bss"]]]
+            for k in (13, 52):
+                g[f"river_near_m{k}"] = g["river_near"].rolling(k, min_periods=1).mean()
         if w["code_bss"] in near.index.get_level_values(0):
             gw = near.loc[w["code_bss"]][gcols].sum(axis=1).reindex(weeks).fillna(0.0) / 1e3
         else:

@@ -193,3 +193,75 @@ Script: `python -m src.dataset.build` (2026-10-13) →
   - years after 2023 are imputed (mean 2020–2022, missing years count as
     zero, irrigation scaled by that year's deficit)
 - **Excluded:** 5 plain stations with no measurement at all.
+
+### BNPE snapshot of 2026-10-20 (Step 12a, dataset v3)
+
+| Date | Source | Endpoint / URL | Parameters | Output | Rows | Size |
+|---|---|---|---|---|---|---|
+| 2026-10-20 | Hub'Eau Prélèvements v1 (API 1.0.3) | `.../prelevements/referentiel/points_prelevement` | `code_departement=66`, `size=2000`, follow `next` | `raw/hubeau_bnpe/2026-10-20/points_prelevement_66.parquet` | 3,184 points (was 3,061) | 124 KB |
+| 2026-10-20 | Hub'Eau Prélèvements v1 | `.../prelevements/chroniques` | `code_departement=66`, `size=2000`, follow `next` | `raw/hubeau_bnpe/2026-10-20/chroniques_66.parquet` | 18,811 rows, 2012–**2024** (2024: 1,846 rows) | 258 KB |
+
+Script: `python -m src.ingest.hubeau_bnpe --snapshot 2026-10-20`. The 2026-10-05 files
+stay in the top folder for datasets v1/v2; a snapshot is never overwritten.
+
+Notes (checked before writing any rule; `src/dataset/bnpe_v3.py`):
+- **Revisions of 2012–2023 since 2026-10-05 are small**: 1.7 Mm³ of absolute change in
+  total for the plain.
+- **177 rows of 2024 have no usage code.** 163 of them are surface canal intakes
+  (121.7 Mm³ in the département), so 2024 canals looked "missing" until the usage was
+  restored from each ouvrage's other years. With it, the plain's canal intakes took
+  76.5 Mm³ in 2024 (2023: 47.3; 2022: 96.0).
+- **2023 canal drop is real**: the 28 intakes declared in both years took 0.54 × their
+  2022 volume; 11 intakes did not declare in 2023.
+- **2018 reporting break**: the 2017 → 2018 jump of groundwater irrigation is made
+  entirely of 708 boreholes that first declare in 2018/2019; older declarants decline
+  slowly.
+- 2024 is about 90 % complete for groundwater uses (declared both years: drinking water
+  174/191, irrigation 874/981).
+- A one-off check pull of 2024 (same endpoint, `annee=2024`, 1,846 rows) was made into a
+  scratch folder on the same day before the snapshot; it is superseded by the snapshot.
+
+### VigiEau drought restriction orders (Step 12a)
+
+| Date | Source | Endpoint / URL | Parameters | Output | Rows | Size |
+|---|---|---|---|---|---|---|
+| 2026-10-20 | data.gouv.fr "Donnée Sécheresse - VigiEau" (dataset `662a5e2cd71b24df5e9a0827`, Etalab 2.0) | resources "Arrêtés 2012" … "Arrêtés 2024" and "Arrêtés" (current) | none (national CSVs) | `raw/vigieau/arretes-<year>.csv`, `raw/vigieau/arretes.csv` | 78 orders for dept 66 (36 zone names, 438 surface / 329 groundwater zone rows) | 20 MB |
+
+Script: `python -m src.ingest.vigieau` (cached) writes
+`interim/vigieau_levels_daily_66.parquet`: day × alert zone, level 0–4 (0 none,
+1 vigilance, 2 alerte, 3 alerte renforcée, 4 crise), 194,652 rows, 2012-01-01 → 2026-10-20.
+When orders overlap, the one that starts last applies.
+
+Notes:
+- **Only surface-water zones may be used** (docs/analysis_plan.md §7). Groundwater
+  zones ("nappes Roussillon" sectors) are triggered by piezometers of the aquifers we
+  predict.
+- Têt surface-water zones at **crise**, April–September: **145 days in 2023, 183 days
+  (the whole season) in 2024**, 0 days in every other year 2012–2026. Used to classify
+  restricted years for the imputation of unpublished surface-water volumes.
+- Zone names and codes changed over the years (e.g. `76_66_7` "Têt aval" →
+  `76_66_0005`); grouping by name ("Têt") covers all versions.
+
+### Model-ready dataset v3 (Step 12a)
+
+Script: `PFE_DATASET=v3 python -m src.dataset.build` (2026-10-20) →
+`data/processed/dataset_v3/` (14 MB). Same wells (65, core 33), periods and folds as v2.
+
+| Change from v2 | Why |
+|---|---|
+| BNPE snapshot 2026-10-20 (real 2024) and the rules of `src/dataset/bnpe_v3.py` | 2024 was imputed in v2; missing usage codes, the 2018 break and the consolidation lag are now handled explicitly |
+| Rules 3–4 estimated per zone (plain / rest of the département) | mountain canals and the plain's Têt intakes are declared and restricted on different schedules |
+| Irrigation weights sum to 1 in every complete year; the partial current year uses the observed deficit + the mean deficit of the weeks still to come | v2 scaled imputed totals by the year's climatic deficit (2026 canals were inflated by ~30 %) |
+| `pct_days_artesian` from the training period only | v2 used the whole record: F3N4 went from 21.4 % to 0.8 %, its artesian days are in the 2026 recovery (leak through a static) |
+| `restrictions_weekly.parquet`: weekly max level per surface-water alert zone | for analysis and explanations; not a model input |
+| `pumping_points.zone` (plain / outside) | the canal input of the models is restricted to the plain (v2 took the whole département: 299 instead of 214 Mm³ in 2019) |
+
+Model inputs added at feature level from v3 (`src/models/features.py`): log discharge of
+the Têt at Perpignan, the Agly at Estagel, the Tech at Argelès and of the main-stem gauge
+nearest to each well (+ 13/52-week means). Gaps ≤ 8 weeks interpolated, longer ones
+filled with the gauge's training-period median for that week of year.
+
+Plain volumes after the rules (Mm³/yr): groundwater drinking water 40.2 (2022) → 37.9
+(2023) → 38.2 (2024); groundwater irrigation 15.8–19.7 in every year 2012–2026 (no 2018
+step); canal intakes 95.1 (2022) → 52.7 (2023) → 84.7 (2024) → 104.0 (2025–26, imputed
+as normal years).

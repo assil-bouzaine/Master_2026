@@ -1,11 +1,16 @@
 """Download BNPE water-abstraction points and annual volumes from Hub'Eau.
 
-    python -m src.ingest.hubeau_bnpe            # skip files already cached
-    python -m src.ingest.hubeau_bnpe --refresh
+    python -m src.ingest.hubeau_bnpe                         # skip files already cached
+    python -m src.ingest.hubeau_bnpe --snapshot 2026-10-20   # dated snapshot (dataset v3)
 
-Outputs (data/raw/hubeau_bnpe/):
+Outputs (data/raw/hubeau_bnpe/, or data/raw/hubeau_bnpe/<snapshot>/):
     points_prelevement_<dept>.parquet   abstraction points (one row per point)
     chroniques_<dept>.parquet           annual volumes (one row per ouvrage x year x usage)
+
+BNPE keeps growing (a new year is published about two years later, and recent
+years are revised), so each dataset version reads a dated snapshot: v1/v2 the
+pull of 2026-10-05 (top folder), v3 the snapshot of 2026-10-20. A snapshot is
+never overwritten, which keeps every dataset version reproducible.
 
 Volumes are reported per *ouvrage* (facility); the water source
 (code_type_milieu: CONT = surface, SOUT = groundwater) is an attribute of
@@ -52,14 +57,17 @@ def pull(session, endpoint, dept, dest, refresh):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--dept", default=DEPARTEMENT)
-    ap.add_argument("--refresh", action="store_true")
+    ap.add_argument("--refresh", action="store_true", help="re-download the top-folder files")
+    ap.add_argument("--snapshot", help="write to a dated sub-folder, e.g. 2026-10-20")
     args = ap.parse_args()
 
-    OUT.mkdir(parents=True, exist_ok=True)
+    out = OUT / args.snapshot if args.snapshot else OUT
+    out.mkdir(parents=True, exist_ok=True)
     s = make_session()
     pull(s, "referentiel/points_prelevement", args.dept,
-         OUT / f"points_prelevement_{args.dept}.parquet", args.refresh)
-    pull(s, "chroniques", args.dept, OUT / f"chroniques_{args.dept}.parquet", args.refresh)
+         out / f"points_prelevement_{args.dept}.parquet", args.refresh and not args.snapshot)
+    pull(s, "chroniques", args.dept, out / f"chroniques_{args.dept}.parquet",
+         args.refresh and not args.snapshot)
 
 
 if __name__ == "__main__":

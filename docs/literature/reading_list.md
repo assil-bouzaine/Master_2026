@@ -61,7 +61,8 @@ explanations. The ontology and data-integration references also count.
 
 | Paper | Verdict | Why |
 |---|---|---|
-| E3 Wu et al., *Forecasting Groundwater Level by Characterizing Multiple Spatial Dependencies…* (*JGR: Machine Learning and Computation* 2025), **doi:10.1029/2024JH000520** | **CORE** | Closest analogue: several adjacency matrices (distance, rainfall response, hydraulic, …) for a T-GCN. **Note:** CLAUDE.md §10 described it as "WRR, graph Fourier, Yellow River". That was wrong (it is JGR:MLC, North China Plain) and has been corrected. |
+| E3 Wu et al., *Forecasting Groundwater Level by Characterizing Multiple Spatial Dependencies…* (*JGR: Machine Learning and Computation* 2025), **doi:10.1029/2024JH000520** | **CORE** | Several adjacency matrices (distance, rainfall response, hydraulic, …) for a T-GCN, North China Plain. |
+| Wu, Yao, Guo, Yang, He, Lancia & Zheng, *Graph Fourier deep learning for spatiotemporal and hydrogeological interpretation of groundwater levels in the Yellow River Basin* (*WRR* 61(11), e2025WR041215, 2025), **doi:10.1029/2025WR041215** | **CORE** (added 2026-10-20) | **The closest competitor.** According to its indexed abstract it embeds hydrogeological units as prior information in a graph model of 473 wells; read the full text to confirm. Position our claim against it: a graph and constraints generated from a formal knowledge graph, plus shortcut and faithfulness tests. **Correction:** on 2026-10-13 CLAUDE.md §10 replaced "WRR, graph Fourier, Yellow River" by the JGR:MLC paper, as if the first were a mistake. Both papers exist; this one was missing. |
 | E8 Dai et al., *Incorporating Deep Learning Into Hydrogeological Modeling* (*JGR:MLC* 2025), doi:10.1029/2025JH000703 | **CORE** | Names the gaps: interpretability, physics consistency, benchmarks. The paper's introduction cites these gaps. |
 | E6 HydroGAT (Sarkar et al., SIGSPATIAL 2025), doi:10.1145/3748636.3764172 | **CORE** | A heterogeneous hydrological graph with attention, the design template for our heterogeneous graph. It works on floods, not groundwater. |
 | E4 Chen et al., STGCN-M (*Earth Sci. Informatics* 2025), doi:10.1007/s12145-025-01741-z | CITE, with caution | Reports STGCN RMSE ≈ 0.009 vs LSTM ≈ 0.9, a 100× gap. That points to a normalisation or leakage problem, so don't use it as a benchmark. Cite it only as an example of STGCN on wells. |
@@ -145,6 +146,30 @@ swapped for the journal version).
 | Dall'Alba, *Hydro-geological modeling of the Roussillon aquifer…*, PhD thesis, Univ. Neuchâtel 2023, **doi:10.35662/unine-thesis-3052** | The most detailed recent geological and hydrogeological model of **our** aquifer (Dem'Eaux Roussillon project, BRGM). Read the geology chapter before building the `overlies` edges. |
 
 ---
+
+### Added 2026-10-20 (critical review, `docs/feedback.md` §6; each ID opened that day)
+
+| Reference | Why |
+|---|---|
+| Collenteur et al., *Data-driven modelling of hydraulic-head time series: results and lessons learned from the 2022 Groundwater Time Series Modelling Challenge*, *HESS* 28, 2024, **doi:10.5194/hess-28-5193-2024** | 15 teams, Pastas to deep learning, simulating heads: the benchmark culture hydrology reviewers expect. |
+| Chidepudi et al., *Training deep learning models with a multi-station approach and static aquifer attributes for groundwater level simulation*, *HESS* 29, 2025, **doi:10.5194/hess-29-841-2025** | French piezometers, global models with static attributes; models trained on clusters of similar series beat a model trained on all wells. The closest French deep-learning study. |
+| Kirschstein & Sun, *The Merit of River Network Topology for Neural Flood Forecasting*, ICML 2024, **arXiv:2405.19836** | A domain graph (river network) gave a GNN no gain: the reason RQ1 needs no-graph, random-graph and Taccari-graph controls. |
+| Topp et al., *Stream temperature prediction in a shifting environment: the influence of deep learning architecture*, *WRR* 59, 2023, **doi:10.1029/2022WR033880** | Explainable AI shows whether a graph model's learned spatial relations match physics. A template for RQ3/RQ4. |
+| Jia et al., *Physics-guided recurrent graph model for predicting flow and temperature in river networks*, SDM 2021, **doi:10.1137/1.9781611976700.69** | The canonical "domain graph + physics loss" model. |
+| Tsai et al., *From calibration to parameter learning*, *Nature Communications* 12, 2021, **doi:10.1038/s41467-021-26107-z** | Differentiable parameter learning: a network predicts the parameters of a process model (option in `docs/feedback.md` §5.5). |
+| Shen et al., *Differentiable modelling to unify machine learning and physical models for geosciences*, *Nat. Rev. Earth Environ.* 4, 2023, **doi:10.1038/s43017-023-00450-9** | Positioning of hybrid differentiable models. |
+| Brakenhoff et al., *Application of time series analysis to estimate drawdown from multiple well fields*, *Front. Earth Sci.* 10, 2022, **doi:10.3389/feart.2022.907609** | Pastas WellModel: one response scaled by distance for many pumping wells (`pastas_wellmodel`). |
+| Ross, Hughes & Doshi-Velez, *Right for the Right Reasons: Training Differentiable Models by Constraining their Explanations*, IJCAI 2017, **doi:10.24963/ijcai.2017/371**, arXiv:1703.03717 | Origin of the phrase in our title and of input-gradient constraints (the soft constraints of RQ2). |
+| Koh et al., *Concept Bottleneck Models*, ICML 2020, **arXiv:2007.04612** | What a "concept" is; supports treating driver contributions as concepts (RQ3). |
+| Runje & Shankaranarayana, *Constrained Monotonic Neural Networks*, ICML 2023, **arXiv:2205.11775** | Monotone by construction: a hard way to enforce response signs (RQ2). |
+| Kratzert et al., *HESS Opinions: Never train a Long Short-Term Memory (LSTM) network on a single basin*, *HESS* 28, 2024, **doi:10.5194/hess-28-4187-2024** | Justifies the global LSTM instead of one LSTM per well. |
+| Rangaraj et al., *How Effective are Large Time Series Models in Hydrology? A Study on Water Level Forecasting in Everglades*, 2025, **arXiv:2505.01415** | Chronos best of 17 models for water levels: supports Chronos-2 as the forecasting reference. |
+| Holmberg et al., *Knowledge-Graph-Augmented Chronos-2 for HEC-RAS Surrogate Forecasting*, 2026, **arXiv:2609.21381** | A knowledge graph combined with a frozen Chronos-2 in river hydraulics: related work. |
+| Schaefli & Gupta, *Do Nash values have value?*, *Hydrol. Processes* 21, 2007, **doi:10.1002/hyp.6825** | Scores only mean something relative to a stated benchmark (our skill scores). |
+| Tang, Clark & Papalexiou, *SC-Earth: a station-based serially complete Earth dataset from 1950 to 2019*, *J. Climate* 34, 2021, **doi:10.1175/JCLI-D-21-0067.1** | Source of KGE'' (bias normalised by the observed sd), used because heads near 0 m NGF break the original KGE. |
+| Bakker et al., *Scripting MODFLOW model development using Python and FloPy*, *Groundwater* 54, 2016, **doi:10.1111/gwat.12413** | Only if a MODFLOW synthetic twin is built (RQ3). |
+| Brodaric et al., *Enabling global exchange of groundwater data: GroundWaterML2 (GWML2)*, *Hydrogeology Journal* 26, 2018, **doi:10.1007/s10040-018-1747-9** | The citable GWML2 reference. No maintained OWL encoding was found: check before Phase 3. |
+| Lanini et al., *Groundwater modelling of a complex multilayer coastal aquifer under climate change in the framework of the Dem'Eaux Roussillon project*, AHS 2022 (conference abstract), **HAL hal-03530184** | Two process-based models of our aquifer with shared geometry and pumping locations: domain grounding and a data contact. |
 
 ## 3. Reading order (about 3 weeks, alongside Phase 1)
 

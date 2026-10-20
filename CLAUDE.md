@@ -285,6 +285,22 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
 
 ### ▶ Where we are (read this first in a new session)
 
+- **2026-10-20, Step 12a (fixes from the critical review `docs/feedback.md`):**
+  - **Evaluation changed** (`docs/analysis_plan.md`, the reference for every new
+    result): test split into **drought** (May 2022 → Nov 2025) and **recovery** (Dec
+    2025 →); primary endpoint = drought-phase median NSE + skill vs climatology;
+    KGE'' (datum-free); clustered bootstrap + Holm. With clustered tests no v2 ML
+    baseline is significantly better than Pastas in the drought.
+  - **Dataset v3** is the new default for runs (`PFE_DATASET=v3`): real BNPE 2024
+    (dated snapshot), documented imputation rules (`src/dataset/bnpe_v3.py`), VigiEau
+    surface-water orders (analysis only), river inputs, artesian-share leak fixed.
+  - **New baselines code:** LightGBM `--tune`, EA-LSTM, `tune.py` (equal budget),
+    `regimes.py` (leave-wells-out, 25/50 %, refit), `taccari.py` (Taccari graph),
+    Pastas WellModel, Chronos-2 cross-learning / fine-tuning.
+  - **Next:** GPU sweep on Camber (`scripts/run_gpu.sh`, v3 section of
+    `docs/gpu_howto.md`), then the report, then the knowledge-graph pre-check, then
+    Phase 3. Design decisions still open: `docs/feedback.md` §11.
+
 - **Data:** all layers are built.
   - piezometers, RPG, BNPE, BD LISA, SAFRAN climate, rivers
   - weekly dataset v1 (`data/processed/dataset_v1/`, 47 wells, 2012–2026)
@@ -338,7 +354,8 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
 | 9 Phase 2: baselines on v1 | ✅ done | `docs/notes/step09_baselines.md` |
 | 10 Improve baselines (dataset v2) | ✅ done (tuning, ensemble, ablation, Wilcoxon) | `docs/notes/step10_baselines_v2.md` |
 | **11 Gate 2: results to the supervisor** | **✅ summary written; Assil sends it with the Gate 1 memo — waiting for answers** | `docs/summary_gate2_results.md` + `docs/memo_gate1_feasibility.md` |
-| **12 Phase 3: ontology + knowledge graph** | **⬜ next — START HERE (may start before the answers)** | `docs/roadmap.md` §4 Phase 3 |
+| **12a Fixes from the critical review** | **🔄 in progress — START HERE** (evaluation ✅, analysis plan ✅, dataset v3 ✅, laptop baselines v3 running, GPU sweep pending) | `docs/feedback.md`, `docs/analysis_plan.md`, `docs/notes/step12a_fixes.md` |
+| **12 Phase 3: ontology + knowledge graph** | ⬜ after 12a (the knowledge-graph pre-check in `docs/feedback.md` §5.1 comes first) | `docs/roadmap.md` §4 Phase 3 |
 
 ### Step 10: improve the baselines (spec)
 
@@ -695,9 +712,11 @@ Verdicts on every PDF in `Articles/` and verified additions:
 code or docs:
 - Wu et al., *JGR: Machine Learning and Computation* 2025
   (doi:10.1029/2024JH000520) — T-GCN with several spatial-dependency
-  graphs for groundwater levels, North China Plain. *(Corrected
-  2026-10-13: earlier text said "WRR, graph Fourier, Yellow River"; that
-  did not match the paper.)*
+  graphs for groundwater levels, North China Plain.
+- Wu et al., *WRR* 61(11) 2025 (doi:10.1029/2025WR041215) — graph Fourier
+  deep learning with hydrogeological units as prior information, Yellow
+  River Basin. **The closest competitor.** *(2026-10-20: the 2026-10-13
+  "correction" merged two different Wu 2025 papers; both exist.)*
 - Taccari et al., *Scientific Reports* 2024 (doi:10.1038/s41598-024-75385-2)
   — ST-GNN for a multi-aquifer system with pumping, river and rain nodes.
   The closest setting to ours.

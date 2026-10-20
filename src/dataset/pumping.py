@@ -34,11 +34,17 @@ def seasonal_drinking_water(pw, pts):
 
 
 def canal_series(pw=None, pts=None):
-    """Weekly plain-wide surface-water irrigation + canal-intake volume (m3)."""
+    """Weekly plain-wide surface-water irrigation + canal-intake volume (m3).
+
+    From dataset v3 the points carry a zone and only the plain's intakes count: v2 took
+    the whole département (299 instead of 214 Mm3 in 2019), but mountain canals do not
+    recharge the plain."""
     if pw is None:
         pw = pd.read_parquet(DS / "pumping_weekly.parquet")
     if pts is None:
         pts = pd.read_parquet(DS / "pumping_points.parquet")
+    if "zone" in pts.columns:
+        pts = pts[pts["zone"] == "plain"]
     s = pw.merge(pts[["code_ouvrage", "source"]], on="code_ouvrage")
     s = s[(s["source"] == "surface") & s["usage"].isin(["irrigation", "canals"])]
     return s.groupby("week")["volume_m3"].sum()

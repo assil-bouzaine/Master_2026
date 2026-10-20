@@ -158,3 +158,34 @@ recomputed and few credits are wasted.
   `PFE_DATASET=v2a PFE_RESULTS=results_abl/v2a STEPS="stgnn lstm" bash scripts/run_gpu.sh`
   after `mkdir -p results_abl/v2a/_cache && cp results/v2a/_cache/panel.parquet results_abl/v2a/_cache/`.
 - `run_gpu.sh` takes `STEPS` (any of `stgnn chronos2 lstm tune_lstm`).
+
+---
+
+## Dataset v3 sweep (from 2026-10-20)
+
+`scripts/run_gpu.sh` now defaults to dataset v3 and runs one resumable sweep (steps can
+be chosen with `STEPS="..."`):
+
+| Step | What | Output run(s) |
+|---|---|---|
+| `lstm`, `stgnn`, `taccari` | default configurations, 5 seeds (comparability with v2) | `lstm`, `stgnn_distance`, `taccari` |
+| `chronos2`, `chronos2_xl`, `chronos2_ft` | zero-shot, zero-shot with cross-learning, fine-tuned on train | `chronos2*` |
+| `tune:<model>` | Optuna, 24 trials, validation only, then 5 seeds (lstm, ealstm, stgnn, taccari) | `<model>_tuning`, `<model>_tuned` |
+| `regimes:<model>` | leave-wells-out (5 folds × 5 seeds), 25/50 % training data, refit on train+validation | `<model>_tuned_lwo`, `_f25`, `_f50`, `_refit` |
+
+```bash
+# laptop
+PFE_DATASET=v3 .venv/bin/python scripts/make_gpu_bundle.py        # gpu_bundle.zip
+camber stash cp gpu_bundle.zip stash://assil0723/pfe_v3/
+# node (notebook cell), in /home/jovyan/pfe_v3
+!unzip -oq gpu_bundle.zip && mkdir -p results_gpu
+!PFE_DATASET=v3 PFE_RESULTS=results_gpu/v3 setsid nohup bash scripts/run_gpu.sh > results_gpu/run_v3.log 2>&1 < /dev/null &
+# laptop, when finished
+camber stash cp -r stash://assil0723/pfe_v3/results_gpu/v3/<run> results/v3/<run>
+```
+
+Order of the default steps = order of importance, so the node can be stopped early
+without losing what matters most. Estimated L4 time: defaults and Chronos-2 ≈ 1 h,
+each tuning 0.5–2 h, each regime set 0.5–3 h; the whole sweep ≈ 10–14 GPU-hours
+(15–21 credits at 1.5/h). EA-LSTM is the slowest (Python loop over time steps), so it
+comes last.

@@ -40,6 +40,26 @@ already in the reading list, or re-run any model.
 > 3. **Restriction orders (§3.5):** only **surface-water** zones may be used.
 >    Groundwater-zone orders are triggered by piezometers of the same
 >    aquifers, so using them would leak the target.
+> 4. **Correction to §3.2.** The 2024 canal intakes are **not** missing. They
+>    were published without a usage code: 163 of the 177 such rows are canal
+>    intakes.
+>    - With the usage restored from each intake's other years, the plain took
+>      **76.5 Mm³ in 2024** (2023: 47.3; 2022: 96.0).
+>    - The v2 imputation (97 Mm³) therefore overstated 2024 by about 25 %,
+>      not by a factor of 100.
+>    - The "imputed canal comeback" explanation of the 2024–25 offset is
+>      weaker than written below. Dataset v3 uses the real values.
+> 5. **The knowledge-graph pre-check (§5.1) was redone properly**
+>    (`docs/kg_precheck.md`: regional signal removed, permutation tests).
+>    - The early warning was too pessimistic. After removing the plain-wide
+>      signal, wells **in the same BD LISA entity and within 5 km** co-vary
+>      more (+0.21 partial correlation, QAP p = 0.048), and so do wells at
+>      **similar screen depth** (p = 0.002).
+>    - Shared pumping neighbourhoods add nothing significant.
+>    - The 3-nearest-wells distance graph joins different entities in 53 % of
+>      its edges.
+>    - So a knowledge-graph graph has real information to add: same-unit,
+>      similar-depth neighbours at short range.
 
 ---
 

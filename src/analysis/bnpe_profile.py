@@ -23,9 +23,11 @@ USAGE = {"IRR": "irrigation", "AEP": "drinking water", "CAN": "canals",
          "IND": "industry", "BAR": "hydropower (turbined)", "ENE": "energy"}
 
 
-def load():
-    pts = pd.read_parquet(BNPE / f"points_prelevement_{DEPARTEMENT}.parquet")
-    vol = pd.read_parquet(BNPE / f"chroniques_{DEPARTEMENT}.parquet")
+def load(snapshot=None):
+    """Volumes joined to their water source; `snapshot` = dated sub-folder (None = 2026-10-05)."""
+    src = BNPE / snapshot if snapshot else BNPE
+    pts = pd.read_parquet(src / f"points_prelevement_{DEPARTEMENT}.parquet")
+    vol = pd.read_parquet(src / f"chroniques_{DEPARTEMENT}.parquet")
     assert pts.groupby("code_ouvrage")["code_type_milieu"].nunique().max() == 1, \
         "an ouvrage has points in both surface and groundwater: source is ambiguous"
     d = vol.merge(pts[["code_ouvrage", "code_type_milieu"]].drop_duplicates(),

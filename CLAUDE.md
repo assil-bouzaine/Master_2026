@@ -312,9 +312,13 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
     (`scripts/kaggle_gpu.py`, `docs/gpu_howto.md` Kaggle section) and the LightGBM row
     without `clim_z`. ~20:00: logins done, Camber runs copied, interim v3 report written
     (`docs/results_baselines.md`). Kaggle phone verification fails from Tunisia (no SMS):
-    **EA-LSTM runs on the laptop** since 20:23 (`results/v3/cpu_runs6.log`, resumable;
-    restart with `STEPS="ealstm_tune ealstm_regimes" bash scripts/run_cpu.sh`); Taccari
-    waits for a GPU (Kaggle if verified, else Camber after 2026-11-13).
+    **EA-LSTM runs on the laptop** (20:23–21:34, `results/v3/cpu_runs6.log`). **Stopped at
+    Assil's request at 21:34:** 23 of 24 trials done, the interrupted trial 24 marked FAIL
+    (step note §5c, update ~21:35). **Next session, first:** restart it with
+    `STEPS="ealstm_tune ealstm_regimes" setsid nohup bash scripts/run_cpu.sh > results/v3/cpu_runs7.log 2>&1 < /dev/null &`
+    (1 trial + re-selection + 5 seeds ≈ 4 h, then the regimes ≈ 11–15 h). Taccari
+    waits for a GPU (Kaggle if verified, else Camber after 2026-11-13). Then Phase 3:
+    draft the competency questions (not started yet).
   - 2026-10-20 ~13:20 — older state in `docs/notes/step12a_fixes.md` §5b (then:
     GPU sweep running on the Camber node in `~/pfe_v3_run` with an auto-stop watcher;
     Taccari speed-up `b3a8b74` must be uploaded before its step; laptop chain running;

@@ -180,6 +180,19 @@ Estimate: tuning ~7–8 h (5 trials + 6 re-selection runs + 5 final seeds), regi
 resumable after a power cut (only the current run is lost). Taccari: Kaggle if the
 verification works, otherwise Camber after 2026-11-13.
 
+**Update ~21:35: laptop run stopped at Assil's request (end of the session).** The script
+was killed first (so it could not start `ealstm_regimes`), then the tuner, during trial 24
+(epoch 11); trial 24 was marked FAIL in `results/v3/ealstm_tuning/study.db`. The study now
+has **23 complete trials** + 2 failed (19 on Camber, 24 here); the laptop added trials 20–23
+(validation 0.48, 0.42, 0.52, 0.58). Best single-seed: trial 18 0.604, trial 12 0.599, trial
+23 0.575 (all lookback 208, hidden 128), so these are the re-selection candidates unless the
+last trial beats them. A 208/128 trial takes 17–24 min on 3 threads. **Left:** 1 trial + 6
+re-selection runs + 5 final seeds ≈ 4 h, then the 4 regimes (40 runs) ≈ 11–15 h. Restart
+(it continues where it stopped):
+`STEPS="ealstm_tune ealstm_regimes" setsid nohup bash scripts/run_cpu.sh > results/v3/cpu_runs7.log 2>&1 < /dev/null &`.
+Nothing else was running: the Camber node was already stopped by the platform, and no
+Kaggle kernel was running (the account is still not phone-verified).
+
 **Resume checklist:**
 1. ✅ CLI login, then bring back `stgnn_tuned_{lwo,f25,f50,refit}`, `ealstm_tuning` and
    `run_v3.log` (`camber stash cp -r stash://assil0723/pfe_v3_run/results_gpu/v3/<run>
@@ -188,6 +201,9 @@ verification works, otherwise Camber after 2026-11-13.
    `! .venv/bin/kaggle auth login`; then `.venv/bin/python scripts/kaggle_gpu.py push`
    (EA-LSTM tuning from trial 0 + regimes + Taccari default on one T4, Taccari tuning +
    regimes on the other), `status` / `log`, `pull` (docs/gpu_howto.md, Kaggle section).
+   **Changed at 20:25:** the SMS never arrives, so EA-LSTM runs on the laptop (restart command
+   in the 21:35 update: do it first). If Kaggle is verified later, push Taccari only:
+   `--steps "taccari | tune:taccari regimes:taccari"`; otherwise Camber after 2026-11-13.
 3. `python -m src.models.ensemble`, `python -m src.analysis.baseline_report` with what
    exists (EA-LSTM and Taccari marked pending), this note, `docs/results_baselines.md`,
    the Gate 2 addendum.

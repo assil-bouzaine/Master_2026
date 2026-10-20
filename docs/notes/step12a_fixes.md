@@ -145,8 +145,30 @@ run it first on any new GPU.
 in to the web app). Assil runs `! camber login` in the Claude Code prompt (if it fails
 again: `! camber update`, then `! camber login`).
 
+**Update ~20:00.**
+- Camber CLI works again; `stgnn_tuned_{lwo,f25,f50,refit}` copied and rescored, the 19 Camber
+  EA-LSTM trials kept as `results/v3/ealstm_tuning_camber/` (record only), log as
+  `results/v3/run_v3_camber.log`.
+- **Kaggle:** logged in (`assilbouzaine`, 30 GPU-h per week, refresh 2026-10-24). The first
+  kernel ran **without a GPU**: the account is not phone-verified, and Kaggle then silently
+  gives a CPU session (quota still 0.00 h used). It also showed that a venv on Kaggle's
+  Python 3.13 image has no pip and does not see the image's packages. Fixed in `ebbd892`
+  (pins in a `PYTHONPATH` folder; the kernel stops at once without a GPU). Waiting for Assil's
+  phone verification, then `scripts/kaggle_gpu.py push`.
+- **Interim v3 report** (`docs/results_baselines.md`, EA-LSTM and Taccari not run yet):
+  ensemble = tuned LSTM + tuned distance ST-GNN (validation 0.68; drought NSE 0.02, skill
+  0.55; recovery 0.44). Against Pastas seasonal+canal, clustered bootstrap + Holm: tuned
+  LightGBM (no clim), both LSTMs, the tuned distance ST-GNN and the ensemble are
+  **significantly better in the drought** (p_holm 0.002–0.04); in the recovery only LightGBM
+  is (p_holm 0.001). On v2 no ML baseline was significantly better: Pastas lost drought skill
+  on v3 (NSE −0.52 → −0.73) while the networks gained. Unseen wells (R2) hurt every model,
+  the LSTM most (drought NSE −1.56), the distance graph least (−0.42); 25–50 % of the
+  training period costs little (R3), as on v2. Pastas WellModel: better on the Pliocene
+  (drought −0.30 vs −0.49), much worse on the recent alluvium (−6.51, 4 wells).
+- The Gate 2 addendum waits for EA-LSTM and Taccari, so the supervisor gets one v3 update.
+
 **Resume checklist:**
-1. CLI login, then bring back `stgnn_tuned_{lwo,f25,f50,refit}`, `ealstm_tuning` and
+1. ✅ CLI login, then bring back `stgnn_tuned_{lwo,f25,f50,refit}`, `ealstm_tuning` and
    `run_v3.log` (`camber stash cp -r stash://assil0723/pfe_v3_run/results_gpu/v3/<run>
    results/v3/<run>`), rescore with `src.models.evaluate`.
 2. **Decided (Assil, 19:40): Kaggle.** Assil makes a phone-verified Kaggle account and runs

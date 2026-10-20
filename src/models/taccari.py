@@ -175,17 +175,29 @@ def prepare(P, data):
 
 
 class GatedTCN(nn.Module):
+    """Gated causal convolution of dilation d = 2^k, evaluated only where it is needed.
+
+    The network reads the last week only, and the dilations double from layer to layer, so
+    layer k is read at every second position of its input grid (step d), counted back from
+    the last week, and each of those outputs uses 3 consecutive grid positions. forward()
+    therefore takes the input on its grid and runs the same kernel with stride 2 and no
+    dilation: the final output equals the full causal dilated stack (zeros before the window
+    start, as before) at about 1/6 of the cost (tests/test_taccari.py checks the equality;
+    the mix-hop, norm and residual are position-wise)."""
+
     def __init__(self, c, kernel, dilation):
         super().__init__()
-        self.pad = (kernel - 1) * dilation
-        self.f = nn.Conv1d(c, c, kernel, dilation=dilation)
+        self.f = nn.Conv1d(c, c, kernel, dilation=dilation)   # weights used with stride 2
         self.g = nn.Conv1d(c, c, kernel, dilation=dilation)
 
-    def forward(self, h):                        # (B, N, L, C), causal
+    def forward(self, h):                        # (B, N, L, C) -> (B, N, ceil(L / 2), C)
         B, N, L, C = h.shape
-        x = Fn.pad(h.reshape(B * N, L, C).transpose(1, 2), (self.pad, 0))
-        y = torch.tanh(self.f(x)) * torch.sigmoid(self.g(x))
-        return y.transpose(1, 2).reshape(B, N, L, C)
+        k = self.f.kernel_size[0]
+        pad = k - 1 if L % 2 else k - 2           # aligns the last output with the last week
+        x = Fn.pad(h.reshape(B * N, L, C).transpose(1, 2), (pad, 0))
+        y = (torch.tanh(Fn.conv1d(x, self.f.weight, self.f.bias, stride=2))
+             * torch.sigmoid(Fn.conv1d(x, self.g.weight, self.g.bias, stride=2)))
+        return y.transpose(1, 2).reshape(B, N, -1, C)
 
 
 class MixHop(nn.Module):
@@ -220,7 +232,9 @@ class TaccariNet(nn.Module):
     def forward(self, x):                        # (B, N, L, F) -> (B, N)
         h = self.inp(x)
         for tcn, mix, norm in zip(self.tcn, self.mix, self.norm):
-            h = norm(self.drop(mix(tcn(h), self.A)) + h)
+            # residual taken at the positions the strided TCN returns (every second, from
+            # the last week back)
+            h = norm(self.drop(mix(tcn(h), self.A)) + h[:, :, (h.shape[2] - 1) % 2::2])
         return self.out(h[:, :, -1]).squeeze(-1)
 
 

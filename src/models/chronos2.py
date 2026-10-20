@@ -113,8 +113,14 @@ def main():
     out = RESULTS / run / "wells"
     out.mkdir(parents=True, exist_ok=True)
     H = max(HORIZONS)
-    if args.mode == "ft" and not any(out.glob("*.parquet")):
-        pipe = finetune(pipe, P, past, RESULTS / run, args.ft_steps)
+    if args.mode == "ft":
+        # fit() saves the model to <run>/ckpt/finetuned-ckpt: reload it on a restart, so the
+        # remaining wells are never predicted with the base model
+        ckpt = RESULTS / run / "ckpt" / "finetuned-ckpt"
+        if ckpt.exists():
+            pipe = Chronos2Pipeline.from_pretrained(str(ckpt), device_map=device)
+        else:
+            pipe = finetune(pipe, P, past, RESULTS / run, args.ft_steps)
     groups = {code: g.reset_index(drop=True) for code, g in P.groupby("code_bss")}
     if args.mode == "xl":
         done = out / "all_wells.parquet"

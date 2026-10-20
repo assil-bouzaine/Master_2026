@@ -82,6 +82,14 @@ rule was fixed; its numbers are superseded by `docs/results_baselines.md`.
   seed per trial, early stopping on validation). Search spaces of comparable
   size (4 hyperparameters). Then the best configuration is retrained with
   **5 seeds**.
+- **Selection against lucky seeds (added 2026-10-20, before any tuned v3 result
+  was used):** the 3 best trials are re-run with seeds 1 and 2 (validation
+  only) and the configuration with the best **3-seed mean** is retrained.
+  Reason: the maximum of 24 single-seed scores favours a configuration that was
+  lucky once (LightGBM v3: best trial 0.573 with seed 0, the same configuration
+  averaged 0.431 over 5 seeds, below the untuned default 0.509). Same rule for
+  every model (`reselect()` in `src/models/tune.py`), so the budget stays equal
+  (24 trials + 6 re-runs).
 - Applies to: LightGBM, the global LSTM, EA-LSTM, the distance ST-GNN, the
   Taccari-graph ST-GNN, and later the knowledge-graph models. Pastas variants
   are hypothesis tests chosen on validation, not tuned.

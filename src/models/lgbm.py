@@ -101,24 +101,30 @@ def tune(D, cols, n_trials, out):
                                 storage=f"sqlite:///{out / 'study.db'}", load_if_exists=True,
                                 sampler=optuna.samplers.TPESampler(seed=2026))
 
-    def objective(trial):
-        params = dict(BASE, num_leaves=trial.suggest_int("num_leaves", 7, 63, log=True),
-                      min_data_in_leaf=trial.suggest_int("min_data_in_leaf", 20, 400, log=True),
-                      feature_fraction=trial.suggest_float("feature_fraction", 0.3, 0.9),
-                      lambda_l2=trial.suggest_float("lambda_l2", 0.1, 30.0, log=True))
-        target = trial.suggest_categorical("target", list(SIM_TARGETS))
-        z, _ = fit_predict(D, cols, 0, params, target)
+    def score(p, seed):
+        params = dict(BASE, **{k: v for k, v in p.items() if k != "target"})
+        z, _ = fit_predict(D, cols, seed, params, p["target"])
         return val_nse(D, z)
+
+    def objective(trial):
+        return score({"num_leaves": trial.suggest_int("num_leaves", 7, 63, log=True),
+                      "min_data_in_leaf": trial.suggest_int("min_data_in_leaf", 20, 400, log=True),
+                      "feature_fraction": trial.suggest_float("feature_fraction", 0.3, 0.9),
+                      "lambda_l2": trial.suggest_float("lambda_l2", 0.1, 30.0, log=True),
+                      "target": trial.suggest_categorical("target", list(SIM_TARGETS))}, 0)
+
+    from src.models.tune import reselect
 
     done = len([t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE])
     study.optimize(objective, n_trials=max(0, n_trials - done))
-    b = study.best_trial.params
-    print(f"    best trial {study.best_trial.number}: {b} validation {study.best_value:.3f}",
-          flush=True)
+    b, mean, number = reselect(study, score, out)
+    print(f"    best single-seed trial {study.best_trial.number}: {study.best_value:.3f}; "
+          f"selected trial {number} (3-seed mean {mean:.3f}): {b}", flush=True)
     params = dict(BASE, **{k: v for k, v in b.items() if k != "target"})
-    (out / "best.json").write_text(json.dumps({"params": b, "validation_median_nse":
-                                               study.best_value, "n_trials": len(study.trials)},
-                                              indent=1))
+    (out / "best.json").write_text(json.dumps({"params": b, "trial": number,
+                                               "validation_median_nse_3seed": mean,
+                                               "single_seed_best": study.best_value,
+                                               "n_trials": len(study.trials)}, indent=1))
     preds = []
     for s in SEEDS:
         z, _ = fit_predict(D, cols, s, params, b["target"])

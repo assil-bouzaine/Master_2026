@@ -189,3 +189,23 @@ without losing what matters most. Estimated L4 time: defaults and Chronos-2 ≈ 
 each tuning 0.5–2 h, each regime set 0.5–3 h; the whole sweep ≈ 10–14 GPU-hours
 (15–21 credits at 1.5/h). EA-LSTM is the slowest (Python loop over time steps), so it
 comes last.
+
+## Lessons from the v3 sweep (2026-10-20)
+
+- **A folder created by `camber stash cp` is owned by root and read-only on the node**, even
+  for `unzip`. Unzip into a folder the node creates itself:
+  `!mkdir -p ~/pfe_v3_run && cd ~/pfe_v3_run && unzip -oq ~/pfe_v3/gpu_bundle.zip`.
+  `/home/jovyan` is the Stash (persistent); `/tmp` is wiped when the node stops.
+- **The CLI's view of the Stash lags the node's disk** (minutes). Check progress in a
+  notebook cell; use the CLI to bring finished runs back.
+- **Auto-stop:** start the sweep and the watcher together, so the node stops even if the
+  laptop is off (`$!` is the sweep's PID; the watcher waits 10 min, then shuts the server):
+  `!cd ~/pfe_v3_run && (STEPS="..." PFE_DATASET=v3 PFE_RESULTS=results_gpu/v3 setsid nohup bash scripts/run_gpu.sh >> results_gpu/run_v3.log 2>&1 < /dev/null & P=$!; setsid nohup python3 scripts/gpu_autostop.py $P 600 >> results_gpu/autostop.log 2>&1 < /dev/null &)`
+  To change the plan, kill the watcher **first**, then the sweep (by PID, never with a
+  `pkill -f` pattern that also matches your own shell).
+- **Time per model on the L4:** LSTM and distance ST-GNN ≈ 1 min for 5 seeds; the Taccari
+  graph needed ~45 s per epoch before the strided TCN (commit `b3a8b74`). Time one epoch
+  of every new model before queueing its tuning.
+- To patch code on a running node: upload to a new path (`.../pfe_v3_run/patch/`), copy it
+  over from a notebook cell and compare `md5sum` (an overwrite through the CLI may not
+  reach the node's copy).

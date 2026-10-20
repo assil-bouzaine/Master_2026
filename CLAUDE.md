@@ -305,7 +305,11 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
     new GPU code passed except Chronos-2 `xl`/`ft` (not finished).
   - **Found at the end:** single-seed Optuna trials pick lucky seeds (LightGBM: best
     trial 0.573 on validation, same config over 5 seeds 0.431 < default 0.509).
-  - **RESUME HERE — checklist in `docs/notes/step12a_fixes.md` §5:**
+  - **2026-10-20 ~13:20 — RESUME FROM `docs/notes/step12a_fixes.md` §5b** (current state:
+    GPU sweep running on the Camber node in `~/pfe_v3_run` with an auto-stop watcher;
+    Taccari speed-up `b3a8b74` must be uploaded before its step; laptop chain running;
+    after the PC crash the Camber CLI needs `! camber login`). Older checklist below.
+  - **Earlier checklist — `docs/notes/step12a_fixes.md` §5:**
     1. fix the tuner (re-evaluate the top 3 trials with 2 more seeds, keep the best
        3-seed mean; `tune.py` + `lgbm.tune()`; note it in `docs/analysis_plan.md` §5)
     2. restart the laptop runs: `STEPS="lgbm_tuned pastas wellmodel" nohup bash scripts/run_cpu.sh > results/v3/cpu_runs2.log 2>&1 &`

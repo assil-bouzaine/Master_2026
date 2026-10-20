@@ -97,6 +97,39 @@ labels of the wells (e.g. which entity each well belongs to), rebuilds every pai
 attribute and refits; the p-value is the share of permutations with an effect at least
 as large.
 
+## 5b. State at 2026-10-20 ~13:20 (after a PC crash at ~12:52) — RESUME HERE
+
+**Laptop** (`results/v3/cpu_runs3.log`): naive ✅, LightGBM default ✅, Pastas ✅,
+LightGBM re-selection running (resumable, `lgbm_tuned/reselect.json`), then WellModel.
+Run only **one heavy job at a time** on the laptop: the crash most likely came from
+memory exhaustion (LightGBM + a Chronos-2 fine-tuning test + a Taccari profile at once).
+
+**Pastas on v3** (median over 33 core wells, `pastas_seasonal_canal`): validation NSE
+0.45 (v2: 0.28), drought NSE −0.73 (v2: −0.52), drought skill 0.20 (v2: 0.24). Better
+calibration, most likely because v3 removed the fake 2018 step in groundwater pumping
+inside the calibration period; slightly worse in the drought. Report both.
+
+**Tuner fix applied** (commit `a4a578a`): LightGBM trial 15 = 0.573 with seed 0, 0.439
+and 0.410 with seeds 1 and 2 → 3-seed mean 0.474 (winner's curse confirmed).
+
+**GPU sweep on the Camber node** (GPU · Xsmall, started 11:35 UTC, restarted 11:43 UTC):
+- The CLI-uploaded `pfe_v3/` folder is read-only on the node (owned by root), so the bundle
+  is unzipped into **`~/pfe_v3_run`** (= `stash://assil0723/pfe_v3_run/`), created from
+  the node; results in `~/pfe_v3_run/results_gpu/v3/`, log `results_gpu/run_v3.log`.
+- Done before the restart: `lstm`, `stgnn_distance` (5 seeds each, ~1 min each).
+- New order: `chronos2 chronos2_xl chronos2_ft tune:lstm tune:stgnn regimes:lstm
+  regimes:stgnn tune:ealstm regimes:ealstm taccari tune:taccari regimes:taccari`.
+- `scripts/gpu_autostop.py` watches the sweep's PID and shuts the node down 10 min after
+  it ends (`results_gpu/autostop.log`). Still check that the node shows "Stopped".
+- **Taccari took ~45 s/epoch** (full dilated stack over every node and week). Commit
+  `b3a8b74` evaluates only the positions the next layer reads (exact, 4.2× on CPU).
+  **Upload it before the `taccari` step starts:** `camber stash cp src/models/taccari.py
+  stash://assil0723/pfe_v3_run/patch/`, then in a notebook cell
+  `cp ~/pfe_v3_run/patch/taccari.py ~/pfe_v3_run/src/models/taccari.py` and compare
+  `md5sum` with the laptop copy.
+- After the crash the Camber CLI token is invalid: Assil runs `! camber login`; Chrome must
+  be open for the extension.
+
 ## 5. Where we stopped (2026-10-20, ~10:35) and how to resume
 
 **Results so far on v3 (laptop):** naive floors; LightGBM default (validation 0.51,

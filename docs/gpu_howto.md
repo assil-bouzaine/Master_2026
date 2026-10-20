@@ -252,5 +252,9 @@ for GPU and internet), then in the Claude Code prompt `! .venv/bin/kaggle auth l
   (P100), so the P100 may fail with the image's PyTorch.
 - Datasets are created with `-t` (`--keep-tabular`): by default Kaggle converts uploaded
   tables to CSV.
-- The EA-LSTM tuning restarts from trial 0 on Kaggle (the 19 Camber trials ran the older
-  loop on another GPU): all 24 trials then share one implementation and one GPU type.
+- **Phone verification is required**: without it Kaggle silently runs the kernel on a CPU
+  (the job's log shows `CUDA available: False`; the runner then stops at once). On
+  2026-10-20 the verification SMS did not arrive on Assil's Tunisian number.
+- EA-LSTM no longer needs a GPU: with the fused kernel it runs ~55 s/epoch on the laptop
+  (`scripts/run_cpu.sh` steps `ealstm_tune`, `ealstm_regimes`). Taccari does (163 s/epoch on
+  the laptop).

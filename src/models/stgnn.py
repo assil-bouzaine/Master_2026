@@ -23,6 +23,7 @@ known) but leave the loss and the early stopping.
 """
 import argparse
 import json
+import os
 import time
 
 import geopandas as gpd
@@ -100,7 +101,7 @@ def train_seed(seed, A, X, Z, split, core, mu, sd, head, epochs, patience=8, hid
     make_net, which builds the network from the number of inputs)."""
     torch.manual_seed(seed)
     np.random.seed(seed)
-    torch.set_num_threads(4)
+    torch.set_num_threads(int(os.environ.get("PFE_THREADS", 4)))
     N, T, F = X.shape
     if train_mask is None:
         train_mask = split == "train"

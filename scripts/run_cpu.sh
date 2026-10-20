@@ -5,13 +5,16 @@
 # Pastas uses JOBS worker processes (default 2: the laptop lost power once with every core
 # busy, and its battery holds 12 % of its design charge; per-well fits do not depend on the
 # worker count). LightGBM keeps 4 threads (its runs are short).
-# Neural models and Chronos-2 run on the GPU (scripts/run_gpu.sh, docs/gpu_howto.md).
+# Neural models and Chronos-2 run on the GPU (scripts/run_gpu.sh, docs/gpu_howto.md), except
+# EA-LSTM when no GPU is available: its fused kernel runs ~55 s/epoch here (THREADS torch
+# threads, default 3, so one core stays free).
 set -u
 cd "$(dirname "$0")/.."
 export PFE_DATASET=${PFE_DATASET:-v3} PYTHONIOENCODING=utf-8
 PY=.venv/bin/python
 STEPS=${STEPS:-"naive lgbm lgbm_tuned pastas wellmodel"}
 JOBS=${JOBS:-2}
+export PFE_THREADS=${THREADS:-3}
 for s in $STEPS; do
   echo "== $(date) $s"
   case $s in
@@ -22,6 +25,8 @@ for s in $STEPS; do
     lgbm_regimes) $PY -m src.models.lgbm --no-clim --regimes lwo f25 f50 ;;   # RQ1, resumable
     pastas)     $PY -m src.models.pastas_baseline --variant pastas pastas_seasonal_canal --workers $JOBS ;;
     wellmodel)  $PY -m src.models.pastas_baseline --variant pastas_wellmodel --workers $JOBS ;;   # ~2-6 min/well
+    ealstm_tune)    $PY -m src.models.tune --model ealstm --trials 24 ;;   # Optuna study resumable
+    ealstm_regimes) $PY -m src.models.regimes --model ealstm ;;            # RQ1, resumable
     *)          echo "unknown step $s" ;;
   esac || echo "!! step $s failed, continuing"
 done

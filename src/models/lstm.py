@@ -29,8 +29,8 @@ number of epochs early stopping chose for the same seed in `run`.
 """
 import argparse
 import json
+import os
 import time
-
 import warnings
 
 import numpy as np
@@ -174,7 +174,7 @@ def train_seed(seed, X, Z, split, core, mu, sd, head, epochs, patience=8,
                fixed_epochs=None):
     torch.manual_seed(seed)
     np.random.seed(seed)
-    torch.set_num_threads(4)
+    torch.set_num_threads(int(os.environ.get("PFE_THREADS", 4)))   # fewer on a busy laptop
     N, T, F = X.shape
     if train_mask is None:
         train_mask = split == "train"

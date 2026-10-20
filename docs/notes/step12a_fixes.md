@@ -167,6 +167,19 @@ again: `! camber update`, then `! camber login`).
   (drought −0.30 vs −0.49), much worse on the recent alluvium (−6.51, 4 wells).
 - The Gate 2 addendum waits for EA-LSTM and Taccari, so the supervisor gets one v3 update.
 
+**Update ~20:25: Kaggle phone verification does not work from Tunisia (no SMS arrives), so
+EA-LSTM moves to the laptop.** Measured on the laptop CPU (4 threads): EA-LSTM 208 weeks ×
+hidden 128 **55 s/epoch** (the fused kernel; the old loop took 38 s/epoch on the Camber L4),
+Taccari default **163 s/epoch** (≈ 100 h for its 80 runs: needs a GPU). Started
+`STEPS="ealstm_tune ealstm_regimes" bash scripts/run_cpu.sh` → `results/v3/cpu_runs6.log`
+(20:23, 3 torch threads via `PFE_THREADS`, one core left free). The tuning **resumes the
+Camber study** (copied to `results/v3/ealstm_tuning/`; the interrupted trial 19 marked FAIL;
+`ealstm_tuning_camber/` stays as the raw record): a restart would cost ~10 h of CPU, and the
+19 trials are FP32 runs of the same function (loop on the L4, fused kernel here; tested equal).
+Estimate: tuning ~7–8 h (5 trials + 6 re-selection runs + 5 final seeds), regimes ~15 h;
+resumable after a power cut (only the current run is lost). Taccari: Kaggle if the
+verification works, otherwise Camber after 2026-11-13.
+
 **Resume checklist:**
 1. ✅ CLI login, then bring back `stgnn_tuned_{lwo,f25,f50,refit}`, `ealstm_tuning` and
    `run_v3.log` (`camber stash cp -r stash://assil0723/pfe_v3_run/results_gpu/v3/<run>

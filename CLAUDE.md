@@ -311,8 +311,10 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
     every split; WellModel ≈ Pastas). Assil chose **Kaggle** for EA-LSTM + Taccari
     (`scripts/kaggle_gpu.py`, `docs/gpu_howto.md` Kaggle section) and the LightGBM row
     without `clim_z`. ~20:00: logins done, Camber runs copied, interim v3 report written
-    (`docs/results_baselines.md`). **Waiting for Assil's Kaggle phone verification**
-    (without it Kaggle gives no GPU), then `.venv/bin/python scripts/kaggle_gpu.py push`.
+    (`docs/results_baselines.md`). Kaggle phone verification fails from Tunisia (no SMS):
+    **EA-LSTM runs on the laptop** since 20:23 (`results/v3/cpu_runs6.log`, resumable;
+    restart with `STEPS="ealstm_tune ealstm_regimes" bash scripts/run_cpu.sh`); Taccari
+    waits for a GPU (Kaggle if verified, else Camber after 2026-11-13).
   - 2026-10-20 ~13:20 — older state in `docs/notes/step12a_fixes.md` §5b (then:
     GPU sweep running on the Camber node in `~/pfe_v3_run` with an auto-stop watcher;
     Taccari speed-up `b3a8b74` must be uploaded before its step; laptop chain running;

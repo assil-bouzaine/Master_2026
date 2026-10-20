@@ -83,13 +83,34 @@ class EALSTM(nn.Module):
         xd, xs = x[:, :, :-self.n_static], x[:, -1, -self.n_static:]
         i = torch.sigmoid(self.gate_i(xs))
         wx = self.w(xd)                                   # (B, L, 3H), all steps at once
-        h = torch.zeros(x.shape[0], self.hidden, device=x.device)
-        c = torch.zeros_like(h)
-        for t in range(x.shape[1]):
-            f, g, o = (wx[:, t] + self.u(h)).chunk(3, dim=-1)
-            c = torch.sigmoid(f) * c + i * torch.tanh(g)
-            h = torch.sigmoid(o) * torch.tanh(c)
-        return self.head(h).squeeze(-1)
+        return self.head(_recurrence(wx, self.u.weight, i)).squeeze(-1)
+
+
+def _recurrence_eager(wx: torch.Tensor, u: torch.Tensor, i: torch.Tensor) -> torch.Tensor:
+    """EA-LSTM state update over the window; u = weight of the hidden-to-gates map."""
+    h = torch.zeros(wx.shape[0], u.shape[1], device=wx.device, dtype=wx.dtype)
+    c = torch.zeros_like(h)
+    for t in range(wx.shape[1]):
+        f, g, o = (wx[:, t] + torch.mm(h, u.t())).chunk(3, dim=1)
+        c = torch.sigmoid(f) * c + i * torch.tanh(g)
+        h = torch.sigmoid(o) * torch.tanh(c)
+    return h
+
+
+_SCRIPTED = []
+
+
+def _recurrence(wx, u, i):
+    """Same arithmetic, compiled with TorchScript on first use: removes the per-step Python
+    overhead of the loop (and lets the GPU fuse the gate operations). Falls back to the
+    eager loop if TorchScript is unavailable."""
+    if not _SCRIPTED:
+        try:
+            _SCRIPTED.append(torch.jit.script(_recurrence_eager))
+        except Exception as e:  # noqa: BLE001
+            print(f"EA-LSTM: TorchScript unavailable ({e}); running the eager loop", flush=True)
+            _SCRIPTED.append(_recurrence_eager)
+    return _SCRIPTED[0](wx, u, i)
 
 
 ARCHS = {"lstm": Net, "ealstm": EALSTM}

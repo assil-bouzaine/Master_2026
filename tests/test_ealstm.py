@@ -1,10 +1,11 @@
-"""The TorchScript EA-LSTM recurrence equals the original eager loop.
+"""The fused-kernel EA-LSTM equals the explicit loop over the weeks.
 
     python -m tests.test_ealstm
 
-Compares outputs and parameter gradients of src.models.lstm.EALSTM with the loop as first
-written (nn.Linear for the hidden-to-gates map, Python loop over the weeks), then times
-both.
+Compares outputs and parameter gradients of src.models.lstm.EALSTM (the cell assembled
+into one standard LSTM call) with the loop as first written (nn.Linear for the
+hidden-to-gates map, Python loop over the weeks), then times both. As in the data
+(src.models.lstm.arrays), the static columns are constant along each window.
 """
 import time
 
@@ -26,6 +27,13 @@ def reference_forward(net, x):
     return net.head(h).squeeze(-1)
 
 
+def batch(B, L, n_in, n_static, device="cpu"):
+    """Random inputs whose last n_static columns are constant along the window."""
+    x = torch.randn(B, L, n_in, device=device)
+    x[:, :, -n_static:] = torch.randn(B, 1, n_static, device=device)
+    return x
+
+
 def grads(net, fn, x):
     net.zero_grad()
     fn(x).pow(2).sum().backward()
@@ -36,7 +44,7 @@ def test_equal_to_eager_loop():
     torch.manual_seed(0)
     net = EALSTM(12, hidden=32, n_static=4).eval()
     for L in (1, 5, 104, 156):
-        x = torch.randn(8, L, 12)
+        x = batch(8, L, 12, 4)
         with torch.no_grad():
             err = (net(x) - reference_forward(net, x)).abs().max().item()
         gerr = max((a - b).abs().max().item() for a, b in
@@ -45,13 +53,13 @@ def test_equal_to_eager_loop():
         print(f"lookback {L:3d}: max |output diff| {err:.1e}, max |gradient diff| {gerr:.1e}")
 
 
-def time_both(batch=256, L=156, hidden=64, reps=3):
+def time_both(n=256, L=156, hidden=64, reps=3):
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     net = EALSTM(30, hidden=hidden, n_static=8).to(dev).train()
-    x = torch.randn(batch, L, 30, device=dev)
+    x = batch(n, L, 30, 8, dev)
     out = {}
-    for name, fn in (("script", net), ("eager", lambda z: reference_forward(net, z))):
-        for _ in range(3):                        # TorchScript profiles on the first runs
+    for name, fn in (("fused", net), ("loop", lambda z: reference_forward(net, z))):
+        for _ in range(3):                        # warm-up (kernel selection, allocator)
             fn(x).sum().backward()
         if dev == "cuda":
             torch.cuda.synchronize()
@@ -61,8 +69,8 @@ def time_both(batch=256, L=156, hidden=64, reps=3):
         if dev == "cuda":
             torch.cuda.synchronize()
         out[name] = (time.perf_counter() - t0) / reps
-    print(f"[{dev}] forward+backward, batch {batch} x {L} weeks: script {out['script'] * 1e3:.0f} ms, "
-          f"eager {out['eager'] * 1e3:.0f} ms ({out['eager'] / out['script']:.1f}x)")
+    print(f"[{dev}] forward+backward, batch {n} x {L} weeks: fused {out['fused'] * 1e3:.0f} ms, "
+          f"loop {out['loop'] * 1e3:.0f} ms ({out['loop'] / out['fused']:.1f}x)")
 
 
 if __name__ == "__main__":

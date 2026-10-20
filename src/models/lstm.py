@@ -31,10 +31,12 @@ import argparse
 import json
 import time
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import torch
-from torch import nn
+from torch import _VF, nn
 
 from src.models.evaluate import DS, RESULTS, evaluate_run
 from src.models.features import STATIC, build_panel
@@ -46,6 +48,9 @@ LOOKBACK = 104
 RUN = "lstm"
 # Runs on a GPU automatically when one is present (Colab/Kaggle/Camber), else CPU.
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# EALSTM hands freshly assembled weights to the fused kernel; cuDNN copies them into one
+# buffer at each call (small at this size) and would otherwise warn about it.
+warnings.filterwarnings("ignore", message="RNN module weights are not part")
 
 
 def set_lookback(weeks):
@@ -80,37 +85,21 @@ class EALSTM(nn.Module):
         self.head = nn.Sequential(nn.Dropout(dropout), nn.Linear(hidden, 1))
 
     def forward(self, x):
-        xd, xs = x[:, :, :-self.n_static], x[:, -1, -self.n_static:]
-        i = torch.sigmoid(self.gate_i(xs))
-        wx = self.w(xd)                                   # (B, L, 3H), all steps at once
-        return self.head(_recurrence(wx, self.u.weight, i)).squeeze(-1)
-
-
-def _recurrence_eager(wx: torch.Tensor, u: torch.Tensor, i: torch.Tensor) -> torch.Tensor:
-    """EA-LSTM state update over the window; u = weight of the hidden-to-gates map."""
-    h = torch.zeros(wx.shape[0], u.shape[1], device=wx.device, dtype=wx.dtype)
-    c = torch.zeros_like(h)
-    for t in range(wx.shape[1]):
-        f, g, o = (wx[:, t] + torch.mm(h, u.t())).chunk(3, dim=1)
-        c = torch.sigmoid(f) * c + i * torch.tanh(g)
-        h = torch.sigmoid(o) * torch.tanh(c)
-    return h
-
-
-_SCRIPTED = []
-
-
-def _recurrence(wx, u, i):
-    """Same arithmetic, compiled with TorchScript on first use: removes the per-step Python
-    overhead of the loop (and lets the GPU fuse the gate operations). Falls back to the
-    eager loop if TorchScript is unavailable."""
-    if not _SCRIPTED:
-        try:
-            _SCRIPTED.append(torch.jit.script(_recurrence_eager))
-        except Exception as e:  # noqa: BLE001
-            print(f"EA-LSTM: TorchScript unavailable ({e}); running the eager loop", flush=True)
-            _SCRIPTED.append(_recurrence_eager)
-    return _SCRIPTED[0](wx, u, i)
+        """The same cell run by the fused LSTM kernel (cuDNN on a GPU), assembled from the
+        parameters above: the input-gate row reads only the static columns and has no
+        hidden-to-gate weights, the forget/cell/output rows read only the dynamic columns.
+        The statics are constant along a window, so i = sigmoid(W s + b) at every week and
+        this equals the explicit loop over the weeks (tests/test_ealstm.py), ~10x faster."""
+        H, n_dyn = self.hidden, x.shape[2] - self.n_static
+        zeros = x.new_zeros
+        w_ih = torch.cat([torch.cat([zeros(H, n_dyn), self.gate_i.weight], 1),    # gate order
+                          torch.cat([self.w.weight, zeros(3 * H, self.n_static)], 1)])  # i,f,g,o
+        w_hh = torch.cat([zeros(H, H), self.u.weight])
+        b_ih = torch.cat([self.gate_i.bias, self.w.bias])
+        h0 = zeros(1, x.shape[0], H)
+        out = _VF.lstm(x, (h0, h0), [w_ih, w_hh, b_ih, zeros(4 * H)], True, 1, 0.0,
+                       self.training, False, True)[0]
+        return self.head(out[:, -1]).squeeze(-1)
 
 
 ARCHS = {"lstm": Net, "ealstm": EALSTM}

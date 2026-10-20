@@ -28,6 +28,7 @@ BUDGET_H = float(os.environ.get("BUDGET_H", 11.0))
 INPUT = Path(os.environ.get("KAGGLE_INPUT", "/kaggle/input"))
 WORK = Path(os.environ.get("KAGGLE_WORK", "/kaggle/working"))
 CODE = Path(os.environ.get("PFE_CODE", "/tmp/pfe"))
+PINS = os.environ.get("PIN_TARGET", "/tmp/pins")   # pinned packages (scripts/run_gpu.sh)
 OUT = WORK / "results_gpu" / "v3"
 LOG = WORK / "run_kaggle.log"
 DEADLINE = time.time() + BUDGET_H * 3600
@@ -90,25 +91,33 @@ def chain(steps, env, tag):
         run(["bash", "scripts/run_gpu.sh"], dict(env, STEPS=s), left, tag)
 
 
+def gpus():
+    if not shutil.which("nvidia-smi"):
+        return 0
+    return subprocess.run(["nvidia-smi", "-L"], capture_output=True, text=True).stdout.count("GPU ")
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
+    n_gpu = gpus()
+    if n_gpu == 0 and os.environ.get("REQUIRE_GPU", "1") == "1":
+        log("no GPU in this session (Kaggle gives none to accounts without phone "
+            "verification): stopping")
+        return
     unpack()
     restore()
     env = dict(os.environ, PFE_DATASET="v3", PFE_RESULTS=str(OUT), PYTHONIOENCODING="utf-8",
-               PYTHONUNBUFFERED="1")
-    log(f"steps {' | '.join(' '.join(c) for c in CHAINS)}; budget {BUDGET_H} h")
-    run(["bash", "scripts/run_gpu.sh"], dict(env, STEPS="setup"), 1800)   # venv + pins only
-    venv_py = Path(env.get("VENV", "/tmp/venv_gpu")) / "bin" / "python"
+               PYTHONUNBUFFERED="1", PIN_TARGET=PINS)
+    log(f"{n_gpu} GPU(s); steps {' | '.join(' '.join(c) for c in CHAINS)}; budget {BUDGET_H} h")
+    run(["bash", "scripts/run_gpu.sh"], dict(env, STEPS="setup"), 1800)   # pinned packages
     chains = CHAINS
-    if run([str(venv_py), "-m", "tests.test_ealstm"], env, 900) != 0:
+    test_env = dict(env, PYTHONPATH=os.pathsep.join(filter(None, [PINS, env.get("PYTHONPATH")])))
+    if run(["python3", "-m", "tests.test_ealstm"], test_env, 900) != 0:
         chains = [[s for s in c if "ealstm" not in s] for c in chains]
         log("EA-LSTM GPU check failed: EA-LSTM steps dropped")
-    smi = subprocess.run(["nvidia-smi", "-L"], capture_output=True, text=True) \
-        if shutil.which("nvidia-smi") else None
-    n_gpu = smi.stdout.count("GPU ") if smi else 0
     env["SKIP_PIP"] = "1"
     if n_gpu >= len(chains) > 1:
-        log(f"{n_gpu} GPUs: {len(chains)} chains in parallel")
+        log(f"{len(chains)} chains in parallel, one GPU each")
         threads = [threading.Thread(target=chain, args=(c, dict(env, CUDA_VISIBLE_DEVICES=str(i)),
                                                         f"[gpu{i}] "))
                    for i, c in enumerate(chains)]

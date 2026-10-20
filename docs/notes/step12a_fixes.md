@@ -130,6 +130,28 @@ and 0.410 with seeds 1 and 2 → 3-seed mean 0.474 (winner's curse confirmed).
 - After the crash the Camber CLI token is invalid: Assil runs `! camber login`; Chrome must
   be open for the extension.
 
+**Update 2026-10-20 ~13:40.** Both speed-ups are on the node (md5 checked): Taccari strided
+TCN (`b3a8b74`) and EA-LSTM TorchScript (`a5956a1`, 1.6× on the L4). Finished GPU runs
+(lstm, stgnn_distance, chronos2 ×3, lstm/stgnn tuned, lstm regimes) were copied to
+`results/v3/` and rescored on the laptop. Interim medians over the 33 core wells:
+
+| Simulation | val NSE | drought NSE | drought skill | recovery NSE |
+|---|---|---|---|---|
+| Pastas seasonal+canal | 0.45 | −0.73 | 0.20 | −0.04 |
+| LightGBM tuned (3-seed re-selection) | 0.51 | −0.18 | 0.44 | 0.42 |
+| LSTM default / tuned | 0.54 / 0.66 | −0.07 / +0.01 | 0.56 / 0.56 | 0.28 / 0.46 |
+| ST-GNN distance default / tuned | 0.52 / 0.66 | +0.03 / −0.09 | 0.37 / 0.54 | 0.23 / 0.39 |
+
+Forecast, drought NSE (skill vs anomaly persistence): Chronos-2 4 wk 0.78 (0.26) zero-shot,
+0.79 (0.27) cross-learning, 0.81 (0.30) fine-tuned; 12 wk 0.37 / 0.40 / 0.35 (0.31–0.33).
+
+**LightGBM's own-climatology input.** `clim_z` (each well's training climatology, computed
+from its heads) is LightGBM's dominant feature; the networks never get it, and it would leak
+in R2/R3. Commit `60e9872` adds `lgbm --no-clim` (tuned with the same budget) and its
+regimes; queued on the laptop after the WellModel (`results/v3/cpu_runs4.log`). Both
+LightGBM rows will be reported; which one is "the" LightGBM baseline is for Assil and the
+supervisor (the no-clim one is the like-for-like comparison).
+
 ## 5. Where we stopped (2026-10-20, ~10:35) and how to resume
 
 **Results so far on v3 (laptop):** naive floors; LightGBM default (validation 0.51,

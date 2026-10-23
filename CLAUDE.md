@@ -533,11 +533,15 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
 
 **Running now (state at 2026-10-23 17:00 CET; the v3 runs finish as planned,
 Assil decided at 16:30)**
-- Laptop at 17:00: `ealstm_tuned`, seed 3 of 5; then its 40 regime runs
-  (overnight). The Colab tab was not touched by Claude in the evening session.
+- Laptop at 17:00: `ealstm_tuned` at seed 2 (the third of five, seeds 0–4);
+  then its 40 regime runs (overnight). The Colab tab was not touched by Claude
+  in the evening session.
 - A short v4 test (`STEPS="select naive lgbm_final" scripts/run_v4_cpu.sh`,
-  log `results/v4/cpu_runs_test.log`) ran niced next to it and slowed the
-  EA-LSTM epochs (62 s → 150 s) while it lasted.
+  log `results/v4/cpu_runs_test.log`) ran niced next to it. `select` and
+  `naive` finished. `lgbm_final` was **stopped by Claude after 20 min**:
+  LightGBM's threads on an oversubscribed CPU slowed both runs (EA-LSTM epochs
+  62 s → 150 s). It runs again in `run_v4_cpu.sh` after the sweep. Do not run
+  LightGBM next to the EA-LSTM.
 
 Keep the laptop **on and plugged in**, and the Chrome tab
 `pfe_v3_gpu.ipynb - Colab` **open**. If either stops, both runs resume where
@@ -606,7 +610,8 @@ they stopped (instructions below); only the run in progress is lost.
   `setsid nohup bash scripts/run_v4_cpu.sh > results/v4/cpu_runs.log 2>&1 < /dev/null &`
   - steps: copy the v3 selections, naive, LightGBM (+ regimes), Pastas,
     WellModel
-  - `select naive lgbm_final` were already run as a test on 2026-10-23
+  - `select` and `naive` already ran on 2026-10-23 (they are skipped or
+    redone quickly)
 - **Then Colab, for the GPU part:**
   1. `.venv/bin/python scripts/v4_from_v3.py` (after the Taccari pull)
   2. `PFE_DATASET=v4 .venv/bin/python scripts/make_gpu_bundle.py`

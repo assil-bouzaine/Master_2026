@@ -148,6 +148,15 @@ Two example wells are used throughout:
   - W2: 130 points, 7 with a BSS code. Drinking water **110.4 Mm³**, irrigation 16.9 Mm³.
     Whether that drinking water comes from the Têt alluvium or from the Pliocene below is
     exactly what CQ2 must answer.
+  - **Answer (task 12.3, 2026-10-23; declared volumes 2012–2023, main candidates):** of the
+    110.3 Mm³ of drinking water within 5 km of W2:
+    - alluvium ≈ 72 Mm³ (65 %): recent alluvium 24.1 confident + 5.7 probable; ancient
+      alluvium 41.9 probable. The alluvial entity is right in only 63 % of the evaluated
+      cases, so recent vs ancient is uncertain.
+    - Pliocene ≈ 38 Mm³ (35 %): 4.4 confident + 33.9 probable
+    - unknown 0.4 Mm³
+
+    The irrigation (12.6 Mm³ declared) is "possible" or unknown only.
 - **Open.**
   - The 211 coded points are mostly drinking-water boreholes, so the flag's accuracy on
     irrigation boreholes may differ. Report it as measured, not assumed.

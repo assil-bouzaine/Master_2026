@@ -63,6 +63,11 @@ Figures: `reports/figures/baselines_nse_v2.png` (all models),
 
 ## What this means for the thesis
 
+*(Correction of 2026-10-23, second review: the next sentence is too strong.
+Missing measurements, forcing assumptions such as the reconstructed weekly
+pumping, model structure and groundwater memory remain competing explanations;
+see `docs/review_codex_response.md`.)*
+
 The bottleneck is **missing knowledge, not data or model size**. That is
 precisely what the ontology phase adds: linking each abstraction point to
 its aquifer unit, and building the model's graph from these relations

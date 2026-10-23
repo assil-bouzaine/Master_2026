@@ -30,7 +30,9 @@ Full table: `docs/results_baselines.md`. Figures:
   it works for wells never seen (leave-wells-out), and it is where "did the
   model learn the physics?" can be tested.
 - **Forecast:** predict *h* = 4 or 12 weeks ahead, knowing levels up to
-  today. This is the operational use.
+  today. This is the operational use. *(2026-10-23: strictly a hindcast, because
+  the reconstructed pumping uses information after the issue week;
+  `docs/analysis_plan.md` §7b.)*
 
 ### Results (median over the 33 core wells)
 

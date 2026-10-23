@@ -45,7 +45,7 @@ REFERENCE = "pastas_seasonal_canal"   # hydrology reference for the significance
 REGIME_MODELS = [("lgbm_noclim", "LightGBM"), ("lstm", "LSTM"),
                  ("ealstm", "EA-LSTM"),
                  ("stgnn", "Distance-graph ST-GNN"), ("taccari", "Taccari-graph ST-GNN")]
-REGIMES = [("", "R1 all wells, full training"), ("_lwo", "R2 unseen wells (5 folds)"),
+REGIMES = [("", "R1 all wells, full training"), ("_lwo", "R2 left-out monitored wells (5 folds)"),
            ("_f50", "R3 50 % of the training period"), ("_f25", "R3 25 % of the training period"),
            ("_refit", "refit on train + validation")]
 GROUPS = ["Pliocene multilayer", "recent alluvium", "ancient alluvium", "Corbières karst", "other"]

@@ -165,6 +165,11 @@ again: `! camber update`, then `! camber login`).
   the LSTM most (drought NSE −1.56), the distance graph least (−0.42); 25–50 % of the
   training period costs little (R3), as on v2. Pastas WellModel: better on the Pliocene
   (drought −0.30 vs −0.49), much worse on the recent alluvium (−6.51, 4 wells).
+- **Correction (2026-10-23, Step 12b):** "significantly better" above comes from the
+  per-well Wilcoxon test, which treats wells as independent. With the cluster sign-flip test
+  of analysis plan v2, the same comparisons give p_holm 0.08–0.23 in the drought (effects
+  unchanged and large). Only LightGBM's recovery NSE stays significant (p_holm 0.039).
+  "R2 unseen wells" now reads "left-out monitored wells".
 - The Gate 2 addendum waits for EA-LSTM and Taccari, so the supervisor gets one v3 update.
 
 **Update ~20:25: Kaggle phone verification does not work from Tunisia (no SMS arrives), so

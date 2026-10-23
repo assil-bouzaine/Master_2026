@@ -11,7 +11,9 @@ Rolling origin: for every issue week t0 in the validation and test splits, the m
 the well's z-scored head up to t0 (last CONTEXT weeks, gaps as NaN) with past covariates
 (rain, ETP, effective rain, drainage, local pumping, canal volume; rivers from dataset v3)
 and the calendar (season) as a known future covariate; it predicts the next 12 weeks.
-Future weather is treated as unknown (operational setting).
+Future weather is treated as unknown. The past covariates are the reconstructed series
+(weekly pumping spread with weights of the whole year), so the setting is a hindcast, not
+an operational forecast (docs/analysis_plan.md section 7b).
 
 Modes
     zeroshot  no training on our data; the issue weeks of one well are batched together

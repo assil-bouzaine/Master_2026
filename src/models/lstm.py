@@ -15,7 +15,8 @@ doi:10.5194/hess-25-1671-2021 for groundwater):
             dynamic inputs drive the forget/cell/output gates
 For each target week t, the input is the previous LOOKBACK weeks of weather, pumping,
 rivers (dataset v3) and season. The output is the z-scored head at t. No observed head is
-ever an input (simulation task), so the model also applies to unseen wells.
+ever an input (simulation task), so the model also applies to wells left out of training
+(regime R2, given their training-period head statistics).
 
 Training: weeks of the train split with an observed head; loss = MSE in z, each well
 weighted equally (same reason as lgbm.py). Early stopping on the median validation NSE

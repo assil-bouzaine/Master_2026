@@ -17,8 +17,8 @@ studies from ours is how they are set up. "to read" = not yet checked in the pap
 |---|---|---|---|---|---|
 | **This thesis** | **No** (simulation); forecasting is a secondary hindcast | SAFRAN reanalysis; pumping **reconstructed** from annual BNPE declarations; river discharge | Temporal (drought / recovery), grouped leave-wells-out (wells < 2 km together), 25/50 % data | KG: units, stacks, pump → unit links with measured confidence, signed `Influence` nodes; equivalence test against plain tables | Semi-synthetic twin (incl. mechanisms the model cannot fit), faithfulness, entity and sign tests, documented events (2024 BRGM bulletin) |
 | Taccari et al. 2024 | Yes (5-week window: forecasting) | Observed rain, ET, river stage, pumping as exogenous nodes | 80/20 split without validation; held-out wells to read | Predefined graph (no geology in the edges) | to read |
-| Wu et al. 2025, *WRR* | to read | to read | to read | Hydrogeological units as prior information (indexed abstract); the review mentions a fully connected graph control: to confirm | to read |
-| Wu et al. 2025, *JGR: MLC* | to read (T-GCN forecasting) | to read | to read | Several spatial-dependency adjacency matrices | to read |
+| Wu, Yao, Guo, Yang, He, Lancia & Zheng 2025, *WRR* (gold open access; abstract read 2026-10-23) | Forecasting: lead times up to 25 days (abstract); lookback to read | Precipitation, evapotranspiration, vegetation (lagged responses analysed) | 473 wells, Yellow River Basin; split to read | Hydrogeological units embedded as prior knowledge in a Graph Fourier Network with **dynamic graph structure generation** and multi-head graph attention; beats LSTM, XGBoost, ST-LSTM (R² up to 0.90); the review mentions a fully connected graph control: to confirm | Lagged responses vary across hydrogeological units (interpretation); independent check to read |
+| Wu, Mei, Shao, Xu & Peng 2025, *JGR: MLC* (gold open access; abstract read 2026-10-23) | Forecasting (title); lookback to read | to read | to read | Several spatial dependencies between wells: physical proximity, hydrological connectivity, shared environmental traits | to read |
 | Heudorfer et al. 2024 | **No**: meteorological inputs only | Precipitation, temperature (+ annual sinusoid), relative humidity | Train ≤ 2007, validation 2008–11, test 2012–15; out-of-sample = 10-fold CV over wells; 10 seeds | 18 environmental features + 9 features computed from each well's own head series (to 2011); random-integer controls | No: permutation importance only; static features act as identifiers (the random controls did as well) |
 | Chu et al. 2026 | to read (forecasting in the title) | to read | to read | TFN component (transfer functions) + LSTM | to read |
 | Jeong et al. 2026 | to read | to read | to read (transfer learning) | Physically interpretable framework | The review says learned responses are compared with independent hydrogeological information: to confirm |
@@ -26,6 +26,15 @@ studies from ours is how they are set up. "to read" = not yet checked in the pap
 Note: Heudorfer et al. also give held-out wells features computed from their own head
 history, as our R2 convention does (mean, sd, artesian share). Both are transfer between
 monitored wells, not prediction at ungauged sites.
+
+**Positioning (from the matrix, to confirm when the full texts are read):** the closest
+graph studies (Taccari 2024, both Wu 2025) forecast with past heads. With past heads,
+persistence carries much of the skill, so it is hard to tell whether the graph knowledge
+is used. We simulate from forcings and reconstructed pumping only, so the drivers and the
+knowledge must carry the prediction, and we test whether they do (twin, rewiring,
+signs). The second difference is the source of the graph: a formal KG with provenance
+and measured confidence. Wu WRR embeds units as priors in a graph that is partly
+generated dynamically. The third is the checks of the explanations.
 
 ## Groundwater levels with graphs or deep learning
 

@@ -4,7 +4,7 @@
     python -m src.models.regimes --model stgnn --only lwo f25
 
 Uses the configuration chosen by src.models.tune (results/<v>/<model>_tuning/best.json):
-    <model>_tuned_lwo     unseen wells: 5 leave-wells-out folds x 5 seeds; each fold's
+    <model>_tuned_lwo     left-out monitored wells: 5 leave-wells-out folds x 5 seeds; each fold's
                           held-out wells are predicted by the models trained without them,
                           then the five folds are assembled into one prediction file
     <model>_tuned_f25     less data: training period 2016-04-01 .. 2019-12-31 (25 %)

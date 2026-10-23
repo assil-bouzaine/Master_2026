@@ -354,3 +354,19 @@ run first on the GPU; check the log).
 | **EA-LSTM** | Entity-aware LSTM: the static attributes of a site decide how much new input enters the memory. |
 | **Leave-wells-out** | Training without some wells and testing on them, to measure generalisation to unmonitored places. |
 | **Cross-learning** | A foundation model forecasts several series jointly and shares information between them. |
+
+**Update 2026-10-23 15:25: state when Assil stopped for the day.** Both sweeps are running
+unattended. CLAUDE.md §7 ("Running now") has the resume and finish instructions.
+- **Colab T4, Taccari.**
+  - Default model: 5 seeds; validation 0.527, drought −0.162, recovery 0.394, train
+    0.933 (Colab's own scoring, without the skill column). The gap between train and
+    validation shows strong overfitting with the default settings.
+  - Tuning: 16 of 24 trials done; best trial 12 = 0.620 (lookback 156, hidden 64).
+  - About 10 s per epoch.
+- **Laptop, EA-LSTM.**
+  - The study is complete.
+  - Re-selection: trial 18 = 0.531 and trial 12 = 0.540 (3-seed means; their single-seed
+    values were 0.604 and 0.599, the lucky-seed effect again). Trial 23 was next.
+  - Then come 5 final seeds and the regimes.
+- **When both are done:** pull the Colab results (`scripts/colab_pull.py`), then
+  ensemble, report, and close this step (CLAUDE.md §7).

@@ -456,32 +456,90 @@ notebooks/       exploration only; anything that matters moves into src/
     contacts, publication details, monthly drinking-water production.
   - The e-mails are ready in §4–5 there; Assil sends them.
 
-**Running now**
-- **Laptop:** the EA-LSTM sweep, started 13:40.
-  - Log: `results/v3/cpu_runs7.log`. The tuning finished all 24 trials; then
-    come the re-selection, 5 seeds and the regimes (≈ 15 h in all).
-  - **Check `pgrep -af src.models` before starting anything.** Two tuners on
-    one study would both add trials.
-  - If it stopped:
-    `STEPS="ealstm_tune ealstm_regimes" setsid nohup bash scripts/run_cpu.sh > results/v3/cpu_runs8.log 2>&1 < /dev/null &`
+**Running now (state at 2026-10-23 15:22 CET; Assil stopped for the day and
+continues when the models have finished)**
+
+Keep the laptop **on and plugged in**, and the Chrome tab
+`pfe_v3_gpu.ipynb - Colab` **open**. If either stops, both runs resume where
+they stopped (instructions below); only the run in progress is lost.
+
+- **Laptop: the EA-LSTM sweep.** Started 13:40; PID 620767 at 15:22; log
+  `results/v3/cpu_runs7.log`.
+  - Tuning: the study is complete (24 trials + 2 failed; best single-seed
+    trial 18 = 0.604).
+  - Re-selection (3-seed means): trial 18 = 0.531, trial 12 = 0.540; trial 23
+    was next.
+  - Then 5 final seeds → `results/v3/ealstm_tuned`, then the regimes
+    (`ealstm_tuned_lwo`, `_f25`, `_f50`, `_refit`; 40 runs).
+  - Estimate (≈ 20 min per run on 3 threads): `ealstm_tuned` around 18:00,
+    the regimes 11–15 h later.
+  - **Done when** the log ends with `== … done`, and `pgrep -af src.models`
+    shows nothing.
+  - **If it stopped:** check `pgrep -af src.models` first (two tuners on one
+    study would both add trials), then run
+    `STEPS="ealstm_tune ealstm_regimes" setsid nohup bash scripts/run_cpu.sh > results/v3/cpu_runs8.log 2>&1 < /dev/null &`.
     It resumes where it stopped.
-- **Colab (T4):** the Taccari sweep, started 14:04, in notebook
-  `pfe_v3_gpu.ipynb` (Assil's Drive).
-  - The default model is done: 5 seeds, validation NSE 0.53, drought −0.16 in
-    Colab's own scoring, which has no skill column. Tuning was then running;
-    the regimes follow.
-  - Results go to Drive `pfe_colab/results_gpu` every 5 min.
-  - If the session stopped: re-run the two cells of `docs/gpu_howto.md`,
-    Colab section. Assil clicks the Drive permission.
-  - Bring the results back with `scripts/colab_pull.py`, which rescores on the
-    laptop and adds the skill column.
-- **When both are done:**
-  1. `python -m src.models.ensemble`
-  2. `python -m src.analysis.baseline_report`
-  3. update `docs/results_baselines.md` and the step-12a note
-  4. the Gate 2 addendum
+- **Colab T4: the Taccari sweep.** Session started 12:59 UTC; notebook
+  `pfe_v3_gpu.ipynb` in Assil's Drive; steps
+  `taccari tune:taccari regimes:taccari`.
+  - Default `taccari` ✅. 5 seeds; validation 0.527, drought −0.162,
+    recovery 0.394. These are Colab's own scores, without the skill column.
+  - `tune:taccari`: 16 of 24 trials done at 14:21 UTC (best: trial 12 =
+    0.620, trial 15 = 0.605, trial 14 = 0.591). Then the re-selection and 5
+    final seeds → `taccari_tuned`.
+  - Then `regimes:taccari` (40 runs).
+  - Estimate (≈ 3–4 min per run on the T4): tuned around 15:30 UTC, the
+    regimes around 18:00–19:00 UTC.
+  - Results are copied to Drive `MyDrive/pfe_colab/results_gpu` every 5 min.
+  - **Done when** the cell output ends with `== … done` and
+    `… files saved to /content/drive/MyDrive/pfe_colab/results_gpu`.
+  - **If the session stopped** ("runtime disconnected", or no GPU):
+    1. Open the notebook.
+    2. Runtime → Change runtime type → T4 GPU.
+    3. Run the two cells of `docs/gpu_howto.md` (Colab section): mount Drive
+       (**Assil clicks Allow**), then the `unzip … && python …/colab_run.py`
+       line.
+    4. It restores from Drive and skips everything finished.
+- **When Colab has finished:**
+  1. In a new cell: `!python /content/pfe/scripts/colab_run.py zip`, then
+     `from google.colab import files; files.download('/content/results_colab.zip')`.
+     The zip lands in `~/Downloads`.
+  2. On the laptop:
+     `.venv/bin/python scripts/colab_pull.py ~/Downloads/results_colab.zip`
+     copies `taccari`, `taccari_tuning`, `taccari_tuned` and its 4 regimes to
+     `results/v3/` and rescores them, which adds the skill column.
+  3. Then Runtime → Disconnect and delete runtime, to save the free quota.
+- **When both are done** (with `PFE_DATASET=v3`):
+  1. If the EA-LSTM runs show no metrics yet, run
+     `.venv/bin/python -m src.models.evaluate ealstm_tuned ealstm_tuned_lwo ealstm_tuned_f25 ealstm_tuned_f50 ealstm_tuned_refit`.
+  2. `.venv/bin/python -m src.models.ensemble`: its candidates already
+     include `ealstm_tuned`, `taccari` and `taccari_tuned`.
+  3. `.venv/bin/python -m src.analysis.baseline_report`.
+  4. Finalise `docs/results_baselines.md` (remove "pending") and close the
+     step-12a note.
+  5. Send the results in the next monthly report to the supervisor. This
+     replaces the "Gate 2 addendum".
+  6. Commit.
 
   Then Step 12a is done.
+
+**Assil's to-do (no model needed)**
+1. Send the two e-mails in `docs/supervisor_questions.md`:
+   - §4 to the supervisor (decisions + the defence date)
+   - §5 data request: monthly drinking-water production
+2. Review the 16 competency questions (`docs/competency_questions.md`): add,
+   drop, priorities, and the open points listed there.
+3. Later, for task 12.10: an Earth Engine account (sign-in is his).
+
+**Next for Claude, while the models run or after:** task 12.3, the pump →
+unit attribution table.
+- Inputs:
+  - `data/raw/hubeau_qualite/stations_66.parquet` (211 BD LISA units)
+  - the BNPE flag `nappe_accompagnement`
+  - the BD LISA stack at each point
+- One row per point: unit, method, confidence.
+- Report the measured accuracy of the flag rule on the 211 coded points.
+- Write a step note.
 
 **Phase 3 (Step 12):** the task list is below. Freeze the ontology design after
 Assil's review of the competency questions.

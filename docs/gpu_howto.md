@@ -258,3 +258,56 @@ for GPU and internet), then in the Claude Code prompt `! .venv/bin/kaggle auth l
 - EA-LSTM no longer needs a GPU: with the fused kernel it runs ~55 s/epoch on the laptop
   (`scripts/run_cpu.sh` steps `ealstm_tune`, `ealstm_regimes`). Taccari does (163 s/epoch on
   the laptop).
+
+## Google Colab (from 2026-10-23; Kaggle dropped)
+
+Free T4 GPU and no phone check: a Google account is enough. Sessions are interactive: the tab
+must stay open (laptop on), Colab can stop a session without warning, and a GPU is not always
+available. `scripts/colab_run.py` keeps the work resumable: it runs on the session's local disk
+and copies the results to Google Drive (`MyDrive/pfe_colab/results_gpu`) every 5 min and when
+it stops. Notebook: `pfe_v3_gpu.ipynb` in Assil's Drive (Colab Notebooks).
+
+**First time (done 2026-10-23):**
+1. Laptop: `PFE_DATASET=v3 .venv/bin/python scripts/make_gpu_bundle.py`. The Chrome
+   extension uploads at most 10 MB per file, so split the zip (in the scratchpad):
+   `split -b 7000000 -d gpu_bundle.zip gpu_bundle.zip.part`.
+2. Colab: new notebook, Runtime > Change runtime type > **T4 GPU**. Upload the parts through
+   the Files panel's "Upload to session storage" input (the extension cannot reach the input
+   of `files.upload()`: cell outputs are cross-origin iframes), then
+   `!cat /content/gpu_bundle.zip.part0* > /content/gpu_bundle.zip && md5sum /content/gpu_bundle.zip`
+   and compare with the laptop's `md5sum gpu_bundle.zip`.
+3. Mount Drive (**Assil** clicks "Connect to Google Drive", then Allow), then
+   `!mkdir -p /content/drive/MyDrive/pfe_colab && cp /content/gpu_bundle.zip /content/drive/MyDrive/pfe_colab/`.
+
+**Every session (also after a stop):** open the notebook (T4 runtime), then two cells:
+
+```python
+from google.colab import drive; drive.mount('/content/drive')      # Assil: Allow
+!unzip -oq /content/drive/MyDrive/pfe_colab/gpu_bundle.zip -d /content/pfe && python /content/pfe/scripts/colab_run.py
+```
+
+Default steps: `taccari tune:taccari regimes:taccari` (set `STEPS` to change them). The cell
+shows a short output (the first epoch of each seed, which gives its time, then seed and trial
+results); the full log is `results_gpu/run_colab.log` on Drive.
+
+**Bring the results back:** interrupt the cell (it saves to Drive when it stops), then
+
+```python
+!python /content/pfe/scripts/colab_run.py zip
+from google.colab import files; files.download('/content/results_colab.zip')
+```
+
+and on the laptop `.venv/bin/python scripts/colab_pull.py ~/Downloads/results_colab.zip`
+(copies finished runs and tuning studies to `results/v3/`, rescores them). A zip of the Drive
+folder `pfe_colab/results_gpu` (Drive > Download) works too. Then re-run the sweep cell.
+
+**Lessons (2026-10-23):**
+- Colab image: Python 3.13, torch 2.11.0+cu130. The pins go to `/content/pins` (`PIN_TARGET`,
+  as on Kaggle); about 1 min per session.
+- `tests/` had no `__init__.py`, so it was only a namespace package, and a regular `tests`
+  package elsewhere on Colab's path won (`No module named tests.test_taccari`).
+  `tests/__init__.py` is now in the repo and the bundle.
+- **Taccari default on the T4: 10 s per epoch** (laptop 163 s), so its ~80 runs need a few
+  GPU-hours, not ~100 h.
+- After a code change, rebuild the bundle and upload it again (or add the changed file to the
+  Drive copy with `zip`), so that the next session unzips the new version.

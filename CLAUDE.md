@@ -285,15 +285,19 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
 
 ### ▶ Where we are (read this first in a new session)
 
-- **2026-10-23 13:40 — EA-LSTM restarted on the laptop** (`results/v3/cpu_runs7.log`;
-  Optuna reopened the study at 23 complete trials: 1 trial + re-selection + 5 seeds ≈ 4 h,
-  then the regimes ≈ 11–15 h). **Before restarting anything, check `pgrep -af src.models`**
-  (two tuners on one study would both add trials). **Kaggle is dropped:** its verification
-  SMS never reaches Assil's Tunisian number. GPU options for Taccari (≈ 100 h on the laptop),
-  proposed 2026-10-23, waiting for Assil's choice: Google Colab free T4 (recommended; no SMS;
-  the Drive permission is Assil's click each session), Lightning AI (asks for a phone number)
-  and Modal (card requirement unclear) to try, Camber after 2026-11-13 as the fallback.
-  Phase 3 (competency questions) can start meanwhile. Details: step note §5c, last update.
+- **2026-10-23 — EA-LSTM on the laptop, Taccari on Google Colab** (Kaggle is dropped: its
+  verification SMS never reaches Assil's Tunisian number).
+  - Laptop since 13:40: `results/v3/cpu_runs7.log` (24 trials done at 14:05; then the
+    re-selection + 5 seeds ≈ 3–4 h, then the regimes ≈ 11–15 h). **Before restarting
+    anything, check `pgrep -af src.models`** (two tuners on one study would both add trials).
+  - Colab since 14:04 (Assil chose it): notebook `pfe_v3_gpu.ipynb` in Assil's Drive, T4,
+    `scripts/colab_run.py` running `taccari tune:taccari regimes:taccari`, results copied to
+    Drive `pfe_colab/results_gpu` every 5 min. **10 s/epoch** (laptop 163 s). Free sessions
+    stop without warning: re-run the two cells of `docs/gpu_howto.md` (Colab section); the
+    Drive permission is Assil's click. Results back with `scripts/colab_pull.py`.
+  - If Colab runs short: Lightning AI (asks for a phone number), Modal (card requirement
+    unclear), Camber after 2026-11-13. Phase 3 (competency questions) can start meanwhile.
+    Details: step note §5c, last updates.
 - **2026-10-20, Step 12a (fixes from the critical review `docs/feedback.md`):**
   - **Evaluation changed** (`docs/analysis_plan.md`, the reference for every new
     result): test split into **drought** (May 2022 → Nov 2025) and **recovery** (Dec

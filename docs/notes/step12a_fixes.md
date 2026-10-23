@@ -210,6 +210,18 @@ needs a GPU (≈ 100 h on the laptop). Options without an SMS code, proposed to 
 Phase 4 (~300 runs of the same network) needs more than the free tiers: ask the supervisor
 at Gate 2 whether the lab, the university or a SAVE Water partner has a GPU we can use.
 
+**Update 2026-10-23 14:10: Taccari runs on Google Colab (Assil chose it).** Notebook
+`pfe_v3_gpu.ipynb` (Assil's Drive), free T4; the bundle was uploaded in three 7 MB parts (the
+Chrome extension uploads at most 10 MB per file) and copied to Drive `pfe_colab/`.
+`scripts/colab_run.py` (new) restores earlier results from Drive, installs the pins, runs
+`tests/test_taccari.py`, then `taccari tune:taccari regimes:taccari`, copying the results to
+Drive every 5 min (Optuna databases through SQLite's backup API). First attempt stopped at the
+test: `tests/` had no `__init__.py` and another `tests` package on Colab's path won; fixed
+(`tests/__init__.py`). **Taccari default: 10 s per epoch on the T4** (laptop 163 s), so the
+~80 runs should take a few GPU-hours. How to resume or bring results back: `docs/gpu_howto.md`,
+Colab section (`scripts/colab_pull.py` on the laptop). Laptop: EA-LSTM trial 25 (the 24th
+complete) gave 0.484; the re-selection of the top 3 (trials 18, 12, 23) follows.
+
 **Resume checklist:**
 1. ✅ CLI login, then bring back `stgnn_tuned_{lwo,f25,f50,refit}`, `ealstm_tuning` and
    `run_v3.log` (`camber stash cp -r stash://assil0723/pfe_v3_run/results_gpu/v3/<run>

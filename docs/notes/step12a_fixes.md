@@ -1,6 +1,6 @@
 # Step 12a: fixing the evaluation, the data and the baselines (from the review)
 
-**Date:** 2026-10-20 · **Status:** in progress · **Why this step exists:** the
+**Date:** 2026-10-20 → 2026-10-23 · **Status:** ✅ done (2026-10-23 evening; §5d) · **Why this step exists:** the
 critical review in `docs/feedback.md` found problems that would weaken every later
 result (evaluation, pumping inputs, missing regimes, unequal tuning). They are fixed
 *before* the ontology phase, because the ontology's value is measured against these
@@ -59,7 +59,7 @@ Surface-water zones are triggered by river flow, which the models can already se
 through the river inputs. The orders are used only to classify restricted years for
 the imputation.
 
-## 3. Baselines (in progress)
+## 3. Baselines (done; results in `docs/results_baselines.md`)
 
 | Change | File | Status |
 |---|---|---|
@@ -67,7 +67,7 @@ the imputation.
 | True EA-LSTM (statics drive the input gate) | `lstm.py --arch ealstm` | code done |
 | Regimes: leave-wells-out (5 folds), 25/50 % of the training period, refit on train + validation | `lstm.py`, `stgnn.py`, `regimes.py` | code done |
 | Taccari-style graph baseline (weather, river, pumping-field and canal nodes; distance rules; MTGNN-style network) | `taccari.py` | code done |
-| Pastas WellModel: every abstraction point within 5 km with a distance-scaled Hantush response | `pastas_baseline.py` (`pastas_wellmodel`) | running |
+| Pastas WellModel: every abstraction point within 5 km with a distance-scaled Hantush response | `pastas_baseline.py` (`pastas_wellmodel`) | done |
 | Chronos-2: cross-learning across wells, fine-tuning on the training period | `chronos2.py --mode xl / ft` | code done |
 
 ## 4. Knowledge-graph pre-check (done; `docs/kg_precheck.md`)
@@ -97,7 +97,44 @@ labels of the wells (e.g. which entity each well belongs to), rebuilds every pai
 attribute and refits; the p-value is the share of permutations with an effect at least
 as large.
 
-## 5c. State at 2026-10-20 ~19:30 — RESUME HERE
+## 5d. Step closed (2026-10-23, ~21:30)
+
+**What was done.** The Taccari results came back from Drive (folder `pfe_colab/results_gpu`
+downloaded as one 82 MB zip, 132 entries, no cache; `scripts/colab_pull.py` copied the six
+runs and `taccari_tuning` to `results/v3/` and rescored them under v3, which added the skill
+column; the NSE values equal Colab's). The v3 ensemble was rebuilt with the new candidates and
+did not change: `lstm_tuned + stgnn_tuned` (validation 0.684), because EA-LSTM (0.489) and
+Taccari tuned (0.633) did not win their families. `docs/results_baselines.md` was regenerated;
+it now also carries the cluster sign-flip table of Step 12b and a note on the EA-LSTM regimes.
+The explainer chart has the two new rivals.
+
+**Results** (medians over the 33 core wells; drought = primary phase):
+
+| run | NSE validation | NSE drought | skill drought | NSE recovery | skill recovery |
+|---|---|---|---|---|---|
+| LSTM tuned (reference) | 0.66 | 0.01 | 0.56 | 0.46 | 0.47 |
+| Distance-graph ST-GNN tuned (reference) | 0.66 | −0.09 | 0.54 | 0.39 | 0.50 |
+| EA-LSTM tuned | 0.49 | −0.26 | 0.34 | 0.41 | 0.48 |
+| Taccari-graph ST-GNN | 0.53 | −0.16 | 0.54 | 0.39 | 0.51 |
+| Taccari-graph ST-GNN tuned | 0.63 | −0.11 | 0.55 | 0.46 | 0.53 |
+
+- Against Pastas in the drought, every ML model is better by a large median margin, and with
+  the cluster sign-flip test only one row passes after Holm: **Taccari tuned, drought skill**
+  (median +0.25, interval [0.12, 0.57], p_cluster 0.001, p_holm 0.013). All other ML rows:
+  p_holm 0.07–0.33 (per-well Wilcoxon ≤ 0.03). Adding three models to the Holm family moved
+  the earlier range (0.08–0.23).
+- Left-out monitored wells (R2, drought NSE): Taccari −0.40, distance graph −0.42, LightGBM
+  −0.75, LSTM −1.56.
+
+**A slip, repaired.** The first `src.models.ensemble` call ran without `PFE_DATASET`, so it used
+the code default **v2** and overwrote `results/v2/ensemble_sim` with the current family rule
+(it picked `lstm_tuned + stgnn_distance`, since v2 has no `lgbm_noclim_tuned`). Restored by
+running the Step 10 version of the code (`git show 776a3fd:src/models/ensemble.py`) under v2:
+it selected `lgbm_sim + lstm_tuned` again, validation 0.617, test NSE 0.248, RMSE 0.587 m,
+drought −0.267 / skill 0.512, as reported in Step 10 and in the cross-version table. Lesson:
+always set `PFE_DATASET`; the default in `src/config.py` is still v2.
+
+## 5c. State at 2026-10-20 ~19:30 (updated until 2026-10-23 20:58)
 
 **The Camber GPU allowance is used up.** Account Settings → Billing & Usage (Student plan):
 GPU usage 99 %, CPU usage 100 % for the period 13 Oct – 13 Nov 2026 (renews 2026-11-13).
@@ -371,6 +408,15 @@ run first on the GPU; check the log).
 - The Taccari baseline and the future knowledge-graph model share the same network and
   node types; only the edges differ. That is what makes RQ1 a clean test of the edge
   semantics.
+- (2026-10-23) Taccari's extra nodes (pumps, rivers, rain) did not beat the plain distance
+  graph on median NSE, but its drought gain over Pastas is the most consistent across the 14
+  clusters. One significant row among ~40 is a hint, not a result: check it on v4 before
+  writing it anywhere.
+- (2026-10-23) The graph models lose the least on left-out wells. The v3 folds split twin
+  wells, so this needs the grouped v4 folds before it means anything for RQ1.
+- (2026-10-23) The EA-LSTM is the weakest tuned network on v3, and its seeds spread widely
+  (validation 0.43–0.58). On v4 its left-out-wells regime is the informative one: that is the
+  test it was designed for (statics in the input gate).
 
 ## Glossary additions
 

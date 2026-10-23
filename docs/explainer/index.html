@@ -424,7 +424,7 @@
       <div class="legend" id="scores-legend"></div>
       <details class="numbers"><summary>Show the numbers</summary><div id="scores-table" class="tablewrap"></div></details>
     </div>
-    <figcaption><button class="term" data-term="skill">Skill</button>: how much smaller the mistakes are than those of the normal-year guess. 0 = no better; 0.5 = about half the mistakes; 1 = perfect. Medians over the 33 core wells, dataset v3. The EA-LSTM and the Taccari graph finished on 23 October; they join this chart once their results are on the laptop.</figcaption>
+    <figcaption><button class="term" data-term="skill">Skill</button>: how much smaller the mistakes are than those of the normal-year guess. 0 = no better; 0.5 = about half the mistakes; 1 = perfect. Medians over the 33 core wells, dataset v3.</figcaption>
   </figure>
 
   <h3>What it tells us</h3>
@@ -432,18 +432,19 @@
     <li>The computer-learning rivals roughly halve the mistakes of the normal-year guess in the drought. Pastas cuts them by a fifth.</li>
     <li>Most of the remaining mistake is a level that stays too high or too low by a fixed amount in 2024–2025, as if something changed in the pumping that our data do not show.</li>
     <li>Pumping counted over the whole plain did not help. Pumping has to be linked to the right layer and the right wells. That is exactly what the knowledge map will add.</li>
+    <li>The two newest rivals did not beat the plain LSTM. The EA-LSTM is the weakest network in the drought (it cuts the mistakes by a third). The Taccari graph, with pumps, rivers and rain as extra nodes, scores about the same as the simple distance graph.</li>
   </ul>
 
   <h3>Is it proven? Counting neighbourhoods, not wells</h3>
   <p>Our 33 wells are not 33 independent witnesses. Wells close to each other share the same rain, the same pumps and the same layer, so they tend to agree. On the map they fall in only 14 <button class="term" data-term="cluster">neighbourhoods</button> of 10 km. A fair test therefore counts 14 voices, not 33.</p>
-  <p>With that fair test, the advantage of the computer models over Pastas is <strong>big but not proven</strong> at the usual 5 % level. So we report <button class="term" data-term="effectsize">how big the difference is</button> first, and say plainly that 14 neighbourhoods are not enough to prove it. We do not change the test until it says what we would like: that would be cheating with statistics.</p>
+  <p>With that fair test, the advantage of the computer models over Pastas is <strong>big but not proven</strong> at the usual 5 % level. So we report <button class="term" data-term="effectsize">how big the difference is</button> first, and say plainly that 14 neighbourhoods are not enough to prove it. One exception: the tuned Taccari graph's drought skill passes the fair test, because it does better than Pastas in almost every neighbourhood. One pass among dozens of tests is a hint, not proof; version 4 will check it. We do not change the test until it says what we would like: that would be cheating with statistics.</p>
 
   <details class="deeper">
     <summary>Go deeper</summary>
     <ul>
       <li>Full table: <code>docs/results_baselines.md</code>, made by <code>src/analysis/baseline_report.py</code>. Picture of all models on four wells: <a href="../../reports/figures/baselines_hydrographs_v3.png">reports/figures/baselines_hydrographs_v3.png</a>.</li>
       <li>Other scores: <button class="term" data-term="nse">NSE</button> (drought: LSTM 0.01, ensemble 0.02, Pastas −0.73) and KGE'' (a version of KGE that does not depend on the height of sea level).</li>
-      <li>The fair test is a cluster sign-flip permutation test on 10 km cells; the old per-well Wilcoxon test said "proven" (p_holm 0.002–0.04), the fair one does not (0.08–0.23). See <code>docs/analysis_plan.md</code> §6 and <code>src/analysis/stats.py</code>.</li>
+      <li>The fair test is a cluster sign-flip permutation test on 10 km cells; the old per-well Wilcoxon test said "proven" (p ≤ 0.03), the fair one does not (p_holm 0.07–0.33), except the tuned Taccari graph on drought skill (p_holm 0.013). See <code>docs/analysis_plan.md</code> §6 and <code>src/analysis/stats.py</code>.</li>
       <li>Other exams: hiding wells (<button class="term" data-term="hiddenwells">hidden-well test</button>) hurts every model; studying only the last 25–50 % of the years costs little.</li>
     </ul>
   </details>
@@ -724,7 +725,7 @@
 
   <h3>Right now</h3>
   <ul>
-    <li>The last two rivals of version 3 have finished: the Taccari graph network on Colab and the EA-LSTM on the laptop. We stopped the EA-LSTM's extra tests (wells left out, less data) on 23 October, because version 4 redoes them with a fairer split. Once the Taccari results are copied to the laptop, both go into the monthly report for the supervisor.</li>
+    <li>All the rivals of version 3 have finished and are in the scores chart. We stopped the EA-LSTM's extra tests (wells left out, less data) on 23 October, because version 4 redoes them with a fairer split. The results go into the monthly report for the supervisor.</li>
     <li>Re-running all the rivals on dataset v4 is ready but <strong>on hold until you say go</strong>.</li>
     <li>The knowledge map work continues once you have reviewed the 16 questions.</li>
   </ul>

@@ -26,8 +26,8 @@ explains the whole project with pictures (open it in a browser).
 | 8 | Phase 1: climate, rivers, weekly pumping, dataset v1 | done | [step08_dataset.md](step08_dataset.md) |
 | 9 | Phase 2: baselines on v1 | done | [step09_baselines.md](step09_baselines.md) |
 | 10 | Baselines v2: more data, tuning, ensemble, ablation | done | [step10_baselines_v2.md](step10_baselines_v2.md) |
-| 12a | Fixes from the critical review: evaluation, analysis plan, dataset v3, new baselines, knowledge-graph pre-check | in progress | [step12a_fixes.md](step12a_fixes.md) |
-| 12b | Fixes from the second review: dataset v4, strict validated data, grouped folds, cluster-level test, R3 window statistics, analysis plan v2 | done (v4 re-runs of the baselines pending) | [step12b_review_fixes.md](step12b_review_fixes.md) |
+| 12a | Fixes from the critical review: evaluation, analysis plan, dataset v3, new baselines, knowledge-graph pre-check | done (2026-10-23; EA-LSTM regimes on v4 only) | [step12a_fixes.md](step12a_fixes.md) |
+| 12b | Fixes from the second review: dataset v4, strict validated data, grouped folds, cluster-level test, R3 window statistics, analysis plan v2 | done (v4 re-runs of the baselines wait for Assil's go) | [step12b_review_fixes.md](step12b_review_fixes.md) |
 | 12 | Phase 3: ontology and knowledge graph | in progress (12.1 drafted, waiting for review; 12.3 pump → unit attribution done) | [step12_ontology.md](step12_ontology.md) |
 
 Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.

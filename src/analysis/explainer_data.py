@@ -33,7 +33,9 @@ RUNS = [("naive_climatology", "Normal-year guess", "guess"),
         ("pastas_wellmodel", "Pastas with pump distances", "hydro"),
         ("lgbm_noclim_tuned", "LightGBM (many small decision trees)", "ml"),
         ("lstm_tuned", "LSTM (a network with memory)", "ml"),
+        ("ealstm_tuned", "EA-LSTM (memory steered by each well's fixed facts)", "ml"),
         ("stgnn_tuned", "Graph network (wells talk to neighbours)", "ml"),
+        ("taccari_tuned", "Taccari graph (pumps, rivers and rain as extra nodes)", "ml"),
         ("ensemble_sim", "Team of models (average of the best)", "ml")]
 TWIN_M = 1000  # wells closer than this count as "twins" in the fold picture
 

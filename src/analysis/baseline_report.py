@@ -48,6 +48,10 @@ REGIME_MODELS = [("lgbm_noclim", "LightGBM"), ("lstm", "LSTM"),
 REGIMES = [("", "R1 all wells, full training"), ("_lwo", "R2 left-out monitored wells (5 folds)"),
            ("_f50", "R3 50 % of the training period"), ("_f25", "R3 25 % of the training period"),
            ("_refit", "refit on train + validation")]
+# regimes deliberately not run on a dataset version, with the reason (shown under the table)
+REGIME_NOTES = {("v3", "ealstm"): "EA-LSTM: R1 only on v3. Its other regimes were stopped on "
+                "2026-10-23 and run on v4 only: the v3 leave-wells-out folds split twin wells "
+                "20 m apart (`docs/notes/step12a_fixes.md`)."}
 GROUPS = ["Pliocene multilayer", "recent alluvium", "ancient alluvium", "Corbières karst", "other"]
 # validated categorical palette (dataviz skill), fixed order
 SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"]
@@ -315,6 +319,7 @@ def main():
         "mean and sd convert z to metres); R3 shortens the training period, validation and "
         "test unchanged; refit = secondary rows (`docs/analysis_plan.md` sections 4–5).\n",
         (fmt(reg).to_markdown(index=False) if len(reg) else "(no regime runs yet)"), "",
+        " ".join(note for (v, _), note in REGIME_NOTES.items() if v == DATASET), "",
         "## Across dataset versions (drought phase)\n",
         fmt(cmp_).to_markdown(index=False), ""]
     md.write_text("\n".join(parts), encoding="utf-8")

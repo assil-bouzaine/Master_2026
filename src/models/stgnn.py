@@ -168,7 +168,7 @@ def run_graph_model(args, build, prepare=None):
     """Train the seeds of a graph model; `build(codes, wells, F, args)` returns make_net.
     `prepare(P, arrays)` may replace the per-well arrays by node arrays (extra nodes such as
     weather cells or pumping fields get no target, so they leave the loss and the scores)."""
-    P = build_panel()
+    P = build_panel(train_start=args.train_start)  # R3 window statistics from v4
     P = P[P["mu"].notna()]
     data = arrays(P)
     if prepare is not None:

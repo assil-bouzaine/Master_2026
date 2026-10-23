@@ -25,6 +25,10 @@ WINDOW_END = "2025-12-31"
 TEST_PERIODS = {"test_drought": ("2022-05-01", "2025-11-30"),
                 "test_recovery": ("2025-12-01", None)}
 
+# Regime R3 "less data" (docs/analysis_plan.md section 4): starts of the most recent 25 %
+# and 50 % of the training period, which ends on 2019-12-31 in every regime
+R3_STARTS = {"f25": "2016-04-01", "f50": "2012-07-01"}
+
 # Model-ready dataset version and its results folder (CLAUDE.md section 7, step 10).
 # v1: plain wells, training from 2012 (Phase 2). v2: all dept-66 wells, training
 # from 2005, pumping over the whole departement. Select with PFE_DATASET=v1|v2.

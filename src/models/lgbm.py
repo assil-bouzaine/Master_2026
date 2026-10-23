@@ -48,8 +48,9 @@ import lightgbm as lgb
 import numpy as np
 import pandas as pd
 
+from src.config import R3_STARTS
 from src.models.evaluate import DS, RESULTS, evaluate_run
-from src.models.features import build_panel, input_columns, lagged_panel
+from src.models.features import R3_WINDOW_STATS, build_panel, input_columns, lagged_panel
 
 SEEDS = (0, 1, 2, 3, 4)
 BASE = {"objective": "l2", "learning_rate": 0.03, "num_leaves": 31, "min_data_in_leaf": 40,
@@ -62,7 +63,7 @@ CONFIGS = {"base": (BASE, False), "reg": (REG, False), "reg_nostatic": (REG, Tru
            "reg_linear": (LIN, False)}
 SIM_TARGETS = ("z", "anom")
 N_FOLDS = 5
-FRACTIONS = {"f25": "2016-04-01", "f50": "2012-07-01"}   # as src.models.regimes
+FRACTIONS = R3_STARTS
 
 
 def fit_predict(D, cols, seed, params, target, train_mask=True, es_mask=True):
@@ -152,13 +153,19 @@ def tune(D, cols, n_trials, out, targets=SIM_TARGETS):
 def regimes(D, cols, run, which):
     """RQ1 regimes (docs/analysis_plan.md section 4) with the tuned configuration of `run`:
     lwo = 5 leave-wells-out folds (early stopping on the training wells only), f25 / f50 =
-    shorter training period. One file per fold and seed (resumable); 5 seeds averaged."""
+    shorter training period (from dataset v4 with the per-well statistics of that period only,
+    src.models.features). One file per fold and seed (resumable); 5 seeds averaged."""
     b = json.loads((RESULTS / run / "best.json").read_text())["params"]
     params = dict(BASE, **{k: v for k, v in b.items() if k != "target"})
     fold_of = json.loads((DS / "splits.json").read_text())["leave_wells_out"]["fold_of_well"]
-    fold = D["code_bss"].map(fold_of)
-    keys = D[["code_bss", "week"]]
+    full = D
     for name in which:
+        D = full
+        if name in FRACTIONS and R3_WINDOW_STATS:
+            D = build_panel(train_start=FRACTIONS[name])
+            D = D[D["mu"].notna()].reset_index(drop=True)
+        fold = D["code_bss"].map(fold_of)
+        keys = D[["code_bss", "week"]]
         out = RESULTS / f"{run}_{name}"
         jobs = ([(f"fold_{k}", fold != k, fold == k) for k in range(N_FOLDS)] if name == "lwo"
                 else [("", D["week"] >= pd.Timestamp(FRACTIONS[name]), None)])

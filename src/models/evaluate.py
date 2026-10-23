@@ -15,8 +15,11 @@ Periods scored per well (docs/analysis_plan.md):
     train, validation, test            the time splits of the dataset
     test_drought, test_recovery        sub-periods of test (src.config.TEST_PERIODS),
                                        fixed from observed SGI before any new run
-Variants: "all" weeks, and "validated" (test periods only, weeks with less than
-half "Non qualifié" days), as decided in CLAUDE.md section 3.
+Variants (test periods only for the last two): "all" weeks; "validated", weeks with less
+than half "Non qualifié" days (the v1-v3 definition, kept for comparison); "strict" (added
+2026-10-23, analysis plan v2), weeks whose every value is qualified "Correcte". Values
+qualified "Incorrecte" are dropped before the weekly mean from dataset v4 on; none fall in
+the test period of v3. n_weeks gives the coverage of each variant.
 
 Metrics, per well and period:
     NSE    Nash & Sutcliffe 1970, doi:10.1016/0022-1694(70)90255-6
@@ -113,7 +116,8 @@ def score(pred):
         d["bench"] = np.nan
     d = with_periods(d, splits)
     test_like = d["split"].str.startswith("test")
-    variants = [("all", d), ("validated", d[test_like & (d["share_not_validated"] < 0.5)])]
+    variants = [("all", d), ("validated", d[test_like & (d["share_not_validated"] < 0.5)]),
+                ("strict", d[test_like & (d["share_not_validated"] == 0)])]
     rows = []
     for variant, dd in variants:
         for (code, task, h, split), g in dd.groupby(["code_bss", "task", "horizon", "split"]):
@@ -142,7 +146,8 @@ def summarise(m):
     core (alluvium + Pliocene) and each aquifer group."""
     core = m[m["core"]]
     keys = ["task", "horizon", "split", "variant"]
-    agg = {"n_wells": ("code_bss", "nunique")} | {k: (k, "median") for k in METRICS}
+    agg = ({"n_wells": ("code_bss", "nunique"), "n_weeks": ("n_weeks", "sum")}
+           | {k: (k, "median") for k in METRICS})
     parts = [core.groupby(keys).agg(**agg).reset_index().assign(group="all core"),
              core[core["group"].isin(PLAIN_GROUPS)].groupby(keys).agg(**agg).reset_index()
              .assign(group="plain core"),

@@ -7,6 +7,8 @@ Versions (VERSIONS below): v1 = plain wells, training from 2012, pumping within
 the plain + 3 km. v2 = every usable dept-66 station (core = same 33 wells),
 training from 2005, forcings from 2000, pumping over the whole departement with
 2005-2011 back-filled from each ouvrage's 2012-2014 mean (flagged imputed).
+v3 = v2 + BNPE rules (step 12a). v4 = v3 + quality filter, grouped folds and
+per-window artesian shares (step 12b).
 
 Inputs (all produced by src.ingest.* and src.analysis.*):
     piezometer series, station table, BD LISA station stacks, SAFRAN/SIM2,
@@ -18,7 +20,10 @@ Design (CLAUDE.md section 3, docs/roadmap.md Phase 1)
   FORCING_START so that baselines like Pastas have a warm-up period.
 - Splits by time: train <= 2019, validation 2020-01 .. 2022-04,
   test 2022-05 .. latest (record drought, then recovery); plus 5
-  leave-wells-out folds, stratified by aquifer group.
+  leave-wells-out folds, stratified by aquifer group (from v4, wells closer
+  than fold_link_m stay in one fold: nested piezometers and close neighbours
+  would otherwise let a held-out well be predicted from its twin; spatial
+  grouping as in Roberts et al. 2017, doi:10.1111/ecog.02881).
 - Wells: every plain station with >= MIN_WEEKS weekly values in the model
   window (masked loss for gaps); `core` = the 33-station working set, on
   which results are reported.
@@ -38,6 +43,7 @@ Design (CLAUDE.md section 3, docs/roadmap.md Phase 1)
 Outputs (data/processed/dataset_<version>/)
     wells.parquet            static well attributes
     heads_weekly.parquet     well x week: head, n_days, share not validated, SGI, class
+                             (v4: + share of producer-reconstructed values)
     forcing_weekly.parquet   SAFRAN cell x week
     rivers_weekly.parquet    gauge x week (m3/s); gauges.parquet
     pumping_weekly.parquet   ouvrage x usage x week (m3); pumping_points.parquet
@@ -55,7 +61,9 @@ import pandas as pd
 from src.analysis.bdlisa_profile import group_of
 from src.analysis.bnpe_profile import load as load_bnpe
 from src.analysis.piezo_profile import PLAIN_BBOX
-from src.config import CRS_L93, CRS_WGS84, DATASET, DATASET_DIR, INTERIM, RAW
+from scipy.sparse.csgraph import connected_components
+
+from src.config import CRS_L93, CRS_WGS84, DATASET, DATASET_DIR, INTERIM, R3_STARTS, RAW
 from src.dataset.bnpe_v3 import harmonise, restricted_years
 from src.ingest.hubeau_piezo import CHRON, safe_name
 
@@ -80,12 +88,25 @@ VERSIONS = {
     "v3": {"forcing_start": "2000-01-01", "model_start": "2005-01-01",
            "all_stations": True, "pump_scope": "dept", "backfill": True,
            "bnpe_snapshot": "2026-10-20", "bnpe_rules": "v3", "artesian_train_only": True},
+    # v4 (step 12b, docs/review_codex_2026-10-23.md, decided by Assil 2026-10-23): v3 +
+    # values qualified "Incorrecte" (or not qualifiable) dropped before the weekly mean (v3
+    # averaged them into 71 training weeks), the share of producer-reconstructed values per
+    # week, leave-wells-out folds that keep wells < fold_link_m apart together (v3 split 8
+    # core wells from a core neighbour < 500 m away), artesian shares per R3 window.
+    "v4": {"forcing_start": "2000-01-01", "model_start": "2005-01-01",
+           "all_stations": True, "pump_scope": "dept", "backfill": True,
+           "bnpe_snapshot": "2026-10-20", "bnpe_rules": "v3", "artesian_train_only": True,
+           "drop_bad_quality": True, "fold_link_m": 2000, "artesian_windows": True},
 }
 CFG = VERSIONS[DATASET]
 FORCING_START = CFG["forcing_start"]
 MODEL_START = CFG["model_start"]
 TRAIN_END = "2019-12-31"
 VAL_END = "2022-04-30"
+# Hub'Eau `qualification` values dropped from v4 on; "Non qualifié" values are kept and
+# counted (unqualified is not wrong: most recent data are simply not checked yet)
+BAD_QUALITY = ("Incorrecte", "Qualification non définissable")
+QUALITY_LOG = {}  # code_bss -> values dropped, model-window weeks changed / emptied
 MIN_WEEKS = 104          # at least two years of weekly values in the model window
 SGI_MIN_REF_YEARS = 5    # per calendar month, in the training period
 N_FOLDS = 5
@@ -117,30 +138,51 @@ def build_wells():
     t["core"] = t["working_set"]
     if CFG.get("artesian_train_only"):  # v1/v2: share over the whole record (test included)
         t["pct_days_artesian"] = t["code_bss"].map(artesian_share_train)
+    if CFG.get("artesian_windows"):  # R3 regimes see only their own window (step 12b)
+        for name, start in R3_STARTS.items():
+            t[f"pct_days_artesian_{name}"] = t["code_bss"].map(
+                lambda c, s=start: artesian_share_train(c, s))
     return t
 
 
-def artesian_share_train(code):
-    """% of days with the head above ground (depth < 0), training period only."""
+def artesian_share_train(code, start=None):
+    """% of days with the head above ground (depth < 0), from `start` (default: the model
+    start) to the end of the training period."""
     f = CHRON / f"{safe_name(code)}.parquet"
     if not f.exists():
         return np.nan
-    df = pd.read_parquet(f, columns=["date_mesure", "profondeur_nappe"])
+    df = pd.read_parquet(f, columns=["date_mesure", "profondeur_nappe", "qualification"])
+    if CFG.get("drop_bad_quality"):
+        df = df[~df["qualification"].isin(BAD_QUALITY)]
     df["date_mesure"] = pd.to_datetime(df["date_mesure"])
-    df = df[df["date_mesure"].between(MODEL_START, TRAIN_END)].dropna(subset=["profondeur_nappe"])
+    df = df[df["date_mesure"].between(start or MODEL_START, TRAIN_END)].dropna(
+        subset=["profondeur_nappe"])
     return round(100 * (df["profondeur_nappe"] < 0).mean(), 1) if len(df) else np.nan
 
 
 def weekly_heads(code):
     df = pd.read_parquet(CHRON / f"{safe_name(code)}.parquet",
-                         columns=["date_mesure", "niveau_nappe_eau", "qualification"])
+                         columns=["date_mesure", "niveau_nappe_eau", "qualification",
+                                  "mode_obtention"])
     df["date_mesure"] = pd.to_datetime(df["date_mesure"])
     df = df[df["date_mesure"] >= FORCING_START].set_index("date_mesure")
+    if CFG.get("drop_bad_quality"):
+        bad = df["qualification"].isin(BAD_QUALITY)
+        if bad.any():  # weeks of the model window that change or disappear
+            per_week = bad[bad.index >= MODEL_START].resample(WEEK).agg(["sum", "count"])
+            touched = per_week[per_week["sum"] > 0]
+            QUALITY_LOG[code] = {"values_dropped": int(bad.sum()),
+                                 "weeks_changed": int((touched["sum"] < touched["count"]).sum()),
+                                 "weeks_emptied": int((touched["sum"] == touched["count"]).sum())}
+        df = df[~bad]
     df["not_validated"] = (df["qualification"] == "Non qualifié").astype(float)
+    df["reconstructed"] = (df["mode_obtention"] == "Valeur reconstituée").astype(float)
     r = df.resample(WEEK)
     w = pd.DataFrame({"head": r["niveau_nappe_eau"].mean(),
                       "n_days": r["niveau_nappe_eau"].count(),
                       "share_not_validated": r["not_validated"].mean()})
+    if CFG.get("drop_bad_quality"):
+        w["share_reconstructed"] = r["reconstructed"].mean()
     w = w[w["n_days"] > 0]
     w.index.name = "week"
     return w.reset_index().assign(code_bss=code)
@@ -332,6 +374,56 @@ def build_pumping_v3(d, pts, forcing):
     return pts, out, last
 
 
+def random_folds(wells):
+    """v1-v3: wells shuffled within each aquifer group, dealt round-robin to the folds."""
+    rng = np.random.default_rng(SEED)
+    folds = {}
+    for _, g in wells.groupby(wells["group"].fillna("unknown")):
+        codes = list(g["code_bss"])
+        rng.shuffle(codes)
+        for i, c in enumerate(codes):
+            folds[c] = i % N_FOLDS
+    return folds
+
+
+def grouped_folds(wells, link_m=None, w_all=0.25):
+    """v4: wells closer than link_m (default: fold_link_m; single linkage, Lambert-93) form
+    one block. Blocks are dealt to the folds largest first, each to the fold where it least
+    unbalances the
+    core wells per aquifer group (results are reported per group on the core wells), then,
+    with weight w_all, all wells per group (ties at random, seed SEED). Uses positions and
+    groups only, never heads."""
+    g = gpd.GeoSeries(gpd.points_from_xy(wells["x"], wells["y"]), crs=CRS_WGS84).to_crs(CRS_L93)
+    d = np.hypot(g.x.to_numpy()[:, None] - g.x.to_numpy()[None],
+                 g.y.to_numpy()[:, None] - g.y.to_numpy()[None])
+    link_m = link_m or CFG["fold_link_m"]
+    _, block = connected_components(d < link_m, directed=False)
+    comp = pd.DataFrame({"block": block, "group": wells["group"].fillna("unknown").to_numpy(),
+                         "core": wells["core"].astype(int).to_numpy()})
+    n_all = pd.crosstab(comp["block"], comp["group"])
+    n_core = (pd.crosstab(comp["block"], comp["group"], values=comp["core"], aggfunc="sum")
+              .fillna(0).reindex(columns=n_all.columns, fill_value=0))
+    rng = np.random.default_rng(SEED)
+    order = sorted(n_all.index, key=lambda b: (-n_core.loc[b].sum(), -n_all.loc[b].sum(),
+                                               rng.random()))
+    load_all, load_core = np.zeros((N_FOLDS, n_all.shape[1])), np.zeros((N_FOLDS, n_all.shape[1]))
+    fold_of_block = {}
+    for b in order:
+        va, vc = n_all.loc[b].to_numpy(), n_core.loc[b].to_numpy()
+        cost = ((load_core + vc) ** 2).sum(axis=1) + w_all * ((load_all + va) ** 2).sum(axis=1)
+        k = int(rng.choice(np.flatnonzero(cost == cost.min())))
+        fold_of_block[b] = k
+        load_all[k] += va
+        load_core[k] += vc
+    folds = {c: fold_of_block[b] for c, b in zip(wells["code_bss"], block)}
+    other = np.array([folds[c] for c in wells["code_bss"]])
+    cross = np.where(other[:, None] != other[None], d, np.inf)
+    print(f"grouped folds: {len(n_all)} blocks of wells < {link_m} m apart; "
+          f"closest wells in different folds {cross.min():.0f} m apart; wells per fold "
+          f"{np.bincount(other, minlength=N_FOLDS).tolist()}")
+    return folds
+
+
 def build_restrictions():
     """Weekly max level (0-4) per SURFACE-water alert zone (VigiEau); analysis only."""
     f = INTERIM / "vigieau_levels_daily_66.parquet"
@@ -366,29 +458,27 @@ def main():
     gauges, rivers = build_rivers()
     pts, pumping, last_bnpe = build_pumping(forcing)
 
-    # leave-wells-out folds, stratified by aquifer group
-    rng = np.random.default_rng(SEED)
-    folds = {}
-    for _, g in wells.groupby(wells["group"].fillna("unknown")):
-        codes = list(g["code_bss"])
-        rng.shuffle(codes)
-        for i, c in enumerate(codes):
-            folds[c] = i % N_FOLDS
+    # leave-wells-out folds, stratified by aquifer group (v4: nearby wells kept together)
+    folds = grouped_folds(wells) if CFG.get("fold_link_m") else random_folds(wells)
     wells["fold"] = wells["code_bss"].map(folds)
 
     end = heads["week"].max()
+    lwo = {"n_folds": N_FOLDS, "seed": SEED, "stratified_by": "BD LISA group"}
+    if CFG.get("fold_link_m"):
+        lwo["grouped_by"] = f"single-linkage blocks of wells < {CFG['fold_link_m']} m apart"
     splits = {"week_rule": WEEK, "model_start": MODEL_START, "forcing_start": FORCING_START,
               "train": [MODEL_START, TRAIN_END],
               "validation": ["2020-01-01", VAL_END],
               "test": ["2022-05-01", str(end.date())],
-              "leave_wells_out": {"n_folds": N_FOLDS, "seed": SEED,
-                                  "stratified_by": "BD LISA group",
-                                  "fold_of_well": folds}}
+              "leave_wells_out": lwo | {"fold_of_well": folds}}
+    if CFG.get("artesian_windows"):
+        splits["r3_starts"] = R3_STARTS
 
     keep_w = ["code_bss", "bss_id", "libelle_pe", "nom_commune", "x", "y", "altitude_station",
               "profondeur_investigation", "code_bdlisa", "layer", "group", "stack_str",
               "pos_in_stack", "pct_days_artesian", "record_years", "core", "n_weeks_model",
               "cell_id", "cell_dist_m", "fold"]
+    keep_w += [c for c in wells.columns if c.startswith("pct_days_artesian_")]
     wells[keep_w].to_parquet(OUT / "wells.parquet", index=False)
     heads.to_parquet(OUT / "heads_weekly.parquet", index=False)
     forcing.to_parquet(OUT / "forcing_weekly.parquet", index=False)
@@ -407,6 +497,11 @@ def main():
                      "pumping_points": len(pts), "pumping_weekly": len(pumping)},
             "last_week": str(end.date()), "last_bnpe_year": last_bnpe,
             "ips_bounds": [round(b, 3) for b, _ in IPS_CLASSES[:-1]]}
+    if CFG.get("drop_bad_quality"):
+        kept = {c: v for c, v in QUALITY_LOG.items() if c in set(wells["code_bss"])}
+        meta["quality_filter"] = {"dropped": list(BAD_QUALITY), "per_well": kept} | {
+            k: sum(v[k] for v in kept.values())
+            for k in ("values_dropped", "weeks_changed", "weeks_emptied")}
     (OUT / "meta.json").write_text(json.dumps(meta, indent=1, ensure_ascii=False))
 
     # ------------------------------------------------------------ report
@@ -421,6 +516,13 @@ def main():
         print(f"  {name:<10} {a} .. {b}: {len(s):,} well-weeks ({len(core):,} core), "
               f"not validated {100 * s['share_not_validated'].mean():.1f}%")
     print(f"  SGI defined for {100 * heads['sgi'].notna().mean():.0f}% of well-weeks")
+    if CFG.get("drop_bad_quality"):
+        q = meta["quality_filter"]
+        print(f"  quality filter: {q['values_dropped']} values dropped; model-window weeks "
+              f"changed {q['weeks_changed']}, emptied {q['weeks_emptied']}")
+        core_w = wells.loc[wells["core"], ["code_bss", "fold", "group"]]
+        print("  folds (core wells per group):")
+        print(core_w.groupby(["fold", "group"]).size().unstack(fill_value=0).to_string())
     test = hm[hm["week"] >= "2022-05-01"]
     print("  IPS classes in the test period (% of well-weeks):")
     print((100 * test["ips_class"].value_counts(normalize=True)).round(1)

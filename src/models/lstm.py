@@ -268,7 +268,7 @@ def main():
     ap.add_argument("--refit-from", default=None, help="refit on train+validation (epochs of run)")
     args = ap.parse_args()
     set_lookback(args.lookback)
-    P = build_panel()
+    P = build_panel(train_start=args.train_start)  # R3 window statistics from v4
     P = P[P["mu"].notna()]
     codes, weeks, X, Z, split, core, mu, sd, head = arrays(P)
     out = RESULTS / args.run / (f"fold_{args.fold}" if args.fold is not None else "")

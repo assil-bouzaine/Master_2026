@@ -9,8 +9,16 @@ docs/analysis_plan.md therefore fixes, for every comparison:
 - clusters = cells of a CLUSTER_KM grid in Lambert-93 (wells within ~10 km tend
   to share a cell); the 95 % interval of the median paired difference comes from
   a cluster bootstrap (resample cells with replacement, keep their wells)
-- the paired Wilcoxon signed-rank p-value, the conventional per-well test
-- Holm's step-down adjustment across the comparisons of one table
+- the p-value of a cluster sign-flip permutation test (analysis plan v2,
+  2026-10-23): under "no difference", the differences of a cluster are as likely
+  to have the opposite sign, so the signs are flipped cluster by cluster, never
+  well by well; statistic = the median paired difference. Exact (every sign
+  pattern) up to EXACT_MAX_CLUSTERS clusters, Monte Carlo above. With 14 clusters
+  the smallest possible two-sided p is 2 / 2^14 = 0.0001.
+- the paired Wilcoxon signed-rank p-value (per well, so it treats the wells as
+  independent), still reported next to it for comparison with v1-v3
+- Holm's step-down adjustment across the comparisons of one table (of p_cluster
+  from v2 of the plan)
 """
 import geopandas as gpd
 import numpy as np
@@ -21,6 +29,25 @@ from src.config import CRS_L93, CRS_WGS84
 
 CLUSTER_KM = 10.0
 N_BOOT = 4000
+EXACT_MAX_CLUSTERS = 16   # 2^16 = 65,536 sign patterns
+N_FLIP = 20000            # Monte Carlo sign patterns above that
+
+
+def sign_flip_p(groups, seed=2026):
+    """Two-sided p-value of the cluster sign-flip test for the median difference.
+    groups: list of arrays, the paired differences of each cluster's wells."""
+    k = len(groups)
+    d = np.concatenate(groups)
+    owner = np.repeat(np.arange(k), [len(g) for g in groups])
+    if k <= EXACT_MAX_CLUSTERS:
+        signs = 1 - 2 * ((np.arange(2 ** k)[:, None] >> np.arange(k)[None]) & 1)
+    else:
+        signs = np.random.default_rng(seed).choice([-1, 1], size=(N_FLIP, k))
+    t = np.median(signs[:, owner] * d[None], axis=1)
+    obs = np.median(d)
+    # the identity pattern is among the exact patterns; count it once in Monte Carlo
+    hits = np.sum(np.abs(t) >= np.abs(obs) - 1e-12)
+    return float(hits / len(t)) if k <= EXACT_MAX_CLUSTERS else float((hits + 1) / (len(t) + 1))
 
 
 def clusters(wells):
@@ -49,7 +76,7 @@ def paired(ma, mb, wells, split="test_drought", metric="NSE", task="simulation",
     out = {"n_wells": len(j), "median_a": j["a"].median(), "median_b": j["b"].median()}
     if len(j) < 5:
         return out | {"median_diff": np.nan, "ci_lo": np.nan, "ci_hi": np.nan,
-                      "share_a_better": np.nan, "p_wilcoxon": np.nan}
+                      "share_a_better": np.nan, "p_wilcoxon": np.nan, "p_cluster": np.nan}
     diff = j["a"] - j["b"]
     cl = clusters(wells.set_index("code_bss").loc[j.index].reset_index())
     groups = [g.to_numpy() for _, g in diff.groupby(cl.loc[j.index].to_numpy())]
@@ -60,9 +87,10 @@ def paired(ma, mb, wells, split="test_drought", metric="NSE", task="simulation",
         meds[i] = np.median(np.concatenate([groups[k] for k in pick]))
     lo, hi = np.percentile(meds, [2.5, 97.5])
     p = wilcoxon(j["a"], j["b"]).pvalue if (diff != 0).any() else 1.0
+    pc = sign_flip_p(groups, seed) if (diff != 0).any() else 1.0
     return out | {"median_diff": float(diff.median()), "ci_lo": float(lo), "ci_hi": float(hi),
                   "share_a_better": float((diff > 0).mean()), "p_wilcoxon": float(p),
-                  "n_clusters": len(groups)}
+                  "p_cluster": pc, "n_clusters": len(groups)}
 
 
 def holm(p):

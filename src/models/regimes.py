@@ -18,12 +18,13 @@ import sys
 
 import pandas as pd
 
+from src.config import R3_STARTS
 from src.models.evaluate import DS, RESULTS, evaluate_run
 from src.models.features import build_panel
 from src.models.tune import MODULE
 
 N_FOLDS = 5
-FRACTIONS = {"f25": "2016-04-01", "f50": "2012-07-01"}
+FRACTIONS = R3_STARTS
 
 
 EXTRA = []

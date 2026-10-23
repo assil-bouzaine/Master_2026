@@ -17,8 +17,18 @@ Columns
     rivers      (dataset v3 on) log discharge of the Têt in the plain, the Agly, the Tech
                 and of the main-stem gauge nearest to the well, plus 13/52-week means
 For the forecast task, `lagged_panel(P, h)` shifts every input to the issue
-week t-h and adds the observed head anomaly known at t-h (operational setup:
-nothing after t-h is used except the calendar).
+week t-h and adds the observed head anomaly known at t-h. This is a hindcast,
+not an operational forecast: the observed heads are causal, but the inputs are
+the reconstructed series, and some use information from after t-h (weekly
+pumping spreads an annual total with weights normalised over the whole year,
+river gaps are interpolated between both ends, imputed years use later means).
+See docs/analysis_plan.md (information availability).
+
+Regime R3 (less data), from dataset v4: `build_panel(train_start=...)` computes
+the per-well statistics (mu, sd, the climatology, the artesian share) from
+[train_start, end of training] only, so a run trained on the last 25 % of the
+period does not inherit them from the earlier years. v1-v3 runs only masked
+the loss (kept as they were, for reproducibility).
 """
 import json
 
@@ -26,7 +36,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 
-from src.config import CRS_L93, CRS_WGS84, DATASET
+from src.config import CRS_L93, CRS_WGS84, DATASET, R3_STARTS
 from src.dataset.load import FORCING_VARS, _pumping_near_wells
 from src.dataset.pumping import canal_series, seasonal_drinking_water
 from src.models.evaluate import DS, RESULTS
@@ -43,6 +53,7 @@ CACHE = RESULTS / "_cache" / "panel.parquet"
 # Pont-Joffre, the Agly at Estagel, the Tech at Argelès Pont d'Elne; plus Têt at Rodès and
 # Tech at Le Boulou as candidates for the nearest gauge.
 WITH_RIVERS = DATASET >= "v3"
+R3_WINDOW_STATS = DATASET >= "v4"
 RIVERS = {"river_tet": "Y047403001", "river_agly": "Y066404001", "river_tech": "Y028406001"}
 NEAR_CANDIDATES = ["Y047403001", "Y046403001", "Y066404001", "Y027401001", "Y028406001"]
 
@@ -79,11 +90,23 @@ def nearest_gauge(wells):
     return dict(zip(wells["code_bss"], np.array(NEAR_CANDIDATES)[d.argmin(axis=1)]))
 
 
-def build_panel(refresh=False):
-    if CACHE.exists() and not refresh:
-        return pd.read_parquet(CACHE)
+def build_panel(refresh=False, train_start=None):
+    """The panel; with train_start (regime R3, dataset v4 on) the per-well statistics come
+    from [train_start, end of training] only. Ignored before v4."""
+    if not R3_WINDOW_STATS:
+        train_start = None
+    window = None
+    if train_start:
+        window = {v: k for k, v in R3_STARTS.items()}.get(train_start)
+        if window is None:
+            raise ValueError(f"train_start {train_start} is not an R3 window {R3_STARTS}")
+    cache = CACHE.with_name(f"panel_{window}.parquet") if window else CACHE
+    if cache.exists() and not refresh:
+        return pd.read_parquet(cache)
     splits = json.loads((DS / "splits.json").read_text())
     wells = pd.read_parquet(DS / "wells.parquet")
+    if window:  # the artesian share of the window (src.dataset.build, v4)
+        wells["pct_days_artesian"] = wells[f"pct_days_artesian_{window}"]
     heads = pd.read_parquet(DS / "heads_weekly.parquet")
     forcing = pd.read_parquet(DS / "forcing_weekly.parquet")
     pw = pd.read_parquet(DS / "pumping_weekly.parquet")
@@ -143,7 +166,11 @@ def build_panel(refresh=False):
                 on=["code_bss", "week"], how="left")
     P["split"] = _split_labels(pd.DatetimeIndex(P["week"]), splits).values
 
-    tr = P[P["split"] == "train"].groupby("code_bss")["head"].agg(["mean", "std"])
+    def stats_rows(P):  # the weeks the per-well statistics may use
+        rows = P["split"] == "train"
+        return rows & (P["week"] >= pd.Timestamp(train_start)) if window else rows
+
+    tr = P[stats_rows(P)].groupby("code_bss")["head"].agg(["mean", "std"])
     P = P.merge(tr.rename(columns={"mean": "mu", "std": "sd"}), on="code_bss", how="left")
     P["z"] = (P["head"] - P["mu"]) / P["sd"]
     # keep the warm-up weeks (2005-2011): sequence models need them as input;
@@ -152,7 +179,7 @@ def build_panel(refresh=False):
     # training climatology of z per well and week of year (smoothed over 5 weeks);
     # calendar information, so it may be used at any time without leakage
     P["woy"] = P["week"].dt.isocalendar().week.clip(upper=52).astype(int)
-    c = (P[P["split"] == "train"].groupby(["code_bss", "woy"])["z"].mean().unstack()
+    c = (P[stats_rows(P)].groupby(["code_bss", "woy"])["z"].mean().unstack()
          .reindex(columns=range(1, 53)))
     c = c.T.interpolate(limit_direction="both").T
     c = pd.concat([c.iloc[:, -2:], c, c.iloc[:, :2]], axis=1).T.rolling(5, center=True).mean().T
@@ -160,8 +187,8 @@ def build_panel(refresh=False):
     clim = c.rename_axis(index="code_bss", columns="woy").stack().rename("clim_z").reset_index()
     P = P.merge(clim, on=["code_bss", "woy"], how="left").drop(columns="woy")
     P["anom"] = P["z"] - P["clim_z"]
-    CACHE.parent.mkdir(parents=True, exist_ok=True)
-    P.to_parquet(CACHE, index=False)
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    P.to_parquet(cache, index=False)
     return P
 
 

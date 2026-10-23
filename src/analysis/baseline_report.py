@@ -166,13 +166,13 @@ def significance_table():
             rows.append({"model": label, "period": split, "metric": metric} | r)
     t = pd.DataFrame(rows)
     for (split, metric), idx in t.groupby(["period", "metric"]).groups.items():
-        t.loc[idx, "p_holm"] = holm(t.loc[idx, "p_wilcoxon"].to_numpy())
+        t.loc[idx, "p_holm"] = holm(t.loc[idx, "p_cluster"].to_numpy())
     return t
 
 
 def compare_versions():
     """Drought NSE and skill of every model across dataset versions (same core wells)."""
-    versions = [v for v in ("v1", "v2", "v3") if (ROOT / "results" / v).exists()]
+    versions = [v for v in ("v1", "v2", "v3", "v4") if (ROOT / "results" / v).exists()]
     rows = []
     for task, runs, hs in (("simulation", SIM, (0,)), ("forecast", FC, (4, 12))):
         for h in hs:
@@ -284,7 +284,8 @@ def main():
     reg = regimes_table()
     cmp_ = compare_versions()
     sig_cols = ["model", "period", "metric", "n_wells", "median_a", "median_b", "median_diff",
-                "ci_lo", "ci_hi", "share_a_better", "p_wilcoxon", "p_holm"]
+                "ci_lo", "ci_hi", "share_a_better", "n_clusters", "p_cluster", "p_holm",
+                "p_wilcoxon"]
     md = ROOT / "docs" / "results_baselines.md"
     missing = [label for run, label in SIM + FC
                if not (RESULTS / run / "predictions.parquet").exists()]
@@ -303,8 +304,10 @@ def main():
         fmt(g).to_markdown(index=False), "",
         f"## Significance against the hydrology reference ({REFERENCE})\n",
         "Paired per well; a = model, b = reference; difference > 0 means the model is better. "
-        "95 % interval = cluster bootstrap over 10 km cells; p-values Holm-adjusted across the "
-        "models of each period × metric.\n",
+        "95 % interval = cluster bootstrap over 10 km cells. p_cluster = sign-flip permutation "
+        "test over the same cells (signs flipped cluster by cluster), Holm-adjusted across the "
+        "models of each period × metric (p_holm); the per-well Wilcoxon p, which treats the "
+        "wells as independent, is shown for comparison only (analysis plan v2, §6).\n",
         (fmt(sig[sig_cols], signed=("median_diff", "ci_lo", "ci_hi")).to_markdown(index=False)
          if len(sig) else "(reference run missing)"), "",
         "## RQ1 regimes of the tuned models\n",

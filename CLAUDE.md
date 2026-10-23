@@ -448,7 +448,27 @@ notebooks/       exploration only; anything that matters moves into src/
 
 ### ▶ Where we are (read this first in a new session)
 
-**2026-10-23.** Read `docs/review_2026-10-23.md` first: why the plan changed.
+**2026-10-23, 16:30: second external review (codex) adopted.** Review in
+`docs/review_codex_2026-10-23.md`; Claude checked every number in it against
+the data (all confirmed). Assil decided the same day:
+- **Dataset v4** = v3 without the 71 "Incorrecte" weeks, with a strict
+  "validated" flag, leave-wells-out folds that keep wells < 2 km apart
+  together, and the 25/50 % regimes recomputing their statistics on their own
+  window. All baselines are re-run on v4 with the settings tuned on v3. The v3
+  runs in progress **finish as planned** (tonight).
+- **Analysis plan v2:** cluster-level sign-flip test instead of the per-well
+  Wilcoxon; a harder twin (wrong response shape, missing driver, wrong links;
+  Pastas gains a comparator, not the reference); main contrasts under 3
+  pumping reconstructions; plan tagged in git before Phase 4, then a
+  confirmation check on weeks observed after the freeze.
+- **Framing:** umbrella question above RQ1–4; the ontology is credited with
+  traceability, consistency and reuse, and a test shows that plain tables with
+  the same rules give the same edges.
+- Work in progress: `docs/review_codex_response.md` (verdict per point) and
+  `docs/notes/step12b_review_fixes.md`. **Until the v3 sweep has finished,
+  every code change must leave v3 behaviour identical** (gate it on v4).
+
+Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
 - Assil approved the revised plan (this file, `docs/roadmap.md`).
 - **The supervisor answered (2026-10-23): "do what is best for the project".**
   Assil's decisions and their reasons are in `docs/supervisor_questions.md` §1.

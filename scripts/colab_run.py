@@ -1,4 +1,8 @@
-"""Run GPU steps of the v3 sweep in a Google Colab notebook (free T4); results kept on Drive.
+"""Run GPU steps of a sweep in a Google Colab notebook (free T4); results kept on Drive.
+
+Dataset: PFE_DATASET (default v3). For the dataset v4 re-runs (analysis plan v2 §5) set,
+before the run line, %env PFE_DATASET=v4 and %env STEPS=final:lstm regimes:lstm ... (see
+docs/gpu_howto.md); the bundle must have been made with PFE_DATASET=v4.
 
 Notebook cells (runtime type T4 GPU; docs/gpu_howto.md, Colab section):
     from google.colab import drive; drive.mount('/content/drive')       # Assil clicks Allow
@@ -34,9 +38,10 @@ from contextlib import closing
 from pathlib import Path
 
 STEPS = os.environ.get("STEPS", "taccari tune:taccari regimes:taccari")
+DATASET = os.environ.get("PFE_DATASET", "v3")
 DRIVE = Path(os.environ.get("PFE_DRIVE", "/content/drive/MyDrive/pfe_colab"))
 CODE = Path(__file__).resolve().parents[1]
-LOCAL = CODE / "results_gpu"              # results_gpu/v3/<run> and results_gpu/run_colab.log
+LOCAL = CODE / "results_gpu"              # results_gpu/<v>/<run> and results_gpu/run_colab.log
 SAVED = DRIVE / "results_gpu"
 LOG = LOCAL / "run_colab.log"
 PINS = os.environ.get("PIN_TARGET", "/content/pins")   # pinned packages (scripts/run_gpu.sh)
@@ -138,7 +143,7 @@ def main():
                  "already selected, the free GPU quota is used up for now: try again later")
     LOCAL.mkdir(parents=True, exist_ok=True)
     restored = copy_new(SAVED, LOCAL) if SAVED.exists() else 0
-    env = dict(os.environ, PFE_DATASET="v3", PFE_RESULTS=str(LOCAL / "v3"),
+    env = dict(os.environ, PFE_DATASET=DATASET, PFE_RESULTS=str(LOCAL / DATASET),
                PYTHONIOENCODING="utf-8", PYTHONUNBUFFERED="1", PIN_TARGET=PINS,
                PFE_THREADS=os.environ.get("PFE_THREADS", "2"))
     log(f"GPU {name or 'none'}; {restored} files restored from Drive; steps {STEPS}; "

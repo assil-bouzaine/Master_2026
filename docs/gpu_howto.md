@@ -311,3 +311,29 @@ folder `pfe_colab/results_gpu` (Drive > Download) works too. Then re-run the swe
   GPU-hours, not ~100 h.
 - After a code change, rebuild the bundle and upload it again (or add the changed file to the
   Drive copy with `zip`), so that the next session unzips the new version.
+
+## Dataset v4 re-runs (from 2026-10-24; analysis plan v2, §5)
+
+The baselines keep the configuration selected on v3; only the final 5 seeds and the regimes
+are re-run on v4. On the laptop first (after the v3 sweep has finished):
+
+```bash
+.venv/bin/python scripts/v4_from_v3.py                 # v3 best.json -> results/v4 (once
+                                                        # more after the Taccari pull)
+setsid nohup bash scripts/run_v4_cpu.sh > results/v4/cpu_runs.log 2>&1 < /dev/null &
+PFE_DATASET=v4 .venv/bin/python scripts/make_gpu_bundle.py   # dataset v4, its panels
+                                                              # (full, f25, f50), best.json
+```
+
+Upload the new `gpu_bundle.zip` to Drive `pfe_colab/` (it replaces the v3 bundle; the v3
+results on Drive stay under `results_gpu/v3`). In the notebook, before the usual two cells:
+
+```python
+%env PFE_DATASET=v4
+%env STEPS=final:lstm regimes:lstm final:stgnn regimes:stgnn final:taccari regimes:taccari final:ealstm regimes:ealstm
+```
+
+`final:<model>` is `src.models.tune --final-only` (5 seeds of the copied configuration, no
+search). Results go to `results_gpu/v4` on Drive; `scripts/colab_pull.py` finds the `v4`
+folder in the zip and rescores the runs with `PFE_DATASET=v4`. Estimate on a T4: ~45 runs
+per model at 3–4 min (the EA-LSTM is slower) — two or three sessions.

@@ -133,11 +133,16 @@ def tune(D, cols, n_trials, out, targets=SIM_TARGETS):
     b, mean, number = reselect(study, score, out)
     print(f"    best single-seed trial {study.best_trial.number}: {study.best_value:.3f}; "
           f"selected trial {number} (3-seed mean {mean:.3f}): {b}", flush=True)
-    params = dict(BASE, **{k: v for k, v in b.items() if k != "target"})
     (out / "best.json").write_text(json.dumps({"params": b, "trial": number,
                                                "validation_median_nse_3seed": mean,
                                                "single_seed_best": study.best_value,
                                                "n_trials": len(study.trials)}, indent=1))
+    return final_seeds(D, cols, b)
+
+
+def final_seeds(D, cols, b):
+    """The selected configuration b (best.json "params") trained with the 5 seeds."""
+    params = dict(BASE, **{k: v for k, v in b.items() if k != "target"})
     preds = []
     for s in SEEDS:
         z, _ = fit_predict(D, cols, s, params, b["target"])
@@ -234,6 +239,9 @@ def main():
                          "the neural models -> lgbm_noclim_tuned")
     ap.add_argument("--regimes", nargs="+", choices=["lwo", "f25", "f50"],
                     help="RQ1 regimes with the tuned --no-clim configuration")
+    ap.add_argument("--final-only", action="store_true",
+                    help="5 seeds of the configuration in <tuned>/best.json, no search "
+                         "(dataset v4 re-runs reuse the v3 selection, scripts/v4_from_v3.py)")
     args = ap.parse_args()
     P = build_panel(refresh=args.refresh_panel)
     P = P[P["mu"].notna()].reset_index(drop=True)  # wells with training data
@@ -246,9 +254,12 @@ def main():
                      "heads (lwo) and from the training years that f25/f50 remove")
         regimes(P, cols, tuned, args.regimes)
         return
-    if args.tune:
+    if args.tune or args.final_only:
         out = RESULTS / tuned
-        pred = tune(P, cols, args.tune, out, ("z",) if args.no_clim else SIM_TARGETS)
+        if args.final_only:
+            pred = final_seeds(P, cols, json.loads((out / "best.json").read_text())["params"])
+        else:
+            pred = tune(P, cols, args.tune, out, ("z",) if args.no_clim else SIM_TARGETS)
         pred.to_parquet(out / "predictions.parquet", index=False)
         s = evaluate_run(tuned)
         c = s[(s["group"] == "all core") & (s["variant"] == "all")]

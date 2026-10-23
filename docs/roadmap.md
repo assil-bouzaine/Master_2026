@@ -153,6 +153,10 @@ river inputs, leak fixed). See `docs/notes/step08_dataset.md` and
 - Running: EA-LSTM (laptop), Taccari-graph ST-GNN (Colab).
 - Then: ensemble, report, Gate 2 addendum. **No new baselines after this.**
 - **Gate 2:** answered 2026-10-23 (the choices are left to Assil).
+- **Second review (2026-10-23, Step 12b):** dataset v4 (quality filter, grouped
+  folds, R3 window statistics) and analysis plan v2. Every baseline is re-run on
+  v4 with the configuration selected on v3 (laptop: `scripts/run_v4_cpu.sh`;
+  Colab: `final:`/`regimes:` steps), then the v4 report. No re-tuning.
 
 ### Phase 3: ontology and knowledge graph (26 Oct – 6 Dec, 6 weeks)
 
@@ -163,20 +167,22 @@ correct, documented, tested, and cover the subject's objectives SO1 and SO2.
 |---|---|---|
 | 3.1 | Competency questions (16) with example answers (`docs/competency_questions.md`) | Assil and the supervisor agree on the list |
 | 3.2 | Reuse table, term by term, and the modelling patterns (`docs/ontology_design.md`) | every term has a checked source or a `lulcw:` definition |
-| 3.3 | **CQ2 data step:** attribute each groundwater abstraction point to a unit, with provenance and confidence | an ingest script + a table + a step note; the share of points per confidence level |
+| 3.3 | **CQ2 data step:** attribute each groundwater abstraction point to a unit, with provenance and confidence | ✅ 2026-10-23 (`src/kg/pump_attribution.py`): rules measured on 130 recorded boreholes, use-aware confidence, coverage by volume and use |
 | 3.4 | Write `lulcw:` + imports/alignment axioms in `ontology/` (IRIs, metadata, FR/EN labels, definitions) | the reasoner is consistent; OOPS! shows no critical pitfall |
 | 3.5 | KG instantiation from the parquet tables (rdflib → Turtle → pyoxigraph) | rebuilt from cold by one command |
 | 3.6 | SHACL shapes + SHACL-AF rules (Influence links, ProbablyIrrigatedParcel, HighIrrigationDemandZone, ConfinedSetting) | validation passes |
 | 3.7 | CQ tests: one SPARQL query plus an oracle each (`tests/cq/`) | all pass |
-| 3.8 | Export SPARQL → `HeteroData` (+ rewired/random variants for arms E–F) | loads in PyG; node and edge counts reported |
+| 3.8 | Export SPARQL → `HeteroData` (+ rewired/random variants for arms E–F) | loads in PyG; node and edge counts reported; the **equivalence test** passes (pandas rules on the same tables give the same edges) |
 | 3.9 | Alignment experiment: RPG → AGROVOC gold set; OntoAligner fuzzy, retrieval and LLM matchers (local LLM on Colab) | P/R/F1 table |
-| 3.10 | Satellite rule: Sentinel-2 summer NDVI per RPG parcel (Earth Engine) + soil wetness → `ProbablyIrrigatedParcel` | agreement with the RPG crops reported |
+| 3.10 | Satellite rule: Sentinel-2 summer NDVI per RPG parcel (Earth Engine) + soil wetness → `ProbablyIrrigatedParcel` | checked against independent irrigation evidence (Agreste census, ASA perimeters, BNPE irrigation points), else labelled a heuristic; agreement with RPG crops alone does not validate irrigation |
 | 3.11 | Text extraction, small and measured (thesis) | precision on 10–20 papers |
 
 Tools: Protégé (editing), `rdflib`, `pyoxigraph`, `pyshacl` (advanced mode),
 ROBOT (reason, report), OOPS!, `ontoaligner`, `earthengine-api`.
 **Gate 3:** ontology review with the supervisor. A
-reviewer from SAVE Water (UGE/LASTIG) would be welcome (contact asked).
+reviewer from SAVE Water (UGE/LASTIG) would be welcome (contact asked). Gate 3
+also confirms the Phase 4 families of `docs/analysis_plan.md` §10; the plan is
+then tagged `analysis-plan-v2` in git, **before any Phase 4 run**.
 
 ### Phase 4: knowledge-guided model and validity tests (7 Dec – 31 Jan)
 
@@ -197,11 +203,19 @@ Goal: answer RQ1–RQ3. This is the core of the paper.
    - inputs: the real forcings, wells, pumps and KG
    - synthetic heads from known response functions plus AR noise
    - two variants: pumping timing tied to the deficit, or independent of it
+   - harder variants (decided 2026-10-23): a response shape the model does not
+     have, a driver it does not see, wrong KG links
    - concept accuracy = the error of the recovered contributions
 5. **Shortcut tests:**
    - rewiring and attribute shuffling (power calibrated on the twin)
    - disagreement across seeds
-   - counterfactual sign accuracy, with the Pastas gains as the reference
+   - counterfactual sign accuracy; the Pastas gains are a comparator, not the
+     reference
+6. **Robustness (analysis plan v2):** the main contrasts under 3 pumping
+   reconstructions; pump links confident only vs all; the monotonicity
+   finite-difference test; the satellite-concept ablation.
+7. **Confirmation check** at the end: the frozen models scored on the weeks
+   observed after the freeze, and on 2025–26 once ADES validates them.
 
 GPU: Colab (free T4), Camber's monthly allowance.
 **Gate 4: results frozen.** No new experiments after this point.

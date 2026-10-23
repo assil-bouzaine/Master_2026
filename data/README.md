@@ -290,3 +290,36 @@ Notes:
 
   The flag is therefore usable, with a measured error, as "probable" evidence for the
   1,890 groundwater points of the plain (1,067 flagged True, 603 False, 220 empty).
+
+**Correction (2026-10-23, task 12.3):** the counts above mix two directions. "50 of 53
+Pliocene-coded points are False" is a recall. As a rule ("False → Pliocene") the flag is
+right in only 53 of 112 coded points of the plain; with the BD LISA stack (False **and**
+the Pliocene under the point) in 92 % of the 130 distinct recorded boreholes. The plain
+counts of the dataset's 1,890 groundwater ouvrages are 882 True, 539 False, 469 empty.
+`nom_mode_gisement` (free / confined / semi-confined / artesian) is filled for 571
+stations and could serve CQ14. Details: `docs/notes/step12b_review_fixes.md`.
+
+### Model-ready dataset v4 (Step 12b, second review)
+
+| Date | Command | Output | Rows |
+|---|---|---|---|
+| 2026-10-23 | `PFE_DATASET=v4 python -m src.dataset.build` (log in `results/build_v4.log`) | `data/processed/dataset_v4/` | 65 wells (33 core); heads_weekly 55,141 (v3: 55,204); forcing, rivers, pumping, restrictions byte-identical to v3 |
+
+No new download: v4 is v3 rebuilt from the same caches (piezometer chronicles up to
+2026-10-04, BNPE snapshot 2026-10-20). Changes (`docs/analysis_plan.md` v2, §13):
+
+| Change | Effect |
+|---|---|
+| Values qualified "Incorrecte" or "Qualification non définissable" dropped before the weekly mean | 449 values; 8 model-window weeks changed (≤ 0.11 m), 63 emptied (F3, 2007); SGI changes at F3, CONTE, F1N3 (14 test-period IPS classes at F3) |
+| `share_reconstructed` per week (producer-reconstructed values) | 0.6 % of test-period values of the core wells |
+| Leave-wells-out folds: wells < 2 km apart in one block (45 blocks), blocks dealt by core wells per aquifer group | closest wells in different folds 2,153 m (v3: 20 m); 4 Pliocene core wells per fold |
+| `pct_days_artesian_f25`, `_f50`: artesian share per R3 window | used by `build_panel(train_start=...)` |
+
+### Pump → aquifer unit attribution (Step 12, task 12.3)
+
+| Date | Command | Output | Rows |
+|---|---|---|---|
+| 2026-10-23 | `PFE_DATASET=v4 python -m src.kg.pump_attribution` | `data/interim/pump_unit_evidence.parquet` (evidence per ouvrage), `pump_unit_attribution.parquet` (candidates), `pump_unit_attribution_eval.json` (precision, coverage) | 2,137 groundwater ouvrages; 2,144 candidates (the 4 depth-checked boreholes appear under 7 ouvrages, each keeping its recorded unit as an alternative) |
+
+Inputs: the dataset's `pumping_points` and `pumping_weekly`, the BNPE points of the
+2026-10-20 snapshot, the quality stations above, the BD LISA V3 GeoPackage.

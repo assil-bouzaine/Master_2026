@@ -115,13 +115,28 @@ Two example wells are used throughout:
     1. **confident:** the BSS code → the ADES quality station's BD LISA entity. Found for
        **211 points** (`src/ingest/hubeau_qualite_stations.py`), 125 of them with the
        investigation depth.
-    2. **probable:** the BNPE flag `nappe_accompagnement` (a river-connected aquifer).
-       True → the alluvium at the point; False → the deeper unit of the stack. Checked on
-       the 211 coded points: True means alluvium in 30 of 33 cases, and 50 of 53 Pliocene
-       points are False. In the plain: 1,067 True, 603 False, 220 empty. The Sandre
-       definition of the flag is still to confirm.
-    3. **probable:** the BD LISA stack at the point holds a single aquifer.
-    4. **possible:** depth and name rules ("PUITS", a dug well, is shallow).
+    2. **probable or possible (measured):** the BNPE flag `nappe_accompagnement`
+       (a river-connected aquifer) together with the BD LISA stack at the point.
+       Measured on the 130 distinct recorded boreholes (task 12.3, 2026-10-23,
+       `src/kg/pump_attribution.py`):
+       - True → the alluvial unit at or within 1 km of the point: right group 95 %
+         (18 of 19), right entity 63 %.
+       - False **and** the Pliocene under the point → Pliocene: 92 % (36 of 39; 82 %
+         against the raw record).
+       - False alone is not a rule: among the coded points of the plain it means Pliocene
+         in only 53 of 112 cases. (The earlier reading "50 of 53 Pliocene points are
+         False" was a recall, not a precision.)
+       - The recorded boreholes are drinking-water and industry wells only, so
+         "probable" holds for those uses; irrigation boreholes stay "possible".
+       - In the plain: 882 True, 539 False, 469 empty (groundwater ouvrages of the
+         dataset). The Sandre definition of the flag is still to confirm.
+    3. **possible:** the BD LISA stack at the point holds a single unit; a dug well
+       ("PUITS") with alluvium at the point.
+    4. **The record is checked too:** a "recent alluvium" record deeper than 50 m above
+       the Pliocene (4 boreholes, 96–130 m) is attributed to the Pliocene, with the
+       recorded unit kept as a "possible" alternative.
+  - **Coverage** of the plain's declared groundwater volume 2012–2024: confident 27 %,
+    probable 45 % (drinking water), possible 21 % (mostly irrigation), unknown 7 %.
 - **Terms.**
   - `lulcw:pumpsFrom` (sub-property of `hyfo:tapsAquifer`)
   - `lulcw:hasUse` (our SKOS scheme of the BNPE uses)

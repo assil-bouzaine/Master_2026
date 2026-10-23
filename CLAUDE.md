@@ -32,13 +32,20 @@ its data arrive by February.
   Ontology-derived graphs and constraints for groundwater-level simulation in
   a Mediterranean multilayer aquifer.* "Simulation", because Chronos-2 is the
   forecasting reference; the phrase is from Ross et al. 2017 (arXiv:1703.03717).
+- **Umbrella question (decided 2026-10-23, after the second review):** *When
+  does explicit hydrogeological knowledge improve groundwater simulation and
+  explanation reliability under uncertain pumping information?* RQ1–4 answer
+  it; the title is unchanged. The ontology is credited with traceability,
+  consistency and reuse; accuracy gains are credited to the knowledge it
+  carries (an equivalence test shows that plain tables with the same rules give
+  the same edges).
 - **Research questions:**
 
   | RQ | Question | Experiment that answers it |
   |---|---|---|
   | RQ1 | Does knowledge from the KG improve simulation, as **information** (features) and as **structure** (graph)? | Arms A–F (`docs/analysis_plan.md` §10), described below the table; scored on the drought and recovery phases, leave-wells-out, and 25/50 % of the training data |
   | RQ2 | Do ontology-derived sign constraints improve plausibility and out-of-distribution skill? | None / soft (sign penalties) / hard (monotone by construction); violation rate; counterfactual sign accuracy within the observed year-to-year range |
-  | RQ3 | Does the model use the knowledge, or take shortcuts? | Concepts = driver contributions. Recovery error on a semi-synthetic twin; disagreement across seeds; rewiring (arm E), its power calibrated on the twin. SGI accuracy is reported, not used as the shortcut test. |
+  | RQ3 | Does the model use the knowledge, or take shortcuts? | Concepts = driver contributions. Recovery error on a semi-synthetic twin, including mechanisms the model cannot fit; disagreement across seeds; rewiring (arm E), its power calibrated on the twin. SGI accuracy is reported, not used as the shortcut test. |
   | RQ4 | Can explanations be stated in ontology terms *and* be faithful? | Driver-group contributions → SPARQL chains → templates; fidelity+/−; entity-existence and sign-consistency tests; documented events (summer 2024 Pliocene rise) |
 
   The RQ1 arms:
@@ -71,7 +78,7 @@ its data arrive by February.
 |---|---|
 | LULC-Water meta-ontology in OWL | A network of reused ontologies plus our bridging module `lulcw:` (the WHOW-KG pattern), presented as the meta-ontology |
 | SO1: fuse and align existing ontologies (SWEET, INSPIRE, AgroPortal) | Reuse and alignment axioms (§3); the RPG → AGROVOC alignment experiment (gold set + OntoAligner, P/R/F1) |
-| SO2: semantic enrichment of remote sensing (rules) | One derived concept, `lulcw:ProbablyIrrigatedParcel`: Sentinel-2 summer NDVI + soil wetness, by a SHACL-AF rule (CQ15) |
+| SO2: semantic enrichment of remote sensing (rules) | One derived concept, `lulcw:ProbablyIrrigatedParcel`: Sentinel-2 summer NDVI + soil wetness, by a SHACL-AF rule (CQ15); checked against independent irrigation evidence, otherwise labelled a heuristic; one ablation row tests whether it adds information |
 | SO3: the ontology structures and constrains the model | Graph exported from the KG (SPARQL → HeteroData); response-sign constraints from the causal axioms |
 | SO4: explanations along the causal chain | Contributions → SPARQL chains → templates, with faithfulness tests |
 | SO5: dashboard "semantic intelligence" queries | The competency-question queries plus one map page; one scenario query (CQ16) |
@@ -148,6 +155,12 @@ for the project"). The decisions and their reasons are in
     |Δ depth| threshold chosen on the training period.
   - Every derived link carries `prov:wasDerivedFrom` and `lulcw:confidence`.
     Main runs use confident links only; a sensitivity run uses all of them.
+    (Proposal of 2026-10-23, for Assil: confident + probable in the main runs,
+    see `docs/notes/step12b_review_fixes.md`.) Confidence levels are measured,
+    not assumed: pump → unit rules get "probable" only for the uses their
+    precision was measured on (`src/kg/pump_attribution.py`).
+  - Incomplete evidence stays incomplete: a piezometer or pump may have an
+    "unknown" or several candidate units; SHACL does not force exactly one.
   - Annual and dated facts are SOSA observations with `sosa:phenomenonTime`
     (OWL-Time). Weekly series stay in parquet.
   - IRIs and metadata:
@@ -173,11 +186,13 @@ for the project"). The decisions and their reasons are in
   distances, and SHACL covers both validation and rules.
 - **Satellite data (subject SO2):**
   - `lulcw:ProbablyIrrigatedParcel` = Sentinel-2 summer NDVI per RPG parcel
-    (Earth Engine) + SAFRAN soil wetness, by a SHACL-AF rule, checked against
-    the RPG crops.
-  - AlphaEarth embeddings (arXiv:2507.22291) stay an optional feature source,
-    with TESSERA (arXiv:2506.20380) as the backup. No Sentinel classifier, no
-    Prithvi.
+    (Earth Engine) + SAFRAN soil wetness, by a SHACL-AF rule. Agreement with
+    RPG crops does not validate irrigation (crop ≠ irrigation status): check it
+    against independent evidence (candidates: Agreste census irrigated areas,
+    ASA/canal perimeters, BNPE irrigation points), else label it a heuristic.
+  - AlphaEarth embeddings (arXiv:2507.22291) and TESSERA (arXiv:2506.20380):
+    not planned unless a research question needs them (decided 2026-10-23).
+    No Sentinel classifier, no Prithvi.
 - **Quality gates** (in `tests/`, run on every ontology change):
   - reasoner consistency (ROBOT with HermiT or ELK)
   - OOPS! pitfall scan
@@ -185,20 +200,35 @@ for the project"). The decisions and their reasons are in
   - every CQ test
   - the alignment P/R/F1
 - **The graph the model sees is generated from the knowledge graph** by SPARQL →
-  PyG `HeteroData`. Never hand-code edges in model code.
+  PyG `HeteroData`. Never hand-code edges in model code. A test checks that
+  pandas rules on the same tables give the same edge list (the equivalence
+  test, `docs/analysis_plan.md` §10).
 
 **Data and target**
 - **Time step: weekly.** Keep daily data in `interim/`.
-- **Dataset v3** is the default (`PFE_DATASET=v3`): 65 wells (33 core),
-  training from 2005, BNPE with its documented imputation rules.
+- **Dataset v4** (decided 2026-10-23) is the dataset of record: v3 (65 wells,
+  33 core, training from 2005, BNPE with its documented imputation rules)
+  without the values qualified "Incorrecte", with grouped leave-wells-out
+  folds and per-window statistics for the less-data regimes. Built
+  (`data/processed/dataset_v4`); the baselines are re-run on it with the
+  settings tuned on v3. Until those re-runs exist, `PFE_DATASET=v3` remains
+  the default for the v3 report.
 - **Splits** (`docs/analysis_plan.md`):
   - train ≤ 2019, validation 2020-01 → 2022-04
   - test May 2022 → latest, scored as **drought** (May 2022 → Nov 2025) and
     **recovery** (Dec 2025 →)
-  - plus 5-fold **leave-wells-out**, 25/50 % training data, and a refit on
-    train + validation
+  - plus 5-fold **leave-wells-out** (from v4, wells < 2 km apart share a
+    fold; held-out wells keep their training-period head statistics, so this
+    is transfer to monitored wells, never to ungauged ones), 25/50 % training
+    data (statistics from that window only), and a refit on train + validation
 - **Primary endpoint:** drought-phase median NSE and skill against
-  climatology; KGE'' (datum-free); clustered bootstrap with Holm correction.
+  climatology; KGE'' (datum-free). Effect sizes first, with a cluster-bootstrap
+  interval; p-values from a **cluster sign-flip test** over the 14 spatial
+  clusters, Holm-adjusted (decided 2026-10-23; the per-well Wilcoxon is shown
+  for comparison only). Recovery-phase results are provisional: only 7 wells
+  have ≥ 26 fully validated weeks there.
+- **Forecast task = hindcast** with reconstructed forcings (annual pumping
+  totals and their weekly spread use information after the issue week).
 - **Target:** groundwater level (m NGF) per well, plus its **SGI** drought
   class (Bloomfield & Marchant 2013, doi:10.5194/hess-17-4769-2013).
 - **Training wells:** all usable dept-66 stations with a masked loss; report
@@ -216,6 +246,10 @@ for the project"). The decisions and their reasons are in
   - effects of pumping are claimed only from between-year and between-well
     variation
   - attributions group "summer demand" (`docs/analysis_plan.md` §8)
+  - the main contrasts are repeated under 3 pumping reconstructions (current;
+    flat drinking water; irrigation from a fixed crop calendar, independent
+    of the year's weather); a conclusion must hold under all three (decided
+    2026-10-23)
 
 **Model and constraints**
 - **Baselines** (done on v3; no more are added):
@@ -245,7 +279,10 @@ for the project"). The decisions and their reasons are in
   - *soft:* gradient or counterfactual sign penalties (Ross et al. 2017)
   - *hard:* **monotone by construction**: sign-constrained gains, e.g.
     −softplus(·) for a decreasing influence. LightGBM `monotone_constraints`
-    serve as a cheap check.
+    serve as a cheap check. The sign must hold on the whole path: the gain
+    depends on static/KG features, never on the driver it constrains, and the
+    residual network does not see the constrained drivers; a finite-difference
+    test checks it (`docs/analysis_plan.md` §10).
   - PiShield is dropped: it constrains outputs, not response signs.
 - **No head-ordering rule.** In the Step 6b pair check, the shallow head is
   above the deep one in only 50.5 % of pair-weeks.
@@ -257,13 +294,18 @@ for the project"). The decisions and their reasons are in
      - inputs: the real forcings, wells, pumps and KG
      - synthetic heads from known response functions plus AR noise
      - two variants: pumping timing tied to the deficit, or independent of it
+     - harder variants (decided 2026-10-23): a response shape the model does
+       not have, a driver the model does not see, wrong KG links
      - concept accuracy = the error of the recovered contributions
   2. Disagreement of the contributions across seeds (the BEARS idea).
   3. **Semantic ablation:** rewire the KG edges with degrees preserved and
      shuffle the attributes (cf. Heudorfer et al. 2024,
      doi:10.5194/hess-28-525-2024). Its power is calibrated on the twin.
-  4. Counterfactual sign accuracy within the observed year-to-year range,
-     with the Pastas gains as the reference.
+  4. Counterfactual sign accuracy within the observed year-to-year range;
+     the Pastas gains are a comparator, not causal ground truth.
+
+  Ontology consistency, faithfulness and causal correctness are three
+  separate properties, each with its own evidence.
 
   SGI accuracy is reported, but it is not the shortcut test.
 - **Explanations:**
@@ -464,9 +506,22 @@ the data (all confirmed). Assil decided the same day:
 - **Framing:** umbrella question above RQ1–4; the ontology is credited with
   traceability, consistency and reuse, and a test shows that plain tables with
   the same rules give the same edges.
-- Work in progress: `docs/review_codex_response.md` (verdict per point) and
-  `docs/notes/step12b_review_fixes.md`. **Until the v3 sweep has finished,
-  every code change must leave v3 behaviour identical** (gate it on v4).
+- **Done the same evening (Step 12b, `docs/notes/step12b_review_fixes.md`;
+  verdict per point in `docs/review_codex_response.md`):**
+  - dataset v4 built
+  - evaluation `strict` variant
+  - cluster sign-flip test
+  - R3 window statistics
+  - analysis plan v2
+  - task 12.3, the pump → unit attribution
+  - the v4 re-run scripts
+  - tests: `test_stats`, `test_folds`, `test_pump_attribution`
+- **Until the v3 sweep has finished, every code change must leave v3
+  behaviour identical** (gate it on v4), and `scripts/run_cpu.sh` must not
+  be edited: bash is executing it.
+- **Decision waiting for Assil:** main runs with confident + probable pump
+  links (72 % of the plain's declared volume) instead of confident only
+  (27 %). Step 12b note, "What to consider".
 
 Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
 - Assil approved the revised plan (this file, `docs/roadmap.md`).
@@ -542,6 +597,20 @@ they stopped (instructions below); only the run in progress is lost.
   6. Commit.
 
   Then Step 12a is done.
+- **Then the dataset v4 re-runs (Step 12b), laptop first:**
+  `setsid nohup bash scripts/run_v4_cpu.sh > results/v4/cpu_runs.log 2>&1 < /dev/null &`
+  - steps: copy the v3 selections, naive, LightGBM (+ regimes), Pastas,
+    WellModel
+  - `select naive lgbm_final` were already run as a test on 2026-10-23
+- **Then Colab, for the GPU part:**
+  1. `.venv/bin/python scripts/v4_from_v3.py` (after the Taccari pull)
+  2. `PFE_DATASET=v4 .venv/bin/python scripts/make_gpu_bundle.py`
+  3. upload `gpu_bundle.zip` to Drive `pfe_colab/`
+  4. in the notebook, before the run line:
+     `%env PFE_DATASET=v4` and
+     `%env STEPS=final:lstm regimes:lstm final:stgnn regimes:stgnn final:taccari regimes:taccari final:ealstm regimes:ealstm`
+  5. pull with `scripts/colab_pull.py` (it detects v4)
+  6. then `PFE_DATASET=v4` ensemble and `baseline_report`
 
 **Assil's to-do (no model needed)**
 1. Send the two e-mails in `docs/supervisor_questions.md`:
@@ -551,15 +620,14 @@ they stopped (instructions below); only the run in progress is lost.
    drop, priorities, and the open points listed there.
 3. Later, for task 12.10: an Earth Engine account (sign-in is his).
 
-**Next for Claude, while the models run or after:** task 12.3, the pump →
-unit attribution table.
-- Inputs:
-  - `data/raw/hubeau_qualite/stations_66.parquet` (211 BD LISA units)
-  - the BNPE flag `nappe_accompagnement`
-  - the BD LISA stack at each point
-- One row per point: unit, method, confidence.
-- Report the measured accuracy of the flag rule on the 211 coded points.
-- Write a step note.
+**Next for Claude, while the models run or after:**
+1. Finish Step 12a (above), then the v4 re-runs (above).
+2. Literature, from the second review:
+   - the positioning matrix in `docs/literature/comparison_table.md`: past heads
+     as input? forcings? split? knowledge supplied? explanation validated?
+   - fill the open-access rows (Heudorfer 2024, Wu 2025 JGR-MLC if open)
+3. Task 12.4 (ontology module) after Assil's review of the CQs; then 12.5–12.8.
+   Task 12.8 includes the equivalence test.
 
 **Phase 3 (Step 12):** the task list is below. Freeze the ontology design after
 Assil's review of the competency questions.
@@ -579,7 +647,8 @@ Assil's review of the competency questions.
 | 10 Baselines on dataset v2 | ✅ done | `docs/notes/step10_baselines_v2.md` |
 | 11 Gate 2 summary | ✅ answered 2026-10-23: the choices are left to Assil (decisions in `docs/supervisor_questions.md`) | `docs/summary_gate2_results.md` |
 | **12a Fixes from the critical review** | **🔄 finishing:** evaluation, analysis plan, dataset v3 and the laptop baselines are done; EA-LSTM (laptop) and Taccari (Colab) are running | `docs/feedback.md`, `docs/analysis_plan.md`, `docs/notes/step12a_fixes.md` |
-| **12 Phase 3: ontology + KG** | **🔄 started 2026-10-23.** 12.1 drafted, 12.2 started | `docs/review_2026-10-23.md`, `docs/competency_questions.md`, `docs/ontology_design.md`, `docs/notes/step12_ontology.md` |
+| **12b Fixes from the second review** | **✅ 2026-10-23** (code, dataset v4, analysis plan v2, tests); 🔄 the baseline re-runs on v4 follow the v3 sweep | `docs/review_codex_2026-10-23.md`, `docs/review_codex_response.md`, `docs/notes/step12b_review_fixes.md` |
+| **12 Phase 3: ontology + KG** | **🔄 started 2026-10-23.** 12.1 drafted, 12.2 started, 12.3 done | `docs/review_2026-10-23.md`, `docs/competency_questions.md`, `docs/ontology_design.md`, `docs/notes/step12_ontology.md` |
 
 ### Step 12: Phase 3 tasks, in order
 
@@ -587,7 +656,7 @@ Assil's review of the competency questions.
 |---|---|---|
 | 12.1 | Competency questions (16) with example answers | ✅ drafted; Assil reviews |
 | 12.2 | Reuse table, term by term, and the modelling patterns (`docs/ontology_design.md`) | 🔄 started |
-| 12.3 | **CQ2 data step:** attribute each groundwater abstraction point to a unit, with provenance and confidence | 🔄 evidence found: ADES quality stations give the BD LISA unit for 211 BSS-coded points (`src/ingest/hubeau_qualite_stations.py`); the BNPE flag `nappe_accompagnement` is checked on them (alluvium ~ True, Pliocene ~ False). Next: the attribution table |
+| 12.3 | **CQ2 data step:** attribute each groundwater abstraction point to a unit, with provenance and confidence | ✅ 2026-10-23: `src/kg/pump_attribution.py` → `data/interim/pump_unit_attribution.parquet`. Rules measured on 130 recorded boreholes (flag True → alluvium 95 %; flag False + Pliocene under the point → Pliocene 92 %; False alone 53/112). The record is depth-checked. "Probable" only for the uses that were measured. Plain volume 2012–24: confident 27 %, probable 45 %, possible 21 %, unknown 7 % |
 | 12.4 | Ontology module `lulcw:` + imports/alignments in `ontology/`; IRIs and metadata; the quality gates in `tests/` | ⬜ after 12.3 and Assil's CQ review |
 | 12.5 | KG instantiation from the parquet tables (rdflib → Turtle → pyoxigraph) | ⬜ |
 | 12.6 | SHACL shapes and SHACL-AF rules: Influence links, `ProbablyIrrigatedParcel`, `HighIrrigationDemandZone`, `ConfinedSetting` | ⬜ |
@@ -625,8 +694,12 @@ Then Phase 4: the main-model decision, the twin, the arms (`docs/roadmap.md`).
   - seasonal drinking-water pumping beats flat
   - canal recharge helps the alluvium only
   - plain-wide pumping does not help, so the graph must be selective by unit
-  - on v3, the ML baselines are significantly better than Pastas in the
-    drought; the remaining error is mostly a level offset in 2024–25
+  - on v3, the ML baselines improve on Pastas in the drought by a large
+    effect (median ΔNSE +0.6 to +1.0, most cluster-bootstrap intervals
+    exclude 0), but **not significantly with the cluster-level test** (p_holm
+    0.08–0.23; the per-well Wilcoxon had given 0.002–0.04). The remaining
+    error is mostly a level offset in 2024–25. These results are exploratory:
+    the test period informed the diagnosis
   - same unit within 5 km and a small depth difference carry co-variation
     beyond distance
 

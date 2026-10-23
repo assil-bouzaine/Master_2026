@@ -3,6 +3,12 @@
 Written 2026-10-13. Each identifier below was checked: the DOIs resolve on
 doi.org and the arXiv IDs open the right title on arxiv.org.
 
+**Updated 2026-10-23** (second external review, `docs/review_codex_response.md`):
+- verdicts aligned with the decisions of 2026-10-23: no semantic loss, PiShield
+  dropped, SGI accuracy reported but not the shortcut test
+- four references added, checked on Crossref (§2, "Added 2026-10-23")
+- the paper's claim is now about **simulation**, not forecasting
+
 **Verdicts**
 - **CORE**: read in full; it shapes a design choice or an experiment.
   Goes in the paper.
@@ -51,7 +57,7 @@ explanations. The ontology and data-integration references also count.
 | Paper | Verdict | Why |
 |---|---|---|
 | Marconato et al., *Not All Neuro-Symbolic Concepts Are Created Equal* (NeurIPS 2023), arXiv:2305.19951 | **CORE** | The reasoning-shortcut test is our validity check. Read sections 3–5 carefully. |
-| Xu et al., *A Semantic Loss Function…* (ICML 2018), arXiv:1711.11157 | **CORE** | The foundational way to put logic in the loss. We apply it to discrete hydrological-state concepts (see roadmap §3). |
+| Xu et al., *A Semantic Loss Function…* (ICML 2018), arXiv:1711.11157 | CITE (was CORE until 2026-10-23) | The foundational way to put logic in the loss. Superseded for us: the concepts are now continuous driver contributions, and the constraints are response signs (soft gradient penalties or monotone by construction), not logic over discrete states. Cite it in related work. |
 | Xu et al., *Physics-aware Machine Learning…* (2023), arXiv:2310.05227 | **CORE** | Its taxonomy (data-guided / physics-informed / embedded / hybrid) is how we position the method. |
 | Logic Tensor Networks (Badreddine et al., *AIJ* 2022), arXiv:2012.13635 | CITE | The fuzzy-logic alternative to the semantic loss. Cite it; don't implement it (the reference code is TensorFlow). |
 | Acharya & Song, *Comprehensive Review of Neuro-symbolic AI…* (*AJSE* 2026), doi:10.1007/s13369-025-10887-3 | CITE (optional) | Intro-level survey; one citation for "NeSy for trustworthy AI". |
@@ -106,7 +112,7 @@ swapped for the journal version).
 | Taccari et al., *Spatial-temporal graph neural networks for groundwater data*, *Sci. Rep.* 14 2024, **doi:10.1038/s41598-024-75385-2** | **Closest analogue to our setting:** a multi-aquifer system with pumping, river and rain nodes in the graph, weekly data, masked loss for gaps. A predefined physical graph beat a learned graph by 25%. Code: github.com/mlttac/GroundwaterFlowGNN. |
 | Bai & Tahmasebi, *Graph neural network for groundwater level forecasting*, *J. Hydrol.* 616 2023, **doi:10.1016/j.jhydrol.2022.128792** | First GNN for groundwater levels (adaptive adjacency). Cite it as the origin of the line of work. |
 | Ansari et al., *Chronos-2: From Univariate to Universal Forecasting*, 2025, **arXiv:2510.15821** | A time-series foundation model, zero-shot with covariates. It is the modern baseline: if a 120M zero-shot model matches our GNN, we must say so. |
-| Bloomfield & Marchant, *Analysis of groundwater drought building on the SPI approach* (SGI), *HESS* 17 2013, **doi:10.5194/hess-17-4769-2013** | The Standardised Groundwater Index. It turns levels into **discrete drought states**, the concepts on which we test for reasoning shortcuts. |
+| Bloomfield & Marchant, *Analysis of groundwater drought building on the SPI approach* (SGI), *HESS* 17 2013, **doi:10.5194/hess-17-4769-2013** | The Standardised Groundwater Index. It turns levels into **discrete drought states** (the IPS classes of the BRGM bulletins). SGI accuracy is reported; since 2026-10-23 it is **not** the shortcut test (the concepts are the driver contributions). |
 
 ### Graph learning for time series
 
@@ -121,7 +127,7 @@ swapped for the journal version).
 | Reference | Why |
 |---|---|
 | Willard et al., *Integrating Scientific Knowledge with ML for Engineering and Environmental Systems*, *ACM Comput. Surv.* 55(4) 2022, **doi:10.1145/3514228** | The standard survey of knowledge-guided ML. Positioning. |
-| Stoian et al., *PiShield: A PyTorch Package for Learning with Requirements*, IJCAI 2024, **doi:10.24963/ijcai.2024/1037** | Enforces **linear-inequality constraints on continuous outputs by construction** (`pip install pishield`). It is the hard-constraint variant to compare with the soft loss penalty. |
+| Stoian et al., *PiShield: A PyTorch Package for Learning with Requirements*, IJCAI 2024, **doi:10.24963/ijcai.2024/1037** | Enforces linear-inequality constraints on continuous **outputs** by construction. **Dropped as a method on 2026-10-23:** our constraints are on response signs (how the output changes with a driver), not on output values. Cite it as related work. The hard variant is monotone by construction (Runje & Shankaranarayana 2023, arXiv:2205.11775, in the comparison table). |
 | Marconato et al., *BEARS Make Neuro-Symbolic Models Aware of their Reasoning Shortcuts* (UAI 2024), **arXiv:2402.12240** | Mitigates reasoning shortcuts with ensembles. Cheap to apply once there is a GPU. |
 | Bortolotti et al., *A Neuro-Symbolic Benchmark Suite for Concept Quality and Reasoning Shortcuts* (rsbench, NeurIPS 2024), **arXiv:2406.10368** | Gives the concept-quality metrics to report. |
 
@@ -171,12 +177,22 @@ swapped for the journal version).
 | Brodaric et al., *Enabling global exchange of groundwater data: GroundWaterML2 (GWML2)*, *Hydrogeology Journal* 26, 2018, **doi:10.1007/s10040-018-1747-9** | The citable GWML2 reference. No maintained OWL encoding was found: check before Phase 3. |
 | Lanini et al., *Groundwater modelling of a complex multilayer coastal aquifer under climate change in the framework of the Dem'Eaux Roussillon project*, AHS 2022 (conference abstract), **HAL hal-03530184** | Two process-based models of our aquifer with shared geometry and pumping locations: domain grounding and a data contact. |
 
+### Added 2026-10-23 (second external review; Crossref records checked that day)
+
+| Reference | Verdict | Why |
+|---|---|---|
+| Schorpp, Dall'Alba, Renard, Lanini & Caballero, *Hydrogeological modeling of the Roussillon coastal aquifer (France): stochastic inversion and analysis of future stresses*, *Environmental Earth Sciences* 82(9), 201, 2023, **doi:10.1007/s12665-023-10877-4** | **CORE** | The peer-reviewed process-based model of our aquifer (title: stochastic inversion, future stresses). The review says it covers the geological structure, canal recharge and the uncertainty of withdrawals: check while reading. It grounds the domain chapter and the canal-recharge case study. |
+| Chu, Ruan & Gong, *A hybrid TFN–LSTM model for groundwater level forecasting in Rhode Island, USA*, *Journal of Environmental Management* 414, 130474, 2026, **doi:10.1016/j.jenvman.2026.130474** | **CORE** (positioning) | A transfer-function-noise model combined with an LSTM. Our hybrid (sign-constrained responses + a bounded residual) must be positioned against it. Abstract paywalled here: read it before writing the related work. |
+| Jeong, Lee, Lee, Mbarki, Kim, Moon, Seo, Park & Jeong, *A physically interpretable transfer learning framework for improved generalization of data-driven groundwater level prediction*, *Water Research* 304, 126321, 2026, **doi:10.1016/j.watres.2026.126321** | **CORE** (positioning) | Transfer learning with physically interpretable responses. According to the review, it compares learned responses with independent hydrogeological information: the closest precedent for our explanation checks. Abstract paywalled here: read it before writing. |
+| Roberts et al., *Cross-validation strategies for data with temporal, spatial, hierarchical, or phylogenetic structure*, *Ecography* 40(8), 913–929, 2017, **doi:10.1111/ecog.02881** | CITE | Why held-out sites must be blocked in space. Cited for the grouped leave-wells-out folds of dataset v4. |
+
 ## 3. Reading order (about 3 weeks, alongside Phase 1)
 
 1. Taccari 2024 → Wu 2025 (E3) → Heudorfer 2024 → Pastas 2019. This is how our
    problem is solved today.
-2. Marconato 2023 → Xu 2018 (semantic loss) → PiShield. This is how we add
-   knowledge, and how it can fail.
+2. Marconato 2023 → Ross 2017 (gradient penalties) → Runje & Shankaranarayana
+   2023 (monotone networks). This is how we add knowledge, and how it can fail.
+   (Until 2026-10-23 this line read "Xu 2018 (semantic loss) → PiShield".)
 3. Clark 2025 (F1) → Azzolin 2024 (F3). This is how we explain the
    predictions, and how we check those explanations.
 4. WHOW-KG 2025 → OntoAligner. This is how the knowledge side is built.

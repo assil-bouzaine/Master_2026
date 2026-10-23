@@ -131,6 +131,18 @@ Open points, all for step 12.4:
 - Next: the attribution table itself (point → unit, method, confidence), which becomes the
   `UnitAttribution` nodes of the KG.
 
+### Correction and result (later on 2026-10-23, after the second review)
+The table above counts **Pliocene points that are False** (a recall). A rule needs the
+other direction: when the flag is False, how often is the unit the Pliocene?
+- On the coded points of the plain, only 53 of 112.
+- With the stack (False **and** the Pliocene under the point): 92 % of the recorded
+  boreholes.
+
+The attribution table is built (`src/kg/pump_attribution.py`,
+`data/interim/pump_unit_attribution.parquet`). Its rules, their measured precision, the
+depth check of the records and the coverage by volume and use are in
+`docs/notes/step12b_review_fixes.md`. Task 12.3 is done.
+
 ## Decisions of 2026-10-23 (the supervisor left the choices to Assil)
 
 `docs/supervisor_questions.md` §1 lists each decision with its reason. For the ontology:

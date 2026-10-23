@@ -4,9 +4,10 @@
 
 The zip is made in Colab (`python scripts/colab_run.py zip`, then files.download) or
 downloaded from Drive (folder pfe_colab/results_gpu > Download). It is unpacked into
-results/v3/_colab/output; every finished run (predictions.parquet present) and every tuning
-study (<model>_tuning) is copied to results/v3/<run>, and the runs are rescored with
-src.models.evaluate.
+results/_colab/output; for every dataset version in it (v3, v4), every finished run
+(predictions.parquet present) and every tuning folder (<model>_tuning with a study or a
+best.json) is copied to results/<v>/<run>, and the runs are rescored with
+src.models.evaluate under that version.
 """
 import os
 import shutil
@@ -16,7 +17,8 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "results" / "v3" / "_colab" / "output"    # results/ is gitignored
+OUTPUT = ROOT / "results" / "_colab" / "output"    # results/ is gitignored
+VERSIONS = ("v3", "v4")
 
 
 def main():
@@ -26,24 +28,27 @@ def main():
     OUTPUT.mkdir(parents=True)
     with zipfile.ZipFile(sys.argv[1]) as z:
         z.extractall(OUTPUT)
-    v3 = sorted(d for d in OUTPUT.rglob("v3") if d.is_dir())
-    if not v3:
-        sys.exit(f"no v3 results folder in {sys.argv[1]}")
-    runs, studies = [], []
-    for d in sorted(v3[0].iterdir()):
-        if (d / "predictions.parquet").exists():
-            runs.append(d.name)
-        elif d.name.endswith("_tuning") and (d / "study.db").exists():
-            studies.append(d.name)
-        else:
-            continue
-        shutil.copytree(d, ROOT / "results" / "v3" / d.name, dirs_exist_ok=True)
-    print("finished runs copied:", " ".join(runs) or "none")
-    print("tuning studies copied:", " ".join(studies) or "none")
-    if runs:
-        subprocess.run([sys.executable, "-m", "src.models.evaluate", *runs], cwd=ROOT,
-                       env={**os.environ, "PFE_DATASET": "v3"}, check=True)
-    log = v3[0].parent / "run_colab.log"
+    found = [d for v in VERSIONS for d in sorted(OUTPUT.rglob(v)) if d.is_dir()]
+    if not found:
+        sys.exit(f"no results folder of {VERSIONS} in {sys.argv[1]}")
+    for vdir in found:
+        v = vdir.name
+        runs, studies = [], []
+        for d in sorted(vdir.iterdir()):
+            if (d / "predictions.parquet").exists():
+                runs.append(d.name)
+            elif d.name.endswith("_tuning") and any((d / f).exists()
+                                                    for f in ("study.db", "best.json")):
+                studies.append(d.name)
+            else:
+                continue
+            shutil.copytree(d, ROOT / "results" / v / d.name, dirs_exist_ok=True)
+        print(f"[{v}] finished runs copied:", " ".join(runs) or "none")
+        print(f"[{v}] tuning folders copied:", " ".join(studies) or "none")
+        if runs:
+            subprocess.run([sys.executable, "-m", "src.models.evaluate", *runs], cwd=ROOT,
+                           env={**os.environ, "PFE_DATASET": v}, check=True)
+    log = found[0].parent / "run_colab.log"
     if log.exists():
         print("".join(log.read_text().splitlines(keepends=True)[-15:]))
 

@@ -140,14 +140,22 @@ Units: either stated in each property's definition, or QUDT (decide in
 A pump → unit link is uncertain for most points (240 of 2,137 groundwater
 points have a BSS code). Each candidate link is an `UnitAttribution` node
 holding:
-- the point and the unit
-- the method: BSS record, depth rule, name rule, or stack
+- the point and the unit (or no unit: an explicit "unknown")
+- the rule: `record`, `record_depth`, `flag_true`, `flag_false`, `dug_well`,
+  `single_unit` (`src/kg/pump_attribution.py`, task 12.3)
+- its rank (1 = main candidate, 2 = alternative)
 - `prov:wasDerivedFrom`
-- `lulcw:confidence`
+- `lulcw:confidence`, **measured**: a rule is "probable" only for the uses on
+  which its precision was measured (≥ 0.80 on ≥ 10 recorded boreholes)
 
-A rule then materialises `lulcw:pumpsFrom` for confident links only. That
-keeps the simple queries simple and the main runs clean. The sensitivity
-run uses every attribution.
+A rule then materialises `lulcw:pumpsFrom` for confident links only (main
+runs; confident + probable is proposed, CLAUDE.md §3). That keeps the simple
+queries simple. The sensitivity runs use every attribution.
+
+Two limits are stated wherever these links are used:
+- A BD LISA stack describes the geological arrangement under a point. It
+  does not prove a hydraulic connection.
+- Investigation depth is not screened depth.
 
 ### 4.4 Typing the BD LISA units (a written rule, not `natureeh`)
 
@@ -167,12 +175,24 @@ run uses every attribution.
 3. **OOPS!** pitfall scan: no critical pitfall. It is a web service, so the
    ontology is sent to it; ours only.
 4. **SHACL:**
-   - every `UnitAttribution` and `Influence` has a source, a target, a
-     confidence and `prov:wasDerivedFrom`
-   - every piezometer has exactly one unit and one investigation depth
+   - every `UnitAttribution` and `Influence` has a source, a confidence and
+     `prov:wasDerivedFrom`; a target unless the confidence is "unknown"
+   - every piezometer and groundwater pump has at least one
+     `UnitAttribution` (possibly "unknown"); several candidates are allowed.
+     The investigation depth is optional, and a missing depth is reported.
+     (Second review, 2026-10-23: forcing incomplete evidence into one answer
+     creates false certainty.)
    - every term has French and English labels and a definition
 5. **CQ tests:** all 16 (or the agreed subset) pass against their oracles.
 6. **Alignment:** P/R/F1 recorded for each run against the gold sets.
+7. **Equivalence test** (task 12.8): the edge list exported by SPARQL equals
+   the one built by pandas rules from the same tables. The ontology is
+   credited with traceability, consistency and reuse; accuracy gains belong
+   to the knowledge it carries (analysis plan v2, §10).
+
+`ProbablyIrrigatedParcel` (CQ15) is a heuristic unless it is checked against
+independent irrigation evidence: agreement with RPG crops does not validate
+irrigation (crop type and irrigation status are different variables).
 
 ## 6. Open points (decide in 3.4)
 

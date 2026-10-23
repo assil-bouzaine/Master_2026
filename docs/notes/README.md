@@ -24,7 +24,8 @@ the PFE report (the "Méthodologie" and "Données" chapters).
 | 9 | Phase 2: baselines on v1 | done | [step09_baselines.md](step09_baselines.md) |
 | 10 | Baselines v2: more data, tuning, ensemble, ablation | done | [step10_baselines_v2.md](step10_baselines_v2.md) |
 | 12a | Fixes from the critical review: evaluation, analysis plan, dataset v3, new baselines, knowledge-graph pre-check | in progress | [step12a_fixes.md](step12a_fixes.md) |
-| 12 | Phase 3: ontology and knowledge graph | in progress (12.1 competency questions drafted, waiting for review) | [step12_ontology.md](step12_ontology.md) |
+| 12b | Fixes from the second review: dataset v4, strict validated data, grouped folds, cluster-level test, R3 window statistics, analysis plan v2 | done (v4 re-runs of the baselines pending) | [step12b_review_fixes.md](step12b_review_fixes.md) |
+| 12 | Phase 3: ontology and knowledge graph | in progress (12.1 drafted, waiting for review; 12.3 pump → unit attribution done) | [step12_ontology.md](step12_ontology.md) |
 
 Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 
@@ -87,3 +88,10 @@ Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 | **Bridging module (`lulcw:`)** | Our own small ontology: it links the reused standard vocabularies and adds the causal relations with their sign. |
 | **Polarity** | The sign of a causal link: `decreasesHead` (pumping) or `increasesHead` (rain, canal seepage). |
 | **Provenance / confidence** | Where a fact comes from (BSS record, depth rule, name rule) and how sure we are of it. |
+| **Strict validated weeks** | Test weeks whose every daily value is qualified "Correcte" by the producer. Recent data are mostly "Non qualifié" (not yet checked), which is not the same as wrong. |
+| **Grouped (blocked) cross-validation** | Wells close to each other are kept in the same fold, so a held-out well cannot be predicted from its near twin. |
+| **Cluster (sign-flip) permutation test** | A significance test that respects dependence: under "no difference" the sign of the paired differences of a whole cluster of wells may flip, never one well alone. |
+| **Effect size** | How large a difference is (e.g. median ΔNSE +0.8), as opposed to whether it is "significant". Reported first. |
+| **p-hacking** | Changing the analysis after seeing the results until a p-value drops below 0.05. Avoided by fixing the plan in advance (analysis plan, git tag). |
+| **Hindcast** | A forecast made after the fact with inputs that were not all available at the time (here: annual pumping totals). Not an operational forecast. |
+| **Precision vs recall (of a rule)** | Precision: when the rule fires, how often it is right. Recall: of the cases it should find, how many it finds. "50 of 53 Pliocene points are False" is a recall; the rule "False → Pliocene" needs a precision. |

@@ -66,7 +66,16 @@ echo "dataset: $PFE_DATASET"
 # the cached feature panel into it (docs/gpu_howto.md).
 if [ -n "${PFE_RESULTS:-}" ] && [ ! -f "$PFE_RESULTS/_cache/panel.parquet" ]; then
   mkdir -p "$PFE_RESULTS/_cache"
-  cp "results/$PFE_DATASET/_cache/panel.parquet" "$PFE_RESULTS/_cache/"
+  cp results/"$PFE_DATASET"/_cache/panel*.parquet "$PFE_RESULTS/_cache/"
+fi
+# dataset v4 re-runs reuse the configurations selected on v3 (scripts/v4_from_v3.py): bring
+# the bundled best.json files next to the results, without overwriting a later selection
+if [ -n "${PFE_RESULTS:-}" ]; then
+  for f in results/"$PFE_DATASET"/*_tuning/best.json results/"$PFE_DATASET"/*_tuned/best.json; do
+    [ -f "$f" ] || continue
+    t="$PFE_RESULTS/${f#results/$PFE_DATASET/}"
+    [ -f "$t" ] || { mkdir -p "$(dirname "$t")"; cp "$f" "$t"; }
+  done
 fi
 # v3 default sweep (docs/analysis_plan.md): default models for comparability, equal-budget
 # tuning (24 Optuna trials) of every neural model, the RQ1 regimes of the tuned models, and
@@ -85,6 +94,7 @@ for s in $STEPS; do
     chronos2_ft) $PY -m src.models.chronos2 --mode ft ;;      # fine-tuned on train
     tune_lstm)   $PY -m src.models.tune_lstm --trials 24 ;;   # v2 tuner (kept for v2 reruns)
     tune:*)      $PY -m src.models.tune --model "${s#tune:}" --trials 24 ;;
+    final:*)     $PY -m src.models.tune --model "${s#final:}" --final-only ;;   # v4: v3 choice
     regimes:*)   $PY -m src.models.regimes --model "${s#regimes:}" ;;
     *)           echo "unknown step $s" ;;
   esac || echo "!! step $s failed, continuing"

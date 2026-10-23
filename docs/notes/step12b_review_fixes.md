@@ -150,9 +150,15 @@ ouvrage):
   - CPU: `scripts/run_v4_cpu.sh`, after the v3 sweep.
   - GPU: Colab with `final:` and `regimes:` steps.
   - Then the v4 report. The v3 report stays as the record of Step 12a.
-- **Independent irrigation evidence for task 12.10:** search the Agreste census
-  (irrigated area by commune), the ASA perimeters, and the BNPE irrigation points. Agreement
-  with RPG crops does not validate irrigation.
+- **Independent irrigation evidence for task 12.10:**
+  - Agreement with RPG crops does not validate irrigation.
+  - Lead (searched 2026-10-23): the SDES publication "L'irrigation des surfaces agricoles:
+    évolution entre 2010 et 2020" (agricultural census 2020) has downloadable data,
+    including commune-level shares of irrigated vineyards, our main crop.
+    https://www.statistiques.developpement-durable.gouv.fr/lirrigation-des-surfaces-agricoles-evolution-entre-2010-et-2020
+    "Irrigated" there means watered at least once in the year, "irrigable" means
+    equipped: choose the variable accordingly.
+  - Other candidates: the ASA perimeters, the BNPE irrigation points.
 - **To read (paywalled, via the university):**
   - Chu et al. 2026 (hybrid TFN–LSTM, doi:10.1016/j.jenvman.2026.130474)
   - Jeong et al. 2026 (physically interpretable transfer learning,

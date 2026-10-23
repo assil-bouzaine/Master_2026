@@ -531,8 +531,13 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
     contacts, publication details, monthly drinking-water production.
   - The e-mails are ready in §4–5 there; Assil sends them.
 
-**Running now (state at 2026-10-23 15:22 CET; Assil stopped for the day and
-continues when the models have finished)**
+**Running now (state at 2026-10-23 17:00 CET; the v3 runs finish as planned,
+Assil decided at 16:30)**
+- Laptop at 17:00: `ealstm_tuned`, seed 3 of 5; then its 40 regime runs
+  (overnight). The Colab tab was not touched by Claude in the evening session.
+- A short v4 test (`STEPS="select naive lgbm_final" scripts/run_v4_cpu.sh`,
+  log `results/v4/cpu_runs_test.log`) ran niced next to it and slowed the
+  EA-LSTM epochs (62 s → 150 s) while it lasted.
 
 Keep the laptop **on and plugged in**, and the Chrome tab
 `pfe_v3_gpu.ipynb - Colab` **open**. If either stops, both runs resume where

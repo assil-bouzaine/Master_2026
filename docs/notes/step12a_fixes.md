@@ -227,6 +227,27 @@ test: `tests/` had no `__init__.py` and another `tests` package on Colab's path 
 Colab section (`scripts/colab_pull.py` on the laptop). Laptop: EA-LSTM trial 25 (the 24th
 complete) gave 0.484; the re-selection of the top 3 (trials 18, 12, 23) follows.
 
+**Update 2026-10-23 20:50: Taccari finished on Colab; EA-LSTM regimes running.**
+- **Colab** (log `run_colab.log` on Drive, read in the Drive preview): `done` at 18:40 UTC,
+  131 files on Drive `pfe_colab/results_gpu`; not pulled to the laptop yet. The re-selection
+  picked trial 15 (3-seed validation 0.582: lookback 156, hidden 64, dropout 0.229,
+  lr 8.2e-4) over trial 12 (best single seed 0.620, 3-seed mean 0.560). Medians over the 33
+  core wells as Colab printed them (no skill column until `colab_pull.py` rescores):
+
+  | run | NSE validation | NSE drought | NSE recovery |
+  |---|---|---|---|
+  | `taccari` | 0.527 | −0.162 | 0.394 |
+  | `taccari_tuned` | 0.633 | −0.107 | 0.457 |
+  | `taccari_tuned_lwo` | 0.317 | −0.399 | 0.147 |
+  | `taccari_tuned_f25` | 0.477 | −0.220 | 0.145 |
+  | `taccari_tuned_f50` | 0.492 | −0.072 | 0.208 |
+  | `taccari_tuned_refit` | (in sample) | −0.079 | 0.537 |
+- **Laptop:** the re-selection picked trial 12 (3-seed validation 0.540) over trial 18
+  (0.531) and trial 23 (0.538). `ealstm_tuned` (5 seeds, 17:46): validation 0.489, drought
+  NSE −0.264 (skill 0.344), recovery 0.411 (skill 0.479). The regimes started at 17:47; at
+  20:45 run 7 of 40 (LWO fold 1, seed 1), ≈ 29 min per full-data run; estimate: all done
+  ≈ 09:00–10:00 on 24 Oct.
+
 **Resume checklist:**
 1. ✅ CLI login, then bring back `stgnn_tuned_{lwo,f25,f50,refit}`, `ealstm_tuning` and
    `run_v3.log` (`camber stash cp -r stash://assil0723/pfe_v3_run/results_gpu/v3/<run>

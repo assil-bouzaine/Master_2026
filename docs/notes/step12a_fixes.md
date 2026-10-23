@@ -247,6 +247,12 @@ complete) gave 0.484; the re-selection of the top 3 (trials 18, 12, 23) follows.
   NSE −0.264 (skill 0.344), recovery 0.411 (skill 0.479). The regimes started at 17:47; at
   20:45 run 7 of 40 (LWO fold 1, seed 1), ≈ 29 min per full-data run; estimate: all done
   ≈ 09:00–10:00 on 24 Oct.
+- **20:58: the EA-LSTM regimes on v3 were stopped (Assil's decision).** v4 redoes them (its
+  GPU plan has `regimes:ealstm`). 19 of the 34 missing runs used the v3 leave-wells-out folds,
+  which split twin wells 20 m apart (C2-1/C2-2), so their scores would be optimistic by
+  design; the other 15 only filled the interim v3 table. The tuning (reused by v4) and the 5
+  final seeds were finished. Kept as a record, not reported: `ealstm_tuned_lwo` fold 0
+  (5 seeds) and fold 1 seed 0. The v3 report shows the EA-LSTM in R1 only.
 
 **Resume checklist:**
 1. ✅ CLI login, then bring back `stgnn_tuned_{lwo,f25,f50,refit}`, `ealstm_tuning` and

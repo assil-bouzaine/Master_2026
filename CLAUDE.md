@@ -497,7 +497,8 @@ the data (all confirmed). Assil decided the same day:
   "validated" flag, leave-wells-out folds that keep wells < 2 km apart
   together, and the 25/50 % regimes recomputing their statistics on their own
   window. All baselines are re-run on v4 with the settings tuned on v3. The v3
-  runs in progress **finish as planned** (tonight).
+  runs in progress **finish as planned** (tonight), except the EA-LSTM
+  regimes: stopped at 20:58 (see "State" below).
 - **Analysis plan v2:** cluster-level sign-flip test instead of the per-well
   Wilcoxon; a harder twin (wrong response shape, missing driver, wrong links;
   Pastas gains a comparator, not the reference); main contrasts under 3
@@ -516,9 +517,9 @@ the data (all confirmed). Assil decided the same day:
   - task 12.3, the pump → unit attribution
   - the v4 re-run scripts
   - tests: `test_stats`, `test_folds`, `test_pump_attribution`
-- **Until the v3 sweep has finished, every code change must leave v3
-  behaviour identical** (gate it on v4), and `scripts/run_cpu.sh` must not
-  be edited: bash is executing it.
+- **Until the v3 report is final, every code change must leave v3 behaviour
+  identical** (gate it on v4). No sweep has been running since 20:58, so
+  `scripts/run_cpu.sh` may be edited again.
 - **Decision waiting for Assil:** main runs with confident + probable pump
   links (72 % of the plain's declared volume) instead of confident only
   (27 %). Step 12b note, "What to consider".
@@ -537,16 +538,22 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
     contacts, publication details, monthly drinking-water production.
   - The e-mails are ready in §4–5 there; Assil sends them.
 
-**Running now (state at 2026-10-23 20:50 CET; the v3 runs finish as planned,
-Assil decided at 16:30)**
+**State at 2026-10-23 21:00 CET: nothing is running (laptop and Colab).**
 - **Colab: the Taccari sweep finished at 18:40 UTC** (log ends with `done`;
   131 files on Drive `pfe_colab/results_gpu`, with the full log
   `run_colab.log`). Not pulled to the laptop yet (steps below). The runtime is
   idle: disconnect it to save the free quota; nothing is lost.
-- Laptop at 20:45: `ealstm_tuned` ✅ (17:46); regimes at run 7 of 40
-  (`ealstm_tuned_lwo` fold 1, seed 1), ≈ 29 min per full-data run. Estimate:
-  LWO done ≈ 06:00 on 24 Oct; f25, f50 and refit are shorter; all done
-  ≈ 09:00–10:00.
+- **Laptop: `ealstm_tuned` ✅ (17:46). The EA-LSTM regimes on v3 were stopped
+  at 20:58 (Assil's decision that evening; it amends "the v3 runs finish as
+  planned").** Why:
+  - v4 replaces them: its GPU plan already has `regimes:ealstm`
+  - 19 of the 34 missing runs used the v3 leave-wells-out folds, which split
+    twin wells 20 m apart (C2-1/C2-2): optimistic by design
+  - the other 15 only filled the interim v3 table
+
+  The tuning (reused by v4) and the 5 final seeds were finished. Kept as a
+  record, not reported: `results/v3/ealstm_tuned_lwo/` (fold 0, and fold 1
+  seed 0). The v3 report shows the EA-LSTM in R1 only.
 - A short v4 test (`STEPS="select naive lgbm_final" scripts/run_v4_cpu.sh`,
   log `results/v4/cpu_runs_test.log`) ran niced next to it. `select` and
   `naive` finished. `lgbm_final` was **stopped by Claude after 20 min**:
@@ -554,25 +561,20 @@ Assil decided at 16:30)**
   62 s → 150 s). It runs again in `run_v4_cpu.sh` after the sweep. Do not run
   LightGBM next to the EA-LSTM.
 
-Keep the laptop **on and plugged in** until the regimes end (battery at 5 %,
-not charging: a power cut stops the run at once). If it stops, the sweep
-resumes where it stopped (instructions below); only the run in progress is
-lost. The Colab tab no longer needs to stay open.
+The laptop is free, and the Colab tab no longer needs to stay open.
 
-- **Laptop: the EA-LSTM sweep.** Started 13:40; PID 620767 at 15:22; log
-  `results/v3/cpu_runs7.log`.
+- **Laptop: the EA-LSTM sweep (stopped at 20:58, see above).** Started 13:40;
+  log `results/v3/cpu_runs7.log`.
   - Tuning: the study is complete (24 trials + 2 failed; best single-seed
     trial 18 = 0.604).
-  - Re-selection (3-seed means): trial 18 = 0.531, trial 12 = 0.540; trial 23
-    was next.
-  - Then 5 final seeds → `results/v3/ealstm_tuned`, then the regimes
-    (`ealstm_tuned_lwo`, `_f25`, `_f50`, `_refit`; 40 runs).
-  - Estimate (≈ 20 min per run on 3 threads): `ealstm_tuned` around 18:00,
-    the regimes 11–15 h later.
-  - **Done when** the log ends with `== … done`, and `pgrep -af src.models`
-    shows nothing.
-  - **If it stopped:** check `pgrep -af src.models` first (two tuners on one
-    study would both add trials), then run
+  - Re-selection (3-seed means): trial 18 = 0.531, trial 12 = 0.540, trial
+    23 = 0.538 → trial 12.
+  - Then 5 final seeds → `results/v3/ealstm_tuned` ✅, then the regimes
+    (`ealstm_tuned_lwo`, `_f25`, `_f50`, `_refit`; 40 runs): stopped at run 7
+    (≈ 29 min per full-data run).
+  - **To resume the v3 regimes anyway (not planned):** check
+    `pgrep -af src.models` first (two tuners on one study would both add
+    trials), then run
     `STEPS="ealstm_tune ealstm_regimes" setsid nohup bash scripts/run_cpu.sh > results/v3/cpu_runs8.log 2>&1 < /dev/null &`.
     It resumes where it stopped.
 - **Colab T4: the Taccari sweep ✅ (finished 18:40 UTC).** Session started 12:59 UTC; notebook
@@ -607,12 +609,13 @@ lost. The Colab tab no longer needs to stay open.
      copies `taccari`, `taccari_tuning`, `taccari_tuned` and its 4 regimes to
      `results/v3/` and rescores them, which adds the skill column.
   3. Then Runtime → Disconnect and delete runtime, to save the free quota.
-- **When both are done** (with `PFE_DATASET=v3`):
-  1. If the EA-LSTM runs show no metrics yet, run
-     `.venv/bin/python -m src.models.evaluate ealstm_tuned ealstm_tuned_lwo ealstm_tuned_f25 ealstm_tuned_f50 ealstm_tuned_refit`.
+- **When the Taccari results are pulled** (with `PFE_DATASET=v3`):
+  1. `ealstm_tuned` already has its metrics; its regimes run on v4 only.
   2. `.venv/bin/python -m src.models.ensemble`: its candidates already
      include `ealstm_tuned`, `taccari` and `taccari_tuned`.
-  3. `.venv/bin/python -m src.analysis.baseline_report`.
+  3. `.venv/bin/python -m src.analysis.baseline_report`, with a line saying
+     that the EA-LSTM regimes run on v4; add the EA-LSTM and Taccari rows to
+     the explainer chart (`src/analysis/explainer_data.py`).
   4. Finalise `docs/results_baselines.md` (remove "pending") and close the
      step-12a note.
   5. Send the results in the next monthly report to the supervisor. This

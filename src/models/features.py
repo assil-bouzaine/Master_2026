@@ -13,7 +13,7 @@ Columns
     dynamic     weekly forcings + rolling means over ROLL_WEEKS (groundwater
                 remembers: 1 month to 2 years), climatic deficit, local
                 groundwater pumping (3 km), plain-wide canal volume, season
-    static      altitude, screen depth, x, y, aquifer group code, artesian share
+    static      altitude, investigation depth, x, y, aquifer group code, artesian share
     rivers      (dataset v3 on) log discharge of the Têt in the plain, the Agly, the Tech
                 and of the main-stem gauge nearest to the well, plus 13/52-week means
 For the forecast task, `lagged_panel(P, h)` shifts every input to the issue

@@ -111,12 +111,17 @@ Two example wells are used throughout:
   - `pumping_points.parquet`: 3,055 points, of which 2,137 are groundwater and only **240
     have a BSS code**.
   - `pumping_weekly.parquet`: uses irrigation, drinking water, canals, industry, energy.
-  - Evidence to build, from strongest to weakest:
-    1. the BSS borehole record (depth, aquifer) for points with a BSS code
-    2. a depth rule
-    3. a name rule ("FORAGE", "PUITS", "SOURCE")
-    4. the BD LISA stack at the point: only one candidate unit where the stack has a single
-       aquifer
+  - Evidence, from strongest to weakest (sources checked on 2026-10-23, `data/README.md`):
+    1. **confident:** the BSS code → the ADES quality station's BD LISA entity. Found for
+       **211 points** (`src/ingest/hubeau_qualite_stations.py`), 125 of them with the
+       investigation depth.
+    2. **probable:** the BNPE flag `nappe_accompagnement` (a river-connected aquifer).
+       True → the alluvium at the point; False → the deeper unit of the stack. Checked on
+       the 211 coded points: True means alluvium in 30 of 33 cases, and 50 of 53 Pliocene
+       points are False. In the plain: 1,067 True, 603 False, 220 empty. The Sandre
+       definition of the flag is still to confirm.
+    3. **probable:** the BD LISA stack at the point holds a single aquifer.
+    4. **possible:** depth and name rules ("PUITS", a dug well, is shallow).
 - **Terms.**
   - `lulcw:pumpsFrom` (sub-property of `hyfo:tapsAquifer`)
   - `lulcw:hasUse` (our SKOS scheme of the BNPE uses)
@@ -128,8 +133,11 @@ Two example wells are used throughout:
   - W2: 130 points, 7 with a BSS code. Drinking water **110.4 Mm³**, irrigation 16.9 Mm³.
     Whether that drinking water comes from the Têt alluvium or from the Pliocene below is
     exactly what CQ2 must answer.
-- **Open.** The attribution rule and its confidence levels need a data step (BSS records).
-  Main runs use confident links only; a sensitivity run uses all links (review §7.3).
+- **Open.**
+  - The 211 coded points are mostly drinking-water boreholes, so the flag's accuracy on
+    irrigation boreholes may differ. Report it as measured, not assumed.
+  - Main runs use confident links only (or confident + probable, decided on the twin); a
+    sensitivity run uses all links (review §7.3).
 
 ### CQ3: units above unit U (MUST)
 - **Question.** Which units overlie unit U, and what kind of unit lies between them: an

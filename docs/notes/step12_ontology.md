@@ -73,3 +73,60 @@ The ontology reuse plan changes too:
     questions.
   - Wiśniewski et al. 2019 (doi:10.1016/j.websem.2019.100534), how competency questions
     are written as SPARQL.
+
+## 12.2 Reuse table and modelling patterns (started 2026-10-23)
+
+### What was done
+`docs/ontology_design.md` holds the plan for the ontology:
+- the namespaces, each marked "checked" (seen at its source today) or "to check"
+- the classes and properties, each linked to a competency question
+- four modelling patterns, each with a small Turtle example:
+  - causal `Influence` nodes
+  - SOSA observations for annual facts
+  - `UnitAttribution` nodes for uncertain pump → unit links
+  - the written rule that types the BD LISA units
+- the quality gates
+
+### Why
+- Nothing is written in Turtle before every term has a source or a definition (CLAUDE.md
+  rule 12).
+- The patterns settle two needs before the code exists:
+  - how a link carries its sign, distance, confidence and evidence
+  - how a fact carries its date
+
+### What to consider
+Open points, all for step 12.4:
+- the namespace (w3id.org needs a pull request from Assil's GitHub account)
+- the licence of SAWGraph's OWL rendering of GWML2
+- the HY_Features river class
+- the HILUCS value IRIs
+- units: QUDT or documented datatypes
+
+## 12.3 Pump → aquifer unit: the evidence (started 2026-10-23)
+
+### What was done
+- New ingest script, `src/ingest/hubeau_qualite_stations.py`, which downloads the 1,094
+  Hub'Eau groundwater-quality stations of dept 66 (logged in `data/README.md`).
+- **211 of the 235** BNPE points with a BSS code are among these stations, and each has a
+  BD LISA entity code: direct evidence of the unit they pump from.
+- BNPE has a second clue: the flag `nappe_accompagnement`, set when the pumped aquifer is
+  connected to a river. Checked against the 211 coded points:
+
+  | Unit of the coded point | Flag True | Flag False |
+  |---|---|---|
+  | alluvium (recent or ancient) | 30 | 8 |
+  | Pliocene | 3 | 50 |
+
+### Why it matters
+- The review worried that only about 11 % of pumps could be tied to a layer.
+- With the flag, most pumps of the plain get at least a "probable" layer: 1,067 flagged
+  True, 603 False, 220 empty.
+- The accuracy of the flag is *measured* on the 211 coded points, not assumed.
+- This is the information every baseline lacked (Gate 2 finding 2).
+
+### What to consider
+- The 211 coded points are mostly drinking-water boreholes. The flag may be less reliable
+  for irrigation boreholes; say so in the paper.
+- The official (Sandre) definition of the flag is still to confirm.
+- Next: the attribution table itself (point → unit, method, confidence), which becomes the
+  `UnitAttribution` nodes of the KG.

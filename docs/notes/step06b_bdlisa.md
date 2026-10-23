@@ -103,7 +103,7 @@
   semi-permeable unit: a multilayer of sands (aquifers) and clays
   (aquitards). One entity code hides several aquifer levels. Wells of
   different depths in `671AA00` (11 m to 235 m) may monitor different sand
-  layers. Keep the screen depth (`profondeur_investigation`) as a node
+  layers. Keep the investigation depth (`profondeur_investigation`, not the screen depth) as a node
   feature.
 - **LAFAR** (`671AA00`, 11.2 m deep) is a shallow Pliocene well. Check with
   the supervisor whether its code is right.

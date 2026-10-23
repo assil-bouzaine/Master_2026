@@ -16,7 +16,7 @@ Configurations (chosen on the VALIDATION median NSE only, never on test):
     base     num_leaves 31, min_data_in_leaf 40
     reg      num_leaves 15, min_data_in_leaf 200, stronger L2, feature_fraction 0.5
     reg_nostatic  reg without x, y, altitude, artesian share (only group and
-             screen depth kept): limits memorising wells through identity-like
+             investigation depth kept): limits memorising wells through identity-like
              statics (Heudorfer et al. 2024, doi:10.5194/hess-28-525-2024)
 Targets (also chosen on validation):
 - simulation: z (z-scored head) or anom (z minus the training climatology

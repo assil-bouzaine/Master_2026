@@ -265,3 +265,28 @@ Plain volumes after the rules (Mm³/yr): groundwater drinking water 40.2 (2022) 
 (2023) → 38.2 (2024); groundwater irrigation 15.8–19.7 in every year 2012–2026 (no 2018
 step); canal intakes 95.1 (2022) → 52.7 (2023) → 84.7 (2024) → 104.0 (2025–26, imputed
 as normal years).
+
+### Hub'Eau groundwater-quality stations (Step 12, Phase 3: CQ2)
+
+| Date | Source | Endpoint / URL | Parameters | Output | Rows | Size |
+|---|---|---|---|---|---|---|
+| 2026-10-23 | Hub'Eau *qualite_nappes* (ADES water points) | `https://hubeau.eaufrance.fr/api/v1/qualite_nappes/stations` | `num_departement=66`, `size=2000` (this endpoint ignores `code_departement`) | `raw/hubeau_qualite/stations_66.json`, `stations_66.parquet` | 1,094 stations (617 boreholes, 370 springs, 71 wells…); 1,046 with a BD LISA entity code | 2.7 MB JSON, 116 kB parquet |
+
+Script: `python -m src.ingest.hubeau_qualite_stations` (cached; `--refresh` to download
+again).
+
+Why: BNPE abstraction points carry no aquifer unit, but **211 of the 235** BNPE points
+with a BSS code are quality stations with a BD LISA entity (125 also give the
+investigation depth). They are the direct evidence for CQ2 (`docs/competency_questions.md`).
+
+Notes:
+- `nom_caracteristique_aquifere` (free / confined) is "Inconnu" for 1,062 stations: not
+  usable.
+- Check on the 211 points against the BNPE flag `nappe_accompagnement` (river-connected
+  aquifer):
+  - alluvium-coded points are flagged True in 30 of 39 cases
+  - Pliocene-coded points are flagged False in 50 of 53 cases
+  - points flagged True are alluvium in 30 of 33 cases
+
+  The flag is therefore usable, with a measured error, as "probable" evidence for the
+  1,890 groundwater points of the plain (1,067 flagged True, 603 False, 220 empty).

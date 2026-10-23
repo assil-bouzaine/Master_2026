@@ -54,7 +54,8 @@ already in the reading list, or re-run any model.
 >    - The early warning was too pessimistic. After removing the plain-wide
 >      signal, wells **in the same BD LISA entity and within 5 km** co-vary
 >      more (+0.21 partial correlation, QAP p = 0.048), and so do wells at
->      **similar screen depth** (p = 0.002).
+>      **similar investigation depth** (p = 0.002; first written "screen depth": the field is
+>      the borehole's `profondeur_investigation`, corrected 2026-10-23).
 >    - Shared pumping neighbourhoods add nothing significant.
 >    - The 3-nearest-wells distance graph joins different entities in 53 % of
 >      its edges.
@@ -604,7 +605,7 @@ is lowest, is one node for half of the wells.
 1. **Refine the check.**
    - Use partial correlations after removing the regional (plain-mean)
      anomaly.
-   - Pair wells by same entity *and* similar screen depth.
+   - Pair wells by same entity *and* similar investigation depth.
    - Treat nested pairs separately.
    - Add similarity of the pumping neighbourhood: do two wells share the
      same pumped unit?

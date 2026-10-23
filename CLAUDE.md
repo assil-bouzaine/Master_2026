@@ -8,41 +8,71 @@ rules, and the current task.
 ## 1. The project in one paragraph
 
 Master's PFE (projet de fin d'études) by Assil Bouzaine, Master in Data Science
-and Information Retrieval, ISAMM (Université de la Manouba). It contributes to
-the SAVE Water project (PRIMA 2023). Goal: forecast groundwater levels in a
-Mediterranean multilayer aquifer with a spatio-temporal graph neural network
-whose **graph and constraints come from a LULC-Water knowledge graph**. Test
-whether the model uses that knowledge or takes shortcuts. Explain its
-predictions in ontology terms.
+and Information Retrieval, ISAMM (Université de la Manouba), within the SAVE
+Water project (PRIMA). The subject (`Documents/sujet.docx`) asks for a
+**LULC-Water ontology**, built by aligning existing ontologies, that
+**structures, constrains and explains** a deep-learning model of water risk
+in the Mediterranean. Our instance of it:
+- simulate weekly groundwater levels in the Roussillon multilayer aquifer
+- with a model whose graph and sign constraints come from the LULC-Water
+  knowledge graph
+- test whether the model uses that knowledge or takes shortcuts
+- explain its predictions in ontology terms
 
 Scope is a **Master's, not a PhD**: one aquifer system (Roussillon plain) and
-one target variable (weekly groundwater level, plus its derived drought state),
-built end to end. Nitrate, socio-economics, the dashboard, Spain and Tunisia
-are future work (one optional Tunisia demo at the very end).
+one target (weekly groundwater level, plus its SGI drought class), built end to
+end. Every objective of the subject is covered, some in a small, measured
+version (§1b). Future work: nitrate, socio-economics, the full dashboard,
+Spain. One transfer demo to a SAVE Water Living Lab at the end
+**(supervisor)**.
 
-### End goal: a peer-reviewed paper as well as the thesis
+### 1a. End goal: a peer-reviewed paper as well as the thesis
 
-- **Working title:** *Right for the right reasons? Ontology-derived graphs and
-  constraints for groundwater-level forecasting in a Mediterranean multilayer
-  aquifer.*
+- **Working title (supervisor):** *Right for the right reasons?
+  Ontology-derived graphs and constraints for groundwater-level simulation in
+  a Mediterranean multilayer aquifer.* "Simulation", because Chronos-2 is the
+  forecasting reference; the phrase is from Ross et al. 2017 (arXiv:1703.03717).
 - **Research questions:**
 
   | RQ | Question | Experiment that answers it |
   |---|---|---|
-  | RQ1 | Does a graph built from the knowledge graph beat a distance-only graph and strong non-graph baselines? | Model comparison on 3 regimes: drought test period, held-out wells, reduced training data |
-  | RQ2 | Do ontology-derived constraints improve physical plausibility and out-of-distribution skill? | None / soft / hard constraints; violation rate; counterfactual sign tests |
-  | RQ3 | Does the model use the semantics or take shortcuts? | Semantic ablation (rewired or shuffled knowledge graph); concept accuracy on SGI drought states |
-  | RQ4 | Can explanations be stated in ontology terms *and* be faithful? | Attributions → ontology templates; fidelity metrics; documented events |
+  | RQ1 | Does knowledge from the KG improve simulation, as **information** (features) and as **structure** (graph)? | Arms A–F (`docs/analysis_plan.md` §10), described below the table; scored on the drought and recovery phases, leave-wells-out, and 25/50 % of the training data |
+  | RQ2 | Do ontology-derived sign constraints improve plausibility and out-of-distribution skill? | None / soft (sign penalties) / hard (monotone by construction); violation rate; counterfactual sign accuracy within the observed year-to-year range |
+  | RQ3 | Does the model use the knowledge, or take shortcuts? | Concepts = driver contributions. Recovery error on a semi-synthetic twin; disagreement across seeds; rewiring (arm E), its power calibrated on the twin. SGI accuracy is reported, not used as the shortcut test. |
+  | RQ4 | Can explanations be stated in ontology terms *and* be faithful? | Driver-group contributions → SPARQL chains → templates; fidelity+/−; entity-existence and sign-consistency tests; documented events (summer 2024 Pliocene rise) |
 
-- **Venue** (confirm with the supervisor): first choice *Environmental
-  Modelling & Software*; second *JGR: Machine Learning and Computation*;
-  fallback *Earth Science Informatics* or *Computers & Geosciences*.
+  The RQ1 arms:
+  - **A:** baseline inputs, no graph
+  - **B:** knowledge-graph features, no graph
+  - **C:** knowledge-graph features + the Taccari distance graph
+  - **D:** knowledge-graph features + the knowledge-graph graph (the main model)
+  - **E:** D with its edges rewired, degrees preserved
+  - **F:** random and complete graphs
+
+- **Venue (supervisor):** first choice *Environmental Modelling & Software*;
+  second *JGR: Machine Learning and Computation*; fallback *Earth Science
+  Informatics* or *Computers & Geosciences*.
 - **Authorship:** Assil first author, supervisors as co-authors. Acknowledge
-  SAVE Water / PRIMA.
+  SAVE Water / PRIMA with the grant number **(supervisor)**.
 - **Target:** submitted by the end of April 2027, assuming a June 2027 defence.
-  Check the real date at Gate 1.
-- **Plan:** `docs/roadmap.md` (phases, tools, risks).
+  **The real defence date is still unknown.**
+- **Plan:** `docs/roadmap.md` (phases, tools, risks; revised 2026-10-23).
 - **Literature:** `docs/literature/reading_list.md` (verdicts, verified IDs).
+- **Project review of 2026-10-23:** `docs/review_2026-10-23.md` (why the plan
+  changed).
+
+### 1b. How each objective of the subject is covered
+
+| Subject (`Documents/sujet.docx`) | Covered by |
+|---|---|
+| LULC-Water meta-ontology in OWL | A network of reused ontologies plus our bridging module `lulcw:` (the WHOW-KG pattern), presented as the meta-ontology |
+| SO1: fuse and align existing ontologies (SWEET, INSPIRE, AgroPortal) | Reuse and alignment axioms (§3); the RPG → AGROVOC alignment experiment (gold set + OntoAligner, P/R/F1) |
+| SO2: semantic enrichment of remote sensing (rules) | One derived concept, `lulcw:ProbablyIrrigatedParcel`: Sentinel-2 summer NDVI + soil wetness, by a SHACL-AF rule (CQ15) |
+| SO3: the ontology structures and constrains the model | Graph exported from the KG (SPARQL → HeteroData); response-sign constraints from the causal axioms |
+| SO4: explanations along the causal chain | Contributions → SPARQL chains → templates, with faithfulness tests |
+| SO5: dashboard "semantic intelligence" queries | The competency-question queries plus one map page; one scenario query (CQ16) |
+| Phase 1 of the subject: text extraction from articles | Small, measured version: 10–20 papers, local LLM, manual check, precision (thesis) |
+| Risks: drought / pollution / use conflicts | Drought (head + SGI); use conflict as a framing and CQ12; pollution is future work |
 
 ---
 
@@ -50,102 +80,205 @@ are future work (one optional Tunisia demo at the very end).
 
 | Role | Site | Notes |
 |---|---|---|
-| Primary | **Plaine du Roussillon**, Pyrénées-Orientales (dept 66), France | Chosen for open data on every layer |
-| Secondary | Campo de Cartagena / Segura, Spain | Generalisation; later |
-| Demo | Cap Bon or Kairouan, Tunisia | Transfer demonstration only; later. **Likely to change** to a SAVE Water Living Lab (Manouba or Charf El Akab): see `docs/savewater_consortium_notes.md`, on hold until Assil contacts the consortium |
+| Primary | **Plaine du Roussillon**, Pyrénées-Orientales (dept 66), France | The method-development site: open data on every layer, 35-year records. Not a SAVE Water Living Lab. |
+| Transfer demo **(supervisor)** | A SAVE Water Living Lab: the **Manouba phreatic aquifer** (Tunisia, MSE-UMA sensors) or the **Charf El Akab coastal aquifer** (Morocco) | Qualitative demo at the end. See `docs/savewater_consortium_notes.md`. |
+| Future work | Campo de Cartagena / Segura, Spain | Not in this thesis |
 
 ---
 
 ## 3. Design decisions
 
-Adopted on 2026-10-13. Assil approved the researcher's recommendations; the
-reasons are in `docs/roadmap.md` §2. Do not change them without asking
-Assil. Items marked **(supervisor)** go in the Gate 1 memo for confirmation.
+Adopted on 2026-10-13. **Revised on 2026-10-23**, after the critical review
+(`docs/feedback.md`) and the project review (`docs/review_2026-10-23.md`);
+Assil approved the revision the same day. Do not change them without asking
+Assil. Items marked **(supervisor)** wait for the supervisor's confirmation:
+`docs/supervisor_questions.md`.
 
 **Knowledge side**
-- **Ontology architecture:** a network of small ontologies linked by alignment
-  axioms (WHOW-KG pattern, *Scientific Data* 2025,
-  doi:10.1038/s41597-025-04537-4), not one merged file.
-- **Reuse:** GWML2 (wells, aquifer units, `overlies`), SOSA/SSN
-  (observations), HY_Features (rivers), GeoSPARQL 1.1 (geometry), HILUCS +
-  AGROVOC (land use, crops), WHOW-KG (water use). Write only a **bridging
-  module** `lulcw:` holding the causal relations with their polarity
-  (`lulcw:decreasesHead`, `lulcw:increasesHead`, `lulcw:rechargesFrom`, …).
-- **Scope of the ontology:** driven by 10–15 competency questions that the
-  model and the explanations need. Time-box: 6 weeks.
-- **Alignment:** a small manual gold set (~50 mappings), then OntoAligner
-  (fuzzy, retrieval, LLM matchers) evaluated against it with P/R/F1. A
-  supporting contribution, not the main one. LLM matchers run on a local open
-  model (GPU credits), never a paid API.
-- **Rules and validation:** SHACL for validation and **SHACL-AF rules** for
-  derived concepts (pySHACL). No SWRL.
+- **Architecture:** a network of small ontologies linked by alignment
+  axioms, not one merged file. This is the WHOW-KG pattern (*Scientific
+  Data* 2025, doi:10.1038/s41597-025-04537-4); the thesis presents it as the
+  LULC-Water meta-ontology.
+- **Reuse.** Each vocabulary was checked at its source on 2026-10-23; the
+  term table is in `docs/ontology_design.md`.
+  - **Groundwater:**
+    - GWML2 has **no official OWL** (only UML + GML/XML; Brodaric et al.
+      2018, doi:10.1007/s10040-018-1747-9). Use the GWML2 classes as
+      rendered in OWL in SAWGraph's water ontology (`gwml2:` =
+      `http://gwml2.org/def/gwml2#`: GW_Well, GW_MonitoringSite,
+      GW_AquiferUnit, GW_Aquifer, GW_AquiferSystem; licence to confirm).
+    - HyFO: `hyfo:tapsAquifer`.
+  - **SWEET** (ESIP, CC0) is an alignment target and is named in the subject:
+    - `realmHydro`: Aquifer, ConfinedAquifer, UnconfinedAquifer, Aquitard
+    - `matrWater`: Groundwater
+  - **Observations, time, provenance, code lists, geometry:** SOSA/SSN,
+    OWL-Time, PROV-O, SKOS, GeoSPARQL 1.1.
+  - **Rivers:** HY_Features.
+  - **Land use and crops:** INSPIRE HILUCS (SKOS) and AGROVOC.
+  - **WHOW-KG** is the architecture pattern only: it has no water-abstraction
+    module.
+- **The bridging module `lulcw:`** holds only what the reused vocabularies
+  lack:
+  - `lulcw:monitors` and `lulcw:pumpsFrom` (sub-properties of
+    `hyfo:tapsAquifer`)
+  - `lulcw:overlies`: ours; GWML2 has no such relation
+  - the water uses (a SKOS scheme of the BNPE uses)
+  - the driver groups (e.g. "summer demand")
+  - the causal knowledge, at two levels:
+    - class-level axioms, such as "an abstraction decreases the head of the
+      unit it pumps from"
+    - instance-level **`lulcw:Influence`** nodes, following the W3C n-ary
+      relation pattern. Each carries its source, target, sign, distance,
+      confidence and evidence, and is derived by SHACL-AF SPARQL rules
+      (OWL property chains cannot test a distance).
+- **Modelling rules** (review §4.2):
+  - Aquifer types come from a written mapping rule, not from BD LISA
+    `natureeh`:
+    - alluvium → unconfined aquifer
+    - Pliocene multilayer → aquifer system
+    - karst → aquifer
+    - impermeable units → confining bed
+  - **Depth = investigation depth** (`profondeur_investigation`), not the
+    screen depth. No fixed depth classes. "Similar depth" edges use a
+    |Δ depth| threshold chosen on the training period.
+  - Every derived link carries `prov:wasDerivedFrom` and `lulcw:confidence`.
+    Main runs use confident links only; a sensitivity run uses all of them.
+  - Annual and dated facts are SOSA observations with `sosa:phenomenonTime`
+    (OWL-Time). Weekly series stay in parquet.
+  - IRIs and metadata:
+    - a persistent namespace: w3id.org/lulcw if the redirect is accepted,
+      else GitHub Pages
+    - `owl:versionIRI` and dcterms metadata
+    - licence CC BY 4.0
+    - French and English labels, and a `skos:definition` for every term
+- **Scope:** driven by the competency questions
+  (`docs/competency_questions.md`; 16, Assil reviewing). Time-box: Phase 3 =
+  6 weeks, of which the KG build ≤ 4 weeks.
+- **Alignment (subject SO1).**
+  - Manual gold sets:
+    - **RPG crop codes → AGROVOC**: the main experiment
+    - BD LISA unit types → GWML2 / SWEET
+    - BNPE uses → our scheme / Sandre
+  - Then OntoAligner (fuzzy, retrieval and LLM matchers) scored with P/R/F1.
+    The LLMs run locally on Colab, never through a paid API.
+  - Reported in a thesis chapter, and in the paper as a supporting result if
+    space allows.
+- **Rules and validation:** SHACL shapes and SHACL-AF rules (pySHACL in
+  advanced mode: TripleRule, SPARQLRule). No SWRL: SPARQL rules can test
+  distances, and SHACL covers both validation and rules.
+- **Satellite data (subject SO2):**
+  - `lulcw:ProbablyIrrigatedParcel` = Sentinel-2 summer NDVI per RPG parcel
+    (Earth Engine) + SAFRAN soil wetness, by a SHACL-AF rule, checked against
+    the RPG crops.
+  - AlphaEarth embeddings (arXiv:2507.22291) stay an optional feature source,
+    with TESSERA (arXiv:2506.20380) as the backup. No Sentinel classifier, no
+    Prithvi.
+- **Quality gates** (in `tests/`, run on every ontology change):
+  - reasoner consistency (ROBOT with HermiT or ELK)
+  - OOPS! pitfall scan
+  - SHACL conformance
+  - every CQ test
+  - the alignment P/R/F1
 - **The graph the model sees is generated from the knowledge graph** by SPARQL →
   PyG `HeteroData`. Never hand-code edges in model code.
 
 **Data and target**
 - **Time step: weekly.** Keep daily data in `interim/`.
-- **Window:** extended to the latest available date (2026). Push the start
-  back to about 2010 if forcings and abstraction allow; the minimum is
-  2016–2026.
-- **Splits:**
-  - train ≤ 2019, validation 2020–2021
-  - **test May 2022 → latest** (record drought, then the recovery)
-  - plus 5-fold **leave-wells-out**
-  - plus 25/50/100% training-data subsets
+- **Dataset v3** is the default (`PFE_DATASET=v3`): 65 wells (33 core),
+  training from 2005, BNPE with its documented imputation rules.
+- **Splits** (`docs/analysis_plan.md`):
+  - train ≤ 2019, validation 2020-01 → 2022-04
+  - test May 2022 → latest, scored as **drought** (May 2022 → Nov 2025) and
+    **recovery** (Dec 2025 →)
+  - plus 5-fold **leave-wells-out**, 25/50 % training data, and a refit on
+    train + validation
+- **Primary endpoint:** drought-phase median NSE and skill against
+  climatology; KGE'' (datum-free); clustered bootstrap with Holm correction.
 - **Target:** groundwater level (m NGF) per well, plus its **SGI** drought
-  class (Bloomfield & Marchant 2013, doi:10.5194/hess-17-4769-2013) as the
-  discrete concept layer.
-- **Training wells:** use all usable dept-66 stations with a masked loss; report
-  on the core working set. Karst stations: **(supervisor)**.
-- **Land use:** RPG is the primary source in France. Earth observation is a
-  **feature source only**: AlphaEarth annual embeddings (Google Earth Engine,
-  arXiv:2507.22291), with TESSERA (arXiv:2506.20380) as the open backup.
-  WorldCereal irrigation layer if useful. No Sentinel classifier, no Prithvi.
+  class (Bloomfield & Marchant 2013, doi:10.5194/hess-17-4769-2013).
+- **Training wells:** all usable dept-66 stations with a masked loss; report
+  on the 33 core wells. Karst stations: **(supervisor)**.
+- **Land use:** the RPG, plus the satellite rule above.
+- **Never a model input:**
+  - **restriction orders.** Groundwater-zone orders are triggered by the very
+    piezometers we predict. Surface-water orders are used only to classify
+    the restricted years for the imputation.
+  - anything computed on the test period
+- **Pumping identifiability.** Within a year, pumping is spread with the
+  climatic deficit (r = 0.92–0.97). So:
+  - effects of pumping are claimed only from between-year and between-well
+    variation
+  - attributions group "summer demand" (`docs/analysis_plan.md` §8)
 
 **Model and constraints**
-- **Baselines (mandatory):**
-  - seasonal naive
-  - **Pastas** (doi:10.1111/gwat.12925)
-  - LSTM per well
-  - EA-LSTM global
-  - **Chronos-2** zero-shot (arXiv:2510.15821)
-  - a distance-graph ST-GNN, Taccari-style (doi:10.1038/s41598-024-75385-2)
-- **Main model:** heterogeneous ST-GNN (HGT/RGCN in space, gated temporal
-  convolutions or a GRU in time) on the knowledge-graph-derived graph.
-- **Constraints come from ontology causal links, as response signs:**
-  - abstraction lowers head
-  - effective rain raises head
-  - canal irrigation raises alluvium head
-- **Applying the constraints:**
-  - *soft:* counterfactual penalties in the loss, plus a semantic loss on
-    SGI states
-  - *hard:* PiShield linear inequalities (doi:10.24963/ijcai.2024/1037),
-    only for rules the data supports
-- **No head-ordering rule ("water flows down") unless the Step 6b pair check
-  shows the shallow head is consistently above the deep head.**
+- **Baselines** (done on v3; no more are added):
+  - seasonal naive and climatology
+  - **Pastas** (doi:10.1111/gwat.12925), plus WellModel
+  - LightGBM (tuned, without the well's own climatology)
+  - LSTM and EA-LSTM
+  - **Chronos-2** (arXiv:2510.15821): zero-shot, cross-learning and
+    fine-tuned. It is the forecasting reference.
+  - the distance-graph ST-GNN (GRU, 3-NN graph)
+  - the Taccari-graph ST-GNN (doi:10.1038/s41598-024-75385-2)
+  - Equal tuning budget: 24 Optuna trials, then re-selection over 3 seeds.
+- **Main model (supervisor): the hybrid** (`docs/feedback.md` §5.5).
+  - The KG feeds a heterogeneous GNN.
+  - The GNN outputs the parameters of **sign-constrained response
+    functions**, one per `lulcw:Influence` type.
+  - The responses are summed (a differentiable, Pastas-like superposition),
+    plus a small bounded residual network.
+  - Comparison: the black-box heterogeneous ST-GNN (HGT/RGCN + temporal
+    convolutions or a GRU) on the same graph.
+- **Constraints = response signs from the ontology:**
+  - abstraction lowers the head
+  - effective rain raises it
+  - canal return flow raises the alluvium head
+  - river recharge, only where documented
+- **Applying them:**
+  - *soft:* gradient or counterfactual sign penalties (Ross et al. 2017)
+  - *hard:* **monotone by construction**: sign-constrained gains, e.g.
+    −softplus(·) for a decreasing influence. LightGBM `monotone_constraints`
+    serve as a cheap check.
+  - PiShield is dropped: it constrains outputs, not response signs.
+- **No head-ordering rule.** In the Step 6b pair check, the shallow head is
+  above the deep one in only 50.5 % of pair-weeks.
 
 **Validity and explanations**
-- **Reasoning shortcuts** (Marconato et al., arXiv:2305.19951) are tested in
-  three ways:
-  - **semantic ablation**: rewire the knowledge-graph edges with degrees
-    preserved, and shuffle attributes. If skill does not drop, the model
-    ignores the semantics (cf. Heudorfer et al. 2024,
-    doi:10.5194/hess-28-525-2024).
-  - SGI concept accuracy versus constraint satisfaction
-  - counterfactual sign accuracy, with Pastas response gains as the reference
+- **Reasoning shortcuts** (Marconato et al., arXiv:2305.19951). The concepts
+  are the **driver contributions**. Four tests:
+  1. A **semi-synthetic twin**:
+     - inputs: the real forcings, wells, pumps and KG
+     - synthetic heads from known response functions plus AR noise
+     - two variants: pumping timing tied to the deficit, or independent of it
+     - concept accuracy = the error of the recovered contributions
+  2. Disagreement of the contributions across seeds (the BEARS idea).
+  3. **Semantic ablation:** rewire the KG edges with degrees preserved and
+     shuffle the attributes (cf. Heudorfer et al. 2024,
+     doi:10.5194/hess-28-525-2024). Its power is calibrated on the twin.
+  4. Counterfactual sign accuracy within the observed year-to-year range,
+     with the Pastas gains as the reference.
+
+  SGI accuracy is reported, but it is not the shortcut test.
 - **Explanations:**
-  1. Integrated Gradients and GNNExplainer, aggregated by node type and
+  1. contributions per driver group: exact with the hybrid; for the black
+     box, Integrated Gradients and GNNExplainer aggregated by node type and
      relation
-  2. SPARQL on the knowledge graph for the chain of entities
-  3. **templated text**
-  4. faithfulness metrics (fidelity+/−; Azzolin et al., arXiv:2406.15156)
+  2. SPARQL on the KG for the chain of entities
+  3. **templated text**, in French and English
+  4. faithfulness (fidelity+/−; Azzolin et al., arXiv:2406.15156)
+  5. tests: every named entity exists and is connected to the well, and the
+     stated sign matches the polarity
 
-  An LLM may polish fluency only and never invents content. A test checks
-  that every entity named in the text exists in the knowledge graph.
+  An LLM may polish fluency only and never invents content.
+- **Case studies:**
+  - the summer 2024 local Pliocene rise after reduced abstraction (BRGM
+    bulletin, 16 Sept 2024)
+  - the 2023 drop
+  - an alluvium well (canal)
 
-**Research framing (supervisor):** use conflict on the Pliocene (drinking
-water vs agriculture) or canal-return recharge. Both are expressible as
-ontology causal links, so the pipeline does not wait for this answer.
+**Research framing (supervisor):** the use conflict on the Pliocene (drinking
+water against agriculture), or canal-return recharge. Both are expressible as
+`lulcw:` causal knowledge, so the pipeline does not wait for this answer.
 
 ---
 
@@ -153,6 +286,8 @@ ontology causal links, so the pipeline does not wait for this answer.
 
 **Current machine (since October 2026): Arch Linux**
 - 4 cores, 11 GB RAM, no NVIDIA GPU; shell zsh
+- The battery holds 12 % of its design charge: keep it plugged in during long
+  runs.
 - Venv: `.venv`, Python 3.12, created with
   `uv venv --python 3.12 .venv`. Install with
   `uv pip install --python .venv/bin/python -r requirements.txt`.
@@ -161,21 +296,34 @@ ontology causal links, so the pipeline does not wait for this answer.
 - Cold-start check passed on 2026-10-13: Steps 4–6a re-ran from the cache
   with identical numbers.
 - Use `pathlib` for every path. Pin dependencies in `requirements.txt`.
+  Install the ontology tools when they are first used, then pin them:
+  `rdflib`, `pyoxigraph`, `pyshacl`, `ontoaligner`; ROBOT (Java) for the
+  reasoner and report.
 - Use `py7zr` for `.7z` and `pyogrio` for geodata
   (`pyogrio.list_layers()` to inspect a GeoPackage or FileGDB).
 
-**Compute plan** (`docs/roadmap.md` §5)
-- The laptop CPU is enough for the data work, the knowledge graph, Pastas and
-  single model runs. The graph is tiny: about 33–101 nodes × about 900
-  weeks.
-- The GPU credits (GitHub Student Pack, Kaggle, Colab) go to:
-  - the ablation sweep (~300 runs)
-  - Optuna tuning
-  - BEARS ensembles
-  - local open LLMs (vLLM/Ollama) for alignment and text extraction
-- AlphaEarth runs server-side on Google Earth Engine.
+**Compute plan** (`docs/roadmap.md` §5; how-to in `docs/gpu_howto.md`)
+- **Laptop CPU:** the data work, the knowledge graph, Pastas, single model
+  runs, the EA-LSTM sweep. The graph is tiny: about 65–250 nodes × about
+  1,100 weeks.
+- **GPU:**
+  - **Google Colab, free T4** (main GPU since 2026-10-23).
+    `scripts/colab_run.py` saves results to Drive every 5 min. Assil clicks
+    the Drive permission at each session.
+  - **Camber** XSMALL L4: a monthly allowance that renews on the 13th; used
+    up until 2026-11-13. **Always STOP the node.**
+  - **Kaggle is unavailable:** its phone-verification SMS does not reach
+    Tunisian numbers.
+  - Lightning AI and Modal are untested backups.
+- **The GPU goes to:**
+  - tuning sweeps
+  - the Phase 4 runs (arms, constraints, twin)
+  - local open LLMs (alignment, text extraction)
+- **Google Earth Engine:** Sentinel-2 NDVI per parcel, and the optional
+  AlphaEarth features. It needs Assil's Earth Engine account; the login is
+  his.
 - Every sweep is resumable: one result file per run, skipped if it exists.
-  Checkpoints go to persistent storage.
+  Checkpoints go to persistent storage (Drive, the Camber Stash).
 
 **API lessons (still valid)**
 - **Hub'Eau prélèvements:** `size=5000` got the connection reset, and then
@@ -185,6 +333,9 @@ ontology causal links, so the pipeline does not wait for this answer.
   and returns 429 if requests come too fast; pause 1 s per page. Crop
   code → group tables:
   `https://data.geopf.fr/annexes/ressources/documentation/`.
+- **Chrome extension:** uploads at most 10 MB per file, so split bigger files.
+  It cannot reach file inputs inside Colab cell outputs. Never type long text
+  into a notebook cell.
 - **Shared modules:**
   - `src/config.py`: paths, CRS, window
   - `src/web.py`: retrying `requests` session
@@ -207,23 +358,25 @@ reporting a step as done.
 
 ```
 src/ingest/      one script per source, runnable as python -m src.ingest.<name>
-src/analysis/    profiling, joins, figures
+src/analysis/    profiling, joins, figures, reports
 src/dataset/     model-ready dataset builder (weekly tensors, masks, splits)
-src/kg/          ontology modules, KG instantiation, SHACL, SPARQL → HeteroData
-src/models/      baselines and the knowledge-guided ST-GNN
+src/kg/          KG instantiation, SHACL runs, SPARQL → HeteroData export
+src/models/      baselines and the knowledge-guided model
 src/explain/     attributions, faithfulness, templates
-configs/         one YAML per experiment
-ontology/        lulcw bridging module (.ttl), alignments, SHACL shapes
-tests/           competency-question queries, unit tests
+scripts/         CPU/GPU sweep runners (run_cpu.sh, run_gpu.sh, colab_run.py, colab_pull.py)
+configs/         one YAML per experiment (to add before Phase 4; runs already store config.json)
+ontology/        lulcw module (.ttl), alignments/, shapes/ (SHACL), rules/ (SHACL-AF), catalog
+tests/           unit tests, competency-question queries (tests/cq/), ontology quality gates
 data/raw/        untouched downloads             (gitignored)
 data/interim/    cleaned / filtered tables       (gitignored)
 data/processed/  model-ready datasets            (gitignored)
 data/README.md   data log — committed
 results/         run outputs, one folder per run (gitignored)
-docs/            roadmap, memos, notes
+docs/            roadmap, analysis plan, reviews, memos, CQs, ontology design, notes
 docs/literature/ reading list, comparison table
 paper/           LaTeX manuscript (from Phase 6)
 reports/figures/ maps and plots, each made by a script
+Documents/       the subject, the SAVE Water proposal, the PFE guide
 Articles/        publisher PDFs (gitignored: never push them)
 notebooks/       exploration only; anything that matters moves into src/
 ```
@@ -267,137 +420,57 @@ notebooks/       exploration only; anything that matters moves into src/
     - every run comes from a config file
     - 5 seeds for neural models
     - results written to `results/<run_id>/`
-    - metrics include NSE, KGE and RMSE, with separate scores for the drought
-      period
+    - metrics include NSE, skill against climatology, KGE'' and RMSE, with
+      separate scores for the drought and recovery phases
     - every figure is produced by a script, never by hand
 11. **Honest baselines.** Tune baselines with the same budget as our model.
     If a baseline wins, report it.
+12. **Ontology work:**
+    - Check every reused term at its source, and record the date.
+    - Never write an IRI you have not seen resolve or listed in the source.
+    - Ontology changes pass the quality gates (§3) before they are committed.
 
 ---
 
-## 7. CURRENT TASK: Step 11 (Gate 2) and Step 12 (Phase 3 ontology)
-
-Assil chose option **B** on 2026-10-13: make the baselines as strong as
-possible before Gate 2 and the ontology phase. Work through the steps
-below in order and track them with a task list. **GPU work runs on Assil's
-Camber node through the Claude-in-Chrome extension** (see §4 and
-`docs/gpu_howto.md`).
+## 7. CURRENT TASK: finish Step 12a (GPU runs), then Phase 3 (Step 12)
 
 ### ▶ Where we are (read this first in a new session)
 
-- **2026-10-23 — EA-LSTM on the laptop, Taccari on Google Colab** (Kaggle is dropped: its
-  verification SMS never reaches Assil's Tunisian number).
-  - Laptop since 13:40: `results/v3/cpu_runs7.log` (24 trials done at 14:05; then the
-    re-selection + 5 seeds ≈ 3–4 h, then the regimes ≈ 11–15 h). **Before restarting
-    anything, check `pgrep -af src.models`** (two tuners on one study would both add trials).
-  - Colab since 14:04 (Assil chose it): notebook `pfe_v3_gpu.ipynb` in Assil's Drive, T4,
-    `scripts/colab_run.py` running `taccari tune:taccari regimes:taccari`, results copied to
-    Drive `pfe_colab/results_gpu` every 5 min. **10 s/epoch** (laptop 163 s). Free sessions
-    stop without warning: re-run the two cells of `docs/gpu_howto.md` (Colab section); the
-    Drive permission is Assil's click. Results back with `scripts/colab_pull.py`.
-  - If Colab runs short: Lightning AI (asks for a phone number), Modal (card requirement
-    unclear), Camber after 2026-11-13. Details: step note §5c, last updates.
-  - **Phase 3 started:** competency questions drafted (`docs/competency_questions.md`,
-    note `docs/notes/step12_ontology.md`), waiting for Assil's review. Next: the reuse step,
-    then the CQ2 data step (attribute abstraction points to aquifer units).
-  - **Project review the same day (Assil asked): `docs/review_2026-10-23.md`. Read it
-    first.**
-    - Verdict: data and baselines are on track. The design is right in direction but has 8
-      open decisions.
-    - The plan has drifted from `Documents/sujet.docx`: SWEET/INSPIRE alignment, a rule on
-      satellite data and the dashboard queries were dropped. Small versions are proposed.
-    - The reuse plan in §3 has two wrong items: GWML2 has no official OWL (use the
-      SAWGraph rendering) and WHOW-KG has no water-use module. `overlies` is ours, not
-      GWML2's.
-    - The CQs were corrected (4 errors) and extended to 16.
-    - §3 is **not** changed. Its corrections (review §7.2) need Assil's OK.
-    - Next: one message to the supervisor (review §7.1).
-- **2026-10-20, Step 12a (fixes from the critical review `docs/feedback.md`):**
-  - **Evaluation changed** (`docs/analysis_plan.md`, the reference for every new
-    result): test split into **drought** (May 2022 → Nov 2025) and **recovery** (Dec
-    2025 →); primary endpoint = drought-phase median NSE + skill vs climatology;
-    KGE'' (datum-free); clustered bootstrap + Holm. With clustered tests no v2 ML
-    baseline is significantly better than Pastas in the drought.
-  - **Dataset v3** is the new default for runs (`PFE_DATASET=v3`): real BNPE 2024
-    (dated snapshot), documented imputation rules (`src/dataset/bnpe_v3.py`), VigiEau
-    surface-water orders (analysis only), river inputs, artesian-share leak fixed.
-  - **New baselines code:** LightGBM `--tune`, EA-LSTM, `tune.py` (equal budget),
-    `regimes.py` (leave-wells-out, 25/50 %, refit), `taccari.py` (Taccari graph),
-    Pastas WellModel, Chronos-2 cross-learning / fine-tuning.
-  - **Knowledge-graph pre-check done** (`docs/kg_precheck.md`): same BD LISA entity +
-    within 5 km and similar screen depth explain co-variation beyond distance (QAP
-    p = 0.048 and 0.002); the 3-NN distance graph crosses entities in 53 % of edges.
-  - **Stopped 2026-10-20 ~10:35 (PC shut down).** Laptop: naive, LightGBM default and
-    tuned on v3 done; Pastas variants were running (resume per well). Smoke tests of all
-    new GPU code passed except Chronos-2 `xl`/`ft` (not finished).
-  - **Found at the end:** single-seed Optuna trials pick lucky seeds (LightGBM: best
-    trial 0.573 on validation, same config over 5 seeds 0.431 < default 0.509).
-  - **2026-10-20 ~19:30 — RESUME FROM `docs/notes/step12a_fixes.md` §5c.** The Camber GPU
-    allowance is used up until 2026-11-13 (node stopped by the platform during EA-LSTM
-    tuning, 19/24 trials saved). Laptop chain done (LightGBM without `clim_z` is better on
-    every split; WellModel ≈ Pastas). Assil chose **Kaggle** for EA-LSTM + Taccari
-    (`scripts/kaggle_gpu.py`, `docs/gpu_howto.md` Kaggle section) and the LightGBM row
-    without `clim_z`. ~20:00: logins done, Camber runs copied, interim v3 report written
-    (`docs/results_baselines.md`). Kaggle phone verification fails from Tunisia (no SMS):
-    **EA-LSTM runs on the laptop** (20:23–21:34, `results/v3/cpu_runs6.log`). **Stopped at
-    Assil's request at 21:34:** 23 of 24 trials done, the interrupted trial 24 marked FAIL
-    (step note §5c, update ~21:35). **Restarted 2026-10-23 13:40 (top bullet)** with
-    `STEPS="ealstm_tune ealstm_regimes" setsid nohup bash scripts/run_cpu.sh > results/v3/cpu_runs7.log 2>&1 < /dev/null &`
-    (1 trial + re-selection + 5 seeds ≈ 4 h, then the regimes ≈ 11–15 h). Taccari
-    waits for a GPU (Kaggle if verified, else Camber after 2026-11-13). Then Phase 3:
-    draft the competency questions (not started yet).
-  - 2026-10-20 ~13:20 — older state in `docs/notes/step12a_fixes.md` §5b (then:
-    GPU sweep running on the Camber node in `~/pfe_v3_run` with an auto-stop watcher;
-    Taccari speed-up `b3a8b74` must be uploaded before its step; laptop chain running;
-    after the PC crash the Camber CLI needs `! camber login`). Older checklist below.
-  - **Earlier checklist — `docs/notes/step12a_fixes.md` §5:**
-    1. fix the tuner (re-evaluate the top 3 trials with 2 more seeds, keep the best
-       3-seed mean; `tune.py` + `lgbm.tune()`; note it in `docs/analysis_plan.md` §5)
-    2. restart the laptop runs: `STEPS="lgbm_tuned pastas wellmodel" nohup bash scripts/run_cpu.sh > results/v3/cpu_runs2.log 2>&1 &`
-    3. Assil runs `! camber login` (OAuth; never click the consent for him)
-    4. bundle + upload + GPU sweep on Camber via Chrome (`docs/gpu_howto.md`, v3
-       section), **stop the node** when done
-    5. ensemble, `baseline_report`, notes, Gate 2 addendum; then Phase 3.
-    Design decisions still open: `docs/feedback.md` §11.
+**2026-10-23.** Read `docs/review_2026-10-23.md` first: why the plan changed.
+- Assil approved the revised plan (this file, `docs/roadmap.md`).
+- **The supervisor has not answered yet.** All the questions, with a French
+  e-mail ready to send, are in **`docs/supervisor_questions.md`**. Record the
+  answers there and here when they arrive.
 
-- **Data:** all layers are built.
-  - piezometers, RPG, BNPE, BD LISA, SAFRAN climate, rivers
-  - weekly dataset v1 (`data/processed/dataset_v1/`, 47 wells, 2012–2026)
-- **Gate 1 memo** written (`docs/memo_gate1_feasibility.md`). Waiting for
-  the supervisor. Consortium questions are parked in
-  `docs/savewater_consortium_notes.md`.
-- **Phase 2 baselines done on v1** (`docs/results_baselines.md`; median
-  test NSE over 33 core wells, test = May 2022–2026 drought):
+**Running now**
+- **Laptop:** the EA-LSTM sweep, started 13:40.
+  - Log: `results/v3/cpu_runs7.log`. The tuning finished all 24 trials; then
+    come the re-selection, 5 seeds and the regimes (≈ 15 h in all).
+  - **Check `pgrep -af src.models` before starting anything.** Two tuners on
+    one study would both add trials.
+  - If it stopped:
+    `STEPS="ealstm_tune ealstm_regimes" setsid nohup bash scripts/run_cpu.sh > results/v3/cpu_runs8.log 2>&1 < /dev/null &`
+    It resumes where it stopped.
+- **Colab (T4):** the Taccari sweep, started 14:04, in notebook
+  `pfe_v3_gpu.ipynb` (Assil's Drive).
+  - The default model is done: 5 seeds, validation NSE 0.53, drought −0.16 in
+    Colab's own scoring, which has no skill column. Tuning was then running;
+    the regimes follow.
+  - Results go to Drive `pfe_colab/results_gpu` every 5 min.
+  - If the session stopped: re-run the two cells of `docs/gpu_howto.md`,
+    Colab section. Assil clicks the Drive permission.
+  - Bring the results back with `scripts/colab_pull.py`, which rescores on the
+    laptop and adds the skill column.
+- **When both are done:**
+  1. `python -m src.models.ensemble`
+  2. `python -m src.analysis.baseline_report`
+  3. update `docs/results_baselines.md` and the step-12a note
+  4. the Gate 2 addendum
 
-  | Task | Best baseline | Test NSE |
-  |---|---|---|
-  | simulation | distance-graph ST-GNN (5 seeds) | 0.26 (RMSE 0.58 m) |
-  | simulation | LSTM 0.25 · Pastas 0.13 · LightGBM 0.03 · climatology −0.25 | |
-  | forecast 4 wk | Chronos-2 zero-shot | 0.83 (anomaly-persistence floor 0.78) |
-  | forecast 12 wk | Chronos-2 zero-shot | 0.42 (floor 0.11) |
+  Then Step 12a is done.
 
-- **Step 10 done (dataset v2, tuning, ensemble, ablation; see
-  `docs/notes/step10_baselines_v2.md`):**
-  - more data (2005 start, 65 wells) does **not** significantly change
-    drought skill (Wilcoxon p = 0.24–0.82)
-  - LSTM tuning improves validation significantly (0.63, p < 0.001) but not
-    the test
-  - **every model is stuck near test NSE 0.25**, so the bottleneck is
-    missing information, not data
-  - baselines of record:
-    - simulation: ensemble LightGBM + tuned LSTM, test 0.25 / RMSE 0.587 m
-    - hydrology reference: Pastas v1, 0.13
-    - forecast: Chronos-2, 0.83 at 4 wk and 0.42 at 12 wk
-  - default dataset is now **v2** (`PFE_DATASET`); v1 results are in
-    `results/v1/`
-- **Key findings so far:**
-  - no head-ordering rule (the vertical gradient flips)
-  - flat drinking-water pumping is wrong; seasonal is better
-  - canal recharge helps the alluvium only
-  - plain-wide pumping does not help, so the graph must be selective by
-    aquifer unit
-  - **every model misses the deepening Pliocene summer drawdowns in the
-    drought** (Pliocene test NSE 0.07)
+**Phase 3 (Step 12):** the task list is below. Do the reversible tasks now.
+Freeze the ontology design only after the supervisor's answers.
 
 ### ▶ STATUS
 
@@ -408,88 +481,62 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
 | 5 RPG parcels | ✅ done | `docs/notes/step05_rpg.md` |
 | 6a BNPE abstraction | ✅ done | `docs/notes/step06a_bnpe.md` |
 | 6b BD LISA | ✅ done | `docs/notes/step06b_bdlisa.md` |
-| 7 Gate 1 memo | ✅ written; waiting for the supervisor | `docs/memo_gate1_feasibility.md` |
+| 7 Gate 1 memo | ✅ written; no answer yet | `docs/memo_gate1_feasibility.md` |
 | 8 Phase 1: dataset v1 | ✅ done | `docs/notes/step08_dataset.md` |
 | 9 Phase 2: baselines on v1 | ✅ done | `docs/notes/step09_baselines.md` |
-| 10 Improve baselines (dataset v2) | ✅ done (tuning, ensemble, ablation, Wilcoxon) | `docs/notes/step10_baselines_v2.md` |
-| **11 Gate 2: results to the supervisor** | **✅ summary written; Assil sends it with the Gate 1 memo — waiting for answers** | `docs/summary_gate2_results.md` + `docs/memo_gate1_feasibility.md` |
-| **12a Fixes from the critical review** | **🔄 in progress — START HERE** (evaluation ✅, analysis plan ✅, dataset v3 ✅, laptop baselines v3 ✅, GPU sweep partly done: EA-LSTM + Taccari wait for a GPU) | `docs/feedback.md`, `docs/analysis_plan.md`, `docs/notes/step12a_fixes.md` |
-| **12 Phase 3: ontology + knowledge graph** | 🔄 started 2026-10-23: 16 competency questions drafted (revised after the project review), waiting for Assil's review and the supervisor's answers (in parallel with the 12a GPU runs) | `docs/review_2026-10-23.md`, `docs/competency_questions.md`, `docs/notes/step12_ontology.md` |
+| 10 Baselines on dataset v2 | ✅ done | `docs/notes/step10_baselines_v2.md` |
+| 11 Gate 2 summary | ✅ written; no answer yet. All open questions now in `docs/supervisor_questions.md` | `docs/summary_gate2_results.md` |
+| **12a Fixes from the critical review** | **🔄 finishing:** evaluation, analysis plan, dataset v3 and the laptop baselines are done; EA-LSTM (laptop) and Taccari (Colab) are running | `docs/feedback.md`, `docs/analysis_plan.md`, `docs/notes/step12a_fixes.md` |
+| **12 Phase 3: ontology + KG** | **🔄 started 2026-10-23.** 12.1 drafted, 12.2 started | `docs/review_2026-10-23.md`, `docs/competency_questions.md`, `docs/ontology_design.md`, `docs/notes/step12_ontology.md` |
 
-### Step 10: improve the baselines (spec)
+### Step 12: Phase 3 tasks, in order
 
-**Rule:** v1 stays untouched for reproducibility. Everything new goes to
-**dataset v2** and **`results/v2/`**. The validation and test periods and
-the 33 core wells are identical, so v1 and v2 are directly comparable.
+| # | Task | Status |
+|---|---|---|
+| 12.1 | Competency questions (16) with example answers | ✅ drafted; Assil reviews |
+| 12.2 | Reuse table, term by term, and the modelling patterns (`docs/ontology_design.md`) | 🔄 started |
+| 12.3 | **CQ2 data step:** attribute each groundwater abstraction point to a unit, with provenance and confidence | 🔄 evidence found: ADES quality stations give the BD LISA unit for 211 BSS-coded points (`src/ingest/hubeau_qualite_stations.py`); the BNPE flag `nappe_accompagnement` is checked on them (alluvium ~ True, Pliocene ~ False). Next: the attribution table |
+| 12.4 | Ontology module `lulcw:` + imports/alignments in `ontology/`; IRIs and metadata; the quality gates in `tests/` | ⬜ after the supervisor |
+| 12.5 | KG instantiation from the parquet tables (rdflib → Turtle → pyoxigraph) | ⬜ |
+| 12.6 | SHACL shapes and SHACL-AF rules: Influence links, `ProbablyIrrigatedParcel`, `HighIrrigationDemandZone`, `ConfinedSetting` | ⬜ |
+| 12.7 | CQ tests: one SPARQL query plus an oracle per CQ (`tests/cq/`) | ⬜ |
+| 12.8 | Export SPARQL → `HeteroData` (arms C, D, E, F use the same export) | ⬜ |
+| 12.9 | Alignment experiment: RPG → AGROVOC gold set + OntoAligner (P/R/F1) | ⬜ |
+| 12.10 | Satellite rule: Sentinel-2 summer NDVI per parcel on Earth Engine (needs Assil's Earth Engine login) | ⬜ |
+| 12.11 | Text extraction, small and measured (thesis) | ⬜ |
+| Gate 3 | Ontology review with the supervisor | ⬜ |
 
-1. **Versioned paths.**
-   - `src/config.py` gets `DATASET` (env var `PFE_DATASET`, default `v2`),
-     `DATASET_DIR = data/processed/dataset_<v>/` and
-     `RESULTS_DIR = results/<v>/`.
-   - Every module reads these; nothing hard-codes `dataset_v1`.
-   - Move the existing v1 runs to `results/v1/`.
-2. **SAFRAN 2000–2004:** `python -m src.ingest.safran --start 2000`
-   (resumable; about 0.7 GB downloaded, under the 2 GB rule). Gives warm-up
-   for training from 2005.
-3. **Dataset v2** (`python -m src.dataset.build --version v2`):
-   - training starts **2005-01-01** (v1: 2012); forcings from 2000
-   - **all usable dept-66 stations** for training (v1: plain only);
-     `core` = the same 33 wells for reporting
-   - pumping points: the **whole département** (v1: the plain + 3 km)
-   - BNPE starts in 2012: years 2005–2011 are filled with each ouvrage's
-     2012–2014 mean and flagged `imputed`
-   - splits: train 2005–2019 · validation 2020-01 → 2022-04 · test
-     2022-05 → latest (same as v1)
-4. **Re-run on v2:**
-   - on the laptop: naive, Pastas (`pastas_seasonal_canal` + `pastas`),
-     LightGBM
-   - on the Camber GPU: LSTM, distance ST-GNN, Chronos-2
-5. **LSTM tuning on the GPU** (`src/models/tune_lstm.py`, Optuna):
-   - search over lookback 104/156/208 weeks, hidden 64/128, dropout,
-     learning rate
-   - **select on the validation median NSE only**
-   - retrain the best configuration with 5 seeds
-6. **Ensemble** (`src/models/ensemble.py`): the mean of the best simulation
-   models, with members chosen on validation.
-7. **Report:**
-   - `src/analysis/baseline_report.py` with a v1 vs v2 comparison table
-   - note `docs/notes/step10_baselines_v2.md`
-   - commit
-
-**Done when:** the v2 table exists for every baseline. Each change
-(2005 start, all stations, tuning, ensemble) is reported against v1, honestly,
-including changes that did not help.
-
-### Step 11: Gate 2 (summary written 2026-10-13)
-
-`docs/summary_gate2_results.md` (one page) goes with the Gate 1 memo. It
-asks three new questions:
-1. Focus the contribution on simulation and explanation, with Chronos-2
-   as the forecasting reference?
-2. Can the project obtain monthly drinking-water production for the
-   Roussillon boreholes?
-3. May Phase 3 start now?
-
-**When the answers arrive:** record them here, then update §1 (venue),
-§2 (demo site), §3 (framing, karst) and `docs/roadmap.md`.
-
-### Step 12: Phase 3, ontology and knowledge graph
-
-As in `docs/roadmap.md` Phase 3:
-1. competency questions
-2. reuse GWML2 / SOSA / HY_Features / GeoSPARQL / HILUCS / AGROVOC /
-   WHOW-KG
-3. the `lulcw:` bridging module
-4. alignments (manual gold set + OntoAligner)
-5. SHACL
-6. SPARQL → PyG `HeteroData`
-
-**Priority from the baselines:** link every abstraction point to its aquifer
-unit (BSS depth, usage), because that is the information all models lack.
+Then Phase 4: the main-model decision, the twin, the arms (`docs/roadmap.md`).
 
 ---
 
 ## 7b. Completed steps (details kept for re-runs)
+
+### ✅ Steps 10–11 and 12a (summary)
+- **Step 10** (`docs/notes/step10_baselines_v2.md`):
+  - dataset v2 (from 2005, all dept-66 stations)
+  - LSTM tuning, the ensemble, the ablation
+  - v1 results are in `results/v1/`
+- **Step 11:** the Gate 2 summary (`docs/summary_gate2_results.md`).
+- **Step 12a** (`docs/notes/step12a_fixes.md`):
+  - the drought/recovery evaluation (`docs/analysis_plan.md`)
+  - dataset v3
+  - LightGBM without its own climatology (the LightGBM baseline of record)
+  - Pastas WellModel
+  - the equal-budget tuner with re-selection
+  - the regimes
+  - the knowledge-graph pre-check (`docs/kg_precheck.md`)
+  - the interim v3 report (`docs/results_baselines.md`)
+  - Kaggle runner (unused) and Colab runner (in use)
+- **Key findings so far:**
+  - no head-ordering rule (the vertical gradient flips)
+  - seasonal drinking-water pumping beats flat
+  - canal recharge helps the alluvium only
+  - plain-wide pumping does not help, so the graph must be selective by unit
+  - on v3, the ML baselines are significantly better than Pastas in the
+    drought; the remaining error is mostly a level offset in 2024–25
+  - same unit within 5 km and a small depth difference carry co-variation
+    beyond distance
 
 ### ✅ Step 6b: BD LISA V3 aquifer entities
 
@@ -505,7 +552,8 @@ unit (BSS depth, usage), because that is the information all models lack.
 - `themeeh`: 1 alluvial, 2 sedimentary, 3 basement, 4 intensely folded,
   5 volcanic.
 - `natureeh` (level 3): 5 aquifer unit, 6 semi-permeable unit, 7 impermeable
-  unit.
+  unit. It describes the BD LISA entity, **not** its hydraulic type in the
+  ontology: `671AA00`, the main aquifer, is labelled semi-permeable (§3).
 - Order 1 = outcropping (the layer at the surface).
 - `TABLE_GENEALOGIE` is a version changelog, not a hierarchy. Use `incluseh`
   for the hierarchy.
@@ -521,66 +569,32 @@ unit (BSS depth, usage), because that is the information all models lack.
 | `TME` | `codeeh`, `libelleeh`, `ordreabseh`, `niveaueh`, `incluseh`, `natureeh`, `themeeh`, `milieueh`, … | 842 |
 | `TABLE_LITHOLOGIE_NIV3` | `CodeEH`, `CdLitho`, `LbLitho`, `LithoPrinc` | 900 |
 
-**Next actions**
-1. `src/analysis/bdlisa_profile.py`: print the columns and a sample row of
-   each layer used before writing logic against it.
-2. Join the 33 working-set stations
-   (`data/interim/piezo_working_set.parquet`, column `code_bdlisa`) to the
-   entities. Report which are missing from the Occitanie extract (first run:
-   `760AE09`).
-3. Vertical order of the plain's entities (shallow → deep) and the superposed
-   pairs from `TABLE_PILE_ENTITES_NIV3`. These become the `overlies` edges.
-   Save them as a table in `data/interim/` for the knowledge graph.
-4. Vertical well pairs within 5 km in superposed entities (first run: 13).
-   **For each pair, report how often the shallow head is above the deep
-   head, overall and by season.** That decides whether a head-ordering rule
-   is allowed (§3).
-5. Write the figure, the data log entry, `docs/notes/step06b_bdlisa.md` and
-   the progress table, then commit.
+Outputs used by the KG: `data/interim/bdlisa_entities_plain.csv`,
+`bdlisa_overlies_plain.csv`, `bdlisa_station_stacks.csv`,
+`bdlisa_vertical_pairs.csv`.
 
 ### ✅ Step 7: Gate 1 memo
 
-Write `docs/memo_gate1_feasibility.md`. Keep it short and plain; Assil may
-translate it to French. It covers:
-- the data inventory and counts
-- the surface vs groundwater finding and what it implies
-- caveats:
-  - the latest BNPE year is under-reported
-  - small boreholes are missing, so groundwater irrigation is a lower bound
-  - the 2018 reporting break
-  - the rising share of "Non qualifié" values
-- **the paper plan:** title, RQ1–4, venue
-- **the design changes in §3**, with one line of why each
-- **questions for the supervisor:**
-  - framing: use conflict on the Pliocene, or canal-return recharge
-  - keep or drop the 6 karst stations (core = 26)
-  - a newer RPG year (2024/2025, GeoPackage v4.0)
-  - venue and publication fees (SAVE Water committed to gold open access)
-  - the real defence date
-
-Context for the framing question: irrigation in the plain is about 84%
-surface water (the historic Têt/Agly canals), while drinking water is 99%
-groundwater. This contradicts the subject's "crops pump groundwater" chain.
+`docs/memo_gate1_feasibility.md`. Its questions are now in
+`docs/supervisor_questions.md`. Context for the framing question: irrigation
+in the plain is about 84 % surface water (the historic Têt/Agly canals),
+while drinking water is 99 % groundwater. This contradicts the subject's
+"crops pump groundwater" chain.
 
 ### ✅ Step 8: Phase 1, forcings and the weekly dataset
 
 1. **SAFRAN / SIM2** (Météo-France, data.gouv.fr, "Données changement
-   climatique – SIM quotidienne").
-   - Variables: rain, ETP, effective rain, soil-moisture index, on the 8 km
-     grid.
-   - Keep only the cells covering dept 66.
-   - Check the file sizes first: ask before downloading more than 2 GB.
+   climatique – SIM quotidienne"): rain, ETP, effective rain, soil-moisture
+   index on the 8 km grid, cells covering dept 66.
 2. **Hub'Eau hydrometrie:** daily discharge for the Têt, Agly, Réart and
    Tech.
-3. **Monthly pumping per aquifer unit:** BNPE annual volumes × usage profiles
-   (assumption documented, plus a sensitivity flag).
-4. **Piezometer series extended to the latest date:** re-run the ingest; the
-   cache makes it incremental, but re-fetch stations whose end date is
-   recent.
+3. **Weekly pumping:** BNPE annual volumes × usage profiles (assumption
+   documented, plus a sensitivity flag).
+4. **Piezometer series** extended to the latest date (incremental cache).
 5. **Weekly resampling, gap masks, quality flags, SGI, splits** →
-   `data/processed/dataset_v1/`.
+   `data/processed/dataset_v1/` (then v2, v3).
 
-### Rebuild results so far (compare with section 8)
+### Rebuild results (compare with section 8)
 
 - **Piezometers.**
   - 101 stations; 43 with ≥ 8 y record and active in 2024+; **33 in the
@@ -625,63 +639,30 @@ groundwater. This contradicts the subject's "crops pump groundwater" chain.
   - 141 SAFRAN cells.
   - 45 river gauges. **No usable canal flow series** (only 9 weeks of
     one canal), so the canal signal = BNPE canal-intake volumes.
-  - 2,046 abstraction ouvrages, spread weekly; 2024+ imputed.
+  - 2,046 abstraction ouvrages, spread weekly; 2024+ imputed (v1; v3 uses
+    the real 2024).
   - Pastas 2.0.0 installed and pinned.
-- Open questions for the supervisor: see Step 7 above.
 
 ### ✅ Step 9: Phase 2, baselines on v1
 
-1. Seasonal-naive and persistence floors.
-2. **Pastas** per well:
-   - inputs: rain, ETP and the weekly pumping near the well
-   - warm-up from 2005
-   - calibrate on train, report validation and test
-   - save the response-function gains: they are the "physics reference"
-     for the counterfactual tests in Phase 4
-3. LSTM per well and global EA-LSTM (PyTorch; install the CPU wheel and pin
-   it).
-4. **Chronos-2** zero-shot with covariates.
-5. Distance-graph ST-GNN (Taccari-style).
-
-**Metrics:**
-- NSE, KGE, RMSE per well and per aquifer group
-- on test, with and without "Non qualifié" weeks
-- on the leave-wells-out folds
-- with 25/50/100% of the training data
-- 5 seeds for the neural models
-
-Also check the spring-rise signature (canal recharge?) on all alluvium
-wells.
-
-**Final baseline references (2026-10-13), median over 33 core wells:**
-- simulation: distance-graph ST-GNN, test NSE 0.26 / RMSE 0.58 m (LSTM 0.25,
-  Pastas 0.13)
-- forecast 4 wk: Chronos-2 zero-shot, test NSE 0.83
-- forecast 12 wk: Chronos-2 zero-shot, test NSE 0.42
-- Pliocene wells: test NSE 0.07 for the best simulation model
-
-GPU work runs on Assil's Camber XSMALL GPU node (JupyterLab; CLI jobs are
-blocked on the free tier). **Always STOP the node when a GPU run ends**
-(1.5 credits/h while on; the node was stopped on 2026-10-13 after step 10). See `docs/gpu_howto.md`; Stash path
-`stash://assil0723/pfe/`.
-
-**Done so far (2026-10-13):**
-- `src/models/evaluate.py` (shared scoring), `naive.py`,
-  `pastas_baseline.py` (5 variants).
-- **Reference baselines:**
-  - simulation `pastas_seasonal_canal`: median core NSE train 0.57 / val
-    0.51 / **test 0.13**
-  - forecast 4 wk `naive_anomaly_persist`: **test NSE 0.78**
+- Seasonal-naive and persistence floors; **Pastas** per well (rain, ETP and
+  the weekly pumping near the well; warm-up from 2005; response-function gains
+  saved as the "physics reference" for the counterfactual tests); LSTM per
+  well and global EA-LSTM; **Chronos-2** zero-shot with covariates;
+  distance-graph ST-GNN.
+- Metrics: NSE, KGE, RMSE per well and per aquifer group; with and without
+  "Non qualifié" weeks; 5 seeds for the neural models.
+- **v1 references (2026-10-13), median over 33 core wells:**
+  - simulation: distance-graph ST-GNN, test NSE 0.26 / RMSE 0.58 m (LSTM 0.25,
+    Pastas 0.13)
+  - forecast 4 wk: Chronos-2 zero-shot, 0.83; 12 wk: 0.42
+- torch 2.14.1 CPU installed (`--extra-index-url
+  https://download.pytorch.org/whl/cpu`).
 - Findings:
   - flat drinking-water pumping makes Pastas fake the summer drop with
     evaporation
   - a canal-recharge input helps the alluvium only
-  - plain-wide pumping does not help, so the graph must be selective by
-    aquifer unit
-- torch 2.14.1 CPU installed (`--extra-index-url
-  https://download.pytorch.org/whl/cpu`).
-- Neural sweeps (5 seeds × variants) go to GPU credits (Colab/Kaggle);
-  development and single runs stay on the laptop.
+  - plain-wide pumping does not help
 
 ### Specs of finished steps (kept for re-runs; the scripts implement them)
 
@@ -742,25 +723,25 @@ Use these to sanity-check the rebuild, not as targets.
   5. Côte Vermeille gneiss (`699AA01`)
 - 9 distinct superposed entity pairs across 33 polygons.
 - **13 vertical well pairs within 5 km.** The first run concluded that this
-  makes a monotonic-drainage constraint viable. The rebuild must check the
-  head ordering on these pairs before any such rule is used (§3).
+  makes a monotonic-drainage constraint viable. The rebuild checked the head
+  ordering on these pairs and rejected it (§3).
 
 ---
 
 ## 9. Roadmap
 
-Follow **`docs/roadmap.md`**. It replaces the old step list 8–29.
+Follow **`docs/roadmap.md`** (revised 2026-10-23). Weeks count from
+2026-10-13; slide everything if the defence date differs from early June 2027.
 
-| Phase | Weeks | Content |
+| Phase | When | Content |
 |---|---|---|
-| 0 | 1–2 | Finish 6b + Step 7 memo, recreate the env on Linux. **Gate 1** |
-| 1 | 3–5 | Forcings (SAFRAN SIM2, river flows, monthly pumping), weekly dataset, splits |
-| 2 | 6–9 | Baselines: naive, Pastas, LSTM/EA-LSTM, Chronos-2, distance ST-GNN. **Gate 2** |
-| 3 | 8–13 | Competency questions, ontology reuse + bridging module, alignment, KG, SHACL, SPARQL → HeteroData. **Gate 3** |
-| 4 | 14–19 | Heterogeneous ST-GNN, soft and hard constraints, ablations, shortcut tests. **Gate 4** (results frozen) |
-| 5 | 20–22 | Attributions → ontology templates; faithfulness; case studies |
-| 6 | 23–27 | Paper, submitted by end of April 2027 |
-| 7 | 28–34 | Thesis, defence; optional Tunisia demo |
+| 0–1 | ✅ done | Data foundation, dataset v1 → v3. **Gate 1** (no answer yet) |
+| 2 | ✅ finishing | Baselines; EA-LSTM and Taccari running. **Gate 2** (no answer yet) |
+| 3 | 26 Oct – 6 Dec | CQs, reuse, `lulcw:`, CQ2 data step, KG, SHACL(-AF), CQ tests, HeteroData; alignment experiment; satellite rule. **Gate 3** |
+| 4 | 7 Dec – 31 Jan | Main model (hybrid) + black-box comparison, arms A–F, soft/hard constraints, semi-synthetic twin, shortcut tests. **Gate 4** (results frozen) |
+| 5 | Feb | Explanations, faithfulness, case studies; dashboard prototype (CQ queries + map + scenario) |
+| 6 | Mar – 25 Apr | Paper, submitted by the end of April 2027 |
+| 7 | 26 Apr – June | Thesis (incl. alignment and text extraction chapters), transfer demo, defence |
 
 ---
 
@@ -774,21 +755,32 @@ code or docs:
   graphs for groundwater levels, North China Plain.
 - Wu et al., *WRR* 61(11) 2025 (doi:10.1029/2025WR041215) — graph Fourier
   deep learning with hydrogeological units as prior information, Yellow
-  River Basin. **The closest competitor.** *(2026-10-20: the 2026-10-13
-  "correction" merged two different Wu 2025 papers; both exist.)*
+  River Basin. **The closest competitor.** *(Two different Wu 2025 papers;
+  both exist.)*
 - Taccari et al., *Scientific Reports* 2024 (doi:10.1038/s41598-024-75385-2)
   — ST-GNN for a multi-aquifer system with pumping, river and rain nodes.
   The closest setting to ours.
 - Heudorfer et al., *HESS* 2024 (doi:10.5194/hess-28-525-2024) — global
   groundwater models use static features as IDs, not semantics. Motivates
   our semantic-ablation test.
+- Kirschstein & Sun, ICML 2024 (arXiv:2405.19836) — river topology gave a GNN
+  no gain for discharge: "a domain graph helps" is not a safe prior.
 - Collenteur et al., *Groundwater* 2019 (doi:10.1111/gwat.12925) — Pastas,
   the mandatory hydrological baseline.
-- Marconato et al., NeurIPS 2023 (arXiv 2305.19951) — reasoning shortcuts.
-- OntoAligner, ESWC 2025 (arXiv 2503.21902) — ontology alignment toolkit.
+- Marconato et al., NeurIPS 2023 (arXiv:2305.19951) — reasoning shortcuts.
+- Ross et al., IJCAI 2017 (arXiv:1703.03717) — "Right for the right
+  reasons": gradient penalties; the source of our title and soft constraints.
+- OntoAligner, ESWC 2025 (arXiv:2503.21902) — ontology alignment toolkit.
 - WHOW-KG, *Scientific Data* 2025 (doi:10.1038/s41597-025-04537-4) —
   network-of-ontologies pattern for water. (The PDF in `Articles/` is the
   2023 preprint.)
+- Brodaric et al., *Hydrogeology Journal* 2018
+  (doi:10.1007/s10040-018-1747-9) — GWML2, the groundwater data standard.
+- Tripathi & Babaie, *Computers & Geosciences* 2008
+  (doi:10.1016/j.cageo.2007.08.009) — a hydrogeology ontology built on SWEET.
+- Grüninger & Fox 1995 (doi:10.1007/978-0-387-34847-6_3) — competency
+  questions; Wiśniewski et al., *J. Web Semantics* 2019
+  (doi:10.1016/j.websem.2019.100534) — CQs written as SPARQL.
 - Clark et al., *WRR* 2025 (doi:10.1029/2025WR041303) — XAI for
   spatio-temporal groundwater predictions.
 - Dai et al., *JGR: Machine Learning and Computation* 2025

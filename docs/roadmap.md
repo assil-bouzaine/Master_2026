@@ -1,287 +1,266 @@
 # Roadmap: from data foundation to thesis and paper
 
-Written 2026-10-13. It replaces the step list in CLAUDE.md §9.
+Written 2026-10-13. **Revised 2026-10-23**, after:
+- the critical review (`docs/feedback.md`)
+- the project review (`docs/review_2026-10-23.md`)
+
+Assil approved the revision on 2026-10-23. Items marked **(supervisor)** wait
+for the supervisor; all of them are in `docs/supervisor_questions.md`.
 Literature verdicts are in [`literature/reading_list.md`](literature/reading_list.md).
 
-**Timing assumption: defence in early June 2027.** That leaves about
-34 weeks from today, and the week numbers below count from 2026-10-13. If
-the real date is different, slide every phase by the same amount.
+**Timing assumption: defence in early June 2027. Not confirmed.** Week
+numbers count from 2026-10-13. If the real date differs, slide every phase by
+the same amount.
 
 ---
 
 ## 1. The paper this project produces
 
-**Working title.** *Right for the right reasons? Ontology-derived graphs
-and constraints for groundwater-level forecasting in a Mediterranean
-multilayer aquifer.*
+**Working title (supervisor).** *Right for the right reasons?
+Ontology-derived graphs and constraints for groundwater-level simulation in a
+Mediterranean multilayer aquifer.*
 
-**One-sentence claim.** A forecaster whose graph and constraints come from
-a LULC-Water knowledge graph forecasts groundwater levels in the Roussillon
-plain at least as well as strong hydrological and deep-learning baselines.
-It does better in the cases that matter: drought, little training data,
-wells it has never seen. We also show, with explicit reasoning-shortcut
-tests, whether it uses the knowledge or only satisfies it.
+**One-sentence claim.** A model whose graph, sign constraints and explanation
+vocabulary come from a LULC-Water knowledge graph simulates weekly groundwater
+levels in the Roussillon multilayer aquifer at least as well as strong
+hydrological and deep-learning baselines. A semi-synthetic twin and semantic
+ablations then show whether it is right for the right reasons.
 
 **Research questions**
 
 | RQ | Question | Experiment that answers it |
 |---|---|---|
-| RQ1 | Does a graph built from the knowledge graph beat a distance-only graph and non-graph baselines? | Model comparison on 3 test regimes: drought period, held-out wells, reduced data |
-| RQ2 | Do ontology-derived constraints improve physical plausibility and skill out of distribution? | Soft vs hard vs no constraints; violation rate; counterfactual sign tests |
-| RQ3 | Does the model use the semantics, or does it take shortcuts? | Semantic ablation (rewired / shuffled ontology), concept accuracy on drought states (SGI) |
-| RQ4 | Can explanations be stated in ontology terms *and* be faithful? | Attribution → ontology templates; fidelity metrics; check against documented events |
+| RQ1 | Does knowledge from the KG help, as information (features) and as structure (graph)? | The six arms below; scored on the drought and recovery phases, leave-wells-out, and 25/50 % of the training data |
+| RQ2 | Do ontology-derived sign constraints improve plausibility and out-of-distribution skill? | None / soft (sign penalties, Ross et al. 2017, arXiv:1703.03717) / hard (monotone by construction); violation rate; counterfactual sign accuracy within the observed year-to-year range |
+| RQ3 | Does the model use the knowledge, or take shortcuts? | Concepts = driver contributions. Recovery error on a semi-synthetic twin; disagreement across seeds; rewiring (arm E), its power calibrated on the twin. SGI accuracy is reported, not used as the test. |
+| RQ4 | Can explanations be stated in ontology terms *and* be faithful? | Driver-group contributions → SPARQL chains → templates; fidelity+/−; entity-existence and sign-consistency tests; the summer 2024 Pliocene rise (BRGM, 16 Sept 2024) |
 
-**Why this is publishable.** Searches in October 2026 found GNNs for
-groundwater: Bai & Tahmasebi 2023, Taccari 2024, Wu 2025. They found
-neither an ontology or knowledge graph driving one nor a reasoning-shortcut
-analysis in hydrology. Dai et al. 2025 list interpretability and physical
-consistency as open gaps. The combination is new. Each component alone is
-not, so the paper must be honest and rigorous about baselines.
+The RQ1 arms (`docs/analysis_plan.md` §10):
+- **A:** baseline inputs, no graph
+- **B:** knowledge-graph features, no graph
+- **C:** knowledge-graph features + the Taccari distance graph
+- **D:** knowledge-graph features + the knowledge-graph graph
+- **E:** D with its edges rewired, degrees preserved
+- **F:** random and complete graphs
 
-**What makes it credible to hydrologists.** Two things: Pastas as a
-baseline, and a test period that is the record 2022–2024 drought followed
-by the 2025–2026 recovery. BRGM reported historic minima in the Roussillon
-in 2024. It also reported that the deep Pliocene recovered partly because
-abstraction fell. That recovery is a real-world event the explanations
-must be able to recover.
+**Why this is publishable.**
+- GNNs for groundwater exist: Bai & Tahmasebi 2023, Taccari 2024, Wu 2025
+  (JGR: MLC).
+- The closest competitor, Wu et al. 2025 (WRR), uses hydrogeological units as
+  a prior. None of these uses an ontology or knowledge graph, or tests for
+  reasoning shortcuts.
+- Dai et al. 2025 list interpretability and physical consistency as open gaps.
+- Kirschstein & Sun 2024 found that a domain graph (river topology) did not
+  help a GNN. A careful, testable answer is therefore valuable either way.
+
+**What makes it credible to hydrologists.**
+- Pastas as a baseline.
+- A test period that is the record 2022–2025 drought followed by the recovery.
+- An evaluation with clustered statistics and skill against climatology.
+- A documented real event (the 2024 Pliocene rise after reduced abstraction)
+  that the explanations must recover.
 
 ---
 
-## 2. What changes compared with the original plan
+## 2. What changed from the subject, and why
 
-The subject document (`Documents/sujet.docx`) describes a PhD-sized
-programme. A Master's paper needs **one sharp, testable contribution**.
+The subject (`Documents/sujet.docx`) describes a PhD-sized programme. A
+Master's needs **one sharp, testable contribution**, while still covering
+every objective of the subject, some in a small, measured version.
 
-| Topic | Original plan | Recommendation | Why |
+| Topic | Subject | Plan | Why |
 |---|---|---|---|
-| Physical constraint | "Water infiltrates downward" (head ordering shallow ≥ deep) | **Check it on data first.** Default to *response-sign* constraints from ontology causal links: abstraction lowers head, effective rain raises head, canal irrigation raises alluvium head. Add concept-level rules on drought states. | The Pliocene is heavily pumped. The vertical gradient can reverse with season and place, so a wrong hard rule makes the model worse. Sign constraints hold everywhere and can be tested by counterfactuals. |
-| Reasoning-shortcut test | Marconato et al. as is | Adapt it to regression. (a) Concepts = SGI drought states per well and week; measure concept accuracy. (b) **Semantic ablation**: rewire the ontology edges or shuffle attributes. If skill does not drop, the model ignores the semantics (cf. Heudorfer 2024). | Marconato's framework assumes discrete concepts. Ours are continuous levels. |
-| Baselines | "Distance graph + baseline GNN" | Add **seasonal naive, Pastas, LSTM / EA-LSTM, Chronos-2 zero-shot, Taccari-style ST-GNN** | Reviewers in hydrology reject deep-learning papers without Pastas. Reviewers in ML reject them without a foundation-model baseline. |
-| Time step and window | Daily, 2016–2025 | **Weekly**, extended to **2026**. Push the start back to about 2010 if forcing and abstraction data allow. Test set = **May 2022 → 2026**. | Weekly cuts noise and gaps (as in Taccari). The drought and recovery give a natural out-of-distribution test. |
-| Graph construction | Hand-built | **Generated from the knowledge graph** by SPARQL → PyG `HeteroData` | This makes the ontology operational, not decorative. It is the neuro-symbolic link reviewers look for. |
-| Land use | AlphaEarth embeddings as a phase | RPG is the primary land-use source in France (exact crops). AlphaEarth is a **feature source** only, with TESSERA as the open backup. WorldCereal irrigation goes in if useful. | The RPG already gives crop types. Earth observation matters for irrigation and for the Tunisia transfer. |
-| Ontology alignment | A research experiment | A **supporting** contribution: a small manual gold set (~50 mappings), with OntoAligner (fuzzy, retrieval, LLM) evaluated against it | It is easy to lose 2 months here. The paper needs alignments that are correct and reported, not a new matcher. |
-| Derivation rules | SWRL (subject) → SHACL (CLAUDE.md) | SHACL for validation plus **SHACL-AF rules** for derivations (pySHACL supports both) | Keeps one technology. It can express the subject's example (NDVI high in summer AND soil moisture low → irrigation likely). |
-| Explanations | GNNExplainer → templates | Integrated Gradients and GNNExplainer at **node-type level**, then ontology templates, then **faithfulness metrics** (fidelity+/−) | Unmeasured explanations are not publishable (Azzolin 2024). |
-| Nitrate, dashboard, socio-economics, Spain, Tunisia | In scope | **Future work.** One optional small transfer demo for Tunisia at the end. | Scope. |
-
-**Status (2026-10-13):** Assil adopted all of these, and they are now the
-design decisions in CLAUDE.md §3. The Step 7 memo presents them to the
-supervisor together with the open questions (framing, karst stations,
-venue).
+| Physical constraint | "Water infiltrates downward" | **Response-sign constraints** from the ontology's causal knowledge: abstraction lowers the head, effective rain raises it, canal return flow raises the alluvium. Hard arm: **monotone by construction**; soft arm: sign penalties. | The data reject the head ordering (shallow above deep in only 50.5 % of pair-weeks). PiShield constrains outputs and cannot express the sign of a response. |
+| Reasoning shortcuts | Marconato et al. as is | **Driver contributions** as the concepts, tested on a **semi-synthetic twin**, by seed disagreement and by rewiring | SGI is computed from the predicted head, so SGI accuracy cannot reveal a shortcut. |
+| Ontology | A merged meta-ontology (PROMPT, OntoMerge) | A **network** of reused ontologies plus our bridging module `lulcw:` (WHOW-KG pattern), presented as the meta-ontology | Reuse beats re-invention, and every term has a source. |
+| Sources to align | SWEET, INSPIRE, AgroPortal, a use-conflict ontology | SWEET; INSPIRE (HILUCS); AGROVOC (via AgroPortal); GWML2 classes via SAWGraph's OWL rendering; HyFO; SOSA/SSN; HY_Features; GeoSPARQL; PROV-O; SKOS; OWL-Time. Use conflict modelled in `lulcw:` (CQ12). | Checked at their sources on 2026-10-23 (`docs/ontology_design.md`). GWML2 has no official OWL; WHOW-KG has no water-use module. |
+| Alignment | A research experiment | **RPG crop codes → AGROVOC** gold set + OntoAligner (P/R/F1); smaller gold sets for units and uses | A real, measurable alignment task, sized for a Master's |
+| Derivation rules | SWRL | **SHACL-AF** (pySHACL advanced mode), plus SHACL for validation | One technology for validation and rules; SPARQL rules can test distances. |
+| Remote sensing | Semantic classification of Sentinel/Landsat | **One derived concept**, `ProbablyIrrigatedParcel` (summer NDVI + soil wetness), by a rule, checked against the RPG. AlphaEarth embeddings stay optional features. | Covers the subject's objective at Master's scale. The RPG already gives the crops. |
+| Graph construction | Built by the ontology | **Generated from the KG** by SPARQL → PyG `HeteroData` | The ontology is operational, not decorative. |
+| Main model | GNN or Graph Transformer | **(supervisor)** A hybrid: KG → heterogeneous GNN → parameters of sign-constrained response functions + a small residual. The black-box heterogeneous ST-GNN is the comparison. | Every causal relation of the ontology does a job; concepts and explanations are exact. |
+| Baselines | "Distance graph + baseline GNN" | Seasonal naive, Pastas (+ WellModel), LightGBM, LSTM, EA-LSTM, Chronos-2, distance-graph and Taccari-graph ST-GNNs, at equal tuning budget | Hydrology reviewers expect Pastas; ML reviewers expect a foundation model. |
+| Time step and window | Daily, 2016–2025 | **Weekly**, 2005–2026; test May 2022 → latest, split into drought and recovery | Weekly cuts noise; the drought is a natural out-of-distribution test. |
+| Explanations | GNNExplainer → text | Contributions by driver group → SPARQL chain → templates → **faithfulness** and sign-consistency tests | Unmeasured explanations are not publishable (Azzolin et al. 2024). |
+| Dashboard | A module of the SAVE Water dashboard | **Prototype:** the competency-question queries + one map page + one scenario query (CQ16) | Covers the subject's objective; the full dashboard belongs to SAVE Water WP8. |
+| Text extraction | Mediterranean concepts from articles | Small, measured version (10–20 papers, local LLM, manual check, precision) | Covers the subject's phase 1 for the thesis. |
+| Nitrate, socio-economics, Spain | In scope | **Future work** | Scope. |
+| Tunisia / Living Labs | In scope | A qualitative transfer demo to Manouba or Charf El Akab **(supervisor)** | Data access decides. |
 
 ---
 
 ## 3. The method in one picture
 
 ```
- Hub'Eau piezo ─┐                          ┌─ SHACL shapes + SHACL-AF rules
- BNPE abstraction│   ingest    ┌─────────┐  │
- RPG / AlphaEarth├──────────►  │ LULC-   │◄─┤  GWML2 · HY_Features · SOSA/SSN ·
- BD LISA         │   + RDF     │ Water KG│  │  GeoSPARQL · HILUCS · AGROVOC
- SAFRAN (rain,ET)│             └────┬────┘  └─ alignments (OntoAligner + manual)
- Hub'Eau rivers ─┘                  │ SPARQL export
-                                    ▼
-             Heterogeneous graph: Well · AquiferUnit · AbstractionPoint ·
-             RiverReach · LandUseZone   edges: monitors, overlies, pumpsFrom,
-             near, drains, irrigates
-                                    │
-                                    ▼
-      ST-GNN (HGT/RGCN + temporal conv/GRU) ──► weekly head forecast per well
-           + soft constraints (counterfactual sign penalties)       │
-           + hard constraints (PiShield linear inequalities)        ├─► SGI drought state
-                                    │                               │
-                                    ▼                               ▼
-            Attributions (IG / GNNExplainer) → ontology templates → text
-            Validity: semantic ablation · concept accuracy · faithfulness
+ Hub'Eau piezo ─┐                         ┌─ SHACL shapes + SHACL-AF rules
+ BNPE abstraction│  ingest   ┌──────────┐  │   (Influence links, ProbablyIrrigatedParcel,
+ RPG + Sentinel-2├────────►  │ LULC-    │◄─┤    HighIrrigationDemandZone, ConfinedSetting)
+ BD LISA         │  + RDF    │ Water KG │  │
+ SAFRAN (rain,ET)│           └────┬─────┘  └─ reuse + alignments: GWML2 (SAWGraph OWL) · HyFO ·
+ Hub'Eau rivers ─┘                │            SWEET · SOSA/SSN · HY_Features · GeoSPARQL ·
+                                  │            HILUCS · AGROVOC · PROV-O · SKOS · OWL-Time
+                                  │ SPARQL export (+ rewired / random variants, arms E–F)
+                                  ▼
+        Heterogeneous graph: Well · AquiferUnit · AbstractionPoint · RiverReach ·
+        WeatherCell · LandUseZone   edges: monitors, pumpsFrom, overlies, sameUnitNear,
+        connectedTo, irrigates, Influence(sign, distance, confidence)
+                                  │
+                                  ▼
+   Hybrid model: heterogeneous GNN → parameters of sign-constrained response
+   functions (one per Influence type) → superposition + bounded residual
+   (comparison: black-box HGT/RGCN + temporal convolution / GRU)
+                                  │
+                                  ├─► weekly head per well ─► SGI drought class
+                                  ▼
+   Contributions by driver group → SPARQL chain → templates → text
+   Validity: semi-synthetic twin · rewiring · seed disagreement · faithfulness
 ```
 
 ---
 
 ## 4. Phases
 
-Each phase lists its goal, its tasks, the tools, and a **done-when** test.
-A **gate** is a meeting or e-mail with the supervisor. Don't start the next
-phase until the gate has been passed.
+Each phase lists its goal, its tasks, and a **done-when** test. A **gate** is
+a meeting or e-mail with the supervisor. Don't freeze a phase's design before
+its gate.
 
-### Phase 0: Finish the data foundation (weeks 1–2, 13–26 Oct)
+### Phase 0: data foundation (weeks 1–2) — ✅ done
+Environment on Linux, Step 6b (BD LISA, head-ordering check), Gate 1 memo.
+**Gate 1:** sent; no answer yet.
 
-Goal: close the rebuild (CLAUDE.md §7), from cold on the new Linux machine.
+### Phase 1: forcings and the model-ready dataset — ✅ done
+SAFRAN SIM2, Hub'Eau hydrometry, weekly pumping with usage profiles, SGI,
+splits. Datasets v1 → v2 → **v3** (real BNPE 2024, documented imputation,
+river inputs, leak fixed). See `docs/notes/step08_dataset.md` and
+`docs/notes/step12a_fixes.md`.
 
-1. **Environment on Linux.** `uv venv --python 3.12 .venv`, then
-   `uv pip install -r requirements.txt`. The Windows pins can stay. Rerun
-   steps 4–6a from cold: the scripts must skip downloads that are already
-   cached. Update the header of `requirements.txt`.
-2. **Step 6b BD LISA:** as specified in CLAUDE.md §7. **Add one check:**
-   for the vertical well pairs, compute how often the head in the shallow
-   well is above the head in the deep one (by season). That one number
-   decides the constraint design.
-3. **Step 7 memo.** Add a "paper plan" section with the RQs above, the
-   decisions table from §2, and the venue choice.
-4. Add `Articles/` to `.gitignore`. Publisher PDFs must not go to GitHub.
+### Phase 2: baselines — ✅ finishing
+- Done:
+  - naive and climatology
+  - Pastas (+ WellModel)
+  - LightGBM, LSTM
+  - Chronos-2 (3 modes)
+  - distance-graph ST-GNN
+  - the regimes
+  - equal-budget tuning
+  - the drought/recovery evaluation (`docs/analysis_plan.md`)
+- Running: EA-LSTM (laptop), Taccari-graph ST-GNN (Colab).
+- Then: ensemble, report, Gate 2 addendum. **No new baselines after this.**
+- **Gate 2:** summary sent; no answer yet.
 
-Done when: 6b note committed; memo sent. **Gate 1** answers: framing
-(use conflict vs canal recharge), karst stations, design changes, venue,
-real defence date.
+### Phase 3: ontology and knowledge graph (26 Oct – 6 Dec, 6 weeks)
 
-### Phase 1: Forcings and the model-ready dataset (weeks 3–5, 27 Oct–16 Nov)
+Goal: the smallest ontology that answers the competency questions. It must be
+correct, documented, tested, and cover the subject's objectives SO1 and SO2.
 
-Goal: one frozen, versioned dataset that every model reads.
-
-| Task | Source and tool |
-|---|---|
-| Rain, ETP, effective rain, soil-moisture index per well (nearest 8 km cell) | Météo-France **SIM2 / SAFRAN** daily on data.gouv.fr ("Données changement climatique – SIM quotidienne"). Log the URL in `data/README.md`. |
-| River discharge Têt, Agly, Réart, Tech | Hub'Eau **hydrometrie** API (same pattern as the piezometer ingest) |
-| Weekly pumping per aquifer unit | BNPE annual volumes spread by **usage-specific monthly profiles**: drinking water peaks in summer (tourism), irrigation runs Apr–Sep. Document the assumption and keep a sensitivity flag. |
-| Piezometer series extended to Oct 2026 | Re-run the ingest; the cache makes it incremental |
-| Weekly resampling, gap mask, quality flags | pandas; keep "Non qualifié" as a flag, not dropped |
-| SGI per well | Bloomfield & Marchant 2013 (normal-score transform per calendar month) |
-| Splits | Train ≤ 2019 · validation 2020–21 · **test May 2022 → 2026**. Plus 5-fold **leave-wells-out** for unseen wells. |
-
-Deliverable: `data/processed/dataset_v1/` (parquet) + `docs/notes/step08_dataset.md`.
-Done when: a single loader returns X, y, mask and splits, and a plot shows
-each series with its forcings.
-
-### Phase 2: Baselines (weeks 6–9, 17 Nov–14 Dec)
-
-Goal: know how hard the problem is before any knowledge is added.
-
-| Model | Tool | Notes |
+| # | Task | Done when |
 |---|---|---|
-| Seasonal naive / persistence | numpy | the floor |
-| **Pastas** (rain + ET + pumping response functions), per well | `pastas` | the hydrology reference; its response-function gains also serve later as "physics truth" for the counterfactual tests |
-| LSTM per well, EA-LSTM global | PyTorch | Wunsch 2021, Kratzert 2019 |
-| **Chronos-2** zero-shot with covariates | `chronos-forecasting` | runs on CPU (120M parameters) |
-| ST-GNN on a distance graph (Taccari-style, predefined graph) | PyG + `torch-spatiotemporal` (tsl) | the homogeneous-graph baseline |
+| 3.1 | Competency questions (16) with example answers (`docs/competency_questions.md`) | Assil and the supervisor agree on the list |
+| 3.2 | Reuse table, term by term, and the modelling patterns (`docs/ontology_design.md`) | every term has a checked source or a `lulcw:` definition |
+| 3.3 | **CQ2 data step:** attribute each groundwater abstraction point to a unit, with provenance and confidence | an ingest script + a table + a step note; the share of points per confidence level |
+| 3.4 | Write `lulcw:` + imports/alignment axioms in `ontology/` (IRIs, metadata, FR/EN labels, definitions) | the reasoner is consistent; OOPS! shows no critical pitfall |
+| 3.5 | KG instantiation from the parquet tables (rdflib → Turtle → pyoxigraph) | rebuilt from cold by one command |
+| 3.6 | SHACL shapes + SHACL-AF rules (Influence links, ProbablyIrrigatedParcel, HighIrrigationDemandZone, ConfinedSetting) | validation passes |
+| 3.7 | CQ tests: one SPARQL query plus an oracle each (`tests/cq/`) | all pass |
+| 3.8 | Export SPARQL → `HeteroData` (+ rewired/random variants for arms E–F) | loads in PyG; node and edge counts reported |
+| 3.9 | Alignment experiment: RPG → AGROVOC gold set; OntoAligner fuzzy, retrieval and LLM matchers (local LLM on Colab) | P/R/F1 table |
+| 3.10 | Satellite rule: Sentinel-2 summer NDVI per RPG parcel (Earth Engine) + soil wetness → `ProbablyIrrigatedParcel` | agreement with the RPG crops reported |
+| 3.11 | Text extraction, small and measured (thesis) | precision on 10–20 papers |
 
-Metrics: NSE, KGE, RMSE, with **separate scores for the drought period**,
-held-out wells, and 25/50/100% of the training data. Use 5 seeds for the
-neural models.
+Tools: Protégé (editing), `rdflib`, `pyoxigraph`, `pyshacl` (advanced mode),
+ROBOT (reason, report), OOPS!, `ontoaligner`, `earthengine-api`.
+**Gate 3:** ontology review with the supervisor. A
+reviewer from SAVE Water (UGE/LASTIG) would be welcome **(supervisor)**.
 
-Tooling from here on: config files (YAML/Hydra), MLflow or Weights &
-Biases for run tracking, and `scripts/run_sweep.py` resumable per run.
-Each run writes its result file; reruns skip finished runs.
-
-Done when: a results table and a figure exist. **Gate 2:** the target is
-confirmed as weekly groundwater level, plus the SGI state. If no model
-beats Pastas, the paper becomes "where does knowledge help?" and the
-low-data and unseen-well regimes become the headline.
-
-### Phase 3: Ontology and knowledge graph (weeks 8–13, 7 Dec–17 Jan; overlaps Phase 2)
-
-Goal: the smallest ontology that answers the questions the model and the
-explanations need. **Time-box: 6 weeks.**
-
-1. **Competency questions** (10–15). Examples: *Which aquifer units does
-   well W monitor?* *Which units overlie unit U, and is the separating
-   layer semi-permeable?* *Which abstraction points pump from U, for which
-   usage?* *Which land-use classes with high irrigation demand lie within
-   3 km of W?*
-2. **Reuse:** GWML2 (wells, aquifer units, `overlies`), SOSA/SSN
-   (observations), HY_Features (rivers), GeoSPARQL 1.1 (geometry),
-   HILUCS + AGROVOC (land use, crops), WHOW-KG patterns (water use). Write
-   only the **bridging module** `lulcw:` with the causal relations and
-   their polarity: `lulcw:decreasesHead`, `lulcw:increasesHead`,
-   `lulcw:rechargesFrom`.
-3. **Alignment:** a manual gold set of about 50 mappings (RPG `CODE_GROUP`
-   → AGROVOC/HILUCS, BD LISA → GWML2, BNPE usage → WHOW). Then run
-   OntoAligner's fuzzy, retrieval and LLM matchers and report P/R/F1. The
-   LLM runs on a local open model on the GPU credits, so they are
-   reproducible and need no paid API.
-4. **Knowledge graph instantiation** from the parquet files: `rdflib` →
-   Turtle, loaded into `pyoxigraph`.
-5. **SHACL shapes** (pySHACL) for validation, plus 3–5 **SHACL-AF rules**
-   that derive concepts (e.g. `HighIrrigationDemandZone`).
-6. **Export:** SPARQL → PyG `HeteroData`. This is the only way the model
-   gets its graph.
-7. Optional, for the subject's "textual extraction": extract
-   Mediterranean concepts from 10–20 papers with OntoGPT/SPIRES or an
-   LLMs4OL-style prompt, then validate them by hand.
-
-Tools: Protégé (editing), `rdflib`, `pyoxigraph`, `pyshacl`,
-`ontoaligner`, ROBOT (optional, for releases).
-Done when: all competency questions are answered by SPARQL queries in
-`tests/`, SHACL validation passes, and the HeteroData export loads.
-**Gate 3:** ontology review with the supervisor.
-
-### Phase 4: Knowledge-guided model and validity tests (weeks 14–19, 18 Jan–28 Feb)
+### Phase 4: knowledge-guided model and validity tests (7 Dec – 31 Jan)
 
 Goal: answer RQ1–RQ3. This is the core of the paper.
 
-1. **Heterogeneous ST-GNN:** `HGTConv` or `RGCNConv` (PyG) for space,
-   with gated temporal convolutions or a GRU for time. Node features:
-   forcings, pumping, RPG shares, AlphaEarth embeddings (averaged per
-   zone and year, through Earth Engine `earthengine-api`).
-2. **Soft constraints:** during training, perturb pumping and rain inputs
-   and penalise responses with the wrong sign (counterfactual penalty).
-   Add a semantic loss on the predicted SGI states with the concept rules.
-3. **Hard constraints:** PiShield linear inequalities, only for the rules
-   the data supports (e.g. weekly change bounds, plus the head ordering if
-   the Phase 0 check holds).
-4. **Ablation grid:** graph type {none, distance, KG} × constraints
-   {none, soft, hard} × data {25, 50, 100%} × 5 seeds, on 3 test regimes.
-   That is about 300 short runs, which is where the GPU credits go.
+1. **Main model (supervisor):** the hybrid. A heterogeneous GNN on the KG
+   graph outputs the parameters of sign-constrained response functions
+   (causal 1-D convolutions with parametric kernels), one per
+   `lulcw:Influence` type. The responses are summed, plus a small bounded
+   residual network (`docs/feedback.md` §5.5; about 2–3 weeks). Comparison:
+   the black-box heterogeneous ST-GNN (HGTConv or RGCNConv + temporal
+   convolutions or a GRU).
+2. **Arms A–F** (RQ1) at equal tuning budget, 5 seeds, all regimes.
+3. **Constraints** (RQ2):
+   - none / soft (sign penalties) / hard (monotone by construction)
+   - violation rate and counterfactual sign accuracy
+4. **Semi-synthetic twin** (RQ3; about 1 week):
+   - inputs: the real forcings, wells, pumps and KG
+   - synthetic heads from known response functions plus AR noise
+   - two variants: pumping timing tied to the deficit, or independent of it
+   - concept accuracy = the error of the recovered contributions
 5. **Shortcut tests:**
-   - Semantic ablation: rewire the KG edges with degrees preserved, and
-     shuffle node-type attributes.
-   - SGI concept accuracy versus constraint satisfaction.
-   - Counterfactual sign accuracy, with Pastas gains as the reference.
-   - Optional: BEARS ensembles for concept confidence.
+   - rewiring and attribute shuffling (power calibrated on the twin)
+   - disagreement across seeds
+   - counterfactual sign accuracy, with the Pastas gains as the reference
 
-Done when: the main results table and the ablation figure are frozen.
-**Gate 4: no new experiments after this point**, only analysis.
+GPU: Colab (free T4), Camber's monthly allowance.
+**Gate 4: results frozen.** No new experiments after this point.
 
-### Phase 5: Ontology-grounded explanations (weeks 20–22, 1–21 Mar)
+### Phase 5: explanations and the dashboard prototype (February)
 
-1. Attributions with Captum Integrated Gradients and the PyG `explain`
-   module (GNNExplainer), aggregated by **node type and relation**
-   (e.g. "pumping from 671AA00", "rain deficit", "canal irrigation in
-   718BP").
-2. Faithfulness: fidelity+/− and the deletion curve (Azzolin 2024).
-3. Templates: attribution → SPARQL query on the KG for the chain of
-   entities → fixed French/English sentence templates. An LLM may rephrase
-   only; it never adds facts. Add a test that every entity named in the
-   text exists in the KG.
-4. **Case studies:** the 2023 drop at a Pliocene well, the 2025 Pliocene
-   recovery (does the explanation say "reduced abstraction"?), and one
-   alluvium well (does canal irrigation appear?).
+1. Contributions by driver group ("summer demand" where pumping and the
+   deficit cannot be separated). Captum Integrated Gradients and PyG
+   GNNExplainer serve the black box, aggregated by node type and relation.
+2. Faithfulness: fidelity+/− and deletion curves (Azzolin et al.,
+   arXiv:2406.15156).
+3. Templates: contribution → SPARQL chain of entities → fixed French/English
+   sentences. Tests check that every entity exists and is connected to the
+   well, and that the sign matches the polarity. An LLM may rephrase only.
+4. **Case studies:**
+   - the summer 2024 Pliocene rise after reduced abstraction
+   - the 2023 drop
+   - an alluvium well (canal)
+5. **Dashboard prototype (subject SO5):** the CQ queries on a map page, plus
+   the scenario query CQ16.
 
-Done when: 3 case-study figures with their text, and a faithfulness table.
+Done when: 3 case-study figures with their text, a faithfulness table, and
+the prototype page.
 
-### Phase 6: Paper (weeks 23–27, 22 Mar–25 Apr)
+### Phase 6: paper (March – 25 April)
 
-1. Choose the venue at Gate 1 and confirm it at Gate 4:
+1. Venue (supervisor):
 
    | Venue | Fit | Note |
    |---|---|---|
-   | **Environmental Modelling & Software** (Elsevier) | Best overall: methods + software + environment, and ontologies are welcome | first choice |
-   | **JGR: Machine Learning and Computation** (AGU, open access) | Where Wu 2025 and Dai 2025 appeared | strong second |
-   | HESS (Copernicus, open access, open review) | Hydrology audience; Pastas comparison is a must | ambitious |
-   | Earth Science Informatics · Computers & Geosciences | Safer | fallback |
-   | Workshop (Climate Change AI at ICLR/NeurIPS; NeSy) | Fast feedback, short paper | optional; check deadlines |
+   | **Environmental Modelling & Software** (Elsevier) | methods + software + environment; ontologies welcome | first choice |
+   | **JGR: Machine Learning and Computation** (AGU, open access) | where Wu 2025 and Dai 2025 appeared | strong second |
+   | HESS (Copernicus, open access) | hydrology audience | if the hybrid model is adopted |
+   | Earth Science Informatics · Computers & Geosciences | safer | fallback |
 
-   The PRIMA proposal commits SAVE Water to gold open access. Ask whether
-   the project pays the publication fees.
-2. Structure: Introduction (gap: Dai 2025, Clark 2025) → Study area and
-   data → Knowledge graph → Model and constraints → Experiments (RQ1–4) →
-   Discussion (limits, shortcuts found) → Conclusion. Target about 8,000
-   words and 8–10 figures.
-3. Reproducibility package: code on GitHub, a Zenodo DOI for the code and
-   processed data, the knowledge graph in Turtle, and the exact configs.
-   (Raw data stays at its public sources; the ingest scripts fetch it.)
+   The PRIMA proposal commits SAVE Water to gold open access. Ask who pays the
+   fees **(supervisor)**.
+2. Structure:
+   - Introduction (gap: Dai 2025, Clark 2025)
+   - Study area and data
+   - Knowledge graph
+   - Model and constraints
+   - Experiments (RQ1–4)
+   - Discussion (limits, shortcuts found)
+   - Conclusion
+
+   About 8,000 words and 8–10 figures.
+3. Reproducibility package:
+   - code on GitHub
+   - a Zenodo DOI for the code and processed data
+   - the ontology and the KG in Turtle
+   - the exact configs and `uv.lock`
 4. Supervisor review, then submit **by the end of April 2027**.
 
-Done when: submitted. The submission confirmation is the deliverable.
+### Phase 7: thesis and defence (26 April – June)
 
-### Phase 7: Thesis and defence (weeks 28–34, 26 Apr–mid June)
-
-- The thesis reuses the paper plus `docs/notes/` (Data and Methodology
-  chapters are already half written there).
-- Optional, if ahead of schedule: a Tunisia transfer demo. Reuse the
-  ontology and model with AlphaEarth and WorldCereal instead of the RPG,
-  and show how the ontology adapts. A qualitative demo only.
-- Defence slides. Answer the reviews when they arrive (usually after the
-  defence).
+- The thesis reuses the paper, plus the chapters the paper has no room for:
+  - the alignment experiment
+  - the text extraction
+  - the satellite rule
+  - the dashboard prototype
+- `docs/notes/` already holds most of the Data and Methodology chapters.
+- Transfer demo to a SAVE Water Living Lab **(supervisor)**: reuse the
+  ontology and the model with the data the consortium provides. Qualitative.
+- Defence slides.
 
 ---
 
@@ -289,16 +268,15 @@ Done when: submitted. The submission confirmation is the deliverable.
 
 | Work | Where | Why |
 |---|---|---|
-| Ingest, knowledge graph, SHACL, Pastas, single model runs, debugging | **Laptop** (4 cores, 11 GB, CPU) | The graph is tiny (33–101 nodes × ~900 weeks). One run takes minutes. |
-| Ablation sweep (~300 runs), Optuna tuning, BEARS ensembles | **GPU credits** (student pack / Kaggle / Colab) | Parallel runs, not big models |
-| LLM matcher for OntoAligner, LLMs4OL/SPIRES extraction, explanation polishing | **GPU**, local open 7–8B model (vLLM or Ollama) | Reproducible, free, citable model version |
-| AlphaEarth embeddings | **Google Earth Engine** (free for research) | Server side; nothing to download but the zone averages |
-| TESSERA (only if needed) | GPU | Open weights |
+| Ingest, KG, SHACL, Pastas, single runs, EA-LSTM sweep | **Laptop** (4 cores, 11 GB) | The graph is tiny (≈ 65–250 nodes × 1,100 weeks). |
+| Tuning sweeps, Phase 4 arms, twin experiments | **Google Colab** free T4 (main); **Camber** L4 monthly allowance (renews on the 13th) | Kaggle is unavailable (no verification SMS to Tunisia). |
+| LLM matchers (OntoAligner), text extraction | Colab GPU, local open 7–8B model | Reproducible; no paid API |
+| Sentinel-2 NDVI per parcel, AlphaEarth (optional) | **Google Earth Engine** (Assil's account) | Server side; only the parcel summaries are downloaded |
 
-Rules: every sweep is resumable (one result file per run, skipped if it
-exists). Pin the code with `uv.lock` so the laptop and the cloud run the
-same thing. Save checkpoints to persistent storage, not to the instance
-disk.
+Rules:
+- Every sweep is resumable (one result file per run, skipped if it exists).
+- Results go to persistent storage (Drive, Stash).
+- Pin the environment (`uv.lock`) before Phase 4.
 
 ---
 
@@ -307,15 +285,15 @@ disk.
 | Purpose | Tool |
 |---|---|
 | Environment | `uv`, Python 3.12 |
-| Geodata | `geopandas`, `pyogrio`, `shapely`, `earthengine-api` (+ `xee` optional) |
+| Geodata | `geopandas`, `pyogrio`, `shapely`, `earthengine-api` |
 | Groundwater baseline | `pastas` |
-| Deep learning | PyTorch, PyTorch Geometric (`HeteroData`, `HGTConv`, `explain`), `torch-spatiotemporal` (tsl) |
+| Deep learning | PyTorch, PyTorch Geometric (`HeteroData`, `HGTConv`, `explain`) |
 | Foundation-model baseline | `chronos-forecasting` (Chronos-2) |
-| Constraints | custom penalties, `pishield` |
+| Constraints | sign-constrained response functions (custom), sign penalties; LightGBM `monotone_constraints` as a check |
 | Explanations | `captum`, PyG `explain` |
-| Experiments | Hydra/YAML configs, Optuna, MLflow or W&B |
-| Semantic web | Protégé, `rdflib`, `pyoxigraph`, `pyshacl`, `ontoaligner`, ROBOT |
-| Writing | Zotero + Better BibTeX, LaTeX (journal template), a `figures/` script for every figure |
+| Experiments | YAML configs, Optuna; GPU runners in `scripts/` |
+| Semantic web | Protégé, `rdflib`, `pyoxigraph`, `pyshacl` (advanced), ROBOT, OOPS!, `ontoaligner` |
+| Writing | Zotero + Better BibTeX, LaTeX (journal template), a script for every figure |
 
 ---
 
@@ -323,21 +301,25 @@ disk.
 
 | Risk | Sign | Fallback |
 |---|---|---|
-| The knowledge-graph model doesn't beat Pastas or the distance graph | Gate 2 / Phase 4 | Lead with the regimes where it does help (low data, unseen wells, drought). A clear negative result plus a shortcut analysis is still publishable. |
-| Annual pumping is too coarse | Pastas shows weak pumping response | Monthly profiles + sensitivity; say so in the limitations |
-| Ontology work balloons | Phase 3 still open at week 13 | Freeze to the competency questions the model needs; the rest is future work |
-| 33 wells is too few | High variance across seeds | Train on all 101 stations in dept 66 with a masked loss; evaluate on the 26–33 core wells |
-| Head ordering between layers isn't stable | Phase 0 pair check | Drop the hard ordering rule; keep sign and concept constraints |
-| Data drift (2025: 52% "Non qualifié") | — | Report results with and without unqualified values |
+| The supervisor rejects some departures from the subject | Answer to `docs/supervisor_questions.md` | Each one has a small version ready (§2); adjust before Gate 3. |
+| Pumps cannot be tied to layers (CQ2) | Phase 3.3 | Lower since 2026-10-23: 211 points have a BD LISA unit from ADES, and the BNPE river-connection flag is checked on them (alluvium ≈ True, Pliocene ≈ False). Confidence levels; sensitivity on all links; say so. |
+| The KG graph does not beat the Taccari graph | Phase 4 | The arms separate information from structure. Lead with RQ2–RQ4 ("right reasons"), which stay publishable either way. |
+| Pumping inseparable from weather within a year | Already known | Claims from between-year and between-well variation; "summer demand" group; the twin with independent timing. |
+| The hybrid model misses nonlinearity | Phase 4 | Bounded residual network; the black-box HGT as comparison. |
+| Ontology work balloons | Phase 3 still open on 6 Dec | Freeze to the MUST competency questions; the rest is future work. |
+| A reused vocabulary disappears or has an unclear licence (SAWGraph) | Phase 3.2 | Keep local copies of the terms we use; cite the source; fall back to `lulcw:` terms with `skos:closeMatch`. |
+| GPU access (Colab limits, Camber allowance) | Any sweep | Resumable runs; Camber renews monthly; the laptop for small sweeps. |
+| Defence date earlier than June | Supervisor's answer | Cut Phase 7 extras (transfer demo, text extraction) first. |
+| Data drift (2025: 52 % "Non qualifié") | — | Results with and without unqualified values. |
 
 ---
 
 ## 8. Weekly routine
 
-- **Monday:** pick this week's tasks from this file.
-- **Each step:** commit, then write `docs/notes/stepNN_*.md`
-  (what / why / what to consider).
-- **Every month:** a short progress report to the supervisor (the guide asks
-  for this).
+- **Monday:** pick this week's tasks from this file and CLAUDE.md §7.
+- **Each step:** commit, then write `docs/notes/stepNN_*.md` (what / why /
+  what to consider).
+- **Every month:** a short progress report to the supervisor (the PFE guide
+  asks for this). The first is `docs/supervisor_questions.md`.
 - **Reading:** 2–3 papers a week from `literature/reading_list.md` until
   Phase 4, one comparison-table row each.

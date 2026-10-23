@@ -13,7 +13,7 @@ validation weeks only (the test period is not looked at). For every pair of well
     r_raw       correlation of the anomalies
     r_partial   correlation after removing the regional signal (plain-wide median anomaly,
                 fitted per well on the same weeks)
-Pair attributes: distance (km), same BD LISA entity, same aquifer group, screen-depth
+Pair attributes: distance (km), same BD LISA entity, same aquifer group, investigation-depth
 difference (m), same Pliocene depth class (DEPTH_CLASSES), nested (< 200 m apart),
 pumping-neighbourhood similarity (cosine similarity of the volumes of the groundwater
 abstraction points within PUMP_KM of each well).
@@ -38,7 +38,7 @@ from src.models.features import build_panel
 
 MIN_COMMON = 104
 PUMP_KM = 5.0
-DEPTH_CLASSES = (0, 60, 150, 1e4)     # Pliocene screen depth classes (m): shallow / mid / deep
+DEPTH_CLASSES = (0, 60, 150, 1e4)     # Pliocene investigation-depth classes (m): shallow / mid / deep
 N_PERM = 999
 INK, INK2, GRID, SURF = "#0b0b0b", "#52514e", "#e5e4df", "#fcfcfb"
 C1, C2 = "#2a78d6", "#eb6834"

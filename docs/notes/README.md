@@ -57,6 +57,7 @@ Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 | **Head (charge hydraulique)** | Water level in a well expressed as an altitude (m NGF). Water flows from high head to low head. |
 | **Vertical gradient** | Difference in head between a shallow and a deep layer at the same place. Shallow > deep means water tends to go down; deep > shallow means up. |
 | **Nested piezometers** | Two or more wells at the same site screened at different depths (e.g. C2-1/C2-2). The only clean way to measure a vertical gradient. |
+| **Investigation depth** | `profondeur_investigation` in Hub'Eau: how deep the borehole goes. Not the screen depth (the open interval that the water comes from), which is only in the BSS borehole logs. |
 | **Artesian** | The head is above the ground surface: the water would flow out of the well by itself. Sign of a confined, pressurised aquifer. |
 | **Confined vs unconfined** | Unconfined: the water table is free (alluvium). Confined: the aquifer sits under a clay layer and is under pressure (deep Pliocene). |
 | **SAFRAN / SIM2** | Météo-France's gridded reconstruction of daily weather (8 km cells) and of the soil water balance (model ISBA). Our source for rain and evapotranspiration. |

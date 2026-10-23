@@ -523,6 +523,12 @@ the data (all confirmed). Assil decided the same day:
   links (72 % of the plain's declared volume) instead of confident only
   (27 %). Step 12b note, "What to consider".
 
+**Plain-words guide for Assil (2026-10-23):** `docs/explainer/index.html` (open it in a
+browser; offline). It covers every step, the four data versions, the decisions and the next
+phases, with charts from our data (`src/analysis/explainer_data.py` → `data.js`). **Keep it
+current:** when a step finishes or a decision is taken, update its chapter and re-run
+`.venv/bin/python -m src.analysis.explainer_data`.
+
 Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
 - Assil approved the revised plan (this file, `docs/roadmap.md`).
 - **The supervisor answered (2026-10-23): "do what is best for the project".**

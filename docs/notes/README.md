@@ -10,6 +10,9 @@ One file per step. Each note answers three questions:
 The notes are written for Assil to learn the domain and to reuse when writing
 the PFE report (the "Méthodologie" and "Données" chapters).
 
+**Start here if a word is unclear:** the plain-words guide `docs/explainer/index.html`
+explains the whole project with pictures (open it in a browser).
+
 ## Progress: rebuild of the data foundation (CLAUDE.md §7)
 
 | Step | Topic | Status | Note |

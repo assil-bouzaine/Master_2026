@@ -1,0 +1,769 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The water under the Roussillon</title>
+<meta name="description" content="A plain-words guide to Assil's master project: what was done, what was chosen, and what comes next.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <span class="who">A guide for Assil, written so that a 12-year-old could follow it</span>
+  <button class="btn" id="theme" type="button" aria-label="Change light or dark theme">Theme: auto</button>
+</div>
+
+<header class="hero" id="top">
+  <h1>The water under the Roussillon</h1>
+  <p class="lede">What we did, what we chose, and what comes next in the project, in simple words, with pictures made from our own data.</p>
+
+  <figure class="section-art">
+    <svg viewBox="0 0 1200 500" role="img" aria-label="A slice of the ground from the hills to the sea: a thin river-gravel layer near the surface, thick deep layers of sand and clay below, limestone with holes under the hills, wells and pumps going down.">
+      <defs>
+        <pattern id="pPlio" width="24" height="18" patternUnits="userSpaceOnUse">
+          <rect width="24" height="18" fill="var(--t-plio-b)"/>
+          <rect y="9" width="24" height="9" fill="var(--t-plio-a)"/>
+        </pattern>
+        <pattern id="pGravel" width="22" height="14" patternUnits="userSpaceOnUse">
+          <rect width="22" height="14" fill="var(--t-alluvium)"/>
+          <circle cx="5" cy="5" r="2.2" fill="var(--alluvium)" opacity="0.35"/>
+          <circle cx="15" cy="10" r="1.8" fill="var(--alluvium)" opacity="0.35"/>
+        </pattern>
+        <pattern id="pKarst" width="46" height="36" patternUnits="userSpaceOnUse">
+          <rect width="46" height="36" fill="var(--t-karst)"/>
+          <ellipse cx="12" cy="10" rx="6" ry="3.5" fill="var(--paper)" opacity="0.9"/>
+          <ellipse cx="34" cy="26" rx="8" ry="4" fill="var(--paper)" opacity="0.9"/>
+        </pattern>
+        <marker id="arrowUp" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--water)"/>
+        </marker>
+      </defs>
+
+      <!-- older hard rock fills the whole underground -->
+      <g class="hot" data-id="rock" tabindex="0" role="button" aria-label="Older hard rock">
+        <polygon points="0,175 40,120 80,80 130,100 180,62 240,110 300,160 340,184 450,196 600,206 760,214 900,221 1000,227 1200,300 1200,500 0,500" fill="var(--t-rock)"/>
+        <polygon class="hl" points="760,385 1200,410 1200,500 0,500 0,480 300,470 600,440"/>
+        <text class="art-sub" x="760" y="470">older hard rock</text>
+      </g>
+
+      <!-- karst: limestone hills and the wedge under the plain -->
+      <g class="hot" data-id="karst" tabindex="0" role="button" aria-label="Limestone with holes, the karst">
+        <polygon points="0,175 40,120 80,80 130,100 180,62 240,110 300,160 340,184 430,290 600,350 760,385 600,440 300,470 0,480" fill="url(#pKarst)"/>
+        <polygon class="hl" points="0,175 40,120 80,80 130,100 180,62 240,110 300,160 340,184 430,290 600,350 760,385 600,440 300,470 0,480"/>
+        <text class="art-label" x="70" y="300">limestone with holes</text>
+        <text class="art-sub" x="70" y="317">(karst)</text>
+      </g>
+
+      <!-- Pliocene: thick striped sand and clay -->
+      <g class="hot" data-id="pliocene" tabindex="0" role="button" aria-label="Deep layers of sand and clay, the Pliocene">
+        <polygon points="340,184 450,196 600,206 760,214 900,221 1000,227 1200,300 1200,410 1000,400 760,385 600,350 430,290" fill="url(#pPlio)"/>
+        <polygon class="hl" points="340,184 450,196 600,206 760,214 900,221 1000,227 1200,300 1200,410 1000,400 760,385 600,350 430,290"/>
+        <text class="art-label" x="905" y="318">deep sand &amp; clay layers</text>
+        <text class="art-sub" x="905" y="335">(Pliocene): the main drinking-water store</text>
+      </g>
+
+      <!-- alluvium: thin river gravel near the surface -->
+      <g class="hot" data-id="alluvium" tabindex="0" role="button" aria-label="River gravel layer, the alluvium">
+        <polygon points="355,186 450,196 600,206 760,214 900,221 1000,227 1000,249 900,244 760,240 600,238 450,226 355,203" fill="url(#pGravel)"/>
+        <polygon class="hl" points="355,186 450,196 600,206 760,214 900,221 1000,227 1000,249 900,244 760,240 600,238 450,226 355,203"/>
+        <text class="art-label" x="372" y="276">river gravel layer (alluvium)</text>
+        <line x1="420" y1="265" x2="440" y2="218" stroke="var(--ink-2)" stroke-width="1"/>
+      </g>
+
+      <!-- the water level in the shallow layer -->
+      <g class="hot" data-id="level" tabindex="0" role="button" aria-label="The water level">
+        <polyline points="360,195 450,204 600,214 760,221 900,228 1000,233" fill="none" stroke="var(--water)" stroke-width="2.5" stroke-dasharray="8 5"/>
+        <rect class="hl" x="352" y="188" width="656" height="52" rx="6"/>
+        <text class="art-sub" x="925" y="262" fill="var(--water)">water level</text>
+      </g>
+
+      <!-- sea -->
+      <g class="hot" data-id="sea" tabindex="0" role="button" aria-label="The Mediterranean Sea">
+        <polygon points="1000,229 1200,229 1200,300" fill="var(--t-sea)"/>
+        <polygon class="hl" points="1000,229 1200,229 1200,300"/>
+        <text class="art-label" x="1040" y="218">Mediterranean Sea</text>
+      </g>
+
+      <!-- hills label -->
+      <g class="hot" data-id="hills" tabindex="0" role="button" aria-label="The hills and mountains">
+        <rect class="hl" x="0" y="55" width="330" height="135" rx="8"/>
+        <text class="art-label" x="214" y="80">hills: Corbières,</text>
+        <text class="art-label" x="214" y="96">Pyrenees further</text>
+      </g>
+
+      <!-- rain -->
+      <g class="hot" data-id="rain" tabindex="0" role="button" aria-label="Rain">
+        <rect class="hl" x="40" y="4" width="200" height="66" rx="8"/>
+        <ellipse cx="110" cy="24" rx="44" ry="15" fill="var(--t-rock)" stroke="var(--muted)" stroke-width="1"/>
+        <ellipse cx="146" cy="20" rx="32" ry="13" fill="var(--t-rock)" stroke="var(--muted)" stroke-width="1"/>
+        <g stroke="var(--water)" stroke-width="2" stroke-linecap="round">
+          <line x1="92" y1="44" x2="88" y2="56"/><line x1="112" y1="44" x2="108" y2="56"/>
+          <line x1="132" y1="42" x2="128" y2="54"/><line x1="152" y1="40" x2="148" y2="52"/>
+          <line x1="102" y1="58" x2="98" y2="68"/><line x1="142" y1="56" x2="138" y2="66"/>
+        </g>
+        <text class="art-label" x="186" y="28">rain</text>
+      </g>
+
+      <!-- river Têt -->
+      <g class="hot" data-id="river" tabindex="0" role="button" aria-label="A river, the Têt">
+        <ellipse cx="600" cy="207" rx="24" ry="5" fill="var(--water)" opacity="0.85"/>
+        <rect class="hl" x="566" y="172" width="70" height="44" rx="6"/>
+        <text class="art-label" x="574" y="188">river Têt</text>
+      </g>
+
+      <!-- canal -->
+      <g class="hot" data-id="canal" tabindex="0" role="button" aria-label="An irrigation canal">
+        <polyline points="578,205 520,201 470,197" fill="none" stroke="var(--water)" stroke-width="3" stroke-linecap="round"/>
+        <rect class="hl" x="462" y="170" width="104" height="38" rx="6"/>
+        <text class="art-sub" x="488" y="186">canal</text>
+      </g>
+
+      <!-- vines -->
+      <g class="hot" data-id="vines" tabindex="0" role="button" aria-label="Vineyards and orchards">
+        <rect class="hl" x="372" y="150" width="96" height="44" rx="6"/>
+        <g fill="#6f9a55">
+          <circle cx="385" cy="180" r="5"/><circle cx="401" cy="182" r="5"/><circle cx="417" cy="184" r="5"/>
+          <circle cx="433" cy="185" r="5"/><circle cx="449" cy="187" r="5"/>
+        </g>
+        <text class="art-sub" x="380" y="166">vineyards</text>
+      </g>
+
+      <!-- town -->
+      <g class="hot" data-id="town" tabindex="0" role="button" aria-label="Perpignan and the villages">
+        <rect class="hl" x="770" y="168" width="104" height="48" rx="6"/>
+        <g fill="var(--paper)" stroke="var(--ink-2)" stroke-width="1.2">
+          <rect x="784" y="196" width="18" height="16"/><polygon points="781,197 793,186 805,197"/>
+          <rect x="810" y="192" width="22" height="21"/><polygon points="807,193 821,180 835,193"/>
+          <rect x="840" y="199" width="16" height="15"/><polygon points="837,200 848,190 859,200"/>
+        </g>
+        <text class="art-label" x="784" y="178">Perpignan</text>
+      </g>
+
+      <!-- farm well -->
+      <g class="hot" data-id="farmwell" tabindex="0" role="button" aria-label="A farm well">
+        <rect class="hl" x="500" y="140" width="56" height="128" rx="6"/>
+        <line x1="528" y1="200" x2="528" y2="258" stroke="var(--ink)" stroke-width="3"/>
+        <rect x="519" y="186" width="18" height="13" rx="2" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.5"/>
+        <line x1="528" y1="184" x2="528" y2="160" stroke="var(--water)" stroke-width="2" marker-end="url(#arrowUp)"/>
+        <text class="art-sub" x="502" y="152">farm well</text>
+      </g>
+
+      <!-- twin measuring wells -->
+      <g class="hot" data-id="piezo" tabindex="0" role="button" aria-label="Measuring wells, a shallow and a deep twin">
+        <rect class="hl" x="652" y="140" width="66" height="232" rx="6"/>
+        <line x1="676" y1="200" x2="676" y2="236" stroke="var(--alluvium)" stroke-width="3"/>
+        <line x1="694" y1="202" x2="694" y2="350" stroke="var(--pliocene)" stroke-width="3"/>
+        <rect x="670" y="190" width="12" height="10" rx="2" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.5"/>
+        <rect x="688" y="192" width="12" height="10" rx="2" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.5"/>
+        <circle cx="676" cy="236" r="3.5" fill="var(--alluvium)"/>
+        <circle cx="694" cy="350" r="3.5" fill="var(--pliocene)"/>
+        <text class="art-sub" x="640" y="152">measuring wells</text>
+        <text class="art-sub" x="640" y="166">(shallow + deep)</text>
+      </g>
+
+      <!-- drinking-water well -->
+      <g class="hot" data-id="tapwell" tabindex="0" role="button" aria-label="A drinking-water well">
+        <rect class="hl" x="868" y="140" width="80" height="250" rx="6"/>
+        <line x1="900" y1="221" x2="900" y2="378" stroke="var(--ink)" stroke-width="4"/>
+        <rect x="889" y="206" width="22" height="15" rx="2" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.5"/>
+        <line x1="900" y1="204" x2="900" y2="174" stroke="var(--water)" stroke-width="2" marker-end="url(#arrowUp)"/>
+        <text class="art-sub" x="874" y="152">tap-water well</text>
+      </g>
+    </svg>
+    <p class="art-hint">Tap or click any part of the picture.</p>
+    <div class="info" aria-live="polite">
+      <h2 id="info-title">The big picture</h2>
+      <p id="info-text">Under the fields of the Roussillon plain there is water, stored in layers of sand, gravel and rock, a bit like water in a soaked sponge. People pump it for taps and farms, and rain refills it. Our project teaches a computer to follow the water level week by week, and checks that it does so for the right reasons.</p>
+    </div>
+  </figure>
+</header>
+
+<div class="layout">
+  <nav class="rail" aria-label="Chapters">
+    <p class="rail-title">Go down the borehole</p>
+    <div class="bore"><div class="waterfill" id="waterfill"></div><ol id="toc"></ol></div>
+    <select class="rail-select" id="toc-select" aria-label="Jump to a chapter"></select>
+  </nav>
+
+  <main>
+<!-- ============================================================ 1 -->
+<section id="question" data-title="The question" data-depth="0 m">
+  <p class="chapter-no">Chapter 1</p>
+  <h2>The question</h2>
+  <p class="short">We want a computer that follows the underground water level week by week, and does it for the right reasons.</p>
+
+  <p><strong>Why it matters.</strong> From 2022 to 2025 the Roussillon had a record <button class="term" data-term="drought">drought</button>. The water in the wells fell lower than ever measured, and towns put limits on water use. Two users drink from the same underground water: the taps of the towns and the farms. When there is not enough, they compete. That competition is the story behind the project.</p>
+
+  <p><strong>What the computer does.</strong> Every week, we give it the weather (rain, heat) and how much water people pumped. It must tell us the water level in each <button class="term" data-term="piezometer">measuring well</button>. It is never allowed to look at the real level while it guesses. Think of guessing how full a bathtub is when you only know how long the tap ran and how much went down the drain. Experts call this a <button class="term" data-term="simulation">simulation</button>.</p>
+
+  <p><strong>The twist.</strong> Experts know a lot about the underground: which layer lies on which, which pump takes water from which layer, and simple rules such as "pumping lowers the water". We write that knowledge in a <button class="term" data-term="ontology">knowledge map</button> and give it to the computer. Then we check that the computer really uses it, like a maths teacher who wants to see the working, not just the answer. The project's title is a question: <em>right for the right reasons?</em></p>
+
+  <h3>The four questions we want to answer</h3>
+  <ol>
+    <li>Does the knowledge help the computer guess better?</li>
+    <li>Do simple rules, like "more pumping can never raise the water", make its answers more believable?</li>
+    <li>Does it really use the knowledge, or does it cheat with a <button class="term" data-term="shortcut">shortcut</button>?</li>
+    <li>Can it explain its guesses in words an expert would accept, without making things up?</li>
+  </ol>
+  <p>Above all four sits one big question, added after the second review: <strong>when does knowing how the underground works actually help?</strong> A clear "it helps here, not there" is a good result too.</p>
+
+  <details class="deeper">
+    <summary>Go deeper</summary>
+    <p>Working title: <em>Right for the right reasons? Ontology-derived graphs and constraints for groundwater-level simulation in a Mediterranean multilayer aquifer.</em> The project is a Master's PFE at ISAMM (Université de la Manouba) inside SAVE Water (PRIMA). The four questions are RQ1 to RQ4 in <code>CLAUDE.md</code> §1a; the plan is in <code>docs/roadmap.md</code>; the official subject is <code>Documents/sujet.docx</code>. The paper is aimed at <em>Environmental Modelling &amp; Software</em>, to submit by the end of April 2027.</p>
+  </details>
+  <p class="nextlink"><a href="#place">Next: the place and the underground</a></p>
+</section>
+
+<!-- ============================================================ 2 -->
+<section id="place" data-title="The place and the underground" data-depth="10 m">
+  <p class="chapter-no">Chapter 2</p>
+  <h2>The place and the underground</h2>
+  <p class="short">A flat plain of vines and villages around Perpignan, between the hills and the sea, with three kinds of water layers stacked underneath.</p>
+
+  <p>The Roussillon plain is in the far south of France, in the département of the Pyrénées-Orientales. Rivers come down from the mountains (the Têt, the Agly, the Tech, the Réart) and cross it to reach the Mediterranean.</p>
+
+  <p>Underground, the water is not in lakes. It sits in the tiny gaps between grains of sand and gravel, or in the cracks of rock. A layer that holds water like this is an <button class="term" data-term="aquifer">aquifer</button>. Under the plain there are three kinds, like the layers of a cake:</p>
+  <ul>
+    <li><span class="key" style="background:var(--alluvium)"></span> <strong>The river gravel layer</strong> (<button class="term" data-term="alluvium">alluvium</button>): sand and gravel left by the rivers, just under the surface. It fills and empties quickly.</li>
+    <li><span class="key" style="background:var(--pliocene)"></span> <strong>The deep sand-and-clay layers</strong> (the <button class="term" data-term="pliocene">Pliocene</button>): a thick pile of sand sheets separated by clay, from about 10 to 250 m down in our wells. It holds most of the drinking water, and reacts slowly.</li>
+    <li><span class="key" style="background:var(--karst)"></span> <strong>Limestone with holes</strong> (<button class="term" data-term="karst">karst</button>): under the Corbières hills in the north. Water rushes through cracks and tunnels.</li>
+  </ul>
+  <p>These three colours mean the same layers everywhere in this guide.</p>
+
+  <figure>
+    <div class="panel">
+      <div class="controls" id="map-modes" role="group" aria-label="What the map shows">
+        <button class="btn" type="button" data-mode="layers" aria-pressed="true">Wells by layer</button>
+        <button class="btn" type="button" data-mode="v3">Twin wells, dataset v3</button>
+        <button class="btn" type="button" data-mode="v4">Twin wells, dataset v4</button>
+      </div>
+      <div id="chart-map"></div>
+      <div class="legend" id="map-legend"></div>
+    </div>
+    <figcaption>The 65 measuring wells we use, from our data. Big dots are the 33 "core" wells with long, clean records: every result is reported on them. Hover a dot for its name. The two "twin wells" buttons belong to chapter 6.</figcaption>
+  </figure>
+
+  <h3>How the level is measured</h3>
+  <p>A <button class="term" data-term="piezometer">measuring well</button> is a thin pipe going down to one layer. Water enters at the bottom and rises in the pipe to the same height as in the layer around it. A sensor records that height every day. Nobody pumps from these wells: they only listen.</p>
+  <figure>
+    <div class="panel">
+      <svg viewBox="0 0 640 270" role="img" aria-label="A measuring well: a pipe goes down into a water layer; water rises in it to the water level; a sensor at the bottom sends the level to a box at the top.">
+        <rect x="0" y="70" width="640" height="200" fill="var(--t-soil)" opacity="0.55"/>
+        <rect x="0" y="150" width="640" height="120" fill="var(--t-plio-a)"/>
+        <line x1="0" y1="70" x2="640" y2="70" stroke="var(--ink-2)" stroke-width="1.5"/>
+        <line x1="0" y1="112" x2="640" y2="112" stroke="var(--water)" stroke-width="2" stroke-dasharray="8 5"/>
+        <rect x="226" y="40" width="26" height="22" rx="3" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.5"/>
+        <rect x="232" y="62" width="14" height="190" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.5"/>
+        <rect x="234" y="112" width="10" height="138" fill="var(--water)" opacity="0.55"/>
+        <line x1="239" y1="62" x2="239" y2="236" stroke="var(--ink-2)" stroke-width="1"/>
+        <rect x="235" y="236" width="8" height="12" rx="2" fill="var(--ink)"/>
+        <text class="art-label" x="268" y="56">recording box</text>
+        <text class="art-sub" x="268" y="90">ground</text>
+        <text class="art-label" x="268" y="108" fill="var(--water)">water level in the well</text>
+        <text class="art-sub" x="268" y="174">water layer (sand and gravel, full of water)</text>
+        <text class="art-sub" x="268" y="246">sensor at the bottom</text>
+        <line x1="120" y1="70" x2="120" y2="112" stroke="var(--ink)" stroke-width="1.5"/>
+        <text class="art-sub" x="22" y="96">depth to water</text>
+        <line x1="60" y1="270" x2="60" y2="112" stroke="var(--ink-2)" stroke-width="1" stroke-dasharray="3 3"/>
+        <text class="art-sub" x="68" y="140">we count the level</text>
+        <text class="art-sub" x="68" y="155">in metres above the sea</text>
+      </svg>
+    </div>
+    <figcaption>We use the level in metres above sea level (French maps call it "m NGF"), so wells in different places can be compared.</figcaption>
+  </figure>
+
+  <h3>What the water level looks like</h3>
+  <p>Here is the real weekly level of a few wells, from 2005 to now. The coloured bands are the parts of time we use in different ways (chapter 4). See how the level dips every summer, falls during the 2022–2025 drought, and comes back in the recovery.</p>
+  <figure>
+    <div class="panel">
+      <div class="controls" id="level-wells" role="group" aria-label="Which well to show"></div>
+      <div id="chart-level"></div>
+      <div class="legend" id="level-legend"></div>
+      <details class="numbers"><summary>About these wells</summary><div id="level-about"></div></details>
+    </div>
+    <figcaption>Real measurements, one value per week, from dataset v4. Gaps are weeks without a measurement. The karst well (Estagel) swings by tens of metres; the deep layers move by a few metres only.</figcaption>
+  </figure>
+
+  <details class="deeper">
+    <summary>Go deeper</summary>
+    <ul>
+      <li>The layers come from the national map of underground layers, <button class="term" data-term="bdlisa">BD LISA</button>. The real map of the plain is in the repository: <a href="../../reports/figures/bdlisa_plain_entities_pairs.png">reports/figures/bdlisa_plain_entities_pairs.png</a>.</li>
+      <li>Codes: river gravel <code>718BP01–03</code> (recent) and <code>671AB01–02</code> (ancient); the Pliocene multilayer <code>671AA00</code> (906 km² under the plain); the Corbières karst <code>681AM00</code>.</li>
+      <li>Some deep wells are <button class="term" data-term="artesian">artesian</button>: the water is under so much pressure that it rises above the ground. Four of our Pliocene wells sometimes are.</li>
+      <li>"Depth" in our tables is the depth of the borehole (<code>profondeur_investigation</code>), not the depth of the open part of the pipe. That detail is only in the borehole logs.</li>
+    </ul>
+  </details>
+  <p class="nextlink"><a href="#clues">Next: collecting the clues</a></p>
+</section>
+
+<!-- ============================================================ 3 -->
+<section id="clues" data-title="Collecting the clues" data-depth="20 m">
+  <p class="chapter-no">Chapter 3</p>
+  <h2>Collecting the clues</h2>
+  <p class="short">Before any computer model, we gathered five kinds of public data, checked them, and found three surprises.</p>
+
+  <ol class="clues">
+    <li>
+      <h4>The water levels <span class="when">Step 4, 5 October</span></h4>
+      <p>From <button class="term" data-term="hubeau">Hub'Eau</button>, the French public water data service. The département has 101 measuring wells. We kept the 33 with long (at least 8 years), recent (still measured in 2024) and regular records inside the plain: 20 in the deep layers, 6 in the river gravel, 6 in the karst and 1 elsewhere. Those are the <button class="term" data-term="core">core wells</button>.</p>
+    </li>
+    <li>
+      <h4>The farm fields <span class="when">Step 5, 5 October</span></h4>
+      <p>From the <button class="term" data-term="rpg">RPG</button>, the fields farmers declare each year. Within 3 km of our wells in 2023: 10,222 fields covering 14,021 hectares. Vines take 32 % of the area, orchards 19 %, olives 2 %. Between 2016 and 2023 the vines stayed about the same size.</p>
+    </li>
+    <li>
+      <h4>Who pumps how much <span class="when">Step 6a, 5 October</span></h4>
+      <p>From the <button class="term" data-term="bnpe">BNPE</button>, the register where every pumping point declares its yearly volume. Here came the first surprise: towns and farms do not drink from the same place.</p>
+      <div class="drops-row" id="drops"></div>
+    </li>
+    <li>
+      <h4>The map of underground layers <span class="when">Step 6b, 13 October</span></h4>
+      <p>From <button class="term" data-term="bdlisa">BD LISA</button>, we read which layer lies under each well, top to bottom (its <button class="term" data-term="stack">layer stack</button>). We found the layer of 32 of the 33 core wells. Second surprise: in 17 pairs of nearby shallow and deep wells, the shallow water was higher than the deep water only half of the time (50.5 % of the weeks). So there is no simple rule like "the top layer is always fuller".</p>
+    </li>
+    <li>
+      <h4>The weather and the rivers <span class="when">Step 8, 13 October</span></h4>
+      <p>From Météo-France's <button class="term" data-term="safran">SAFRAN</button>: rain, <button class="term" data-term="evaporation">evaporation</button> and soil wetness every day, on 8 km squares (141 squares cover the département). From Hub'Eau again: river flows at 45 stations. Third surprise: there is no usable measurement of the water in the irrigation canals, so we use the canals' declared yearly volumes instead.</p>
+    </li>
+  </ol>
+
+  <h3>The twins of Millas: shallow and deep, side by side</h3>
+  <p>At Millas, two measuring wells stand 20 m apart. One stops in the river gravel (9 m deep), the other goes down into the deep layers (109 m). Same place, same rain, two different stories.</p>
+  <figure>
+    <div class="panel">
+      <div id="chart-twins"></div>
+      <div class="legend" id="twins-legend"></div>
+    </div>
+    <figcaption>Real weekly levels. Here the shallow water stays above the deep water. At another pair (Le Barcarès) it is the other way round 94.5 % of the time, and in summer the order can flip when the deep layer is pumped. That is why we use no "shallow is always higher" rule.</figcaption>
+  </figure>
+
+  <details class="deeper">
+    <summary>Go deeper</summary>
+    <ul>
+      <li>Every download is logged in <code>data/README.md</code> (source, parameters, date, rows). Step notes: <code>docs/notes/step04_piezometers.md</code> to <code>step06b_bdlisa.md</code> and <code>step08_dataset.md</code>.</li>
+      <li>BNPE totals for the plain, 2012–2023: irrigation 741 million m³ from rivers and canals and 144 from underground; drinking water 3 from rivers and 475 from underground. Canal intakes (1,245 million m³) are counted apart.</li>
+      <li>A reporting change in 2018 made many farm wells appear at once (from 370 to 950 declaring). Dataset v3 corrects it with written rules (chapter 6).</li>
+    </ul>
+  </details>
+  <p class="nextlink"><a href="#table">Next: building the big weekly table</a></p>
+</section>
+
+<!-- ============================================================ 4 -->
+<section id="table" data-title="The big weekly table" data-depth="30 m">
+  <p class="chapter-no">Chapter 4</p>
+  <h2>The big weekly table</h2>
+  <p class="short">We put all the clues into one big table, one row per well per week, and split time into study years, a practice exam and a final exam.</p>
+
+  <p><strong>One row = one well during one week.</strong> Each row holds the water level of that week, the weather of that week and of the months before (water underground remembers), the pumping nearby, and the river flows. We chose weeks, not days: the level changes slowly, and days only add noise.</p>
+
+  <p><strong>A guess we had to make.</strong> Pumping is only declared once a year. We spread each year's total over the weeks: farm pumping follows the summer dryness, town pumping is spread more evenly. This is a <button class="term" data-term="reconstructed">reconstruction</button>, an informed guess, not a measurement. We say so wherever it matters.</p>
+
+  <h3>Study, practice, final exam</h3>
+  <p>A computer learns like a student. If it sees the exam answers while studying, its grade means nothing. So time is cut into parts that are never mixed:</p>
+  <figure>
+    <div class="panel">
+      <svg viewBox="0 0 960 150" role="img" aria-label="Timeline: weather only 2000 to 2004; study years 2005 to 2019; practice exam 2020 to April 2022; final exam from May 2022, first the drought until November 2025, then the recovery.">
+        <rect x="40" y="52" width="160" height="34" rx="4" fill="var(--tint)"/>
+        <rect x="202" y="52" width="478" height="34" rx="4" fill="var(--band-train)" stroke="var(--alluvium)" stroke-width="1"/>
+        <rect x="682" y="52" width="72" height="34" rx="4" fill="var(--band-val)" stroke="var(--model)" stroke-width="1"/>
+        <rect x="756" y="52" width="113" height="34" rx="4" fill="var(--band-drought)" stroke="var(--karst)" stroke-width="1"/>
+        <rect x="871" y="52" width="27" height="34" rx="4" fill="var(--band-recovery)" stroke="var(--pliocene)" stroke-width="1"/>
+        <text class="band-label" x="48" y="74">weather only</text>
+        <text class="art-label" x="214" y="74">study years: the computer learns, answers included</text>
+        <text class="band-label" x="686" y="40">practice</text>
+        <text class="band-label" x="756" y="40">final exam: drought</text>
+        <text class="band-label" x="842" y="112">recovery</text>
+        <line x1="884" y1="88" x2="870" y2="100" stroke="var(--ink-2)" stroke-width="1"/>
+        <g class="axis">
+          <text x="40" y="106">2000</text><text x="200" y="106">2005</text><text x="520" y="106">2015</text>
+          <text x="680" y="106">2020</text><text x="745" y="128">May 2022</text><text x="902" y="106">now</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption><strong>Study years</strong> 2005–2019: the computer sees the answers and learns. <strong>Practice exam</strong> January 2020 to April 2022: we use it to choose settings. <strong>Final exam</strong> May 2022 to now: never looked at while building, scored in two parts, the drought (May 2022 – November 2025) and the recovery (December 2025 – now).</figcaption>
+  </figure>
+
+  <p><strong>How dry is dry?</strong> A level of 12 m means nothing on its own. So each level is also turned into a <button class="term" data-term="sgi">drought class</button>, "how unusual for this month at this well", from "very low" to "very high", like the official drought bulletins. In the final exam, about 45 % of the weeks were "very low".</p>
+
+  <details class="deeper">
+    <summary>Go deeper</summary>
+    <ul>
+      <li>Built by <code>src/dataset/build.py</code>; read the step note <code>docs/notes/step08_dataset.md</code>. Periods are fixed in <code>docs/analysis_plan.md</code> §2.</li>
+      <li>The drought/recovery border was fixed from the observed levels before any new run: the recovery starts the first month after the drought from which the median drought index of the 33 core wells stays above −0.5 for three months (December 2025).</li>
+      <li>The drought class is the SGI (Bloomfield &amp; Marchant 2013, doi:10.5194/hess-17-4769-2013) mapped to the 7 BRGM classes.</li>
+    </ul>
+  </details>
+  <p class="nextlink"><a href="#contest">Next: the contest</a></p>
+</section>
+
+<!-- ============================================================ 5 -->
+<section id="contest" data-title="The contest" data-depth="40 m">
+  <p class="chapter-no">Chapter 5</p>
+  <h2>The contest</h2>
+  <p class="short">Before building our own model, we lined up rivals to beat. The computer-learning rivals roughly halve the mistakes of a "normal year" guess during the drought.</p>
+
+  <p>A score means nothing alone: "70 out of 100" is great if everyone else gets 40, and bad if everyone gets 90. So we first ran the <button class="term" data-term="baseline">rivals</button>, from the simplest to the strongest:</p>
+  <ul>
+    <li><strong>Normal-year guess</strong> (<button class="term" data-term="climatology">climatology</button>): "the level will be as it usually is at this time of year". The floor.</li>
+    <li><strong><button class="term" data-term="pastas">Pastas</button></strong>, the hydrologists' standard tool: each cause leaves a footprint on the level over the following weeks, and the footprints are added up.</li>
+    <li><strong><button class="term" data-term="lightgbm">LightGBM</button></strong>: many small yes/no question trees that vote.</li>
+    <li><strong><button class="term" data-term="lstm">LSTM and EA-LSTM</button></strong>: networks with a memory that read the last years of weather week by week.</li>
+    <li><strong><button class="term" data-term="gnn">Graph networks</button></strong>: wells pass messages to linked neighbours. One version links wells by distance, another copies a published design (Taccari et al. 2024).</li>
+    <li><strong><button class="term" data-term="chronos">Chronos-2</button></strong>: a big pre-trained forecasting model. It looks at past levels, so it plays a different game, the <button class="term" data-term="forecast">forecast</button>, where it is the champion.</li>
+    <li><strong>A <button class="term" data-term="ensemble">team of models</button></strong>: the average of the best ones.</li>
+  </ul>
+  <p><strong>A fair contest.</strong> Every rival got the same number of tries to find its best settings (<button class="term" data-term="tuning">tuning</button>, 24 tries each, then a re-check of the best three). Every neural network was trained 5 times from different <button class="term" data-term="seed">random starts</button> and averaged, so luck matters less.</p>
+
+  <figure>
+    <div class="panel">
+      <div class="controls" id="score-period" role="group" aria-label="Which part of the final exam">
+        <button class="btn" type="button" data-period="drought" aria-pressed="true">Drought, May 2022 – Nov 2025</button>
+        <button class="btn" type="button" data-period="recovery">Recovery, Dec 2025 – now</button>
+      </div>
+      <div id="chart-scores"></div>
+      <div class="legend" id="scores-legend"></div>
+      <details class="numbers"><summary>Show the numbers</summary><div id="scores-table" class="tablewrap"></div></details>
+    </div>
+    <figcaption><button class="term" data-term="skill">Skill</button>: how much smaller the mistakes are than those of the normal-year guess. 0 = no better; 0.5 = about half the mistakes; 1 = perfect. Medians over the 33 core wells, dataset v3. Two rivals are still running on 23 October (EA-LSTM and the Taccari graph).</figcaption>
+  </figure>
+
+  <h3>What it tells us</h3>
+  <ul>
+    <li>The computer-learning rivals roughly halve the mistakes of the normal-year guess in the drought. Pastas cuts them by a fifth.</li>
+    <li>Most of the remaining mistake is a level that stays too high or too low by a fixed amount in 2024–2025, as if something changed in the pumping that our data do not show.</li>
+    <li>Pumping counted over the whole plain did not help. Pumping has to be linked to the right layer and the right wells. That is exactly what the knowledge map will add.</li>
+  </ul>
+
+  <h3>Is it proven? Counting neighbourhoods, not wells</h3>
+  <p>Our 33 wells are not 33 independent witnesses. Wells close to each other share the same rain, the same pumps and the same layer, so they tend to agree. On the map they fall in only 14 <button class="term" data-term="cluster">neighbourhoods</button> of 10 km. A fair test therefore counts 14 voices, not 33.</p>
+  <p>With that fair test, the advantage of the computer models over Pastas is <strong>big but not proven</strong> at the usual 5 % level. So we report <button class="term" data-term="effectsize">how big the difference is</button> first, and say plainly that 14 neighbourhoods are not enough to prove it. We do not change the test until it says what we would like: that would be cheating with statistics.</p>
+
+  <details class="deeper">
+    <summary>Go deeper</summary>
+    <ul>
+      <li>Full table: <code>docs/results_baselines.md</code>, made by <code>src/analysis/baseline_report.py</code>. Picture of all models on four wells: <a href="../../reports/figures/baselines_hydrographs_v3.png">reports/figures/baselines_hydrographs_v3.png</a>.</li>
+      <li>Other scores: <button class="term" data-term="nse">NSE</button> (drought: LSTM 0.01, ensemble 0.02, Pastas −0.73) and KGE'' (a version of KGE that does not depend on the height of sea level).</li>
+      <li>The fair test is a cluster sign-flip permutation test on 10 km cells; the old per-well Wilcoxon test said "proven" (p_holm 0.002–0.04), the fair one does not (0.08–0.23). See <code>docs/analysis_plan.md</code> §6 and <code>src/analysis/stats.py</code>.</li>
+      <li>Other exams: hiding wells (<button class="term" data-term="hiddenwells">hidden-well test</button>) hurts every model; studying only the last 25–50 % of the years costs little.</li>
+    </ul>
+  </details>
+  <p class="nextlink"><a href="#versions">Next: four versions of the data</a></p>
+</section>
+
+<!-- ============================================================ 6 -->
+<section id="versions" data-title="Four versions of the data" data-depth="50 m">
+  <p class="chapter-no">Chapter 6</p>
+  <h2>Four versions of the data</h2>
+  <p class="short">The big table was rebuilt four times. Each version fixes something the last one got wrong; none was thrown away, so every result can be traced.</p>
+
+  <div class="tabs" id="version-tabs" role="tablist" aria-label="Data versions"></div>
+  <div id="version-card" class="version-card" role="tabpanel" aria-live="polite"></div>
+
+  <h3>Side by side</h3>
+  <div class="tablewrap" id="version-table"></div>
+
+  <h3>The twin-well fix, on the map</h3>
+  <p>In the hidden-well test, some wells are hidden while the computer studies, then it must guess them. In v3 the groups were drawn at random, so a hidden well often had its twin, 20 m away, among the studied wells: the computer could copy the twin's answer. Use the buttons above the map in chapter 2 ("Twin wells, dataset v3 / v4") to see it.</p>
+  <figure>
+    <div class="panel">
+      <svg viewBox="0 0 760 210" role="img" aria-label="Version 3: one twin is hidden and the other is studied, so the computer copies. Version 4: both twins are hidden together.">
+        <text class="art-label" x="20" y="24">Version 3: groups drawn at random</text>
+        <text class="art-label" x="400" y="24">Version 4: close wells hidden together</text>
+        <rect x="20" y="44" width="340" height="140" rx="10" fill="var(--tint)"/>
+        <rect x="400" y="44" width="340" height="140" rx="10" fill="var(--tint)"/>
+        <circle cx="120" cy="104" r="16" fill="var(--alluvium)"/>
+        <circle cx="160" cy="104" r="16" fill="var(--paper)" stroke="var(--ink)" stroke-width="2" stroke-dasharray="4 3"/>
+        <text class="art-sub" x="78" y="146">studied</text>
+        <text class="art-sub" x="146" y="146">hidden</text>
+        <path d="M136,96 C140,84 146,84 150,94" fill="none" stroke="var(--critical)" stroke-width="2"/>
+        <text class="art-sub" x="200" y="100">copies its twin's</text>
+        <text class="art-sub" x="200" y="116">answer: too easy</text>
+        <circle cx="500" cy="104" r="16" fill="var(--paper)" stroke="var(--ink)" stroke-width="2" stroke-dasharray="4 3"/>
+        <circle cx="540" cy="104" r="16" fill="var(--paper)" stroke="var(--ink)" stroke-width="2" stroke-dasharray="4 3"/>
+        <text class="art-sub" x="490" y="146">both hidden</text>
+        <text class="art-sub" x="580" y="100">must really use</text>
+        <text class="art-sub" x="580" y="116">rain, pumps, layers</text>
+      </svg>
+    </div>
+    <figcaption>In v3, 23 of the 24 pairs of wells closer than 1 km were split between groups. In v4, none are: wells closer than 2 km always share a group.</figcaption>
+  </figure>
+
+  <details class="deeper">
+    <summary>Go deeper</summary>
+    <ul>
+      <li>All versions are built by <code>src/dataset/build.py</code> (the table <code>VERSIONS</code>), for example <code>PFE_DATASET=v4 python -m src.dataset.build</code>. Each folder in <code>data/processed/</code> keeps a <code>meta.json</code>.</li>
+      <li>Results of each version stay in <code>results/v1</code> … <code>results/v4</code>. The step notes: <code>step08_dataset.md</code> (v1), <code>step10_baselines_v2.md</code> (v2), <code>step12a_fixes.md</code> (v3), <code>step12b_review_fixes.md</code> (v4).</li>
+      <li>The grouping of close wells follows Roberts et al. 2017 (doi:10.1111/ecog.02881): when data points depend on each other, test on blocks, not on random picks.</li>
+    </ul>
+  </details>
+  <p class="nextlink"><a href="#reviews">Next: two check-ups</a></p>
+</section>
+
+<!-- ============================================================ 7 -->
+<section id="reviews" data-title="Two check-ups" data-depth="60 m">
+  <p class="chapter-no">Chapter 7</p>
+  <h2>Two check-ups</h2>
+  <p class="short">Twice we asked for a strict review of our own work, to find mistakes before a journal reviewer does. Both made the project more honest.</p>
+
+  <p>A <button class="term" data-term="review">review</button> is like a teacher checking your homework before the exam. It hurts a little, and it saves you later.</p>
+
+  <h3>First check-up (20 October)</h3>
+  <ul>
+    <li>The final exam was split into the drought and the recovery, so a good recovery cannot hide a bad drought.</li>
+    <li>A fairer score was added: skill against the normal-year guess.</li>
+    <li>The pumping data got written rules for their problems (missing labels, the 2018 jump, late declarations), which made dataset v3.</li>
+    <li>A hidden <button class="term" data-term="leak">data leak</button> was found and fixed: one well fact (how often the water flows out by itself) had been computed with final-exam years.</li>
+    <li>Every rival got the same tuning budget, and the plan of analysis was written down before new runs.</li>
+  </ul>
+
+  <h3>The project review (23 October)</h3>
+  <ul>
+    <li>We checked the plan against the official subject, so that every objective is covered, some in a small, measured version.</li>
+    <li>We checked each borrowed vocabulary of the knowledge map at its source.</li>
+    <li>You took the main decisions (chapter 11): the hybrid model, "simulation" in the title, the Pliocene story.</li>
+  </ul>
+
+  <h3>Second check-up (23 October, the "codex" review)</h3>
+  <p>Every number it gave was checked in our data; all were right. It led to dataset v4 and to version 2 of the analysis plan:</p>
+  <ul>
+    <li>Measurements marked "incorrect" by their operators were removed (<button class="term" data-term="quality">quality labels</button>).</li>
+    <li>Recent data are mostly not checked yet: in the recovery only 7 wells have fully checked weeks. So recovery results are labelled provisional.</li>
+    <li>Twin wells are now hidden together (chapter 6).</li>
+    <li>Honest names: our forecast is really a <button class="term" data-term="hindcast">hindcast</button>, and the hidden-well test is about monitored wells, not about places with no well at all.</li>
+    <li>The fair "neighbourhood" test (chapter 5).</li>
+    <li>The pump detective, to find which layer each pump drinks from (chapter 8).</li>
+    <li>Harder practice worlds and three ways of spreading pumping, to test the future model fairly (chapter 9).</li>
+    <li>The plan will be frozen before the next phase, so results cannot steer it.</li>
+  </ul>
+
+  <details class="deeper">
+    <summary>Go deeper</summary>
+    <ul>
+      <li>First review: <code>docs/feedback.md</code>; project review: <code>docs/review_2026-10-23.md</code>; second review: <code>docs/review_codex_2026-10-23.md</code> with the point-by-point answer in <code>docs/review_codex_response.md</code>.</li>
+      <li>The analysis plan (version 2): <code>docs/analysis_plan.md</code>; its §13 lists every change and why.</li>
+    </ul>
+  </details>
+  <p class="nextlink"><a href="#knowledge">Next: the knowledge map</a></p>
+</section>
+
+<!-- ============================================================ 8 -->
+<section id="knowledge" data-title="The knowledge map (now)" data-depth="70 m">
+  <p class="chapter-no">Chapter 8</p>
+  <h2>The knowledge map</h2>
+  <p class="short">We are now writing what experts know about the underground as a map of facts a computer can read, check and query.</p>
+
+  <p>A <button class="term" data-term="ontology">knowledge map</button> is a set of small sentences, each made of a thing, a link and another thing. The computer can follow the links like roads, and check that nothing contradicts anything else.</p>
+  <figure>
+    <div class="panel">
+      <svg viewBox="0 0 760 300" role="img" aria-label="A small knowledge map: a measuring well measures the deep layer; a tap-water pump takes water from the deep layer; the river gravel layer lies on the deep layer; the pump lowers the level at the well, with a confidence and a source.">
+        <defs>
+          <marker id="kArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-2)"/>
+          </marker>
+        </defs>
+        <g font-family="var(--sans)">
+          <rect x="20" y="30" width="190" height="46" rx="23" fill="var(--paper)" stroke="var(--pliocene)" stroke-width="2"/>
+          <text class="art-label" x="115" y="58" text-anchor="middle">measuring well C2-2</text>
+          <rect x="280" y="125" width="200" height="46" rx="8" fill="var(--t-plio-a)" stroke="var(--pliocene)" stroke-width="2"/>
+          <text class="art-label" x="380" y="153" text-anchor="middle">deep layer (Pliocene)</text>
+          <rect x="545" y="30" width="195" height="46" rx="23" fill="var(--paper)" stroke="var(--ink-2)" stroke-width="2"/>
+          <text class="art-label" x="642" y="58" text-anchor="middle">tap-water pump P</text>
+          <rect x="280" y="235" width="200" height="46" rx="8" fill="var(--t-alluvium)" stroke="var(--alluvium)" stroke-width="2"/>
+          <text class="art-label" x="380" y="263" text-anchor="middle">river gravel layer</text>
+          <line x1="140" y1="78" x2="300" y2="124" stroke="var(--ink-2)" stroke-width="1.5" marker-end="url(#kArrow)"/>
+          <text class="art-sub" x="150" y="116">measures</text>
+          <line x1="620" y1="78" x2="462" y2="124" stroke="var(--ink-2)" stroke-width="1.5" marker-end="url(#kArrow)"/>
+          <text class="art-sub" x="560" y="116">takes water from</text>
+          <line x1="380" y1="234" x2="380" y2="174" stroke="var(--ink-2)" stroke-width="1.5" marker-end="url(#kArrow)"/>
+          <text class="art-sub" x="390" y="210">lies on</text>
+          <path d="M545,58 C420,22 330,22 212,58" fill="none" stroke="var(--critical)" stroke-width="2" marker-end="url(#kArrow)"/>
+          <text class="art-label" x="282" y="16">lowers the level at (sign: down)</text>
+          <text class="art-sub" x="560" y="200">each link also says how sure</text>
+          <text class="art-sub" x="560" y="216">we are and where it comes from:</text>
+          <text class="art-sub" x="560" y="232">"probable, from the river flag</text>
+          <text class="art-sub" x="560" y="248">and the layer map"</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>Five facts from the map. The model will read these links as its roads (which wells and pumps talk to each other) and its rules (which way each cause pushes the level).</figcaption>
+  </figure>
+
+  <ul>
+    <li><strong>Borrowed words.</strong> We <button class="term" data-term="reuse">reuse</button> international vocabularies (for wells, observations, time, places), like using standard LEGO bricks so that other projects can connect. We only invent the pieces that are missing, in our own small module called <code>lulcw:</code>.</li>
+    <li><strong>A checklist of 16 questions.</strong> The map must answer questions like "which pumps take water from the same layer as this well, how far away, and how sure are we?". These <button class="term" data-term="cq">competency questions</button> are its requirements and later its tests. You are reviewing them.</li>
+    <li><strong>An honest claim.</strong> The same facts written in plain tables would give the computer exactly the same links. So if the predictions improve, the credit goes to the knowledge. The map's own value is that the knowledge becomes explicit, checkable, traceable and reusable. A test will show the two give the same links.</li>
+  </ul>
+
+  <h3>The pump detective (done on 23 October)</h3>
+  <p>To know which pumps can lower which wells, we must know which layer each pump drinks from. The register does not say. Of 2,137 underground pumping points, only a few have an official record. So we play detective with clues, from strongest to weakest:</p>
+  <ol>
+    <li><strong>The official record</strong> of the borehole, when it exists. We still check it against the depth: four "river gravel" boreholes were 96 to 130 m deep, far too deep for that layer, so we moved them to the deep layer.</li>
+    <li><strong>The "connected to a river" flag</strong> in the register, combined with the layer map under the point. We measured how often each clue is right on 130 boreholes whose layer is known: "connected" means river gravel 95 % of the time; "not connected, deep layer below" means the deep layer 92 % of the time. But "not connected" alone is right only about half the time.</li>
+    <li>Weaker clues: a name like "PUITS" (a dug well, so shallow), or a single layer under the point.</li>
+  </ol>
+  <p>Each answer gets a <button class="term" data-term="confidence">confidence</button>. A catch: all 130 boreholes used for the check are town or industry wells, none is a farm well. So we cannot measure the clues on farm wells, and those stay "possible".</p>
+  <figure>
+    <div class="panel">
+      <div id="chart-attrib"></div>
+      <div class="legend" id="attrib-legend"></div>
+      <details class="numbers"><summary>Show the numbers</summary><div id="attrib-table" class="tablewrap"></div></details>
+    </div>
+    <figcaption>Underground water pumped in the plain, 2012–2024 (declared volumes, million m³), by use and by how sure we are of the layer. Almost all drinking water is confident or probable; farm water is possible at best.</figcaption>
+  </figure>
+  <p><strong>A first answer.</strong> Around the Millas wells, 110 million m³ of drinking water were pumped within 5 km from 2012 to 2023. About 65 % came from the river gravel layers and about 35 % from the deep layers.</p>
+
+  <details class="deeper">
+    <summary>Go deeper</summary>
+    <ul>
+      <li>The design: <code>docs/ontology_design.md</code> (reused vocabularies such as GWML2 through SAWGraph, SWEET, SOSA/SSN, OWL-Time, PROV-O, SKOS, GeoSPARQL). The questions: <code>docs/competency_questions.md</code>.</li>
+      <li>The detective: <code>src/kg/pump_attribution.py</code>; its results: <code>data/interim/pump_unit_attribution_eval.json</code>; explained in <code>docs/notes/step12b_review_fixes.md</code>.</li>
+      <li>Coming next in this phase: write the module and its checks (SHACL rules, a reasoner), fill the map from our tables, write one test query per question (SPARQL), export the links for the model, the crop-name matching experiment (RPG to AGROVOC) and the satellite rule for probably irrigated fields.</li>
+    </ul>
+  </details>
+  <p class="nextlink"><a href="#model">Next: the smart model and its tests</a></p>
+</section>
+
+<!-- ============================================================ 9 -->
+<section id="model" data-title="The smart model and its tests" data-depth="80 m">
+  <p class="chapter-no">Chapter 9</p>
+  <h2>The smart model and its tests</h2>
+  <p class="short">Next, a model shaped by the knowledge map, with built-in rules, and tests that try hard to catch it cheating.</p>
+
+  <p><strong>The <button class="term" data-term="hybrid">hybrid</button> model.</strong> It works like Pastas footprints, but the knowledge map decides which footprints exist. Each link in the map ("this pump, this well, same layer, 2 km") gets its own footprint, and the direction of each footprint is fixed: pumping can only push the level down, rain can only push it up. A small free part catches what the rules miss.</p>
+  <figure>
+    <div class="panel">
+      <svg viewBox="0 0 760 240" role="img" aria-label="The level is the sum of pushes: rain and canal leaks push it up, pumping pulls it down, and a small free part adds a little.">
+        <line x1="40" y1="130" x2="560" y2="130" stroke="var(--line)" stroke-width="2"/>
+        <text class="art-sub" x="40" y="150">normal level</text>
+        <rect x="80" y="62" width="60" height="68" rx="4" fill="var(--alluvium)" opacity="0.85"/>
+        <text class="art-label" x="110" y="52" text-anchor="middle">rain: up</text>
+        <rect x="190" y="98" width="60" height="32" rx="4" fill="var(--pliocene)" opacity="0.85"/>
+        <text class="art-label" x="220" y="88" text-anchor="middle">canal leaks: up</text>
+        <rect x="300" y="130" width="60" height="78" rx="4" fill="var(--karst)" opacity="0.85"/>
+        <text class="art-label" x="330" y="226" text-anchor="middle">pumping: down</text>
+        <rect x="410" y="122" width="60" height="16" rx="4" fill="var(--other)" opacity="0.85"/>
+        <text class="art-label" x="440" y="112" text-anchor="middle">free part</text>
+        <text class="art-label" x="585" y="134" font-size="22">=</text>
+        <polyline points="620,120 650,100 680,110 710,150 740,140" fill="none" stroke="var(--ink)" stroke-width="2.5"/>
+        <text class="art-label" x="620" y="190">guessed level</text>
+      </svg>
+    </div>
+    <figcaption>A picture of the idea, not of real numbers. Because each push has its own bar, the model's explanation is exact: it can say how much each cause moved the level.</figcaption>
+  </figure>
+
+  <p><strong>Rules.</strong> A <button class="term" data-term="constraint">rule</button> can be soft (the model is punished when it breaks it) or hard (the model is built so that it cannot break it: <button class="term" data-term="monotone">built-in</button>). The second review added a catch: the rule must hold on the whole path, so the free part must not see the pumping, otherwise it could undo the rule.</p>
+
+  <h3>Six versions to compare</h3>
+  <p>To know which ingredient helps, we change one thing at a time (the <button class="term" data-term="arms">arms</button>):</p>
+  <ul>
+    <li><strong>A</strong>: the usual inputs, no knowledge.</li>
+    <li><strong>B</strong>: knowledge as extra facts about each well, no links.</li>
+    <li><strong>C</strong>: knowledge + links by distance.</li>
+    <li><strong>D</strong>: knowledge + links from the map. The main model.</li>
+    <li><strong>E</strong>: D with its links scrambled.</li>
+    <li><strong>F</strong>: random links, and everything linked to everything.</li>
+  </ul>
+
+  <h3>Catching a cheater</h3>
+  <ul>
+    <li><strong>A practice world</strong> (<button class="term" data-term="twin">semi-synthetic twin</button>): fake water levels made from our real weather and pumps with rules we choose, so we know the right answer. Some practice worlds are deliberately made with rules the model does not have, a missing cause, or wrong links, so the test is not too easy.</li>
+    <li><strong>A scrambled map</strong> (<button class="term" data-term="rewiring">rewiring</button>): if the model does just as well with nonsense links, it was not using the map.</li>
+    <li><strong>Agreement between repeats</strong>: if five trainings tell five different stories, none can be trusted.</li>
+    <li><strong>Three ways of spreading pumping over the weeks</strong>: a conclusion must hold whichever guess we use.</li>
+  </ul>
+
+  <h3>Explanations (February)</h3>
+  <p>The model's pushes become short sentences, for example: "this summer the level at well X fell mostly because of pumping from the same deep layer within 3 km". Each sentence is checked three ways: it describes what the model really computed (<button class="term" data-term="faithful">faithful</button>), every place it names exists in the map and is linked to the well, and the direction agrees with the rules. Real events serve as test cases: the rise of the deep layer in summer 2024 after pumping was reduced (BRGM bulletin), the 2023 drop, and a river-gravel well near a canal.</p>
+
+  <details class="deeper">
+    <summary>Go deeper</summary>
+    <ul>
+      <li>Phase 4 plan: <code>docs/roadmap.md</code> Phase 4 and <code>docs/analysis_plan.md</code> §10–§12. Main model description: <code>docs/feedback.md</code> §5.5.</li>
+      <li>Shortcut tests follow Marconato et al. 2023 (arXiv:2305.19951); the soft rules follow Ross et al. 2017 (arXiv:1703.03717); built-in signs follow monotone networks (arXiv:2205.11775).</li>
+    </ul>
+  </details>
+  <p class="nextlink"><a href="#next">Next: what comes next</a></p>
+</section>
+
+<!-- ============================================================ 10 -->
+<section id="next" data-title="What comes next" data-depth="90 m">
+  <p class="chapter-no">Chapter 10</p>
+  <h2>What comes next</h2>
+  <p class="short">Five more phases until the defence, with two checkpoints where the supervisor looks at the work before we go on.</p>
+  <figure>
+    <div class="panel">
+      <svg viewBox="0 0 960 300" role="img" aria-label="Timeline from October 2026 to June 2027: knowledge map until 6 December, then the smart model until the end of January, explanations in February, the paper until 25 April, the thesis and defence until June.">
+        <g class="axis">
+          <line x1="40" y1="250" x2="940" y2="250"/>
+          <text x="40" y="270">Oct</text><text x="140" y="270">Nov</text><text x="240" y="270">Dec</text>
+          <text x="340" y="270">Jan 2027</text><text x="440" y="270">Feb</text><text x="540" y="270">Mar</text>
+          <text x="640" y="270">Apr</text><text x="740" y="270">May</text><text x="840" y="270">Jun</text>
+        </g>
+        <rect x="40" y="30" width="80" height="26" rx="5" fill="var(--c4)"/>
+        <text class="cat-label" x="126" y="48">done: data, dataset, rivals</text>
+        <rect x="121" y="68" width="135" height="26" rx="5" fill="var(--pliocene)"/>
+        <text class="cat-label" x="262" y="86">Phase 3: the knowledge map</text>
+        <rect x="259" y="106" width="181" height="26" rx="5" fill="var(--model)"/>
+        <text class="cat-label" x="446" y="124">Phase 4: the smart model and the tests</text>
+        <rect x="440" y="144" width="100" height="26" rx="5" fill="var(--alluvium)"/>
+        <text class="cat-label" x="546" y="162">Phase 5: explanations, small dashboard</text>
+        <rect x="540" y="182" width="180" height="26" rx="5" fill="var(--karst)"/>
+        <text class="cat-label" x="726" y="200">Phase 6: the paper</text>
+        <rect x="723" y="220" width="217" height="26" rx="5" fill="var(--other)"/>
+        <text class="cat-label" x="730" y="238" fill="var(--paper)">Phase 7: thesis, defence</text>
+        <line x1="111" y1="20" x2="111" y2="250" stroke="var(--critical)" stroke-width="2"/>
+        <text class="art-label" x="70" y="16">today, 23 Oct</text>
+        <polygon points="256,96 262,102 256,108 250,102" fill="var(--ink)"/>
+        <polygon points="440,134 446,140 440,146 434,140" fill="var(--ink)"/>
+        <text class="art-sub" x="180" y="148">Gate 3</text>
+        <text class="art-sub" x="410" y="184">Gate 4</text>
+      </svg>
+    </div>
+    <figcaption>Gate 3 (6 December): the supervisor reviews the knowledge map, and the analysis plan is frozen with a git tag. Gate 4 (31 January): results are frozen, no new experiments after it. The paper is submitted by the end of April 2027. The defence date is not known yet.</figcaption>
+  </figure>
+
+  <h3>Right now</h3>
+  <ul>
+    <li>Two rivals of version 3 are still training: the EA-LSTM on the laptop (until tomorrow morning) and the Taccari graph network on Colab. When both finish, the results go into the monthly report for the supervisor.</li>
+    <li>Re-running all the rivals on dataset v4 is ready but <strong>on hold until you say go</strong>.</li>
+    <li>The knowledge map work continues once you have reviewed the 16 questions.</li>
+  </ul>
+  <p class="nextlink"><a href="#decisions">Next: the decisions board</a></p>
+</section>
+
+<!-- ============================================================ 11 -->
+<section id="decisions" data-title="The decisions board" data-depth="100 m">
+  <p class="chapter-no">Chapter 11</p>
+  <h2>The decisions board</h2>
+  <p class="short">Every important choice, in one place, with the reason in one or two lines, and the ones still waiting for you.</p>
+  <div class="filters" id="decision-filters" role="group" aria-label="Which decisions to show">
+    <button class="btn" type="button" data-f="all" aria-pressed="true">All</button>
+    <button class="btn" type="button" data-f="made">Decided</button>
+    <button class="btn" type="button" data-f="wait">Waiting for you</button>
+  </div>
+  <ul class="decisions" id="decision-list"></ul>
+  <details class="deeper">
+    <summary>Go deeper</summary>
+    <p>The full table of decisions with their reasons: <code>docs/supervisor_questions.md</code> §1 and <code>CLAUDE.md</code> §3. The e-mails to send are in <code>docs/supervisor_questions.md</code> §4–5.</p>
+  </details>
+  <p class="nextlink"><a href="#words">Next: the word list</a></p>
+</section>
+
+<!-- ============================================================ 12 -->
+<section id="words" data-title="Word list" data-depth="110 m">
+  <p class="chapter-no">Chapter 12</p>
+  <h2>Word list</h2>
+  <p class="short">Every hard word of the guide, in plain words. The dotted words in the chapters open the same explanations.</p>
+  <input class="search" id="word-search" type="search" placeholder="Search a word, for example aquifer" aria-label="Search the word list">
+  <dl class="words" id="word-list"></dl>
+</section>
+  </main>
+</div>
+
+<footer id="footer"></footer>
+<div class="tip" id="tip" role="status"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -130,3 +130,16 @@ Open points, all for step 12.4:
 - The official (Sandre) definition of the flag is still to confirm.
 - Next: the attribution table itself (point → unit, method, confidence), which becomes the
   `UnitAttribution` nodes of the KG.
+
+## Decisions of 2026-10-23 (the supervisor left the choices to Assil)
+
+`docs/supervisor_questions.md` §1 lists each decision with its reason. For the ontology:
+- **Framing.** The Pliocene use conflict is the main story, so the pump → unit links (CQ2)
+  and the abstraction per unit and use (CQ12) are MUST. Canal-return recharge (CQ6) stays
+  a secondary case study.
+- **Main model.** The hybrid gives each causal `Influence` type its own sign-constrained
+  response function. The ontology's causal patterns (`docs/ontology_design.md` §4.1) are
+  therefore exactly what the model consumes.
+- **Scope.** Every objective of the subject gets at least a small, measured version: the
+  SWEET/INSPIRE/AGROVOC alignment, the satellite rule (CQ15) and the dashboard queries
+  (CQ16).

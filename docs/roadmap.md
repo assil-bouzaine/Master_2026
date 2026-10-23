@@ -4,8 +4,9 @@ Written 2026-10-13. **Revised 2026-10-23**, after:
 - the critical review (`docs/feedback.md`)
 - the project review (`docs/review_2026-10-23.md`)
 
-Assil approved the revision on 2026-10-23. Items marked **(supervisor)** wait
-for the supervisor; all of them are in `docs/supervisor_questions.md`.
+Assil approved the revision on 2026-10-23. The same day, the supervisor left the
+open choices to Assil. The decisions and their reasons are in
+`docs/supervisor_questions.md` §1.
 Literature verdicts are in [`literature/reading_list.md`](literature/reading_list.md).
 
 **Timing assumption: defence in early June 2027. Not confirmed.** Week
@@ -16,7 +17,7 @@ the same amount.
 
 ## 1. The paper this project produces
 
-**Working title (supervisor).** *Right for the right reasons?
+**Working title (decided).** *Right for the right reasons?
 Ontology-derived graphs and constraints for groundwater-level simulation in a
 Mediterranean multilayer aquifer.*
 
@@ -25,6 +26,11 @@ vocabulary come from a LULC-Water knowledge graph simulates weekly groundwater
 levels in the Roussillon multilayer aquifer at least as well as strong
 hydrological and deep-learning baselines. A semi-synthetic twin and semantic
 ablations then show whether it is right for the right reasons.
+
+**Framing (decided).**
+- The main story is the use conflict on the Pliocene: drinking water against
+  agriculture.
+- Canal-return recharge is a secondary case study for the alluvium.
 
 **Research questions**
 
@@ -78,14 +84,14 @@ every objective of the subject, some in a small, measured version.
 | Derivation rules | SWRL | **SHACL-AF** (pySHACL advanced mode), plus SHACL for validation | One technology for validation and rules; SPARQL rules can test distances. |
 | Remote sensing | Semantic classification of Sentinel/Landsat | **One derived concept**, `ProbablyIrrigatedParcel` (summer NDVI + soil wetness), by a rule, checked against the RPG. AlphaEarth embeddings stay optional features. | Covers the subject's objective at Master's scale. The RPG already gives the crops. |
 | Graph construction | Built by the ontology | **Generated from the KG** by SPARQL → PyG `HeteroData` | The ontology is operational, not decorative. |
-| Main model | GNN or Graph Transformer | **(supervisor)** A hybrid: KG → heterogeneous GNN → parameters of sign-constrained response functions + a small residual. The black-box heterogeneous ST-GNN is the comparison. | Every causal relation of the ontology does a job; concepts and explanations are exact. |
+| Main model | GNN or Graph Transformer | **(decided)** A hybrid: KG → heterogeneous GNN → parameters of sign-constrained response functions + a small residual. The black-box heterogeneous ST-GNN is the comparison. | Every causal relation of the ontology does a job; concepts and explanations are exact. |
 | Baselines | "Distance graph + baseline GNN" | Seasonal naive, Pastas (+ WellModel), LightGBM, LSTM, EA-LSTM, Chronos-2, distance-graph and Taccari-graph ST-GNNs, at equal tuning budget | Hydrology reviewers expect Pastas; ML reviewers expect a foundation model. |
 | Time step and window | Daily, 2016–2025 | **Weekly**, 2005–2026; test May 2022 → latest, split into drought and recovery | Weekly cuts noise; the drought is a natural out-of-distribution test. |
 | Explanations | GNNExplainer → text | Contributions by driver group → SPARQL chain → templates → **faithfulness** and sign-consistency tests | Unmeasured explanations are not publishable (Azzolin et al. 2024). |
 | Dashboard | A module of the SAVE Water dashboard | **Prototype:** the competency-question queries + one map page + one scenario query (CQ16) | Covers the subject's objective; the full dashboard belongs to SAVE Water WP8. |
 | Text extraction | Mediterranean concepts from articles | Small, measured version (10–20 papers, local LLM, manual check, precision) | Covers the subject's phase 1 for the thesis. |
 | Nitrate, socio-economics, Spain | In scope | **Future work** | Scope. |
-| Tunisia / Living Labs | In scope | A qualitative transfer demo to Manouba or Charf El Akab **(supervisor)** | Data access decides. |
+| Tunisia / Living Labs | In scope | A qualitative transfer demo to the Manouba aquifer if its data arrive by February; otherwise a "transfer recipe" chapter | Data access decides. |
 
 ---
 
@@ -126,7 +132,7 @@ its gate.
 
 ### Phase 0: data foundation (weeks 1–2) — ✅ done
 Environment on Linux, Step 6b (BD LISA, head-ordering check), Gate 1 memo.
-**Gate 1:** sent; no answer yet.
+**Gate 1:** answered 2026-10-23 (the choices are left to Assil).
 
 ### Phase 1: forcings and the model-ready dataset — ✅ done
 SAFRAN SIM2, Hub'Eau hydrometry, weekly pumping with usage profiles, SGI,
@@ -146,7 +152,7 @@ river inputs, leak fixed). See `docs/notes/step08_dataset.md` and
   - the drought/recovery evaluation (`docs/analysis_plan.md`)
 - Running: EA-LSTM (laptop), Taccari-graph ST-GNN (Colab).
 - Then: ensemble, report, Gate 2 addendum. **No new baselines after this.**
-- **Gate 2:** summary sent; no answer yet.
+- **Gate 2:** answered 2026-10-23 (the choices are left to Assil).
 
 ### Phase 3: ontology and knowledge graph (26 Oct – 6 Dec, 6 weeks)
 
@@ -170,13 +176,13 @@ correct, documented, tested, and cover the subject's objectives SO1 and SO2.
 Tools: Protégé (editing), `rdflib`, `pyoxigraph`, `pyshacl` (advanced mode),
 ROBOT (reason, report), OOPS!, `ontoaligner`, `earthengine-api`.
 **Gate 3:** ontology review with the supervisor. A
-reviewer from SAVE Water (UGE/LASTIG) would be welcome **(supervisor)**.
+reviewer from SAVE Water (UGE/LASTIG) would be welcome (contact asked).
 
 ### Phase 4: knowledge-guided model and validity tests (7 Dec – 31 Jan)
 
 Goal: answer RQ1–RQ3. This is the core of the paper.
 
-1. **Main model (supervisor):** the hybrid. A heterogeneous GNN on the KG
+1. **Main model (decided):** the hybrid. A heterogeneous GNN on the KG
    graph outputs the parameters of sign-constrained response functions
    (causal 1-D convolutions with parametric kernels), one per
    `lulcw:Influence` type. The responses are summed, plus a small bounded
@@ -222,7 +228,7 @@ the prototype page.
 
 ### Phase 6: paper (March – 25 April)
 
-1. Venue (supervisor):
+1. Venue (decided; final check at Gate 4):
 
    | Venue | Fit | Note |
    |---|---|---|
@@ -231,8 +237,9 @@ the prototype page.
    | HESS (Copernicus, open access) | hydrology audience | if the hybrid model is adopted |
    | Earth Science Informatics · Computers & Geosciences | safer | fallback |
 
-   The PRIMA proposal commits SAVE Water to gold open access. Ask who pays the
-   fees **(supervisor)**.
+   The PRIMA proposal commits SAVE Water to gold open access. Who pays the
+   fees has been asked. EMS is a hybrid journal, so the paper can appear without a
+   fee.
 2. Structure:
    - Introduction (gap: Dai 2025, Clark 2025)
    - Study area and data
@@ -258,7 +265,7 @@ the prototype page.
   - the satellite rule
   - the dashboard prototype
 - `docs/notes/` already holds most of the Data and Methodology chapters.
-- Transfer demo to a SAVE Water Living Lab **(supervisor)**: reuse the
+- Transfer demo to the Manouba Living Lab (if its data arrive by February): reuse the
   ontology and the model with the data the consortium provides. Qualitative.
 - Defence slides.
 
@@ -301,7 +308,7 @@ Rules:
 
 | Risk | Sign | Fallback |
 |---|---|---|
-| The supervisor rejects some departures from the subject | Answer to `docs/supervisor_questions.md` | Each one has a small version ready (§2); adjust before Gate 3. |
+| The jury questions departures from the subject | Defence | Every objective has a small, measured version (§2), and each choice is recorded with its reason (`docs/supervisor_questions.md`). |
 | Pumps cannot be tied to layers (CQ2) | Phase 3.3 | Lower since 2026-10-23: 211 points have a BD LISA unit from ADES, and the BNPE river-connection flag is checked on them (alluvium ≈ True, Pliocene ≈ False). Confidence levels; sensitivity on all links; say so. |
 | The KG graph does not beat the Taccari graph | Phase 4 | The arms separate information from structure. Lead with RQ2–RQ4 ("right reasons"), which stay publishable either way. |
 | Pumping inseparable from weather within a year | Already known | Claims from between-year and between-well variation; "summer demand" group; the twin with independent timing. |
@@ -320,6 +327,6 @@ Rules:
 - **Each step:** commit, then write `docs/notes/stepNN_*.md` (what / why /
   what to consider).
 - **Every month:** a short progress report to the supervisor (the PFE guide
-  asks for this). The first is `docs/supervisor_questions.md`.
+  asks for this). The first is the e-mail in `docs/supervisor_questions.md` §4.
 - **Reading:** 2–3 papers a week from `literature/reading_list.md` until
   Phase 4, one comparison-table row each.

@@ -23,12 +23,12 @@ Scope is a **Master's, not a PhD**: one aquifer system (Roussillon plain) and
 one target (weekly groundwater level, plus its SGI drought class), built end to
 end. Every objective of the subject is covered, some in a small, measured
 version (§1b). Future work: nitrate, socio-economics, the full dashboard,
-Spain. One transfer demo to a SAVE Water Living Lab at the end
-**(supervisor)**.
+Spain. One qualitative transfer demo to the Manouba Living Lab at the end, if
+its data arrive by February.
 
 ### 1a. End goal: a peer-reviewed paper as well as the thesis
 
-- **Working title (supervisor):** *Right for the right reasons?
+- **Working title (decided 2026-10-23):** *Right for the right reasons?
   Ontology-derived graphs and constraints for groundwater-level simulation in
   a Mediterranean multilayer aquifer.* "Simulation", because Chronos-2 is the
   forecasting reference; the phrase is from Ross et al. 2017 (arXiv:1703.03717).
@@ -49,11 +49,15 @@ Spain. One transfer demo to a SAVE Water Living Lab at the end
   - **E:** D with its edges rewired, degrees preserved
   - **F:** random and complete graphs
 
-- **Venue (supervisor):** first choice *Environmental Modelling & Software*;
-  second *JGR: Machine Learning and Computation*; fallback *Earth Science
-  Informatics* or *Computers & Geosciences*.
+- **Venue (decided 2026-10-23; final check at Gate 4):**
+  - first choice: *Environmental Modelling & Software*, a hybrid journal, so
+    the paper can be published without an open-access fee
+  - second: *JGR: Machine Learning and Computation* (fully open access, with a
+    fee)
+  - HESS if the hybrid model is strong
+  - fallback: *Earth Science Informatics* or *Computers & Geosciences*
 - **Authorship:** Assil first author, supervisors as co-authors. Acknowledge
-  SAVE Water / PRIMA with the grant number **(supervisor)**.
+  SAVE Water / PRIMA with the grant number (to obtain before submission).
 - **Target:** submitted by the end of April 2027, assuming a June 2027 defence.
   **The real defence date is still unknown.**
 - **Plan:** `docs/roadmap.md` (phases, tools, risks; revised 2026-10-23).
@@ -81,7 +85,7 @@ Spain. One transfer demo to a SAVE Water Living Lab at the end
 | Role | Site | Notes |
 |---|---|---|
 | Primary | **Plaine du Roussillon**, Pyrénées-Orientales (dept 66), France | The method-development site: open data on every layer, 35-year records. Not a SAVE Water Living Lab. |
-| Transfer demo **(supervisor)** | A SAVE Water Living Lab: the **Manouba phreatic aquifer** (Tunisia, MSE-UMA sensors) or the **Charf El Akab coastal aquifer** (Morocco) | Qualitative demo at the end. See `docs/savewater_consortium_notes.md`. |
+| Transfer demo (decided 2026-10-23) | The **Manouba phreatic aquifer** (Tunisia, MSE-UMA sensors); fallback Charf El Akab (Morocco) | Qualitative, and only if its data arrive by end of February; otherwise a "transfer recipe" chapter. See `docs/savewater_consortium_notes.md`. |
 | Future work | Campo de Cartagena / Segura, Spain | Not in this thesis |
 
 ---
@@ -91,8 +95,9 @@ Spain. One transfer demo to a SAVE Water Living Lab at the end
 Adopted on 2026-10-13. **Revised on 2026-10-23**, after the critical review
 (`docs/feedback.md`) and the project review (`docs/review_2026-10-23.md`);
 Assil approved the revision the same day. Do not change them without asking
-Assil. Items marked **(supervisor)** wait for the supervisor's confirmation:
-`docs/supervisor_questions.md`.
+Assil. On 2026-10-23 the supervisor left the open choices to Assil ("do what is best
+for the project"). The decisions and their reasons are in
+`docs/supervisor_questions.md` §1.
 
 **Knowledge side**
 - **Architecture:** a network of small ontologies linked by alignment
@@ -197,7 +202,9 @@ Assil. Items marked **(supervisor)** wait for the supervisor's confirmation:
 - **Target:** groundwater level (m NGF) per well, plus its **SGI** drought
   class (Bloomfield & Marchant 2013, doi:10.5194/hess-17-4769-2013).
 - **Training wells:** all usable dept-66 stations with a masked loss; report
-  on the 33 core wells. Karst stations: **(supervisor)**.
+  on the 33 core wells (primary) and the 26 plain wells (secondary), always
+  per aquifer group. The 6 karst stations are kept (decided 2026-10-23): the
+  karst lies under the Pliocene in the BD LISA stack.
 - **Land use:** the RPG, plus the satellite rule above.
 - **Never a model input:**
   - **restriction orders.** Groundwater-zone orders are triggered by the very
@@ -221,7 +228,7 @@ Assil. Items marked **(supervisor)** wait for the supervisor's confirmation:
   - the distance-graph ST-GNN (GRU, 3-NN graph)
   - the Taccari-graph ST-GNN (doi:10.1038/s41598-024-75385-2)
   - Equal tuning budget: 24 Optuna trials, then re-selection over 3 seeds.
-- **Main model (supervisor): the hybrid** (`docs/feedback.md` §5.5).
+- **Main model (decided 2026-10-23): the hybrid** (`docs/feedback.md` §5.5).
   - The KG feeds a heterogeneous GNN.
   - The GNN outputs the parameters of **sign-constrained response
     functions**, one per `lulcw:Influence` type.
@@ -276,9 +283,14 @@ Assil. Items marked **(supervisor)** wait for the supervisor's confirmation:
   - the 2023 drop
   - an alluvium well (canal)
 
-**Research framing (supervisor):** the use conflict on the Pliocene (drinking
-water against agriculture), or canal-return recharge. Both are expressible as
-`lulcw:` causal knowledge, so the pipeline does not wait for this answer.
+**Research framing (decided 2026-10-23):**
+- **(A) the use conflict on the Pliocene** (drinking water against agriculture)
+  is the main story: 20 of the 33 core wells, the CQ2 evidence, the 2024 BRGM
+  event.
+- **(B) canal-return recharge** is a secondary case study for the alluvium. It
+  keeps the land-use side of the subject visible.
+
+Both are `lulcw:` causal knowledge.
 
 ---
 
@@ -438,9 +450,11 @@ notebooks/       exploration only; anything that matters moves into src/
 
 **2026-10-23.** Read `docs/review_2026-10-23.md` first: why the plan changed.
 - Assil approved the revised plan (this file, `docs/roadmap.md`).
-- **The supervisor has not answered yet.** All the questions, with a French
-  e-mail ready to send, are in **`docs/supervisor_questions.md`**. Record the
-  answers there and here when they arrive.
+- **The supervisor answered (2026-10-23): "do what is best for the project".**
+  Assil's decisions and their reasons are in `docs/supervisor_questions.md` §1.
+  - Still to obtain (facts, §3 there): the defence date, SAVE Water D4.1/D3.1,
+    contacts, publication details, monthly drinking-water production.
+  - The e-mails are ready in §4–5 there; Assil sends them.
 
 **Running now**
 - **Laptop:** the EA-LSTM sweep, started 13:40.
@@ -469,8 +483,8 @@ notebooks/       exploration only; anything that matters moves into src/
 
   Then Step 12a is done.
 
-**Phase 3 (Step 12):** the task list is below. Do the reversible tasks now.
-Freeze the ontology design only after the supervisor's answers.
+**Phase 3 (Step 12):** the task list is below. Freeze the ontology design after
+Assil's review of the competency questions.
 
 ### ▶ STATUS
 
@@ -481,11 +495,11 @@ Freeze the ontology design only after the supervisor's answers.
 | 5 RPG parcels | ✅ done | `docs/notes/step05_rpg.md` |
 | 6a BNPE abstraction | ✅ done | `docs/notes/step06a_bnpe.md` |
 | 6b BD LISA | ✅ done | `docs/notes/step06b_bdlisa.md` |
-| 7 Gate 1 memo | ✅ written; no answer yet | `docs/memo_gate1_feasibility.md` |
+| 7 Gate 1 memo | ✅ answered 2026-10-23: the choices are left to Assil | `docs/memo_gate1_feasibility.md`, `docs/supervisor_questions.md` |
 | 8 Phase 1: dataset v1 | ✅ done | `docs/notes/step08_dataset.md` |
 | 9 Phase 2: baselines on v1 | ✅ done | `docs/notes/step09_baselines.md` |
 | 10 Baselines on dataset v2 | ✅ done | `docs/notes/step10_baselines_v2.md` |
-| 11 Gate 2 summary | ✅ written; no answer yet. All open questions now in `docs/supervisor_questions.md` | `docs/summary_gate2_results.md` |
+| 11 Gate 2 summary | ✅ answered 2026-10-23: the choices are left to Assil (decisions in `docs/supervisor_questions.md`) | `docs/summary_gate2_results.md` |
 | **12a Fixes from the critical review** | **🔄 finishing:** evaluation, analysis plan, dataset v3 and the laptop baselines are done; EA-LSTM (laptop) and Taccari (Colab) are running | `docs/feedback.md`, `docs/analysis_plan.md`, `docs/notes/step12a_fixes.md` |
 | **12 Phase 3: ontology + KG** | **🔄 started 2026-10-23.** 12.1 drafted, 12.2 started | `docs/review_2026-10-23.md`, `docs/competency_questions.md`, `docs/ontology_design.md`, `docs/notes/step12_ontology.md` |
 
@@ -496,7 +510,7 @@ Freeze the ontology design only after the supervisor's answers.
 | 12.1 | Competency questions (16) with example answers | ✅ drafted; Assil reviews |
 | 12.2 | Reuse table, term by term, and the modelling patterns (`docs/ontology_design.md`) | 🔄 started |
 | 12.3 | **CQ2 data step:** attribute each groundwater abstraction point to a unit, with provenance and confidence | 🔄 evidence found: ADES quality stations give the BD LISA unit for 211 BSS-coded points (`src/ingest/hubeau_qualite_stations.py`); the BNPE flag `nappe_accompagnement` is checked on them (alluvium ~ True, Pliocene ~ False). Next: the attribution table |
-| 12.4 | Ontology module `lulcw:` + imports/alignments in `ontology/`; IRIs and metadata; the quality gates in `tests/` | ⬜ after the supervisor |
+| 12.4 | Ontology module `lulcw:` + imports/alignments in `ontology/`; IRIs and metadata; the quality gates in `tests/` | ⬜ after 12.3 and Assil's CQ review |
 | 12.5 | KG instantiation from the parquet tables (rdflib → Turtle → pyoxigraph) | ⬜ |
 | 12.6 | SHACL shapes and SHACL-AF rules: Influence links, `ProbablyIrrigatedParcel`, `HighIrrigationDemandZone`, `ConfinedSetting` | ⬜ |
 | 12.7 | CQ tests: one SPARQL query plus an oracle per CQ (`tests/cq/`) | ⬜ |
@@ -735,8 +749,8 @@ Follow **`docs/roadmap.md`** (revised 2026-10-23). Weeks count from
 
 | Phase | When | Content |
 |---|---|---|
-| 0–1 | ✅ done | Data foundation, dataset v1 → v3. **Gate 1** (no answer yet) |
-| 2 | ✅ finishing | Baselines; EA-LSTM and Taccari running. **Gate 2** (no answer yet) |
+| 0–1 | ✅ done | Data foundation, dataset v1 → v3. **Gate 1** (answered 2026-10-23) |
+| 2 | ✅ finishing | Baselines; EA-LSTM and Taccari running. **Gate 2** (answered 2026-10-23) |
 | 3 | 26 Oct – 6 Dec | CQs, reuse, `lulcw:`, CQ2 data step, KG, SHACL(-AF), CQ tests, HeteroData; alignment experiment; satellite rule. **Gate 3** |
 | 4 | 7 Dec – 31 Jan | Main model (hybrid) + black-box comparison, arms A–F, soft/hard constraints, semi-synthetic twin, shortcut tests. **Gate 4** (results frozen) |
 | 5 | Feb | Explanations, faithfulness, case studies; dashboard prototype (CQ queries + map + scenario) |

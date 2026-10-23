@@ -63,7 +63,7 @@ Two example wells are used throughout:
 | CQ9 | Which water-restriction level applied around W in week t? | E | COULD | levels yes; zone polygons no |
 | CQ10 | Which entities does an explanation of W name, do they exist and connect to W, and does the stated sign match the polarity? | E V | SHOULD | a test on the KG |
 | CQ11 | Which wells monitor the same unit within 5 km of W, and at what depth difference? | G | MUST | yes |
-| CQ12 | How much water was abstracted from unit U in year y, by use? | R E F | SHOULD | after CQ2 |
+| CQ12 | How much water was abstracted from unit U in year y, by use? | R E F | MUST | after CQ2 |
 | CQ13 | Which wells sit at the same site or within 5 km at different depths, and how often is the shallow head above the deep one? | E V G | SHOULD | yes |
 | CQ14 | Is W in an outcropping (unconfined) or a covered (confined) part of its unit? | F C E | SHOULD | yes |
 | CQ15 | Which parcels were probably irrigated in year y, by a rule on satellite data, and do they lie in a canal area or near a groundwater abstraction point? | F E S | SHOULD | rule to build (Earth Engine) |
@@ -298,7 +298,7 @@ Two example wells are used throughout:
 - **Open.** The |Δ depth| threshold for a "similar depth" edge, chosen on the training period.
   Fixed depth classes were not supported by the pre-check.
 
-### CQ12: annual abstraction from unit U by use (SHOULD)
+### CQ12: annual abstraction from unit U by use (MUST: the main framing)
 - **Question.** How much water was abstracted from unit U in year y, by use?
 - **Why.**
   - R: Pliocene, drinking water against agriculture: the subject's "conflits d'usage"
@@ -383,7 +383,8 @@ Two example wells are used throughout:
 ## Next
 
 1. Assil reviews this list: questions to add or drop, priorities, the open points.
-2. The supervisor confirms the scope (review §2 and §7).
+2. Scope and framing decided on 2026-10-23 (`docs/supervisor_questions.md` §1). The
+   Pliocene use conflict is the main story, so CQ12 is now MUST.
 3. Step 2 (reuse): a term-by-term table following review §4.1 (SAWGraph's GWML2 rendering,
    HyFO, SWEET, HY_Features, SOSA, GeoSPARQL, HILUCS, AGROVOC, PROV-O, SKOS, OWL-Time),
    with `lulcw:` for the rest.

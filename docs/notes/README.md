@@ -24,6 +24,7 @@ the PFE report (the "Méthodologie" and "Données" chapters).
 | 9 | Phase 2: baselines on v1 | done | [step09_baselines.md](step09_baselines.md) |
 | 10 | Baselines v2: more data, tuning, ensemble, ablation | done | [step10_baselines_v2.md](step10_baselines_v2.md) |
 | 12a | Fixes from the critical review: evaluation, analysis plan, dataset v3, new baselines, knowledge-graph pre-check | in progress | [step12a_fixes.md](step12a_fixes.md) |
+| 12 | Phase 3: ontology and knowledge graph | in progress (12.1 competency questions drafted, waiting for review) | [step12_ontology.md](step12_ontology.md) |
 
 Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 
@@ -76,3 +77,12 @@ Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 | **Hyperparameter tuning** | Searching the model's settings (window length, size, learning rate) automatically; chosen on validation, never on test. |
 | **Ensemble** | Averaging several models; their errors partly cancel. |
 | **Prise (dans la Têt)** | A river intake: the head of an irrigation canal that diverts river water. |
+| **Ontology** | A formal vocabulary for a domain: classes (well, aquifer unit), relations (pumps from, overlies) and rules, written so that a computer can reason with them. |
+| **Knowledge graph (KG)** | The facts written with that vocabulary ("well C2-1 monitors unit 718BP02"), stored as a network of entities and relations. |
+| **RDF triple** | The unit of a knowledge graph: subject, relation, object. RDF is the standard format. |
+| **Competency question (CQ)** | A question the ontology must be able to answer. The CQs are its requirements, and each becomes a SPARQL test. |
+| **SPARQL** | The query language of RDF knowledge graphs (like SQL for tables). |
+| **SHACL / SHACL-AF** | SHACL checks that the graph has the expected shape (every `pumpsFrom` has a source); SHACL-AF rules derive new facts (a "high irrigation demand zone"). |
+| **Bridging module (`lulcw:`)** | Our own small ontology: it links the reused standard vocabularies and adds the causal relations with their sign. |
+| **Polarity** | The sign of a causal link: `decreasesHead` (pumping) or `increasesHead` (rain, canal seepage). |
+| **Provenance / confidence** | Where a fact comes from (BSS record, depth rule, name rule) and how sure we are of it. |

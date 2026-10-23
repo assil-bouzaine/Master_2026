@@ -296,8 +296,10 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
     stop without warning: re-run the two cells of `docs/gpu_howto.md` (Colab section); the
     Drive permission is Assil's click. Results back with `scripts/colab_pull.py`.
   - If Colab runs short: Lightning AI (asks for a phone number), Modal (card requirement
-    unclear), Camber after 2026-11-13. Phase 3 (competency questions) can start meanwhile.
-    Details: step note §5c, last updates.
+    unclear), Camber after 2026-11-13. Details: step note §5c, last updates.
+  - **Phase 3 started:** 13 competency questions drafted (`docs/competency_questions.md`,
+    note `docs/notes/step12_ontology.md`), waiting for Assil's review. Next: the reuse step,
+    then the CQ2 data step (attribute abstraction points to aquifer units).
 - **2026-10-20, Step 12a (fixes from the critical review `docs/feedback.md`):**
   - **Evaluation changed** (`docs/analysis_plan.md`, the reference for every new
     result): test split into **drought** (May 2022 → Nov 2025) and **recovery** (Dec
@@ -400,7 +402,7 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
 | 10 Improve baselines (dataset v2) | ✅ done (tuning, ensemble, ablation, Wilcoxon) | `docs/notes/step10_baselines_v2.md` |
 | **11 Gate 2: results to the supervisor** | **✅ summary written; Assil sends it with the Gate 1 memo — waiting for answers** | `docs/summary_gate2_results.md` + `docs/memo_gate1_feasibility.md` |
 | **12a Fixes from the critical review** | **🔄 in progress — START HERE** (evaluation ✅, analysis plan ✅, dataset v3 ✅, laptop baselines v3 ✅, GPU sweep partly done: EA-LSTM + Taccari wait for a GPU) | `docs/feedback.md`, `docs/analysis_plan.md`, `docs/notes/step12a_fixes.md` |
-| **12 Phase 3: ontology + knowledge graph** | ⬜ after 12a (the knowledge-graph pre-check in `docs/feedback.md` §5.1 comes first) | `docs/roadmap.md` §4 Phase 3 |
+| **12 Phase 3: ontology + knowledge graph** | 🔄 started 2026-10-23: 13 competency questions drafted, waiting for Assil's review (in parallel with the 12a GPU runs) | `docs/competency_questions.md`, `docs/notes/step12_ontology.md` |
 
 ### Step 10: improve the baselines (spec)
 

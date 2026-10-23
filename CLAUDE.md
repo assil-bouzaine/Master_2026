@@ -285,6 +285,15 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
 
 ### ▶ Where we are (read this first in a new session)
 
+- **2026-10-23 13:40 — EA-LSTM restarted on the laptop** (`results/v3/cpu_runs7.log`;
+  Optuna reopened the study at 23 complete trials: 1 trial + re-selection + 5 seeds ≈ 4 h,
+  then the regimes ≈ 11–15 h). **Before restarting anything, check `pgrep -af src.models`**
+  (two tuners on one study would both add trials). **Kaggle is dropped:** its verification
+  SMS never reaches Assil's Tunisian number. GPU options for Taccari (≈ 100 h on the laptop),
+  proposed 2026-10-23, waiting for Assil's choice: Google Colab free T4 (recommended; no SMS;
+  the Drive permission is Assil's click each session), Lightning AI (asks for a phone number)
+  and Modal (card requirement unclear) to try, Camber after 2026-11-13 as the fallback.
+  Phase 3 (competency questions) can start meanwhile. Details: step note §5c, last update.
 - **2026-10-20, Step 12a (fixes from the critical review `docs/feedback.md`):**
   - **Evaluation changed** (`docs/analysis_plan.md`, the reference for every new
     result): test split into **drought** (May 2022 → Nov 2025) and **recovery** (Dec
@@ -314,7 +323,7 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
     (`docs/results_baselines.md`). Kaggle phone verification fails from Tunisia (no SMS):
     **EA-LSTM runs on the laptop** (20:23–21:34, `results/v3/cpu_runs6.log`). **Stopped at
     Assil's request at 21:34:** 23 of 24 trials done, the interrupted trial 24 marked FAIL
-    (step note §5c, update ~21:35). **Next session, first:** restart it with
+    (step note §5c, update ~21:35). **Restarted 2026-10-23 13:40 (top bullet)** with
     `STEPS="ealstm_tune ealstm_regimes" setsid nohup bash scripts/run_cpu.sh > results/v3/cpu_runs7.log 2>&1 < /dev/null &`
     (1 trial + re-selection + 5 seeds ≈ 4 h, then the regimes ≈ 11–15 h). Taccari
     waits for a GPU (Kaggle if verified, else Camber after 2026-11-13). Then Phase 3:

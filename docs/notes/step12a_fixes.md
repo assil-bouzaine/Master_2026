@@ -193,6 +193,23 @@ re-selection runs + 5 final seeds ≈ 4 h, then the 4 regimes (40 runs) ≈ 11�
 Nothing else was running: the Camber node was already stopped by the platform, and no
 Kaggle kernel was running (the account is still not phone-verified).
 
+**Update 2026-10-23 13:40.** Restarted with the command above (`results/v3/cpu_runs7.log`);
+Optuna reopened the existing study (23 complete, 2 failed). Assil confirmed that Kaggle's
+phone verification does not work from Tunisia, so **Kaggle is dropped**. Only Taccari still
+needs a GPU (≈ 100 h on the laptop). Options without an SMS code, proposed to Assil:
+- **Google Colab, free T4** (recommended): a Google account is enough. Google publishes no
+  fixed limits; sessions can stop without warning and need the tab open. Results go to
+  Google Drive after every run (the Drive permission is Assil's click, each session).
+- **Modal:** $30 of compute per month (L4 ≈ $0.80/h, T4 ≈ $0.59/h), run from the laptop
+  terminal, keeps running with the laptop off. modal.com/pricing does not say whether a
+  payment card is needed.
+- **Lightning AI:** up to 30 free credits (≈ 80 h on interruptible GPUs, valid 12 months),
+  no card, but it asks for a phone number.
+- **Camber** after the allowance renews (2026-11-13): the fallback.
+- Not useful: SageMaker Studio Lab also needs an SMS code and caps the GPU at 4 h a day.
+Phase 4 (~300 runs of the same network) needs more than the free tiers: ask the supervisor
+at Gate 2 whether the lab, the university or a SAVE Water partner has a GPU we can use.
+
 **Resume checklist:**
 1. ✅ CLI login, then bring back `stgnn_tuned_{lwo,f25,f50,refit}`, `ealstm_tuning` and
    `run_v3.log` (`camber stash cp -r stash://assil0723/pfe_v3_run/results_gpu/v3/<run>

@@ -606,6 +606,9 @@ they stopped (instructions below); only the run in progress is lost.
   6. Commit.
 
   Then Step 12a is done.
+- **ON HOLD (Assil, 2026-10-23 evening): "keep only v3 running for now".**
+  Start no v4 run, on the laptop or on Colab, until Assil says so. The steps
+  below are ready for that moment.
 - **Then the dataset v4 re-runs (Step 12b), laptop first:**
   `setsid nohup bash scripts/run_v4_cpu.sh > results/v4/cpu_runs.log 2>&1 < /dev/null &`
   - steps: copy the v3 selections, naive, LightGBM (+ regimes), Pastas,
@@ -631,7 +634,7 @@ they stopped (instructions below); only the run in progress is lost.
 3. Later, for task 12.10: an Earth Engine account (sign-in is his).
 
 **Next for Claude, while the models run or after:**
-1. Finish Step 12a (above), then the v4 re-runs (above).
+1. Finish Step 12a (above). The v4 re-runs wait for Assil's go (on hold).
 2. Literature, from the second review:
    - the positioning matrix in `docs/literature/comparison_table.md`: past heads
      as input? forcings? split? knowledge supplied? explanation validated?

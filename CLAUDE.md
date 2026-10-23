@@ -297,9 +297,21 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
     Drive permission is Assil's click. Results back with `scripts/colab_pull.py`.
   - If Colab runs short: Lightning AI (asks for a phone number), Modal (card requirement
     unclear), Camber after 2026-11-13. Details: step note §5c, last updates.
-  - **Phase 3 started:** 13 competency questions drafted (`docs/competency_questions.md`,
+  - **Phase 3 started:** competency questions drafted (`docs/competency_questions.md`,
     note `docs/notes/step12_ontology.md`), waiting for Assil's review. Next: the reuse step,
     then the CQ2 data step (attribute abstraction points to aquifer units).
+  - **Project review the same day (Assil asked): `docs/review_2026-10-23.md`. Read it
+    first.**
+    - Verdict: data and baselines are on track. The design is right in direction but has 8
+      open decisions.
+    - The plan has drifted from `Documents/sujet.docx`: SWEET/INSPIRE alignment, a rule on
+      satellite data and the dashboard queries were dropped. Small versions are proposed.
+    - The reuse plan in §3 has two wrong items: GWML2 has no official OWL (use the
+      SAWGraph rendering) and WHOW-KG has no water-use module. `overlies` is ours, not
+      GWML2's.
+    - The CQs were corrected (4 errors) and extended to 16.
+    - §3 is **not** changed. Its corrections (review §7.2) need Assil's OK.
+    - Next: one message to the supervisor (review §7.1).
 - **2026-10-20, Step 12a (fixes from the critical review `docs/feedback.md`):**
   - **Evaluation changed** (`docs/analysis_plan.md`, the reference for every new
     result): test split into **drought** (May 2022 → Nov 2025) and **recovery** (Dec
@@ -402,7 +414,7 @@ Camber node through the Claude-in-Chrome extension** (see §4 and
 | 10 Improve baselines (dataset v2) | ✅ done (tuning, ensemble, ablation, Wilcoxon) | `docs/notes/step10_baselines_v2.md` |
 | **11 Gate 2: results to the supervisor** | **✅ summary written; Assil sends it with the Gate 1 memo — waiting for answers** | `docs/summary_gate2_results.md` + `docs/memo_gate1_feasibility.md` |
 | **12a Fixes from the critical review** | **🔄 in progress — START HERE** (evaluation ✅, analysis plan ✅, dataset v3 ✅, laptop baselines v3 ✅, GPU sweep partly done: EA-LSTM + Taccari wait for a GPU) | `docs/feedback.md`, `docs/analysis_plan.md`, `docs/notes/step12a_fixes.md` |
-| **12 Phase 3: ontology + knowledge graph** | 🔄 started 2026-10-23: 13 competency questions drafted, waiting for Assil's review (in parallel with the 12a GPU runs) | `docs/competency_questions.md`, `docs/notes/step12_ontology.md` |
+| **12 Phase 3: ontology + knowledge graph** | 🔄 started 2026-10-23: 16 competency questions drafted (revised after the project review), waiting for Assil's review and the supervisor's answers (in parallel with the 12a GPU runs) | `docs/review_2026-10-23.md`, `docs/competency_questions.md`, `docs/notes/step12_ontology.md` |
 
 ### Step 10: improve the baselines (spec)
 

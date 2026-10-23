@@ -3,7 +3,8 @@
 ## 12.1 Competency questions (draft, 2026-10-23)
 
 ### What was done
-- Drafted 13 competency questions in `docs/competency_questions.md`. Each one has:
+- Drafted 13 competency questions in `docs/competency_questions.md` (16 after the revision
+  below). Each one has:
   - the parts of the project it feeds: graph, inputs, constraints, explanations,
     validation, framing
   - a priority (MUST / SHOULD / COULD)
@@ -33,8 +34,29 @@ This keeps Phase 3 inside its time-box and gives Gate 3 an objective "done".
   against 17 Mm³ of irrigation. Whether it came from the Têt alluvium or from the Pliocene
   below matters for both layers.
 - **Depth matters inside the Pliocene.** W1's three same-unit neighbours, 2.8 km away
-  (DEM'TER 1–3), are screened at 15, 60 and 111 m; only one is at a depth similar to W1's
-  97 m.
+  (DEM'TER 1–3), have investigation depths of 15, 60 and 111 m; only one is at a depth
+  similar to W1's 97 m.
+
+### Revision after the project review (same day)
+The review (`docs/review_2026-10-23.md`) found four errors in the first draft. All are fixed
+in `docs/competency_questions.md`:
+1. **Depth.** `profondeur_investigation` is the borehole's *investigation* depth, not its
+   screen depth (screens are only in the BSS logs).
+2. **Depth classes.** Fixed classes were not supported by the pre-check (p = 0.52), while
+   the continuous depth difference was (p = 0.002). Depth stays a number.
+3. **Restriction orders are not a model input** (CQ9): they would leak the target or are
+   used only for the imputation.
+4. **GWML2 has no `overlies`.** That relation is ours.
+
+It also added three questions:
+- CQ14, confinement
+- CQ15, irrigation derived from satellite data (the subject's remote-sensing objective)
+- CQ16, the dashboard scenario query
+
+The ontology reuse plan changes too:
+- GWML2 has no official OWL; the OWL rendering in SAWGraph's water ontology is used instead.
+- SWEET, named in the subject, is added.
+- WHOW-KG is kept as the architecture pattern only; it has no water-use module.
 - **Two questions lack data:** canal command areas (CQ6) and restriction zones (CQ9). They are
   COULD.
 

@@ -568,10 +568,12 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
   GPU because it took gradients in eval mode, which cuDNN refuses ("cudnn RNN
   backward can only be called in training mode"); a test bug, not a model
   bug (training runs in train mode). Fixed 2026-10-24 (train mode, dropout 0;
-  CPU half passes). **Before session 2:** rebuild the bundle, upload it to
-  Drive (7 MB parts through the Files panel; if a part does not start,
-  dispatch a `change` event on `#file-tree-upload-input`), then the run line
-  again: finished runs are restored from Drive and skipped. Pull with
+  CPU half passes). **Session 2 is prepared:** Drive `pfe_colab/gpu_bundle.zip`
+  is already the fixed bundle (md5 18c1256e…, copied 15:41 UTC through the
+  Colab Terminal while session 1 ran; parts that hang in the Files panel are
+  re-sent, and a `change` event on `#file-tree-upload-input` starts a stalled
+  one). In a new runtime: mount Drive (Assil), then the same run line;
+  finished runs are restored from Drive and skipped. Pull with
   `scripts/colab_pull.py` (Drive folder `pfe_colab/results_gpu` → Download).
 - **After both:** `PFE_DATASET=v4` ensemble and `baseline_report` → the v4
   report of record (the v3 report stays as Step 12a's record). To re-check on

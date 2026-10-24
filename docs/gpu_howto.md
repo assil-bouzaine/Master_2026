@@ -311,11 +311,12 @@ folder `pfe_colab/results_gpu` (Drive > Download) works too. Then re-run the swe
   GPU-hours, not ~100 h.
 - After a code change, rebuild the bundle and upload it again (or add the changed file to the
   Drive copy with `zip`), so that the next session unzips the new version.
-- **A session can die about 90 min after the last interaction, even with a cell running**
-  (2026-10-24). The last touch was at 15:41 UTC and the run stopped at 17:13 UTC, with no
-  error and without the runner's closing log line; most likely the free-tier idle timeout.
-  During a long run, check the tab at least hourly. A stop costs only the seed in progress
-  (the other seeds are on Drive within 5 min).
+- **A session can stop without any message** (2026-10-24). The last touch was at 15:41 UTC
+  and the run stopped at 17:13 UTC, with no error and without the runner's closing log line.
+  At 18:40 UTC Colab refused a new GPU "due to usage limits", so the cause was the quota or
+  the idle timeout (about 90 min); we cannot tell which. During a long run, check the tab
+  at least hourly. A stop costs only the seed in progress (the others reach Drive within
+  5 min).
 
 ## Dataset v4 re-runs (from 2026-10-24; analysis plan v2, §5)
 
@@ -383,3 +384,10 @@ Kernels run in the background (laptop may be off), up to 12 h per session.
   scripts/kaggle_cpu_run.py`. The first dry run found that Pastas needs `tqdm`.
 - `pull` keeps the whole output in `results/_kaggle_cpu/output`; the next `push` ships it back
   as `state.zip`, so finished seeds and wells are not recomputed.
+- **EA-LSTM on Kaggle** (from 2026-10-24, when Colab ran out of GPU quota):
+  `push --steps "final:ealstm regimes:ealstm"`. It uses the torch of Kaggle's image (not a
+  pinned wheel). The kernel runs `tests/test_ealstm.py` first and drops the EA-LSTM steps if
+  torch is missing or the test fails; if every step is dropped it runs "none", never the
+  default steps. About 2 h for the final and 17 h for the regimes on 4 CPUs: two pushes.
+- **Pastas stability check:** steps `pastas_starts` (10 starting points per well) and
+  `pastas_trainobs` (the same with training-period heads only), about 1 min per run.

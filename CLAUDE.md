@@ -566,16 +566,16 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
   LightGBM −0.12 → −0.10; left-out wells −0.75 → −0.91 and 25 % data
   −0.26 → −0.35 (harder, as intended by the v4 fixes).
 - **Colab T4, session 1 ended at 17:13 UTC** (started 15:10 UTC in
-  `pfe_v3_gpu.ipynb`). There was no error and no closing log line: most likely
-  the free-tier idle timeout, 92 min after the last interaction (15:41). Checked
-  18:00 UTC: Colab shows "No active sessions". Done and saved on Drive
-  (`pfe_colab/results_gpu/v4`):
+  `pfe_v3_gpu.ipynb`). There was no error and no closing log line. At 18:40 UTC
+  Colab refused a new GPU "due to usage limits", so the stop was either the
+  quota or the idle timeout (92 min after the last interaction, 15:41); we cannot
+  tell which. Done and saved on Drive (`pfe_colab/results_gpu/v4`):
   - the finals of LSTM, distance ST-GNN and Taccari
   - the regimes of LSTM and ST-GNN
   - Taccari left-out wells: fold 0, and fold 1 seeds 0–2
 
-  Left: `final:ealstm`, the rest of `regimes:taccari` (32 seed-runs, ≈ 3 h),
-  `regimes:ealstm`, Chronos-2 ×3 (≈ 4–6 T4-hours in all). First look (unscored
+  Left: `final:ealstm` and `regimes:ealstm` (now on Kaggle), the rest of
+  `regimes:taccari` (32 seed-runs, ≈ 3 h) and Chronos-2 ×3 (Colab). First look (unscored
   medians from the log, 33 core wells, drought NSE v3 → v4):
   - finals: LSTM 0.01 → 0.04, ST-GNN −0.09 → 0.04, Taccari −0.11 → −0.06
   - left-out wells: LSTM −1.56 → −0.94, but ST-GNN −0.42 → −0.98. On the v4
@@ -595,11 +595,18 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
   Colab Terminal while session 1 ran; parts that hang in the Files panel are
   re-sent, and a `change` event on `#file-tree-upload-input` starts a stalled
   one). In a new runtime: mount Drive (Assil), then the same run line;
-  finished runs are restored from Drive and skipped. Suggested order for
-  session 2 (main-table rows first): put
-  `STEPS="final:ealstm chronos2 chronos2_xl chronos2_ft regimes:taccari regimes:ealstm"`
-  before `python` in the run line. Touch the tab at least hourly. Pull with
+  finished runs are restored from Drive and skipped. **Session 2, when Colab
+  gives a GPU again** (EA-LSTM moved to Kaggle): put
+  `STEPS="chronos2 chronos2_xl chronos2_ft regimes:taccari"` before `python` in
+  the run line (≈ 3.5 T4-hours). Touch the tab at least hourly. Pull with
   `scripts/colab_pull.py` (Drive folder `pfe_colab/results_gpu` → Download).
+- **Kaggle CPU, kernel version 3** (pushed 18:52 UTC, budget 11 h; step note
+  12b, last section):
+  - `pastas_starts`, `pastas_trainobs`: the Pastas stability check
+  - `final:ealstm`, `regimes:ealstm`: they run only if the image has torch and
+    `tests/test_ealstm.py` passes there; about 2 h + 17 h on 4 CPUs
+  - Then `scripts/kaggle_cpu.py pull`, and push again with
+    `--steps "regimes:ealstm"` to finish (it resumes from the pulled output).
 - **After both:** `PFE_DATASET=v4` ensemble and `baseline_report` → the v4
   report of record (the v3 report stays as Step 12a's record). To re-check on
   v4: the Taccari drought-skill result (p_holm 0.013 on v3) and "the graph

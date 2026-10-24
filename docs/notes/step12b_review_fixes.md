@@ -196,3 +196,41 @@ ouvrage):
 - Kaggle gives no live log through the API; the log and the results arrive when the kernel
   ends (`kaggle_cpu.py status`, then `pull`).
 - Free Colab can refuse a GPU or stop a session; everything is resumable from Drive.
+
+## 2026-10-24 evening: Colab out of GPU quota; EA-LSTM and a Pastas check go to Kaggle
+
+**What was done.**
+- Colab session 1 (15:10–17:13 UTC) finished the finals of LSTM, distance ST-GNN and
+  Taccari, the regimes of LSTM and ST-GNN, and 8 of Taccari's 25 left-out-well runs; all
+  are on Drive. It stopped without an error. At 18:40 UTC Colab refused a new GPU "due to
+  usage limits", so the cause was the idle timeout or the quota; we cannot tell which.
+- The rest is split by what each machine does best:
+  - Kaggle CPU (kernel version 3, pushed 18:52 UTC): the Pastas stability check, then
+    EA-LSTM's final and regimes.
+  - Colab, when the quota is back: Chronos-2 ×3, then the rest of Taccari's regimes.
+- **Pastas stability check.** The v4 refit on Kaggle moved the reference's drought median
+  NSE from −0.73 to −0.51. Only 4 of its 47 wells have changed heads, all before 2010 and
+  outside its 2012–2019 calibration, yet 13 wells with identical heads changed by more than
+  0.05, and most wells' parameters moved. The check refits every well from 10 starting
+  points (start 0 = Pastas' defaults), and once more with training-period heads only.
+  `tests/test_pastas_starts.py` checks the drawn starting values without solving a model.
+
+**Why.**
+- Pastas is the reference of every significance test. If its own score moves by 0.2
+  between two computers, a model "beating Pastas" by 0.2 means little. We need its
+  spread, like the seed spread of the neural models.
+- By default Pastas starts its constant at the mean of the whole head series, test period
+  included. That is not an input, but with a poorly determined optimum the starting point
+  can steer the fit. The `--train-obs` runs measure whether it matters.
+- EA-LSTM was tuned and run on a CPU for v3 (the laptop), so its v4 runs on Kaggle's CPU
+  stay comparable, and they save the scarce GPU hours for Taccari and Chronos-2.
+
+**What to consider.**
+- The EA-LSTM steps use the torch of Kaggle's image (it is not among the pinned wheels);
+  they run only if `tests/test_ealstm.py` passes there, and the log records the version.
+- EA-LSTM on 4 CPUs: about 2 h for the final and about 17 h for the regimes, so one more
+  push after this one (each push resumes from the last pulled output).
+- The GPU bundle on Drive predates one guard in `colab_run.py` (an empty step list now
+  becomes "none"); the next Colab steps (Chronos-2, Taccari) never reach that case.
+- What becomes the v4 reference (the record, the best of the starts, or training-only
+  heads) is decided with Assil once the spread is known.

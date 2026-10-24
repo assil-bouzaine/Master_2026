@@ -344,3 +344,14 @@ and its documentation page (https://ontologies.geoconnex.us/sawgraph-water-ontol
 on 2026-10-24) is the source of the hand-written `ontology/imports/gwml2_hyfo_terms.ttl`.
 ROBOT 1.9.11 (`tools/robot.jar`, gitignored) came from the ontodev/robot GitHub release;
 its sha256 matched the published digest (53cd275c…).
+
+### Knowledge graph (Step 12, task 12.5)
+
+| Date | Command | Output | Rows |
+|---|---|---|---|
+| 2026-10-24 | `PFE_DATASET=v4 python -m src.kg.build_kg` (61 s; check: `python -m tests.test_kg`) | `data/processed/kg/lulcw_kg_v4.ttl` (14.5 MB Turtle), `lulcw_kg_v4_summary.json` (counts) | 205,650 triples: 65 piezometers, 47 units, 201 polygons, 2,187 groundwater facilities, 2,280 unit attributions, 12,951 annual declared volumes |
+
+Inputs: dataset v4 (`wells`, `heads_weekly`), `data/interim/piezo_stations.parquet` and
+`raw/hubeau/stations_66.parquet`, the BNPE snapshot of 2026-10-20 (points and annual
+volumes, groundwater only), the BD LISA V3 GeoPackage, and the task 12.3 tables. No
+download. Rebuild it after any of them changes (`tests/test_kg.py` then fails).

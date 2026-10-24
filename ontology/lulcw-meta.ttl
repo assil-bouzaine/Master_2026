@@ -9,8 +9,8 @@
 # to local files); the quality gates in tests/test_ontology.py run on it.
 
 <https://w3id.org/lulcw/meta> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/meta/0.1.0> ;
-    owl:versionInfo "0.1.0" ;
+    owl:versionIRI <https://w3id.org/lulcw/meta/0.1.1> ;
+    owl:versionInfo "0.1.1" ;
     dcterms:title "LULC-Water meta-ontology"@en , "Méta-ontologie LULC-Water"@fr ;
     dcterms:description "Network of the LULC-Water bridging module with GWML2 and HyFO (SAWGraph's OWL rendering), SWEET, SOSA, PROV-O, OWL-Time, SKOS and GeoSPARQL, linked by alignment modules rather than merged."@en ,
         "Réseau formé du module de liaison LULC-Water, de GWML2 et HyFO (rendu OWL de SAWGraph), de SWEET, SOSA, PROV-O, OWL-Time, SKOS et GeoSPARQL, reliés par des modules d'alignement plutôt que fusionnés."@fr ;

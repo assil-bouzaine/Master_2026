@@ -19,8 +19,9 @@
 # M2 = square metre, M3 = cubic metre) and are stated in each definition.
 
 <https://w3id.org/lulcw> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/0.1.0> ;
-    owl:versionInfo "0.1.0" ;
+    owl:versionIRI <https://w3id.org/lulcw/0.1.1> ;
+    owl:versionInfo "0.1.1" ;
+    owl:priorVersion <https://w3id.org/lulcw/0.1.0> ;
     dcterms:title "LULC-Water bridging module"@en , "Module de liaison LULC-Water"@fr ;
     dcterms:description "Bridging module of the LULC-Water network of ontologies (SAVE Water, PRIMA): wells, abstraction facilities, hydrogeological units and the qualified, evidence-carrying assertions (unit attributions, stratigraphic relations, well links, influences, annual abstraction accounting) that structure, constrain and explain a groundwater-level model of the Roussillon multilayer aquifer."@en ,
         "Module de liaison du réseau d'ontologies LULC-Water (SAVE Water, PRIMA) : piézomètres, ouvrages de prélèvement, entités hydrogéologiques et assertions qualifiées, porteuses de preuves (attributions à une entité, relations stratigraphiques, liens entre piézomètres, influences, bilans annuels des prélèvements), qui structurent, contraignent et expliquent un modèle des niveaux piézométriques de l'aquifère multicouche du Roussillon."@fr ;
@@ -29,7 +30,8 @@
     dcterms:created "2026-10-24"^^xsd:date ;
     vann:preferredNamespacePrefix "lulcw" ;
     vann:preferredNamespaceUri "https://w3id.org/lulcw#" ;
-    rdfs:comment "Namespace provisional until the w3id.org redirect is accepted (docs/ontology_design.md §6)."@en ;
+    rdfs:comment "Namespace provisional until the w3id.org redirect is accepted (docs/ontology_design.md §6)."@en ,
+        "0.1.1 (2026-10-24, task 12.5): water use EnergyUse (BNPE code ENE); GeoSPARQL hasMetricArea added to the reused terms for polygon areas."@en ;
     owl:imports <https://w3id.org/lulcw/imports/sosa> , <https://w3id.org/lulcw/imports/prov> ,
         <https://w3id.org/lulcw/imports/time> , <https://w3id.org/lulcw/imports/skos> ,
         <https://w3id.org/lulcw/imports/geo> .
@@ -339,6 +341,10 @@ lulcw:CanalSupplyUse a lulcw:WaterUse ; skos:inScheme lulcw:WaterUseScheme ; sko
     skos:prefLabel "canal supply"@en , "alimentation de canal"@fr ;
     rdfs:label "canal supply"@en , "alimentation de canal"@fr ;
     skos:definition "Abstraction declared to feed a canal; diverted water is not recharge."@en .
+lulcw:EnergyUse a lulcw:WaterUse ; skos:inScheme lulcw:WaterUseScheme ; skos:topConceptOf lulcw:WaterUseScheme ;
+    skos:prefLabel "energy"@en , "énergie"@fr ;
+    rdfs:label "energy"@en , "énergie"@fr ;
+    skos:definition "Abstraction declared for energy production other than turbined water (BNPE usage code ENE)."@en .
 
 lulcw:WaterSource a owl:Class ; rdfs:subClassOf skos:Concept ;
     rdfs:label "water source"@en , "milieu de prélèvement"@fr ;

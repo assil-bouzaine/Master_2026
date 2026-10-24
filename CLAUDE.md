@@ -553,7 +553,7 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
     contacts, publication details, monthly drinking-water production.
   - The e-mails are ready in §4–5 there; Assil sends them.
 
-**State at 2026-10-24 19:00 CET: the v4 re-runs (Step 12b) are under way, off the laptop.**
+**State at 2026-10-24 22:45 CET: the v4 re-runs (Step 12b) are under way, off the laptop (Kaggle kernel version 4 running); task 12.5 done.**
 - **Assil's go (2026-10-24):** "u can use kaggle and colab to train", and no
   model is trained on the laptop any more. This lifts the hold of 2026-10-23
   evening ("keep only v3 running").
@@ -600,12 +600,17 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
   `STEPS="chronos2 chronos2_xl chronos2_ft regimes:taccari"` before `python` in
   the run line (≈ 3.5 T4-hours). Touch the tab at least hourly. Pull with
   `scripts/colab_pull.py` (Drive folder `pfe_colab/results_gpu` → Download).
-- **Kaggle CPU, kernel version 3** (pushed 18:52 UTC, budget 11 h; step note
-  12b, last section):
+- **Kaggle CPU, kernel version 4** (pushed 21:11 UTC, budget 11 h, so it ends
+  by about 08:15 UTC on 2026-10-25; step note 12b, last section). Version 3
+  (18:52 UTC) never started: ERROR, empty log, no output, 16 s after a new
+  bundle version. Version 4 is the same kernel and bundle, pushed again with
+  `scripts/kaggle_cpu.py kernel`; `push` now waits after a new bundle version
+  and re-pushes once a kernel that dies silently at start (`docs/gpu_howto.md`).
   - `pastas_starts`, `pastas_trainobs`: the Pastas stability check
   - `final:ealstm`, `regimes:ealstm`: they run only if the image has torch and
     `tests/test_ealstm.py` passes there; about 2 h + 17 h on 4 CPUs
-  - Then `scripts/kaggle_cpu.py pull`, and push again with
+  - Then `scripts/kaggle_cpu.py pull`, `PFE_DATASET=v4 python -m
+    src.analysis.pastas_stability`, and push again with
     `--steps "regimes:ealstm"` to finish (it resumes from the pulled output).
 - **After both:** `PFE_DATASET=v4` ensemble and `baseline_report` → the v4
   report of record (the v3 report stays as Step 12a's record). To re-check on
@@ -643,9 +648,13 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
    - the positioning matrix in `docs/literature/comparison_table.md`: past heads
      as input? forcings? split? knowledge supplied? explanation validated?
    - fill the open-access rows (Heudorfer 2024, Wu 2025 JGR-MLC if open)
-3. ✅ Task 12.4, version 0.1.0 (2026-10-24; step note §12.4). Next: 12.5, the KG from
-   the parquet tables in the CQ work order (CQ1, CQ3, CQ11, then CQ2, CQ12), then
-   12.6–12.8. Task 12.8 includes the equivalence test.
+3. ✅ Task 12.4, version 0.1.0 (2026-10-24; step note §12.4). ✅ Task 12.5
+   (2026-10-24 evening; step note §12.5): `src/kg/build_kg.py` →
+   `data/processed/kg/lulcw_kg_v4.ttl`, checked by `tests/test_kg.py`; ontology
+   0.1.1. Next: 12.6, SHACL shapes (`docs/ontology_design.md` §5) and SHACL-AF
+   rules deriving stratigraphic relations / `overlies`, well links (CQ11),
+   influences (CQ8) and policy selections inside the graph; then 12.7 (CQ
+   queries + fixtures) and 12.8 (export + equivalence test against pandas).
 
 **Phase 3 (Step 12):** the task list is below. Freeze the ontology design after
 Assil's review of the competency questions.
@@ -666,7 +675,7 @@ Assil's review of the competency questions.
 | 11 Gate 2 summary | ✅ answered 2026-10-23: the choices are left to Assil (decisions in `docs/supervisor_questions.md`) | `docs/summary_gate2_results.md` |
 | **12a Fixes from the critical review** | **✅ 2026-10-23:** evaluation, analysis plan, dataset v3, all v3 baselines (EA-LSTM regimes on v4 only), final v3 report | `docs/feedback.md`, `docs/analysis_plan.md`, `docs/notes/step12a_fixes.md` |
 | **12b Fixes from the second review** | **✅ 2026-10-23** (code, dataset v4, analysis plan v2, tests); 🔄 the baseline re-runs on v4 started 2026-10-24 (Kaggle CPU + Colab T4) | `docs/review_codex_2026-10-23.md`, `docs/review_codex_response.md`, `docs/notes/step12b_review_fixes.md` |
-| **12 Phase 3: ontology + KG** | **🔄 started 2026-10-23.** 12.1 drafted, 12.2 started, 12.3 done | `docs/review_2026-10-23.md`, `docs/competency_questions.md`, `docs/ontology_design.md`, `docs/notes/step12_ontology.md` |
+| **12 Phase 3: ontology + KG** | **🔄 started 2026-10-23.** 12.1 drafted, 12.2 started, 12.3–12.5 done | `docs/review_2026-10-23.md`, `docs/competency_questions.md`, `docs/ontology_design.md`, `docs/notes/step12_ontology.md` |
 
 ### Step 12: Phase 3 tasks, in order
 
@@ -676,7 +685,7 @@ Assil's review of the competency questions.
 | 12.2 | Reuse table, term by term, and the modelling patterns (`docs/ontology_design.md`) | 🔄 started |
 | 12.3 | **CQ2 data step:** attribute each groundwater abstraction point to a unit, with provenance and confidence | ✅ 2026-10-23: `src/kg/pump_attribution.py` → `data/interim/pump_unit_attribution.parquet`. Rules measured on 130 recorded boreholes (flag True → alluvium 95 %; flag False + Pliocene under the point → Pliocene 92 %; False alone 53/112). The record is depth-checked. "Probable" only for the uses that were measured. Plain volume 2012–24: confident 27 %, probable 45 %, possible 21 %, unknown 7 % |
 | 12.4 | Ontology module `lulcw:` + imports/alignments in `ontology/`; IRIs and metadata; the quality gates in `tests/` | ✅ 0.1.0 on 2026-10-24 for the 6 MUST CQs: 191 terms (FR/EN labels, definitions), local copies of the reused terms (`src/kg/build_imports.py`), alignments to GWML2/HyFO and SWEET, `python -m tests.test_ontology` (ELK + HermiT consistent, negative control, ROBOT report). SHOULD/COULD modules, the w3id redirect and OOPS! still to do |
-| 12.5 | KG instantiation from the parquet tables (rdflib → Turtle → pyoxigraph) | ⬜ |
+| 12.5 | KG instantiation from the parquet tables (rdflib → Turtle → pyoxigraph) | ✅ 2026-10-24: `src/kg/build_kg.py` (61 s) → `data/processed/kg/lulcw_kg_v4.ttl`, 205,650 triples: 65 piezometers (station, head series, groundwater body, polygon; 60 recorded monitoring units, 5 explicit unknowns), 47 units typed by the written rule, 201 BD LISA polygons with stacks, 2,187 groundwater facilities with the 12.3 attributions (resolution-aware: flag_true = alluvium group probable, exact entity possible), 12,951 annual declared volumes (SOSA, with acquisition mode), provenance and 3 export policies. Facts only: derived links come from the 12.6 rules. `tests/test_kg.py`: 8 checks against pandas oracles + 2 negative controls. Ontology 0.1.1 (`EnergyUse`, `geo:hasMetricArea`) |
 | 12.6 | SHACL shapes and SHACL-AF rules: Influence links, `ProbablyIrrigatedParcel`, `HighIrrigationDemandZone`, `ConfinedSetting` | ⬜ |
 | 12.7 | CQ tests: one SPARQL query plus an oracle per CQ (`tests/cq/`) | ⬜ |
 | 12.8 | Export SPARQL → `HeteroData` (arms C, D, E, F use the same export) | ⬜ |

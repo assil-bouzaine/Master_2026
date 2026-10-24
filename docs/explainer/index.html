@@ -614,12 +614,22 @@
   </figure>
   <p><strong>A first answer.</strong> Around the Millas wells, 110 million m³ of drinking water were pumped within 5 km from 2012 to 2023. About 65 % came from the river gravel layers and about 35 % from the deep layers.</p>
 
+  <h3>The map is filled (done on 24 October)</h3>
+  <p>The empty map of words now holds our real facts: about 206,000 small sentences, written by a script from our tables and checked against them.</p>
+  <ul>
+    <li><strong>What is in it.</strong> The 65 measuring wells (each with its station, its series of weekly levels and the layers mapped under it), 47 underground layers, 201 map pieces with their stack of layers, all 2,187 underground pumps of the département, and 12,951 yearly volumes as the owners declared them.</li>
+    <li><strong>Right family, wrong member.</strong> The "connected to a river" clue finds the river gravel family 95 % of the time, but the exact gravel layer (the Têt's or the Agly's, recent or ancient) only 63 % of the time. So the map now says both: "probably the river gravels" and "possibly this exact one". A question that needs the exact layer cannot be fooled by the family clue.</li>
+    <li><strong>Guessed volumes.</strong> Most farm-well volumes are not read on a meter: 60 % of the declared farm groundwater is a flat-rate estimate (town wells: 98 % measured). The map keeps that label on every yearly volume.</li>
+    <li><strong>Only facts, no shortcuts yet.</strong> The links the model will use (this layer lies on that one, these two wells share a layer, this pump may lower that well) are not written by the script. Rules inside the map will derive them next, and a separate table-based computation must find exactly the same links.</li>
+  </ul>
+
   <details class="deeper">
     <summary>Go deeper</summary>
     <ul>
       <li>The design: <code>docs/ontology_design.md</code> (reused vocabularies such as GWML2 through SAWGraph, SWEET, SOSA/SSN, OWL-Time, PROV-O, SKOS, GeoSPARQL). The questions: <code>docs/competency_questions.md</code>.</li>
       <li>The detective: <code>src/kg/pump_attribution.py</code>; its results: <code>data/interim/pump_unit_attribution_eval.json</code>; explained in <code>docs/notes/step12b_review_fixes.md</code>.</li>
-      <li>Coming next in this phase: implement the strengthened contracts in the module and its checks (SHACL rules, a reasoner), fill the map from our tables, write query tests including missing and conflicting evidence, export the links for the model, the crop-name matching experiment (RPG to AGROVOC) and the dated satellite rule for probably irrigated fields.</li>
+      <li>The filled map: <code>src/kg/build_kg.py</code> writes <code>data/processed/kg/lulcw_kg_v4.ttl</code>; <code>tests/test_kg.py</code> checks it against the tables; explained in <code>docs/notes/step12_ontology.md</code> (12.5).</li>
+      <li>Coming next in this phase: the shape checks and the rules that derive the links (SHACL and SHACL-AF), query tests including missing and conflicting evidence, export of the links for the model, the crop-name matching experiment (RPG to AGROVOC) and the dated satellite rule for probably irrigated fields.</li>
     </ul>
   </details>
   <p class="nextlink"><a href="#model">Next: the smart model and its tests</a></p>

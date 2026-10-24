@@ -319,3 +319,36 @@ gauges, canal supply, land use and crop alignment, restrictions, explanations an
 results, comparable pairs, local hydrogeological setting, irrigation assessments,
 scenarios), the SHACL shapes and rules (12.6), the CQ queries and fixtures (12.7) and the
 OOPS! scan.
+
+Version 0.1.1 (2026-10-24, task 12.5): water use `EnergyUse` (BNPE code ENE); GeoSPARQL
+`hasMetricArea` added to `ontology/imports/geo_terms.ttl` (polygon areas in m²).
+
+## 8. Instances: the knowledge graph (task 12.5, 2026-10-24)
+
+`src/kg/build_kg.py` writes `data/processed/kg/lulcw_kg_<dataset>.ttl` from the source
+tables; `tests/test_kg.py` checks it against pandas oracles. It holds facts and the
+qualified assertions whose derivation already exists (task 12.3); the links of the model's
+graph are derived by the SHACL-AF rules of task 12.6 (so the equivalence test of 12.8
+compares two independent derivations).
+
+IRI patterns (base `https://w3id.org/lulcw/data/`; parts are percent-encoded):
+
+| Pattern | Entity |
+|---|---|
+| `piezometer/<bss_id>`, `station/<bss_id>`, `series/head-weekly-<dataset>/<bss_id>` | piezometer, its station, its weekly head series |
+| `unit/<CodeEH>`, `unit-group/<name>` | BD LISA unit; group (`recent-alluvium`, `ancient-alluvium`, `pliocene-multilayer`, `corbieres-karst`, `alluvium`) |
+| `polygon/<codepoly>`, `polygon/<codepoly>/layer/<order>` | elementary polygon, stack layer |
+| `facility/<code_ouvrage>`, `intake/<code_point_prelevement>` | BNPE facility and intake |
+| `attribution/piezometer/<bss_id>/<rank>`, `attribution/facility/<code>/<rank>[/group]` | monitoring / abstraction attribution (`/group`: the same candidate at unit-group resolution) |
+| `abstraction/<code>/<year>/<usage code>` | annual declared volume (SOSA observation) |
+| `interval/year/<y>`, `instant/<date>` | calendar year (start inclusive, end exclusive) |
+| `release/…`, `record/<kind>/<id>`, `rule/…`, `execution/…`, `evaluation/…`, `policy/…`, `procedure/…`, `extent/…`, `geometry/…` | provenance, spatial extents and geometries |
+
+Geometry: GeoSPARQL WKT with the EPSG:2154 CRS IRI (Lambert-93, metres). Spatial facts
+computed in Python are asserted: `lulcw:locatedInPolygon` (point in polygon), `geo:sfWithin`
+an extent (`extent/plain-box`, `extent/plain-box-margin`), `geo:sfIntersects` for the plain's
+polygons. In SPARQL, a prefixed name cannot contain "/": queries use `BASE` and relative IRIs.
+
+A candidate stated at two resolutions (`…/<rank>` exact, `…/<rank>/group`) keeps one rank:
+the 12.6 shape "one main candidate per entity and role" counts rank-1 attributions per
+resolution, and volume accounting never adds the two statements of one candidate.

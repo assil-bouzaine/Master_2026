@@ -27,9 +27,9 @@ explains the whole project with pictures (open it in a browser).
 | 9 | Phase 2: baselines on v1 | done | [step09_baselines.md](step09_baselines.md) |
 | 10 | Baselines v2: more data, tuning, ensemble, ablation | done | [step10_baselines_v2.md](step10_baselines_v2.md) |
 | 12a | Fixes from the critical review: evaluation, analysis plan, dataset v3, new baselines, knowledge-graph pre-check | done (2026-10-23; EA-LSTM regimes on v4 only) | [step12a_fixes.md](step12a_fixes.md) |
-| 12b | Fixes from the second review: dataset v4, strict validated data, grouped folds, cluster-level test, R3 window statistics, analysis plan v2 | done; v4 re-runs of the baselines started 2026-10-24 (Kaggle CPU done, Colab GPU running) | [step12b_review_fixes.md](step12b_review_fixes.md) |
+| 12b | Fixes from the second review: dataset v4, strict validated data, grouped folds, cluster-level test, R3 window statistics, analysis plan v2 | done; v4 re-runs of the baselines started 2026-10-24 (Kaggle CPU baselines done; Colab session 1 done; EA-LSTM and the Pastas stability check running on Kaggle CPU) | [step12b_review_fixes.md](step12b_review_fixes.md) |
 | 12c | Review and strengthen all 16 competency questions | documentation complete (2026-10-24); query/fixture implementation remains Phase 3 work | [step12c_competency_review.md](step12c_competency_review.md) |
-| 12 | Phase 3: ontology and knowledge graph | in progress (six MUST CQs approved; all 16 contracts revised; 12.3 attribution done; 12.4 ontology module 0.1.0 with quality gates, 2026-10-24) | [step12_ontology.md](step12_ontology.md) |
+| 12 | Phase 3: ontology and knowledge graph | in progress (six MUST CQs approved; all 16 contracts revised; 12.3 attribution done; 12.4 ontology module 0.1.0 with quality gates; 12.5 knowledge graph filled from the tables, ontology 0.1.1, 2026-10-24) | [step12_ontology.md](step12_ontology.md) |
 
 Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 
@@ -111,3 +111,7 @@ Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 | **Reasoner (ELK, HermiT)** | A program that draws the logical consequences of an ontology and finds contradictions. ELK is fast and partial; HermiT is complete for OWL 2. "Consistent" means no contradiction was found. |
 | **Catalog file** | `ontology/catalog-v001.xml`: tells Protégé and ROBOT where to find each imported ontology on disk, so nothing is fetched from the web. |
 | **w3id.org** | A free service for permanent web addresses of research vocabularies; our IRIs `https://w3id.org/lulcw#...` will resolve once a redirect is registered there. |
+| **ABox / instance data** | The facts part of a knowledge graph (this well, this pump, this volume), as opposed to the vocabulary (TBox). Ours is `data/processed/kg/lulcw_kg_v4.ttl`, built by `src/kg/build_kg.py`. |
+| **Turtle** | A readable text format for RDF triples (`.ttl`); prefixes such as `lulcw:` shorten the long web addresses. |
+| **WKT (well-known text)** | A text form of a geometry, e.g. `POINT(653200.0 6176400.0)`; in GeoSPARQL it starts with its coordinate system (here EPSG:2154). |
+| **Flat-rate volume (volume forfaitaire)** | A BNPE volume estimated from a standard rate (e.g. per hectare) instead of measured by a meter. 60 % of the declared groundwater irrigation volume is flat-rate. |

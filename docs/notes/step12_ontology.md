@@ -221,3 +221,85 @@ depth check of the records and the coverage by volume and use are in
 - **Next (12.5):** instantiate the graph from the parquet tables, in the work order of the
   CQ document: wells, stations, units, polygon stacks and stratigraphic relations (CQ1,
   CQ3), well links (CQ11), then pump attributions and annual records (CQ2, CQ12).
+
+## 12.5 The knowledge graph, filled from our tables (2026-10-24)
+
+### What was done
+- **`src/kg/build_kg.py`** turns the source tables into the knowledge graph
+  (`PFE_DATASET=v4 python -m src.kg.build_kg`, 61 s): `data/processed/kg/lulcw_kg_v4.ttl`,
+  205,650 triples (14.5 MB of Turtle), written by rdflib and loaded back by pyoxigraph.
+  It covers the six MUST competency questions, in the work order of the CQ document:
+  - **Wells (CQ1).** The 65 wells of dataset v4, each with its monitoring station, a
+    reference to its weekly head series (variable, datum NGF-IGN69, weekly step, first and
+    last week, file and key, quality policy), its WFD groundwater body (9 bodies), its
+    position, its BD LISA polygon and the stack under it. One **monitoring attribution** per
+    well: the unit recorded in ADES (60 wells; confident when that unit is under the point or
+    within 1 km of it, else probable), or an explicit unknown with its reason (5 wells).
+  - **Geology (CQ3).** 47 BD LISA units typed by the written rule (1 multilayer system,
+    10 alluvial aquifers, 5 karst aquifers, 8 confining units, 23 others), 5 unit groups,
+    and 201 elementary polygons (the 180 of the plain box, plus 21 under a well or a pump)
+    with their area, outline and 296 stack layers.
+  - **Pumps (CQ2).** All 2,187 groundwater abstraction facilities of the BNPE snapshot
+    (2026-10-20), each with its intake, position, polygon and Sandre identifier, and the
+    pump → unit attributions of task 12.3 with their rule, rank, confidence, resolution,
+    evidence and provenance. The rule measurements (precision, sample, use, resolution)
+    are stored as 4 rule evaluations.
+  - **Volumes (CQ12).** The 12,951 annual declared groundwater volumes (2012–2024) as SOSA
+    observations, each with its year, use, and how it was obtained (direct measurement,
+    indirect measurement or flat-rate volume).
+  - **Provenance.** 6 data releases with their dates, 10 named rules, 2 rule executions
+    with their code versions (this build, and the commit that produced the 12.3 table),
+    and the 3 export policies (main, confident only, all links).
+- **"Right group, wrong layer" is now explicit (the CQ2 contract).** The "connected to a
+  river" clue (flag_true) finds the alluvium 95 % of the time, but the exact alluvial unit
+  only 63 % of the time (19 recorded boreholes). The 12.3 table had one confidence per
+  link. In the graph, each of the 21 drinking-water pumps concerned gets two statements:
+  "pumps from the alluvium (recent or ancient): probable" and "pumps from 671AB04, say:
+  possible". A filter that asks for exact units can no longer pick up a group-level clue.
+  The main runs keep their volume (Assil's decision): the probable link is at group level.
+- **Ontology 0.1.1.** One new water use, `EnergyUse` (2 BNPE rows use code ENE), and
+  GeoSPARQL's `hasMetricArea` added to the local copies for polygon areas. All gates pass
+  (192 terms; ELK and HermiT consistent).
+- **`tests/test_kg.py`** (3 s): 8 checks, each against a value computed again from the
+  tables with pandas. Among them: the CQ1 cases (W1: 97 m, unit 671AA00; W2: stack 718BP02 >
+  671AA00), the volumes per year and use equal the BNPE snapshot (in the plain's facility
+  extent: 711.5 Mm³ over 2012–2024), and two negative controls (an undeclared property, an
+  exact-unit link upgraded to probable) that the checks must catch.
+
+### Why
+- **Facts here, links later.** The links that become the model's graph (layer above layer,
+  well to well, pump to well) are not computed by this script. Task 12.6 derives them inside
+  the graph with SHACL-AF rules, and task 12.8 compares them with the same links computed by
+  pandas. If both came from the same Python code, the comparison would prove nothing.
+- **Declared volumes only.** The model uses weekly volumes that were spread and partly
+  imputed (2024+, the 2018 break). Those are model inputs and stay in parquet. CQ12 needs
+  the declarations as declared, so a total never mixes what was reported with what we
+  filled in.
+- **Every groundwater facility.** 50 of the 2,187 facilities are not in dataset v4 (their
+  declarations are all zero or have no use code: 0.04 Mm³ in total). They are in the graph
+  with an explicit "not attributed" reason, so CQ12's denominator is complete.
+- **Lambert-93 geometry** (EPSG:2154, metres), the projection of every distance and area of
+  the project, so that the 12.6 rules can test a distance.
+
+### What to consider
+- **Flat-rate irrigation volumes.** 60 % of the declared groundwater irrigation volume
+  (2012–2024) is a flat-rate estimate, not a measurement; drinking water is 98 % measured.
+  So irrigation pumping is uncertain twice: in its layer (at best "possible") and in its
+  volume. The graph keeps the acquisition mode of every record, for the paper and the
+  sensitivity runs.
+- **Wells without a known layer:** Saint-Féliu-d'Amont (MAS CONTE), a 332 m borehole at
+  Canet, and three shallow wetland piezometers at Formiguères. Two recorded units are not
+  under their point: ALENYA (718BP03 recorded, the map says 718BP04 > 671AA00) and CARRIE
+  (760AE09, absent from the Occitanie extract); both are "probable".
+- **4 facilities** lie outside every polygon of the Occitanie extract.
+- **SPARQL syntax:** a prefixed name cannot contain "/", so the queries use
+  `BASE <https://w3id.org/lulcw/data/>` and relative IRIs such as `<rule/pump-flag-true>`.
+- **Distances in the 12.6 rules:** SPARQL 1.1 has no square root. A rule can still test
+  "within r" by comparing squared distances; the distance value needs XPath's `math:sqrt`,
+  registered as a custom function in rdflib (pySHACL runs its rules through rdflib).
+- **Two statements, one candidate.** The 21 split candidates keep one rank for both their
+  exact and their group statement, so 12.6's shape "one main candidate" counts per
+  resolution, and the CQ12 accounting must never add the two.
+- **Next (12.6):** the SHACL shapes of `docs/ontology_design.md` §5, and the SHACL-AF rules
+  for stratigraphic relations and `overlies` (with their witness polygons), same-unit well
+  links (CQ11), pump → well influences (CQ8) and the policy selections.

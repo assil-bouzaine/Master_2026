@@ -54,7 +54,8 @@ SOURCES = {
     "geo": ([("geo.ttl", "https://raw.githubusercontent.com/opengeospatial/ogc-geosparql/"
                          "1.1.0-ghpages/geosparql11/geo.ttl", "text/turtle")],
             [GEO + t for t in ("SpatialObject", "Feature", "Geometry", "hasGeometry",
-                               "hasDefaultGeometry", "asWKT", "sfIntersects", "sfWithin")]),
+                               "hasDefaultGeometry", "asWKT", "sfIntersects", "sfWithin",
+                               "hasMetricArea")]),       # hasMetricArea: added for 12.5
     "sweet": ([("sweet_realmHydro.ttl", "https://raw.githubusercontent.com/ESIPFed/sweet/master/"
                                         "src/realmHydro.ttl", "text/turtle"),
                ("sweet_matrWater.ttl", "https://raw.githubusercontent.com/ESIPFed/sweet/master/"

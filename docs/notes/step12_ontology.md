@@ -160,3 +160,64 @@ depth check of the records and the coverage by volume and use are in
 - **Scope.** Every objective of the subject gets at least a small, measured version: the
   SWEET/INSPIRE/AGROVOC alignment, the satellite rule (CQ15) and the dashboard queries
   (CQ16).
+
+## 12.4 Ontology module, version 0.1.0 (2026-10-24)
+
+### What was done
+- **The `lulcw` bridging module** (`ontology/lulcw.ttl`): 191 terms, each with one English
+  and one French label and an English definition.
+  - Version 0.1.0 covers the six MUST competency questions (CQ1, CQ2, CQ3, CQ8, CQ11, CQ12)
+    and the common answer contract of `docs/competency_questions.md` §2. The SHOULD and
+    COULD modules follow the work order of that document.
+  - Classes for wells and stations, hydrogeological units (alluvial, multilayer system,
+    karst, confining; pairwise disjoint), unit groups, BD LISA polygons and their stack
+    layers, abstraction facilities, annual abstraction records (SOSA observations) and
+    accounting results.
+  - Qualified, evidence-carrying assertions: `UnitAttribution` (role, rule, rank,
+    confidence, resolution, status, or an explicit unknown with a reason),
+    `StratigraphicRelation` (with the polygons that witness it), `WellLink`, `Influence`
+    (mechanism, driver variable, conditions, response sign, constraint eligibility),
+    `VolumeAllocation`.
+  - Twelve SKOS concept schemes: answer status, evidence kind, assessment status,
+    confidence, resolution, role, water use, water source, record kind, response sign,
+    mechanism, driver group, constraint eligibility, stratigraphic relation kind.
+- **Local copies of the reused terms** (`ontology/imports/`): SOSA, PROV-O, OWL-Time, SKOS
+  and GeoSPARQL 1.1, downloaded from their official addresses and cut by ROBOT to the
+  terms we use (`src/kg/build_imports.py`); SWEET likewise; GWML2 and HyFO by hand from the
+  SAWGraph page. Every term was checked at its source on 2026-10-24.
+- **Alignment modules** (`ontology/alignments/`): to GWML2/HyFO (subclass and subproperty
+  axioms where they hold for every instance) and to SWEET (close matches only).
+- **The meta-ontology** (`ontology/lulcw-meta.ttl`) imports the module and the alignments;
+  `ontology/catalog-v001.xml` resolves every import to a local file, for Protégé, ROBOT
+  and the tests.
+- **Quality gates** (`python -m tests.test_ontology`, 16 s): all modules load offline;
+  metadata; labels and definitions; every lulcw IRI declared and every reused term taken
+  from a checked local copy; ELK and HermiT find the network consistent; a negative control
+  (a unit both alluvial and karst) is rejected; ROBOT's report finds no error.
+
+### Why
+- **Qualified assertions instead of plain links.** A link "this pump pumps from the
+  Pliocene" would hide that only 27 % of the volume has a direct record. The attribution
+  node keeps the rule, its measured precision at its resolution, the alternatives and the
+  unknowns, so the model can select links by policy without the graph forgetting how
+  certain each one is.
+- **Disjoint unit types and a negative control.** A gate that never fails proves nothing.
+  The test inserts a contradiction on purpose and checks that the reasoner catches it.
+- **MIREOT extracts.** Importing all of PROV-O or OWL-Time would make the network large,
+  and HermiT rejects OWL-Time's `xsd:date` ranges. Copying only the declarations, labels
+  and hierarchy of the terms we use keeps the reuse traceable and the reasoner working.
+- **Names.** `AquiferUnit` (a working name) became `HydrogeologicalUnit`: GWML2's
+  `GW_AquiferUnit` covers only aquifer-related units, and BD LISA entities include others.
+  `AbstractionPoint` became `AbstractionFacility`: a BNPE code identifies a facility, not a
+  borehole (CQ2). Units are written in the property names (`…M`, `…M2`, `…M3`), not with QUDT.
+
+### What to consider
+- **Namespace.** The IRIs use `https://w3id.org/lulcw#`, which does not resolve yet. Making
+  it resolve needs a pull request to github.com/perma-id/w3id.org from Assil's GitHub
+  account, pointing to a public copy of the files (GitHub Pages). It is a public action, so
+  it waits for his decision; the IRIs stay valid identifiers meanwhile.
+- **OOPS!** (the pitfall scanner) is a web service: the module is sent to it. Run it once
+  before Gate 3.
+- **Next (12.5):** instantiate the graph from the parquet tables, in the work order of the
+  CQ document: wells, stations, units, polygon stacks and stratigraphic relations (CQ1,
+  CQ3), well links (CQ11), then pump attributions and annual records (CQ2, CQ12).

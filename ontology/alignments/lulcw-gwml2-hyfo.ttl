@@ -1,0 +1,44 @@
+@prefix lulcw:   <https://w3id.org/lulcw#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix gwml2:   <http://gwml2.org/def/gwml2#> .
+@prefix hyfo:    <http://hyfo.spatialai.org/v1/hyfo#> .
+
+# Alignment of the lulcw module to GWML2 and HyFO (SAWGraph's OWL rendering). Subclass and
+# subproperty axioms only where they hold for every instance; skos:closeMatch otherwise
+# (docs/ontology_design.md §2). Checked against the definitions copied in
+# imports/gwml2_hyfo_terms.ttl:
+# - a piezometer is "a shaft or hole ... drilled into the Earth to observe ... water" (GW_Well)
+# - BD LISA units are hydrogeological units; alluvial and karst units are aquifers, the
+#   Pliocene unit an aquifer system. Mapped impermeable units are not declared confining beds
+#   (GW_AquiferUnit includes confining beds, but a mapped unit's confining role is local).
+# - hyfo:tapsAquifer declares no domain or range, so the subproperty axioms type nothing.
+
+<https://w3id.org/lulcw/alignments/gwml2-hyfo> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/lulcw/alignments/gwml2-hyfo/0.1.0> ;
+    dcterms:title "Alignment of LULC-Water to GWML2 and HyFO"@en , "Alignement de LULC-Water sur GWML2 et HyFO"@fr ;
+    dcterms:description "Subclass, subproperty and close-match axioms linking the lulcw module to GWML2 and HyFO terms, asserted only where they hold for every instance."@en ;
+    dcterms:created "2026-10-24"^^xsd:date ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    owl:imports <https://w3id.org/lulcw> , <https://w3id.org/lulcw/imports/gwml2-hyfo> .
+
+lulcw:Piezometer rdfs:subClassOf gwml2:GW_Well ;
+    skos:closeMatch hyfo:WaterWell .
+lulcw:MonitoringStation rdfs:subClassOf gwml2:GW_MonitoringSite .
+lulcw:hostedBy rdfs:subPropertyOf gwml2:gwMonitoringHost .
+
+lulcw:HydrogeologicalUnit rdfs:subClassOf gwml2:GW_HydrogeoUnit .
+lulcw:AlluvialAquifer rdfs:subClassOf gwml2:GW_Aquifer .
+lulcw:KarstAquifer rdfs:subClassOf gwml2:GW_Aquifer .
+lulcw:MultilayerAquiferSystem rdfs:subClassOf gwml2:GW_AquiferSystem .
+
+lulcw:monitors rdfs:subPropertyOf hyfo:tapsAquifer .
+lulcw:pumpsFrom rdfs:subPropertyOf hyfo:tapsAquifer .
+
+dcterms:title a owl:AnnotationProperty .
+dcterms:description a owl:AnnotationProperty .
+dcterms:created a owl:AnnotationProperty .
+dcterms:license a owl:AnnotationProperty .

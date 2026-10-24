@@ -1,0 +1,854 @@
+@prefix lulcw:   <https://w3id.org/lulcw#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix sosa:    <http://www.w3.org/ns/sosa/> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+@prefix time:    <http://www.w3.org/2006/time#> .
+@prefix geo:     <http://www.opengis.net/ont/geosparql#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix vann:    <http://purl.org/vocab/vann/> .
+
+# LULC-Water bridging module (task 12.4). It holds only what the reused vocabularies lack
+# (docs/ontology_design.md); the alignment axioms to GWML2, HyFO and SWEET are in
+# ontology/alignments/, and lulcw-meta.ttl puts the network together. Scope of version 0.1:
+# the six MUST competency questions (CQ1, CQ2, CQ3, CQ8, CQ11, CQ12) and the common answer
+# contract of docs/competency_questions.md §2. Units are part of the property names (M = metre,
+# M2 = square metre, M3 = cubic metre) and are stated in each definition.
+
+<https://w3id.org/lulcw> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/lulcw/0.1.0> ;
+    owl:versionInfo "0.1.0" ;
+    dcterms:title "LULC-Water bridging module"@en , "Module de liaison LULC-Water"@fr ;
+    dcterms:description "Bridging module of the LULC-Water network of ontologies (SAVE Water, PRIMA): wells, abstraction facilities, hydrogeological units and the qualified, evidence-carrying assertions (unit attributions, stratigraphic relations, well links, influences, annual abstraction accounting) that structure, constrain and explain a groundwater-level model of the Roussillon multilayer aquifer."@en ,
+        "Module de liaison du réseau d'ontologies LULC-Water (SAVE Water, PRIMA) : piézomètres, ouvrages de prélèvement, entités hydrogéologiques et assertions qualifiées, porteuses de preuves (attributions à une entité, relations stratigraphiques, liens entre piézomètres, influences, bilans annuels des prélèvements), qui structurent, contraignent et expliquent un modèle des niveaux piézométriques de l'aquifère multicouche du Roussillon."@fr ;
+    dcterms:creator "Assil Bouzaine" ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    dcterms:created "2026-10-24"^^xsd:date ;
+    vann:preferredNamespacePrefix "lulcw" ;
+    vann:preferredNamespaceUri "https://w3id.org/lulcw#" ;
+    rdfs:comment "Namespace provisional until the w3id.org redirect is accepted (docs/ontology_design.md §6)."@en ;
+    owl:imports <https://w3id.org/lulcw/imports/sosa> , <https://w3id.org/lulcw/imports/prov> ,
+        <https://w3id.org/lulcw/imports/time> , <https://w3id.org/lulcw/imports/skos> ,
+        <https://w3id.org/lulcw/imports/geo> .
+
+dcterms:title a owl:AnnotationProperty .
+dcterms:description a owl:AnnotationProperty .
+dcterms:creator a owl:AnnotationProperty .
+dcterms:license a owl:AnnotationProperty .
+dcterms:created a owl:AnnotationProperty .
+dcterms:source a owl:AnnotationProperty .
+vann:preferredNamespacePrefix a owl:AnnotationProperty .
+vann:preferredNamespaceUri a owl:AnnotationProperty .
+
+#################################################################
+# Provenance: releases, records, rules and policies
+#################################################################
+
+lulcw:DataRelease a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "data release"@en , "version de jeu de données"@fr ;
+    skos:definition "A versioned release or dated snapshot of a source dataset or of a derived table, e.g. BD LISA V3, the BNPE extract retrieved on 2026-10-20, or model-ready dataset v4."@en .
+
+lulcw:SourceRecord a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "source record"@en , "enregistrement source"@fr ;
+    skos:definition "One record of a data release (a table row, a mapped feature or a document entry), identified by its original identifier; the evidence an assertion cites."@en .
+
+lulcw:DerivationRule a owl:Class ;
+    rdfs:subClassOf prov:Plan ;
+    rdfs:label "derivation rule"@en , "règle de dérivation"@fr ;
+    skos:definition "A named, versioned procedure that derives assertions from source records, e.g. a pump-to-unit attribution rule or an influence-proposal rule."@en .
+
+lulcw:RuleExecution a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "rule execution"@en , "exécution de règle"@fr ;
+    skos:definition "One execution of a derivation rule on given data releases, with its code version and date."@en .
+
+lulcw:RuleEvaluation a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "rule evaluation"@en , "évaluation de règle"@fr ;
+    skos:definition "A measurement of how often a derivation rule agrees with reference records, at a stated resolution (exact unit or unit group) and for a stated water use. A rule's measured precision is not the probability that one of its assertions is true."@en .
+
+lulcw:ExportPolicy a owl:Class ;
+    rdfs:subClassOf prov:Plan ;
+    rdfs:label "export policy"@en , "politique d'export"@fr ;
+    skos:definition "A named, versioned selection policy deciding which qualified assertions become model inputs or graph edges, e.g. confident and probable pump-to-unit links for the main runs. Changing the policy changes the selection, never the stored evidence."@en .
+
+#################################################################
+# Wells, stations and series
+#################################################################
+
+lulcw:Piezometer a owl:Class ;
+    rdfs:label "piezometer"@en , "piézomètre"@fr ;
+    skos:definition "A borehole used to measure groundwater head, identified by its BSS code: the physical well, distinct from the monitoring station it hosts and from the observations made there."@en .
+
+lulcw:MonitoringStation a owl:Class ;
+    rdfs:label "groundwater-level monitoring station"@en , "station de mesure piézométrique"@fr ;
+    skos:definition "A station of the groundwater-level monitoring network (ADES, served by Hub'Eau), hosted by a piezometer, whose head observations form a series."@en .
+
+lulcw:ObservationSeries a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "observation series"@en , "série d'observations"@fr ;
+    skos:definition "A reference to a time series kept outside the graph (for example weekly heads in a parquet table), with its variable, unit, vertical datum, temporal coverage and quality policy."@en .
+
+#################################################################
+# Hydrogeological structure
+#################################################################
+
+lulcw:HydrogeologicalUnit a owl:Class ;
+    rdfs:label "hydrogeological unit"@en , "entité hydrogéologique"@fr ;
+    skos:definition "A hydrogeological entity of the BD LISA reference (level 3): an aquifer, an aquifer system or a unit of low permeability. Its subtype comes from the written typing rule of docs/ontology_design.md §4.4, never from the BD LISA nature code alone."@en .
+
+lulcw:AlluvialAquifer a owl:Class ;
+    rdfs:subClassOf lulcw:HydrogeologicalUnit ;
+    rdfs:label "alluvial aquifer"@en , "aquifère alluvial"@fr ;
+    skos:definition "A hydrogeological unit of recent or ancient alluvium (in the plain: 718BP0x, 718BG49, 671AB0x). The type says nothing about local confinement, which is assessed separately (CQ14)."@en .
+
+lulcw:MultilayerAquiferSystem a owl:Class ;
+    rdfs:subClassOf lulcw:HydrogeologicalUnit ;
+    rdfs:label "multilayer aquifer system"@en , "système aquifère multicouche"@fr ;
+    skos:definition "A hydrogeological unit made of several permeable horizons separated, at least locally, by poorly permeable beds; in the plain, the Pliocene sands and clays (671AA00), labelled semi-permeable at BD LISA level 3."@en .
+
+lulcw:KarstAquifer a owl:Class ;
+    rdfs:subClassOf lulcw:HydrogeologicalUnit ;
+    rdfs:label "karst aquifer"@en , "aquifère karstique"@fr ;
+    skos:definition "A hydrogeological unit whose BD LISA medium is karstic (in the study area: 681AM00, 681AN02, 699AB01)."@en .
+
+lulcw:ConfiningUnit a owl:Class ;
+    rdfs:subClassOf lulcw:HydrogeologicalUnit ;
+    rdfs:label "confining unit"@en , "unité imperméable"@fr ;
+    skos:definition "A hydrogeological unit mapped as impermeable in BD LISA (nature 7), which can act as a confining bed between aquifers. The type describes the mapped unit; it does not show that an adjacent aquifer is locally confined."@en .
+
+[] a owl:AllDisjointClasses ;
+    owl:members ( lulcw:AlluvialAquifer lulcw:MultilayerAquiferSystem lulcw:KarstAquifer lulcw:ConfiningUnit ) .
+
+lulcw:HydrogeologicalUnitGroup a owl:Class ;
+    rdfs:label "hydrogeological unit group"@en , "groupe d'entités hydrogéologiques"@fr ;
+    skos:definition "A named group of hydrogeological units (e.g. the recent alluvium of the Têt, Agly, Réart and Tech), used for reporting and when the evidence for an attribution resolves only to the group."@en .
+
+lulcw:GroundwaterBody a owl:Class ;
+    rdfs:label "groundwater body"@en , "masse d'eau souterraine"@fr ;
+    skos:definition "A groundwater body of the Water Framework Directive: a management unit, distinct from a hydrogeological unit; a well may belong to several."@en .
+
+lulcw:ElementaryPolygon a owl:Class ;
+    rdfs:subClassOf geo:Feature ;
+    rdfs:label "BD LISA elementary polygon"@en , "polygone élémentaire BD LISA"@fr ;
+    skos:definition "An elementary polygon of BD LISA: an area over which the vertical stack of hydrogeological units is constant. It is the spatial witness of stack and contact statements."@en .
+
+lulcw:StackLayer a owl:Class ;
+    rdfs:label "stack layer"@en , "niveau de la pile"@fr ;
+    skos:definition "The occurrence of one hydrogeological unit at a given relative order in the stack of one elementary polygon (order 1 = the unit mapped at the surface)."@en .
+
+lulcw:StratigraphicRelation a owl:Class ;
+    rdfs:label "stratigraphic relation"@en , "relation stratigraphique"@fr ;
+    skos:definition "A spatially qualified statement that one hydrogeological unit lies above another, directly or with intervening units, within the elementary polygons that witness it. It describes geological arrangement, not hydraulic connection, flow direction or a head inequality; an ordering is never chained across polygons that do not share a stack."@en .
+
+#################################################################
+# Abstraction
+#################################################################
+
+lulcw:AbstractionFacility a owl:Class ;
+    rdfs:label "abstraction facility"@en , "ouvrage de prélèvement"@fr ;
+    skos:definition "A water abstraction facility as reported to the national withdrawal database (a BNPE ouvrage, identified by its BNPE code). It may group several intakes or boreholes; its declared volume is never duplicated across them."@en .
+
+lulcw:Intake a owl:Class ;
+    rdfs:label "intake"@en , "point de prélèvement"@fr ;
+    skos:definition "An individual withdrawal point (borehole, well, spring or surface intake) of an abstraction facility, when the source distinguishes it."@en .
+
+lulcw:AnnualAbstractionRecord a owl:Class ;
+    rdfs:subClassOf sosa:Observation ;
+    rdfs:label "annual abstraction record"@en , "chronique annuelle de prélèvement"@fr ;
+    skos:definition "A volume of water withdrawn by one facility in one calendar year for one use, as declared (or, separately, as imputed or reconstructed), kept as an observation with its source record and quality."@en .
+
+lulcw:VolumeAllocation a owl:Class ;
+    rdfs:label "volume allocation"@en , "répartition de volume"@fr ;
+    skos:definition "An explicit allocation of a share of one annual abstraction record to a hydrogeological unit or group under a named policy. The weights of one record sum to at most 1; the remainder stays unresolved."@en .
+
+lulcw:AccountingResult a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "abstraction accounting result"@en , "bilan des prélèvements"@fr ;
+    skos:definition "The result, computed outside OWL, of an annual accounting of declared groundwater abstraction for a unit or group, a year, a use and a reporting extent under a named policy: eligible declared total = allocated + unresolved + explicitly excluded volume."@en .
+
+#################################################################
+# Qualified assertions
+#################################################################
+
+lulcw:UnitAttribution a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "unit attribution"@en , "attribution à une entité hydrogéologique"@fr ;
+    skos:definition "A candidate assignment of a piezometer (monitoring role) or an abstraction facility (abstraction role) to a hydrogeological unit or unit group, with its evidence, rule, rank, confidence, resolution and assessment status. An explicit unknown assignment has a reason and no target; alternatives are competing assignments, not fractions of water."@en .
+
+lulcw:WellLink a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "well link"@en , "lien entre piézomètres"@fr ;
+    skos:definition "A qualified, unordered pair of piezometers that share a candidate hydrogeological unit, with their horizontal distance and, when both are known, their investigation-depth difference. A modelling descriptor: it does not show the same screened horizon or a direct hydraulic connection."@en .
+
+lulcw:Influence a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "influence"@en , "influence"@fr ;
+    skos:definition "A qualified driver-to-head pathway: a mechanism by which a named driver variable can change the head at a target, with its conditions, evidence path, response sign (possibly unknown) and constraint eligibility. A response sign refers to an increase of the driver with the stated conditions held fixed; it is not a measured causal effect."@en .
+
+#################################################################
+# Concept schemes (each value is a skos:Concept and an instance of the class of its scheme)
+#################################################################
+
+lulcw:AnswerStatus a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "answer status"@en , "statut de réponse"@fr ;
+    skos:definition "Status of an answer to a competency question: supported by the cited evidence, partial, unknown, conflicting or not applicable. Supported does not mean established physical truth."@en .
+lulcw:AnswerStatusScheme a skos:ConceptScheme ;
+    rdfs:label "answer statuses"@en , "statuts de réponse"@fr ;
+    skos:definition "Values of lulcw:AnswerStatus (docs/competency_questions.md §2)."@en .
+lulcw:Supported a lulcw:AnswerStatus ; skos:inScheme lulcw:AnswerStatusScheme ; skos:topConceptOf lulcw:AnswerStatusScheme ;
+    skos:prefLabel "supported"@en , "étayée"@fr ;
+    rdfs:label "supported"@en , "étayée"@fr ;
+    skos:definition "The answer is supported by the cited evidence within the declared scope."@en .
+lulcw:Partial a lulcw:AnswerStatus ; skos:inScheme lulcw:AnswerStatusScheme ; skos:topConceptOf lulcw:AnswerStatusScheme ;
+    skos:prefLabel "partial"@en , "partielle"@fr ;
+    rdfs:label "partial"@en , "partielle"@fr ;
+    skos:definition "Part of the requested scope is answered; the rest is reported as missing."@en .
+lulcw:UnknownAnswer a lulcw:AnswerStatus ; skos:inScheme lulcw:AnswerStatusScheme ; skos:topConceptOf lulcw:AnswerStatusScheme ;
+    skos:prefLabel "unknown"@en , "inconnue"@fr ;
+    rdfs:label "unknown"@en , "inconnue"@fr ;
+    skos:definition "The evidence needed to answer is missing; never read as false or zero."@en .
+lulcw:Conflicting a lulcw:AnswerStatus ; skos:inScheme lulcw:AnswerStatusScheme ; skos:topConceptOf lulcw:AnswerStatusScheme ;
+    skos:prefLabel "conflicting"@en , "contradictoire"@fr ;
+    rdfs:label "conflicting"@en , "contradictoire"@fr ;
+    skos:definition "Cited sources disagree; every alternative is returned with its source."@en .
+lulcw:NotApplicable a lulcw:AnswerStatus ; skos:inScheme lulcw:AnswerStatusScheme ; skos:topConceptOf lulcw:AnswerStatusScheme ;
+    skos:prefLabel "not applicable"@en , "sans objet"@fr ;
+    rdfs:label "not applicable"@en , "sans objet"@fr ;
+    skos:definition "The question does not apply to the requested entity or period, with a stated reason."@en .
+
+lulcw:EvidenceKind a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "evidence kind"@en , "nature de la preuve"@fr ;
+    skos:definition "Kind of evidence behind an assertion: reported observation, derived assertion, literature or expert hypothesis, or model or scenario result."@en .
+lulcw:EvidenceKindScheme a skos:ConceptScheme ;
+    rdfs:label "evidence kinds"@en , "natures de preuve"@fr ;
+    skos:definition "Values of lulcw:EvidenceKind."@en .
+lulcw:ReportedObservation a lulcw:EvidenceKind ; skos:inScheme lulcw:EvidenceKindScheme ; skos:topConceptOf lulcw:EvidenceKindScheme ;
+    skos:prefLabel "reported observation"@en , "observation déclarée"@fr ;
+    rdfs:label "reported observation"@en , "observation déclarée"@fr ;
+    skos:definition "A value or fact as recorded by its producer (e.g. a BSS record or a BNPE declaration)."@en .
+lulcw:DerivedAssertion a lulcw:EvidenceKind ; skos:inScheme lulcw:EvidenceKindScheme ; skos:topConceptOf lulcw:EvidenceKindScheme ;
+    skos:prefLabel "derived assertion"@en , "assertion dérivée"@fr ;
+    rdfs:label "derived assertion"@en , "assertion dérivée"@fr ;
+    skos:definition "An assertion produced by a documented rule from source records."@en .
+lulcw:ExpertHypothesis a lulcw:EvidenceKind ; skos:inScheme lulcw:EvidenceKindScheme ; skos:topConceptOf lulcw:EvidenceKindScheme ;
+    skos:prefLabel "literature or expert hypothesis"@en , "hypothèse de la littérature ou d'expert"@fr ;
+    rdfs:label "literature or expert hypothesis"@en , "hypothèse de la littérature ou d'expert"@fr ;
+    skos:definition "A mechanism or relation stated in the literature or by an expert, with its passage and scope; unreviewed extracted text cannot enable a hard constraint."@en .
+lulcw:ModelResult a lulcw:EvidenceKind ; skos:inScheme lulcw:EvidenceKindScheme ; skos:topConceptOf lulcw:EvidenceKindScheme ;
+    skos:prefLabel "model or scenario result"@en , "résultat de modèle ou de scénario"@fr ;
+    rdfs:label "model or scenario result"@en , "résultat de modèle ou de scénario"@fr ;
+    skos:definition "An output of a model run or a scenario, kept distinct from observed facts."@en .
+
+lulcw:AssessmentStatus a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "assessment status"@en , "statut d'évaluation"@fr ;
+    skos:definition "Status of a qualified assertion: candidate, accepted, rejected or superseded."@en .
+lulcw:AssessmentStatusScheme a skos:ConceptScheme ;
+    rdfs:label "assessment statuses"@en , "statuts d'évaluation"@fr ;
+    skos:definition "Values of lulcw:AssessmentStatus."@en .
+lulcw:CandidateStatus a lulcw:AssessmentStatus ; skos:inScheme lulcw:AssessmentStatusScheme ; skos:topConceptOf lulcw:AssessmentStatusScheme ;
+    skos:prefLabel "candidate"@en , "candidate"@fr ;
+    rdfs:label "candidate"@en , "candidate"@fr ;
+    skos:definition "Proposed by a rule or a record, not yet accepted or rejected."@en .
+lulcw:AcceptedStatus a lulcw:AssessmentStatus ; skos:inScheme lulcw:AssessmentStatusScheme ; skos:topConceptOf lulcw:AssessmentStatusScheme ;
+    skos:prefLabel "accepted"@en , "acceptée"@fr ;
+    rdfs:label "accepted"@en , "acceptée"@fr ;
+    skos:definition "Accepted after a stated check; acceptance does not raise its confidence."@en .
+lulcw:RejectedStatus a lulcw:AssessmentStatus ; skos:inScheme lulcw:AssessmentStatusScheme ; skos:topConceptOf lulcw:AssessmentStatusScheme ;
+    skos:prefLabel "rejected"@en , "rejetée"@fr ;
+    rdfs:label "rejected"@en , "rejetée"@fr ;
+    skos:definition "Rejected after a stated check; kept with its evidence."@en .
+lulcw:SupersededStatus a lulcw:AssessmentStatus ; skos:inScheme lulcw:AssessmentStatusScheme ; skos:topConceptOf lulcw:AssessmentStatusScheme ;
+    skos:prefLabel "superseded"@en , "remplacée"@fr ;
+    rdfs:label "superseded"@en , "remplacée"@fr ;
+    skos:definition "Replaced by a later assertion from a newer release or rule version."@en .
+
+lulcw:ConfidenceLevel a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "confidence level"@en , "niveau de confiance"@fr ;
+    skos:definition "Evidence-policy level of an assertion (confident, probable, possible). It is not a calibrated probability and is separate from answer status and from selection by an export policy. Unknown is not a confidence level: an unknown assignment has none."@en .
+lulcw:ConfidenceScheme a skos:ConceptScheme ;
+    rdfs:label "confidence levels"@en , "niveaux de confiance"@fr ;
+    skos:definition "Values of lulcw:ConfidenceLevel (src/kg/pump_attribution.py)."@en .
+lulcw:Confident a lulcw:ConfidenceLevel ; skos:inScheme lulcw:ConfidenceScheme ; skos:topConceptOf lulcw:ConfidenceScheme ;
+    skos:prefLabel "confident"@en , "sûr"@fr ;
+    rdfs:label "confident"@en , "sûr"@fr ;
+    skos:definition "Supported by a direct record of the entity (e.g. the BSS record of the borehole, depth-checked)."@en .
+lulcw:Probable a lulcw:ConfidenceLevel ; skos:inScheme lulcw:ConfidenceScheme ; skos:topConceptOf lulcw:ConfidenceScheme ;
+    skos:prefLabel "probable"@en , "probable"@fr ;
+    rdfs:label "probable"@en , "probable"@fr ;
+    skos:definition "Produced by a rule whose precision was measured (at least 0.80 on at least 10 recorded cases) at the stated resolution and for the same water use."@en .
+lulcw:Possible a lulcw:ConfidenceLevel ; skos:inScheme lulcw:ConfidenceScheme ; skos:topConceptOf lulcw:ConfidenceScheme ;
+    skos:prefLabel "possible"@en , "possible"@fr ;
+    rdfs:label "possible"@en , "possible"@fr ;
+    skos:definition "Produced by a rule not measured for this use or resolution, or below the probable threshold."@en .
+
+lulcw:Resolution a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "assessment resolution"@en , "résolution de l'évaluation"@fr ;
+    skos:definition "The level at which an attribution or a rule evaluation is resolved: the exact hydrogeological unit, or only a unit group."@en .
+lulcw:ResolutionScheme a skos:ConceptScheme ;
+    rdfs:label "assessment resolutions"@en , "résolutions d'évaluation"@fr ;
+    skos:definition "Values of lulcw:Resolution."@en .
+lulcw:ExactUnitResolution a lulcw:Resolution ; skos:inScheme lulcw:ResolutionScheme ; skos:topConceptOf lulcw:ResolutionScheme ;
+    skos:prefLabel "exact unit"@en , "entité exacte"@fr ;
+    rdfs:label "exact unit"@en , "entité exacte"@fr ;
+    skos:definition "Resolved to one hydrogeological unit."@en .
+lulcw:UnitGroupResolution a lulcw:Resolution ; skos:inScheme lulcw:ResolutionScheme ; skos:topConceptOf lulcw:ResolutionScheme ;
+    skos:prefLabel "unit group"@en , "groupe d'entités"@fr ;
+    rdfs:label "unit group"@en , "groupe d'entités"@fr ;
+    skos:definition "Resolved only to a hydrogeological unit group; cannot pass an exact-unit filter."@en .
+
+lulcw:AttributionRole a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "attribution role"@en , "rôle de l'attribution"@fr ;
+    skos:definition "Why an entity is attributed to a unit: it monitors the unit, or it abstracts water from it."@en .
+lulcw:AttributionRoleScheme a skos:ConceptScheme ;
+    rdfs:label "attribution roles"@en , "rôles d'attribution"@fr ;
+    skos:definition "Values of lulcw:AttributionRole."@en .
+lulcw:MonitoringRole a lulcw:AttributionRole ; skos:inScheme lulcw:AttributionRoleScheme ; skos:topConceptOf lulcw:AttributionRoleScheme ;
+    skos:prefLabel "monitoring"@en , "surveillance"@fr ;
+    rdfs:label "monitoring"@en , "surveillance"@fr ;
+    skos:definition "A piezometer monitors the unit."@en .
+lulcw:AbstractionRole a lulcw:AttributionRole ; skos:inScheme lulcw:AttributionRoleScheme ; skos:topConceptOf lulcw:AttributionRoleScheme ;
+    skos:prefLabel "abstraction"@en , "prélèvement"@fr ;
+    rdfs:label "abstraction"@en , "prélèvement"@fr ;
+    skos:definition "A facility abstracts water from the unit."@en .
+
+lulcw:WaterUse a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "water use"@en , "usage de l'eau"@fr ;
+    skos:definition "The declared use of an abstracted volume, as coded in the BNPE. A use belongs to a dated volume record, not permanently to a facility."@en .
+lulcw:WaterUseScheme a skos:ConceptScheme ;
+    rdfs:label "water uses"@en , "usages de l'eau"@fr ;
+    skos:definition "Values of lulcw:WaterUse found in the BNPE records of the study area."@en .
+lulcw:DrinkingWaterUse a lulcw:WaterUse ; skos:inScheme lulcw:WaterUseScheme ; skos:topConceptOf lulcw:WaterUseScheme ;
+    skos:prefLabel "drinking water"@en , "eau potable"@fr ;
+    rdfs:label "drinking water"@en , "eau potable"@fr ;
+    skos:definition "Abstraction for public drinking-water supply."@en .
+lulcw:IrrigationUse a lulcw:WaterUse ; skos:inScheme lulcw:WaterUseScheme ; skos:topConceptOf lulcw:WaterUseScheme ;
+    skos:prefLabel "irrigation"@en , "irrigation"@fr ;
+    rdfs:label "irrigation"@en , "irrigation"@fr ;
+    skos:definition "Abstraction for agricultural irrigation."@en .
+lulcw:IndustryUse a lulcw:WaterUse ; skos:inScheme lulcw:WaterUseScheme ; skos:topConceptOf lulcw:WaterUseScheme ;
+    skos:prefLabel "industry"@en , "industrie"@fr ;
+    rdfs:label "industry"@en , "industrie"@fr ;
+    skos:definition "Abstraction for industrial and economic uses."@en .
+lulcw:CanalSupplyUse a lulcw:WaterUse ; skos:inScheme lulcw:WaterUseScheme ; skos:topConceptOf lulcw:WaterUseScheme ;
+    skos:prefLabel "canal supply"@en , "alimentation de canal"@fr ;
+    rdfs:label "canal supply"@en , "alimentation de canal"@fr ;
+    skos:definition "Abstraction declared to feed a canal; diverted water is not recharge."@en .
+
+lulcw:WaterSource a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "water source"@en , "milieu de prélèvement"@fr ;
+    skos:definition "Whether a volume is withdrawn from groundwater or from surface water (BNPE code_type_milieu)."@en .
+lulcw:WaterSourceScheme a skos:ConceptScheme ;
+    rdfs:label "water sources"@en , "milieux de prélèvement"@fr ;
+    skos:definition "Values of lulcw:WaterSource."@en .
+lulcw:GroundwaterSource a lulcw:WaterSource ; skos:inScheme lulcw:WaterSourceScheme ; skos:topConceptOf lulcw:WaterSourceScheme ;
+    skos:prefLabel "groundwater"@en , "eau souterraine"@fr ;
+    rdfs:label "groundwater"@en , "eau souterraine"@fr ;
+    skos:definition "Withdrawn from groundwater (BNPE SOUT)."@en .
+lulcw:SurfaceWaterSource a lulcw:WaterSource ; skos:inScheme lulcw:WaterSourceScheme ; skos:topConceptOf lulcw:WaterSourceScheme ;
+    skos:prefLabel "surface water"@en , "eau de surface"@fr ;
+    rdfs:label "surface water"@en , "eau de surface"@fr ;
+    skos:definition "Withdrawn from surface water (BNPE CONT)."@en .
+
+lulcw:RecordKind a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "record kind"@en , "nature de l'enregistrement"@fr ;
+    skos:definition "Whether an abstraction volume is an original declaration, an imputed value or a reconstruction; the three are never mixed in one total."@en .
+lulcw:RecordKindScheme a skos:ConceptScheme ;
+    rdfs:label "record kinds"@en , "natures d'enregistrement"@fr ;
+    skos:definition "Values of lulcw:RecordKind."@en .
+lulcw:DeclaredRecord a lulcw:RecordKind ; skos:inScheme lulcw:RecordKindScheme ; skos:topConceptOf lulcw:RecordKindScheme ;
+    skos:prefLabel "declared"@en , "déclaré"@fr ;
+    rdfs:label "declared"@en , "déclaré"@fr ;
+    skos:definition "An annual volume as declared in the BNPE."@en .
+lulcw:ImputedRecord a lulcw:RecordKind ; skos:inScheme lulcw:RecordKindScheme ; skos:topConceptOf lulcw:RecordKindScheme ;
+    skos:prefLabel "imputed"@en , "imputé"@fr ;
+    rdfs:label "imputed"@en , "imputé"@fr ;
+    skos:definition "An annual volume filled by a documented imputation rule for a missing declaration."@en .
+lulcw:ReconstructedRecord a lulcw:RecordKind ; skos:inScheme lulcw:RecordKindScheme ; skos:topConceptOf lulcw:RecordKindScheme ;
+    skos:prefLabel "reconstructed"@en , "reconstitué"@fr ;
+    rdfs:label "reconstructed"@en , "reconstitué"@fr ;
+    skos:definition "A volume obtained by spreading or harmonising declarations (e.g. weekly volumes); not an independent observation."@en .
+
+lulcw:ResponseSign a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "response sign"@en , "signe de la réponse"@fr ;
+    skos:definition "Direction of the head response to an increase of a driver variable, with the stated conditions held fixed; distinct from the sign of a model contribution relative to a baseline."@en .
+lulcw:ResponseSignScheme a skos:ConceptScheme ;
+    rdfs:label "response signs"@en , "signes de réponse"@fr ;
+    skos:definition "Values of lulcw:ResponseSign."@en .
+lulcw:NegativeResponse a lulcw:ResponseSign ; skos:inScheme lulcw:ResponseSignScheme ; skos:topConceptOf lulcw:ResponseSignScheme ;
+    skos:prefLabel "non-increasing"@en , "non croissante"@fr ;
+    rdfs:label "non-increasing"@en , "non croissante"@fr ;
+    skos:definition "More of the driver does not raise the head (e.g. abstraction from a connected unit)."@en .
+lulcw:PositiveResponse a lulcw:ResponseSign ; skos:inScheme lulcw:ResponseSignScheme ; skos:topConceptOf lulcw:ResponseSignScheme ;
+    skos:prefLabel "non-decreasing"@en , "non décroissante"@fr ;
+    rdfs:label "non-decreasing"@en , "non décroissante"@fr ;
+    skos:definition "More of the driver does not lower the head (e.g. effective rainfall over an outcrop)."@en .
+lulcw:UnknownResponse a lulcw:ResponseSign ; skos:inScheme lulcw:ResponseSignScheme ; skos:topConceptOf lulcw:ResponseSignScheme ;
+    skos:prefLabel "unknown or conditional"@en , "inconnue ou conditionnelle"@fr ;
+    rdfs:label "unknown or conditional"@en , "inconnue ou conditionnelle"@fr ;
+    skos:definition "The direction is unknown or changes with conditions; never turned into a hard constraint."@en .
+
+lulcw:Mechanism a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "mechanism"@en , "mécanisme"@fr ;
+    skos:definition "A physical process by which a driver can change groundwater head, stated as a conditional specification, not as a universal law about every instance."@en .
+lulcw:MechanismScheme a skos:ConceptScheme ;
+    rdfs:label "mechanisms"@en , "mécanismes"@fr ;
+    skos:definition "Values of lulcw:Mechanism (the four constraint families of CLAUDE.md §3)."@en .
+lulcw:PumpingDrawdown a lulcw:Mechanism ; skos:inScheme lulcw:MechanismScheme ; skos:topConceptOf lulcw:MechanismScheme ;
+    skos:prefLabel "pumping drawdown"@en , "rabattement par pompage"@fr ;
+    rdfs:label "pumping drawdown"@en , "rabattement par pompage"@fr ;
+    skos:definition "Abstraction from a unit lowers the head of that unit near the abstraction, under the stated connection and distance conditions."@en .
+lulcw:DiffuseRecharge a lulcw:Mechanism ; skos:inScheme lulcw:MechanismScheme ; skos:topConceptOf lulcw:MechanismScheme ;
+    skos:prefLabel "diffuse recharge"@en , "recharge diffuse"@fr ;
+    rdfs:label "diffuse recharge"@en , "recharge diffuse"@fr ;
+    skos:definition "Effective rainfall infiltrating where a unit is mapped at outcrop can raise its head; outcrop alone does not prove infiltration."@en .
+lulcw:CanalReturnFlow a lulcw:Mechanism ; skos:inScheme lulcw:MechanismScheme ; skos:topConceptOf lulcw:MechanismScheme ;
+    skos:prefLabel "canal return flow"@en , "retour d'irrigation par les canaux"@fr ;
+    rdfs:label "canal return flow"@en , "retour d'irrigation par les canaux"@fr ;
+    skos:definition "Canal seepage and irrigation return flow can raise the head of an alluvial unit; a diverted volume is not a recharge volume."@en .
+lulcw:RiverExchange a lulcw:Mechanism ; skos:inScheme lulcw:MechanismScheme ; skos:topConceptOf lulcw:MechanismScheme ;
+    skos:prefLabel "river exchange"@en , "échange nappe-rivière"@fr ;
+    rdfs:label "river exchange"@en , "échange nappe-rivière"@fr ;
+    skos:definition "Exchange between a river reach and a unit; its direction depends on hydraulic conditions and needs documented evidence before any sign is used."@en .
+
+lulcw:DriverGroup a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "driver group"@en , "groupe de forçages"@fr ;
+    skos:definition "A group of drivers whose effects are reported together because the data cannot separate them."@en .
+lulcw:DriverGroupScheme a skos:ConceptScheme ;
+    rdfs:label "driver groups"@en , "groupes de forçages"@fr ;
+    skos:definition "Values of lulcw:DriverGroup (docs/analysis_plan.md §8)."@en .
+lulcw:SummerDemand a lulcw:DriverGroup ; skos:inScheme lulcw:DriverGroupScheme ; skos:topConceptOf lulcw:DriverGroupScheme ;
+    skos:prefLabel "summer demand"@en , "demande estivale"@fr ;
+    rdfs:label "summer demand"@en , "demande estivale"@fr ;
+    skos:definition "Reconstructed seasonal pumping and the climatic deficit, which move together within a year (r = 0.92 to 0.97) and are attributed jointly."@en .
+
+lulcw:ConstraintEligibility a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "constraint eligibility"@en , "éligibilité à la contrainte"@fr ;
+    skos:definition "Whether an influence may fix the sign of a model response under a named policy."@en .
+lulcw:ConstraintEligibilityScheme a skos:ConceptScheme ;
+    rdfs:label "constraint eligibilities"@en , "éligibilités à la contrainte"@fr ;
+    skos:definition "Values of lulcw:ConstraintEligibility."@en .
+lulcw:EligibleConstraint a lulcw:ConstraintEligibility ; skos:inScheme lulcw:ConstraintEligibilityScheme ; skos:topConceptOf lulcw:ConstraintEligibilityScheme ;
+    skos:prefLabel "eligible"@en , "éligible"@fr ;
+    rdfs:label "eligible"@en , "éligible"@fr ;
+    skos:definition "Every segment of the pathway is accepted and the sign, variable and conditions are supported."@en .
+lulcw:IneligibleConstraint a lulcw:ConstraintEligibility ; skos:inScheme lulcw:ConstraintEligibilityScheme ; skos:topConceptOf lulcw:ConstraintEligibilityScheme ;
+    skos:prefLabel "not eligible"@en , "non éligible"@fr ;
+    rdfs:label "not eligible"@en , "non éligible"@fr ;
+    skos:definition "A segment is missing or not accepted, or the sign is unknown; the influence may still be an unsigned graph edge."@en .
+
+lulcw:StratigraphicRelationKind a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "stratigraphic relation kind"@en , "type de relation stratigraphique"@fr ;
+    skos:definition "Whether two units are in direct contact in a stack or ordered with intervening units."@en .
+lulcw:StratigraphicRelationKindScheme a skos:ConceptScheme ;
+    rdfs:label "stratigraphic relation kinds"@en , "types de relation stratigraphique"@fr ;
+    skos:definition "Values of lulcw:StratigraphicRelationKind."@en .
+lulcw:DirectContact a lulcw:StratigraphicRelationKind ; skos:inScheme lulcw:StratigraphicRelationKindScheme ; skos:topConceptOf lulcw:StratigraphicRelationKindScheme ;
+    skos:prefLabel "direct contact"@en , "contact direct"@fr ;
+    rdfs:label "direct contact"@en , "contact direct"@fr ;
+    skos:definition "The two units are consecutive in the stack of the witnessing polygon; no intervening mapped unit (which does not exclude a bed below map resolution)."@en .
+lulcw:IndirectOrdering a lulcw:StratigraphicRelationKind ; skos:inScheme lulcw:StratigraphicRelationKindScheme ; skos:topConceptOf lulcw:StratigraphicRelationKindScheme ;
+    skos:prefLabel "indirect ordering"@en , "superposition indirecte"@fr ;
+    rdfs:label "indirect ordering"@en , "superposition indirecte"@fr ;
+    skos:definition "The upper unit lies above the lower one in the stack of the same witnessing polygon, with intervening units."@en .
+
+#################################################################
+# Observable properties (driver and target variables)
+#################################################################
+
+lulcw:GroundwaterHead a sosa:ObservableProperty ;
+    rdfs:label "groundwater head"@en , "niveau piézométrique"@fr ;
+    skos:definition "Elevation of the groundwater level at a well, in metres above the NGF-IGN69 datum (m NGF)."@en .
+lulcw:DeclaredAnnualVolume a sosa:ObservableProperty ;
+    rdfs:label "declared annual volume"@en , "volume annuel déclaré"@fr ;
+    skos:definition "Volume of water withdrawn in a calendar year, as declared to the BNPE, in cubic metres."@en .
+lulcw:ReconstructedWeeklyVolume a sosa:ObservableProperty ;
+    rdfs:label "reconstructed weekly abstraction"@en , "prélèvement hebdomadaire reconstitué"@fr ;
+    skos:definition "Weekly volume obtained by spreading annual declarations with documented profiles, in cubic metres per week; a model driver, not an observation."@en .
+lulcw:EffectiveRainfall a sosa:ObservableProperty ;
+    rdfs:label "effective rainfall"@en , "pluie efficace"@fr ;
+    skos:definition "SAFRAN effective rainfall summed over a week, in millimetres."@en .
+lulcw:CanalDiversionVolume a sosa:ObservableProperty ;
+    rdfs:label "canal diversion volume"@en , "volume dérivé par les canaux"@fr ;
+    skos:definition "Volume declared at canal intakes, spread over the irrigation season, in cubic metres; a proxy for return flow, not a recharge volume."@en .
+lulcw:RiverDischarge a sosa:ObservableProperty ;
+    rdfs:label "river discharge"@en , "débit de rivière"@fr ;
+    skos:definition "Weekly mean discharge at a gauge, in cubic metres per second; it represents its own site, not recharge to a whole unit."@en .
+
+#################################################################
+# Object properties
+#################################################################
+
+lulcw:hostedBy a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:MonitoringStation ; rdfs:range lulcw:Piezometer ;
+    rdfs:label "hosted by"@en , "installée sur"@fr ;
+    skos:definition "Links a monitoring station to the piezometer that hosts it."@en .
+
+lulcw:hasObservationSeries a owl:ObjectProperty ;
+    rdfs:domain lulcw:MonitoringStation ; rdfs:range lulcw:ObservationSeries ;
+    rdfs:label "has observation series"@en , "a pour série d'observations"@fr ;
+    skos:definition "Links a monitoring station to a series of its observations kept outside the graph."@en .
+
+lulcw:seriesVariable a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ObservationSeries ; rdfs:range sosa:ObservableProperty ;
+    rdfs:label "series variable"@en , "variable de la série"@fr ;
+    skos:definition "The observed property of a series (e.g. groundwater head)."@en .
+
+lulcw:inRelease a owl:ObjectProperty ;
+    rdfs:range lulcw:DataRelease ;
+    rdfs:label "in release"@en , "dans la version"@fr ;
+    skos:definition "Links a source record, a series or a derived assertion to the data release it belongs to."@en .
+
+lulcw:inGroundwaterBody a owl:ObjectProperty ;
+    rdfs:domain lulcw:Piezometer ; rdfs:range lulcw:GroundwaterBody ;
+    rdfs:label "in groundwater body"@en , "dans la masse d'eau"@fr ;
+    skos:definition "Links a piezometer to a groundwater body it is recorded in; a well may belong to several."@en .
+
+lulcw:locatedInPolygon a owl:ObjectProperty ;
+    rdfs:range lulcw:ElementaryPolygon ;
+    rdfs:label "located in polygon"@en , "situé dans le polygone"@fr ;
+    skos:definition "Links a piezometer or an abstraction facility to the BD LISA elementary polygon containing its location (point in polygon, Lambert-93)."@en .
+
+lulcw:hasStackLayer a owl:ObjectProperty ;
+    rdfs:domain lulcw:ElementaryPolygon ; rdfs:range lulcw:StackLayer ;
+    rdfs:label "has stack layer"@en , "a pour niveau de pile"@fr ;
+    skos:definition "Links an elementary polygon to one layer of its stack."@en .
+
+lulcw:layerUnit a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:StackLayer ; rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "layer unit"@en , "entité du niveau"@fr ;
+    skos:definition "The hydrogeological unit of a stack layer."@en .
+
+lulcw:upperUnit a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:StratigraphicRelation ; rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "upper unit"@en , "entité supérieure"@fr ;
+    skos:definition "The unit that lies above in a stratigraphic relation."@en .
+
+lulcw:lowerUnit a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:StratigraphicRelation ; rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "lower unit"@en , "entité inférieure"@fr ;
+    skos:definition "The unit that lies below in a stratigraphic relation."@en .
+
+lulcw:relationKind a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:StratigraphicRelation ; rdfs:range lulcw:StratigraphicRelationKind ;
+    rdfs:label "relation kind"@en , "type de relation"@fr ;
+    skos:definition "Whether a stratigraphic relation is a direct contact or an indirect ordering."@en .
+
+lulcw:witnessedBy a owl:ObjectProperty ;
+    rdfs:domain lulcw:StratigraphicRelation ; rdfs:range lulcw:ElementaryPolygon ;
+    rdfs:label "witnessed by"@en , "attestée par"@fr ;
+    skos:definition "An elementary polygon whose stack shows the stratigraphic relation."@en .
+
+lulcw:interveningUnit a owl:ObjectProperty ;
+    rdfs:domain lulcw:StratigraphicRelation ; rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "intervening unit"@en , "entité intercalée"@fr ;
+    skos:definition "A unit mapped between the upper and the lower unit of an indirect ordering, in the witnessing stack."@en .
+
+lulcw:overlies a owl:ObjectProperty ;
+    rdfs:domain lulcw:HydrogeologicalUnit ; rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "overlies"@en , "repose sur"@fr ;
+    skos:definition "Shortcut: the first unit is in direct contact above the second in at least one elementary polygon (a lulcw:StratigraphicRelation of kind direct contact holds the witnesses). Deliberately not transitive; not a hydraulic relation."@en .
+
+lulcw:hasMemberUnit a owl:ObjectProperty ;
+    rdfs:domain lulcw:HydrogeologicalUnitGroup ; rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "has member unit"@en , "comprend l'entité"@fr ;
+    skos:definition "Links a unit group to one of its hydrogeological units."@en .
+
+lulcw:hasIntake a owl:ObjectProperty ;
+    rdfs:domain lulcw:AbstractionFacility ; rdfs:range lulcw:Intake ;
+    rdfs:label "has intake"@en , "a pour point de prélèvement"@fr ;
+    skos:definition "Links an abstraction facility to one of its intakes."@en .
+
+lulcw:attributedEntity a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:UnitAttribution ;
+    rdfs:label "attributed entity"@en , "entité attribuée"@fr ;
+    skos:definition "The piezometer or abstraction facility that a unit attribution is about."@en .
+
+lulcw:candidateUnit a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:UnitAttribution ; rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "candidate unit"@en , "entité candidate"@fr ;
+    skos:definition "The hydrogeological unit proposed by an attribution resolved to the exact unit."@en .
+
+lulcw:candidateGroup a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:UnitAttribution ; rdfs:range lulcw:HydrogeologicalUnitGroup ;
+    rdfs:label "candidate group"@en , "groupe candidat"@fr ;
+    skos:definition "The unit group proposed by an attribution, the only target when the evidence resolves to the group."@en .
+
+lulcw:role a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:UnitAttribution ; rdfs:range lulcw:AttributionRole ;
+    rdfs:label "has role"@en , "a pour rôle"@fr ;
+    skos:definition "Whether a unit attribution concerns monitoring or abstraction."@en .
+
+lulcw:derivationRule a owl:ObjectProperty ;
+    rdfs:range lulcw:DerivationRule ;
+    rdfs:label "derived by rule"@en , "dérivée par la règle"@fr ;
+    skos:definition "The rule that produced a qualified assertion."@en .
+
+lulcw:evaluatedRule a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:RuleEvaluation ; rdfs:range lulcw:DerivationRule ;
+    rdfs:label "evaluated rule"@en , "règle évaluée"@fr ;
+    skos:definition "The rule a rule evaluation measures."@en .
+
+lulcw:confidence a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:range lulcw:ConfidenceLevel ;
+    rdfs:label "has confidence level"@en , "a pour niveau de confiance"@fr ;
+    skos:definition "The evidence-policy confidence level of a qualified assertion."@en .
+
+lulcw:resolution a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:range lulcw:Resolution ;
+    rdfs:label "has resolution"@en , "a pour résolution"@fr ;
+    skos:definition "The level (exact unit or unit group) at which an attribution or a rule evaluation is resolved."@en .
+
+lulcw:assessmentStatus a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:range lulcw:AssessmentStatus ;
+    rdfs:label "has assessment status"@en , "a pour statut d'évaluation"@fr ;
+    skos:definition "Candidate, accepted, rejected or superseded status of a qualified assertion."@en .
+
+lulcw:evidenceKind a owl:ObjectProperty ;
+    rdfs:range lulcw:EvidenceKind ;
+    rdfs:label "has evidence kind"@en , "a pour nature de preuve"@fr ;
+    skos:definition "The kind of evidence behind a qualified assertion."@en .
+
+lulcw:applicableUse a owl:ObjectProperty ;
+    rdfs:range lulcw:WaterUse ;
+    rdfs:label "applicable use"@en , "usage concerné"@fr ;
+    skos:definition "A water use for which an attribution's confidence or a rule evaluation was measured; an irrigation candidate cannot inherit a drinking-water evaluation."@en .
+
+lulcw:waterUse a owl:ObjectProperty ;
+    rdfs:range lulcw:WaterUse ;
+    rdfs:label "has water use"@en , "a pour usage"@fr ;
+    skos:definition "The declared use of the volume of an annual abstraction record, or the use an accounting result covers."@en .
+
+lulcw:waterSource a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:range lulcw:WaterSource ;
+    rdfs:label "has water source"@en , "a pour milieu de prélèvement"@fr ;
+    skos:definition "Groundwater or surface water, for an abstraction facility or record."@en .
+
+lulcw:recordKind a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:AnnualAbstractionRecord ; rdfs:range lulcw:RecordKind ;
+    rdfs:label "has record kind"@en , "a pour nature d'enregistrement"@fr ;
+    skos:definition "Whether an annual abstraction record is declared, imputed or reconstructed."@en .
+
+lulcw:selectedUnder a owl:ObjectProperty ;
+    rdfs:range lulcw:ExportPolicy ;
+    rdfs:label "selected under"@en , "retenue par"@fr ;
+    skos:definition "An export policy that selects this qualified assertion as a model input or graph edge."@en .
+
+lulcw:monitors a owl:ObjectProperty ;
+    rdfs:domain lulcw:Piezometer ; rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "monitors"@en , "surveille"@fr ;
+    skos:definition "Projection of the unit attributions with the monitoring role that a named export policy selects; the attributions remain the evidence."@en .
+
+lulcw:pumpsFrom a owl:ObjectProperty ;
+    rdfs:domain lulcw:AbstractionFacility ; rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "pumps from"@en , "prélève dans"@fr ;
+    skos:definition "Projection of the unit attributions with the abstraction role that a named export policy selects (main runs: confident and probable). Selection does not raise certainty; the attributions remain the evidence."@en .
+
+lulcw:wellA a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:WellLink ; rdfs:range lulcw:Piezometer ;
+    rdfs:label "first well"@en , "premier piézomètre"@fr ;
+    skos:definition "The piezometer of a well link whose BSS code sorts first, so that an unordered pair is stored once."@en .
+
+lulcw:wellB a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:WellLink ; rdfs:range lulcw:Piezometer ;
+    rdfs:label "second well"@en , "second piézomètre"@fr ;
+    skos:definition "The piezometer of a well link whose BSS code sorts second."@en .
+
+lulcw:sharedUnit a owl:ObjectProperty ;
+    rdfs:domain lulcw:WellLink ; rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "shared unit"@en , "entité commune"@fr ;
+    skos:definition "A hydrogeological unit that both wells of a link are attributed to under the stated policy."@en .
+
+lulcw:driverEntity a owl:ObjectProperty ;
+    rdfs:domain lulcw:Influence ;
+    rdfs:label "driver entity"@en , "entité motrice"@fr ;
+    skos:definition "The entity whose driver variable an influence is about (e.g. an abstraction facility, an outcrop area, a weather cell)."@en .
+
+lulcw:targetEntity a owl:ObjectProperty ;
+    rdfs:domain lulcw:Influence ;
+    rdfs:label "target entity"@en , "entité cible"@fr ;
+    skos:definition "The piezometer whose head an influence may change."@en .
+
+lulcw:driverVariable a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:Influence ; rdfs:range sosa:ObservableProperty ;
+    rdfs:label "driver variable"@en , "variable motrice"@fr ;
+    skos:definition "The variable whose increase the response sign of an influence refers to."@en .
+
+lulcw:mechanism a owl:ObjectProperty ;
+    rdfs:domain lulcw:Influence ; rdfs:range lulcw:Mechanism ;
+    rdfs:label "has mechanism"@en , "a pour mécanisme"@fr ;
+    skos:definition "The physical mechanism an influence relies on."@en .
+
+lulcw:responseSign a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:Influence ; rdfs:range lulcw:ResponseSign ;
+    rdfs:label "has response sign"@en , "a pour signe de réponse"@fr ;
+    skos:definition "The proposed direction of the head response to an increase of the driver variable."@en .
+
+lulcw:driverGroup a owl:ObjectProperty ;
+    rdfs:domain lulcw:Influence ; rdfs:range lulcw:DriverGroup ;
+    rdfs:label "in driver group"@en , "dans le groupe de forçages"@fr ;
+    skos:definition "A group within which the influence's effect is reported jointly with others."@en .
+
+lulcw:constraintEligibility a owl:ObjectProperty ;
+    rdfs:domain lulcw:Influence ; rdfs:range lulcw:ConstraintEligibility ;
+    rdfs:label "has constraint eligibility"@en , "a pour éligibilité à la contrainte"@fr ;
+    skos:definition "Whether an influence may fix the sign of a model response, under the policy it is selected by."@en .
+
+lulcw:allocatesRecord a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:VolumeAllocation ; rdfs:range lulcw:AnnualAbstractionRecord ;
+    rdfs:label "allocates record"@en , "répartit l'enregistrement"@fr ;
+    skos:definition "The annual abstraction record a volume allocation shares out."@en .
+
+lulcw:allocatedTo a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:VolumeAllocation ;
+    rdfs:label "allocated to"@en , "attribué à"@fr ;
+    skos:definition "The hydrogeological unit or unit group a volume allocation gives its share to."@en .
+
+lulcw:accountedFor a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:AccountingResult ;
+    rdfs:label "accounted for"@en , "bilan de"@fr ;
+    skos:definition "The hydrogeological unit or unit group an accounting result is about."@en .
+
+lulcw:underPolicy a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:range lulcw:ExportPolicy ;
+    rdfs:label "under policy"@en , "selon la politique"@fr ;
+    skos:definition "The policy a volume allocation or an accounting result was computed under."@en .
+
+lulcw:reportingExtent a owl:ObjectProperty ;
+    rdfs:domain lulcw:AccountingResult ; rdfs:range geo:Feature ;
+    rdfs:label "reporting extent"@en , "emprise du bilan"@fr ;
+    skos:definition "The area whose facilities an accounting result includes, by an explicit selection rule; it does not imply that all abstraction from the unit occurs inside it."@en .
+
+#################################################################
+# Datatype properties (units in the names, stated in the definitions)
+#################################################################
+
+lulcw:bssCode a owl:DatatypeProperty ; rdfs:range xsd:string ;
+    rdfs:label "BSS code"@en , "code BSS"@fr ;
+    skos:definition "Identifier of a borehole in the French subsurface database (BSS), e.g. 10906X0039/C2-1."@en .
+lulcw:bssId a owl:DatatypeProperty ; rdfs:range xsd:string ;
+    rdfs:label "BSS identifier"@en , "identifiant BSS"@fr ;
+    skos:definition "New-format BSS identifier of a borehole, e.g. BSS002MNYD."@en .
+lulcw:bnpeCode a owl:DatatypeProperty ; rdfs:range xsd:string ;
+    rdfs:label "BNPE facility code"@en , "code d'ouvrage BNPE"@fr ;
+    skos:definition "Identifier of an abstraction facility in the national withdrawal database (BNPE code_ouvrage)."@en .
+lulcw:bdlisaCode a owl:DatatypeProperty ; rdfs:range xsd:string ;
+    rdfs:label "BD LISA code"@en , "code BD LISA"@fr ;
+    skos:definition "Code of a BD LISA hydrogeological entity (CodeEH), e.g. 671AA00."@en .
+lulcw:polygonCode a owl:DatatypeProperty ; rdfs:range xsd:integer ;
+    rdfs:label "BD LISA polygon code"@en , "code de polygone BD LISA"@fr ;
+    skos:definition "Code of a BD LISA elementary polygon (CodePoly)."@en .
+lulcw:groundwaterBodyCode a owl:DatatypeProperty ; rdfs:range xsd:string ;
+    rdfs:label "groundwater body code"@en , "code de masse d'eau"@fr ;
+    skos:definition "Code of a Water Framework Directive groundwater body, e.g. DG243."@en .
+lulcw:sourceIdentifier a owl:DatatypeProperty ; rdfs:range xsd:string ;
+    rdfs:label "source identifier"@en , "identifiant source"@fr ;
+    skos:definition "The original identifier of a source record in its data release."@en .
+lulcw:bdlisaNatureCode a owl:DatatypeProperty ; rdfs:range xsd:integer ;
+    rdfs:label "BD LISA nature code"@en , "code nature BD LISA"@fr ;
+    skos:definition "BD LISA nature of an entity at level 3 (natureeh): 5 aquifer unit, 6 semi-permeable unit, 7 impermeable unit. It describes the BD LISA entity, not the hydraulic type of the unit in this ontology."@en .
+lulcw:bdlisaThemeCode a owl:DatatypeProperty ; rdfs:range xsd:integer ;
+    rdfs:label "BD LISA theme code"@en , "code thème BD LISA"@fr ;
+    skos:definition "BD LISA theme (themeeh): 1 alluvial, 2 sedimentary, 3 basement, 4 intensely folded, 5 volcanic."@en .
+lulcw:bdlisaMediumCode a owl:DatatypeProperty ; rdfs:range xsd:integer ;
+    rdfs:label "BD LISA medium code"@en , "code milieu BD LISA"@fr ;
+    skos:definition "BD LISA medium (milieueh, SANDRE nomenclature 353): 1 porous, 2 fissured, 3 karstic, 4 to 10 mixed porosity, 11 fractured."@en .
+lulcw:layerOrder a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:StackLayer ; rdfs:range xsd:integer ;
+    rdfs:label "layer order"@en , "ordre du niveau"@fr ;
+    skos:definition "Relative order of a layer in its polygon's stack (BD LISA OrdRelatif; 1 = mapped at the surface)."@en .
+lulcw:witnessAreaM2 a owl:DatatypeProperty ; rdfs:range xsd:double ;
+    rdfs:label "witness area (m²)"@en , "surface témoin (m²)"@fr ;
+    skos:definition "Total area, in square metres (Lambert-93), of the polygons that witness a stratigraphic relation."@en .
+lulcw:investigationDepthM a owl:DatatypeProperty ; rdfs:range xsd:double ;
+    rdfs:label "investigation depth (m)"@en , "profondeur d'investigation (m)"@fr ;
+    skos:definition "Investigation depth of a borehole below ground, in metres (Hub'Eau profondeur_investigation). It is not the screened interval, and a missing value is never zero."@en .
+lulcw:screenTopDepthM a owl:DatatypeProperty ; rdfs:range xsd:double ;
+    rdfs:label "screen top depth (m)"@en , "profondeur du haut de la crépine (m)"@fr ;
+    skos:definition "Depth below ground, in metres, of the top of a documented screened interval; only from a construction record."@en .
+lulcw:screenBottomDepthM a owl:DatatypeProperty ; rdfs:range xsd:double ;
+    rdfs:label "screen bottom depth (m)"@en , "profondeur du bas de la crépine (m)"@fr ;
+    skos:definition "Depth below ground, in metres, of the bottom of a documented screened interval; only from a construction record."@en .
+lulcw:groundElevationM a owl:DatatypeProperty ; rdfs:range xsd:double ;
+    rdfs:label "ground elevation (m NGF)"@en , "altitude du sol (m NGF)"@fr ;
+    skos:definition "Elevation of the ground (or reference mark) at a station, in metres above the NGF-IGN69 datum."@en .
+lulcw:verticalDatum a owl:DatatypeProperty ; rdfs:range xsd:string ;
+    rdfs:label "vertical datum"@en , "référence altimétrique"@fr ;
+    skos:definition "The vertical datum of the head values of a series (e.g. NGF-IGN69)."@en .
+lulcw:temporalResolution a owl:DatatypeProperty ; rdfs:range xsd:string ;
+    rdfs:label "temporal resolution"@en , "pas de temps"@fr ;
+    skos:definition "Time step of a series, as an ISO 8601 duration (e.g. P7D)."@en .
+lulcw:coverageStart a owl:DatatypeProperty ;
+    rdfs:label "coverage start"@en , "début de couverture"@fr ;
+    skos:definition "First date covered by a series (an xsd:date literal)."@en .
+lulcw:coverageEnd a owl:DatatypeProperty ;
+    rdfs:label "coverage end"@en , "fin de couverture"@fr ;
+    skos:definition "Last date covered by a series (an xsd:date literal)."@en .
+lulcw:storedIn a owl:DatatypeProperty ; rdfs:range xsd:string ;
+    rdfs:label "stored in"@en , "stockée dans"@fr ;
+    skos:definition "Path of the table holding a series outside the graph, relative to the project root, with the key that selects it."@en .
+lulcw:qualityPolicy a owl:DatatypeProperty ; rdfs:range xsd:string ;
+    rdfs:label "quality policy"@en , "politique qualité"@fr ;
+    skos:definition "The quality filter applied to a series (e.g. values qualified 'Incorrecte' dropped before the weekly mean)."@en .
+lulcw:releaseDate a owl:DatatypeProperty ;
+    rdfs:label "release date"@en , "date de version"@fr ;
+    skos:definition "Publication or build date of a data release (an xsd:date literal); not the date its facts apply to."@en .
+lulcw:retrievalDate a owl:DatatypeProperty ;
+    rdfs:label "retrieval date"@en , "date de récupération"@fr ;
+    skos:definition "Date a data release was retrieved from its source (an xsd:date literal)."@en .
+lulcw:codeVersion a owl:DatatypeProperty ; rdfs:range xsd:string ;
+    rdfs:label "code version"@en , "version du code"@fr ;
+    skos:definition "Version of the code of a rule execution (a git commit)."@en .
+lulcw:ruleVersion a owl:DatatypeProperty ; rdfs:range xsd:string ;
+    rdfs:label "rule version"@en , "version de la règle"@fr ;
+    skos:definition "Version of a derivation rule or of an export policy."@en .
+lulcw:rank a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:integer ;
+    rdfs:label "rank"@en , "rang"@fr ;
+    skos:definition "Rank of an attribution among the candidates for the same entity and role (1 = main candidate)."@en .
+lulcw:unknownReason a owl:DatatypeProperty ; rdfs:range xsd:string ;
+    rdfs:label "reason for unknown"@en , "raison de l'inconnu"@fr ;
+    skos:definition "Why an attribution has no target (e.g. no record, no measured rule for this stack)."@en .
+lulcw:precision a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:double ;
+    rdfs:label "precision"@en , "précision"@fr ;
+    skos:definition "Share of the cases where a rule fires that agree with the reference, at the evaluation's resolution."@en .
+lulcw:sampleSize a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:integer ;
+    rdfs:label "sample size"@en , "effectif"@fr ;
+    skos:definition "Number of reference cases a rule evaluation used."@en .
+lulcw:horizontalDistanceM a owl:DatatypeProperty ; rdfs:range xsd:double ;
+    rdfs:label "horizontal distance (m)"@en , "distance horizontale (m)"@fr ;
+    skos:definition "Projected horizontal distance in metres (Lambert-93) between the two entities of a well link or an influence; a selection descriptor, not hydraulic evidence."@en .
+lulcw:investigationDepthDifferenceM a owl:DatatypeProperty ; rdfs:range xsd:double ;
+    rdfs:label "investigation-depth difference (m)"@en , "écart de profondeur d'investigation (m)"@fr ;
+    skos:definition "Absolute difference of the investigation depths of the two wells of a link, in metres; absent when either depth is missing."@en .
+lulcw:conditions a owl:DatatypeProperty ; rdfs:range xsd:string ;
+    rdfs:label "conditions"@en , "conditions"@fr ;
+    skos:definition "The conditions under which an influence's response sign holds, stated in words (e.g. the facility pumps from the unit the well monitors, distance at most d)."@en .
+lulcw:eligibilityReason a owl:DatatypeProperty ; rdfs:range xsd:string ;
+    rdfs:label "eligibility reason"@en , "motif d'éligibilité"@fr ;
+    skos:definition "Why an influence is or is not eligible to constrain a model."@en .
+lulcw:allocationWeight a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:double ;
+    rdfs:label "allocation weight"@en , "poids de répartition"@fr ;
+    skos:definition "Share, between 0 and 1, of an annual record's volume given to the allocated unit or group."@en .
+lulcw:accountingYear a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:integer ;
+    rdfs:label "accounting year"@en , "année du bilan"@fr ;
+    skos:definition "Calendar year an accounting result covers."@en .
+lulcw:eligibleDeclaredVolumeM3 a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:double ;
+    rdfs:label "eligible declared volume (m³)"@en , "volume déclaré éligible (m³)"@fr ;
+    skos:definition "Total declared volume, in cubic metres, of the records an accounting covers, after documented deduplication."@en .
+lulcw:allocatedVolumeM3 a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:double ;
+    rdfs:label "allocated volume (m³)"@en , "volume attribué (m³)"@fr ;
+    skos:definition "Part of the eligible declared volume, in cubic metres, attributed to the unit or group under the policy."@en .
+lulcw:unresolvedVolumeM3 a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:double ;
+    rdfs:label "unresolved volume (m³)"@en , "volume non attribué (m³)"@fr ;
+    skos:definition "Part of the eligible declared volume, in cubic metres, without an accepted attribution under the policy."@en .
+lulcw:excludedVolumeM3 a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:double ;
+    rdfs:label "excluded volume (m³)"@en , "volume exclu (m³)"@fr ;
+    skos:definition "Part of the eligible declared volume, in cubic metres, explicitly excluded by the policy, with a stated reason."@en .
+lulcw:facilityCount a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:integer ;
+    rdfs:label "facility count"@en , "nombre d'ouvrages"@fr ;
+    skos:definition "Number of facilities an accounting result covers."@en .

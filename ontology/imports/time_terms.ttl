@@ -1,0 +1,143 @@
+@prefix : <https://w3id.org/lulcw/imports/time#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://w3id.org/lulcw/imports/time> .
+
+<https://w3id.org/lulcw/imports/time> rdf:type owl:Ontology ;
+                                       owl:versionIRI <http://www.w3.org/2006/time#2016> ;
+                                       rdfs:comment "MIREOT extract (declarations, annotations, hierarchy) of the terms LULC-Water uses, built by src/kg/build_imports.py with ROBOT from https://www.w3.org/2006/time (retrieved 2026-10-24, sha256 251bd6970b0d)." .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://www.w3.org/2000/01/rdf-schema#comment
+rdfs:comment rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#label
+rdfs:label rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#editorialNote
+<http://www.w3.org/2004/02/skos/core#editorialNote> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.w3.org/2002/07/owl#topObjectProperty
+owl:topObjectProperty rdf:type owl:ObjectProperty .
+
+
+###  http://www.w3.org/2006/time#hasBeginning
+<http://www.w3.org/2006/time#hasBeginning> rdf:type owl:ObjectProperty ;
+                                           rdfs:subPropertyOf <http://www.w3.org/2006/time#hasTime> ;
+                                           rdfs:comment "Beginning of a temporal entity"@en ,
+                                                        "Comienzo de una entidad temporal."@es ;
+                                           rdfs:label "has beginning"@en ,
+                                                      "tiene principio"@es ;
+                                           <http://www.w3.org/2004/02/skos/core#definition> "Beginning of a temporal entity."@en ,
+                                                                                            "Comienzo de una entidad temporal."@es .
+
+
+###  http://www.w3.org/2006/time#hasEnd
+<http://www.w3.org/2006/time#hasEnd> rdf:type owl:ObjectProperty ;
+                                     rdfs:subPropertyOf <http://www.w3.org/2006/time#hasTime> ;
+                                     rdfs:comment "End of a temporal entity."@en ,
+                                                  "Final de una entidad temporal."@es ;
+                                     rdfs:label "has end"@en ,
+                                                "tiene fin"@es ;
+                                     <http://www.w3.org/2004/02/skos/core#definition> "End of a temporal entity."@en ,
+                                                                                      "Final de una entidad temporal."@es .
+
+
+###  http://www.w3.org/2006/time#hasTime
+<http://www.w3.org/2006/time#hasTime> rdf:type owl:ObjectProperty ;
+                                      rdfs:subPropertyOf owl:topObjectProperty ;
+                                      rdfs:comment "Proporciona soporte a la asociación de una entidad temporal (instante o intervalo) a cualquier cosa."@es ,
+                                                   "Supports the association of a temporal entity (instant or interval) to any thing"@en ;
+                                      rdfs:label "has time"@en ,
+                                                 "tiene tiempo"@es ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "Proporciona soporte a la asociación de una entidad temporal (instante o intervalo) a cualquier cosa."@es ,
+                                                                                       "Supports the association of a temporal entity (instant or interval) to any thing"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#editorialNote> "Característica arriesgada -añadida en la revisión del 2017 que no ha sido todavía utilizada de forma amplia."@es ,
+                                                                                          "Feature at risk - added in 2017 revision, and not yet widely used. "@en .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  http://www.w3.org/2002/07/owl#topDataProperty
+owl:topDataProperty rdf:type owl:DatatypeProperty .
+
+
+###  http://www.w3.org/2006/time#inXSDDate
+<http://www.w3.org/2006/time#inXSDDate> rdf:type owl:DatatypeProperty ;
+                                        rdfs:subPropertyOf owl:topDataProperty ;
+                                        rdfs:comment "Posición de un instante, expresado utilizando xsd:date."@es ,
+                                                     "Position of an instant, expressed using xsd:date"@en ;
+                                        rdfs:label "en fecha XSD"@es ,
+                                                   "in XSD date"@en ;
+                                        <http://www.w3.org/2004/02/skos/core#definition> "Posición de un instante, expresado utilizando xsd:date."@es ,
+                                                                                         "Position of an instant, expressed using xsd:date"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.w3.org/2006/time#Instant
+<http://www.w3.org/2006/time#Instant> rdf:type owl:Class ;
+                                      rdfs:subClassOf <http://www.w3.org/2006/time#TemporalEntity> ;
+                                      rdfs:comment "A temporal entity with zero extent or duration"@en ,
+                                                   "Una entidad temporal con una extensión o duración cero."@es ;
+                                      rdfs:label "Time instant"@en ,
+                                                 "instante de tiempo."@es ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "A temporal entity with zero extent or duration"@en ,
+                                                                                       "Una entidad temporal con una extensión o duración cero."@es .
+
+
+###  http://www.w3.org/2006/time#Interval
+<http://www.w3.org/2006/time#Interval> rdf:type owl:Class ;
+                                       rdfs:subClassOf <http://www.w3.org/2006/time#TemporalEntity> ;
+                                       rdfs:comment "A temporal entity with an extent or duration"@en ,
+                                                    "Una entidad temporal con una extensión o duración."@es ;
+                                       rdfs:label "Time interval"@en ,
+                                                  "intervalo de tiempo"@es ;
+                                       <http://www.w3.org/2004/02/skos/core#definition> "A temporal entity with an extent or duration"@en ,
+                                                                                        "Una entidad temporal con una extensión o duración."@es .
+
+
+###  http://www.w3.org/2006/time#ProperInterval
+<http://www.w3.org/2006/time#ProperInterval> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://www.w3.org/2006/time#Interval> ;
+                                             rdfs:comment "A temporal entity with non-zero extent or duration, i.e. for which the value of the beginning and end are different"@en ,
+                                                          "Una entidad temporal con extensión o duración distinta de cero, es decir, para la cual los valores de principio y fin del intervalo son diferentes."@es ;
+                                             rdfs:label "Proper interval"@en ,
+                                                        "intervalo propio"@es ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "A temporal entity with non-zero extent or duration, i.e. for which the value of the beginning and end are different"@en ,
+                                                                                              "Una entidad temporal con extensión o duración distinta de cero, es decir, para la cual los valores de principio y fin del intervalo son diferentes."@es .
+
+
+###  http://www.w3.org/2006/time#TemporalEntity
+<http://www.w3.org/2006/time#TemporalEntity> rdf:type owl:Class ;
+                                             rdfs:subClassOf owl:Thing ;
+                                             rdfs:comment "A temporal interval or instant."@en ,
+                                                          "Un intervalo temporal o un instante."@es ;
+                                             rdfs:label "Temporal entity"@en ,
+                                                        "entidad temporal"@es ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "A temporal interval or instant."@en ,
+                                                                                              "Un intervalo temporal o un instante."@es .
+
+
+###  Generated by the OWL API (version 4.5.29) https://github.com/owlcs/owlapi

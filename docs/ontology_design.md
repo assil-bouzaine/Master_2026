@@ -18,7 +18,7 @@ probability. See the [review note](notes/step12c_competency_review.md).
 
 | Prefix | Namespace | Role | Status |
 |---|---|---|---|
-| `lulcw:` | to decide in 3.4: `https://w3id.org/lulcw#` if a w3id redirect is accepted, else a GitHub Pages IRI | our bridging module | ours |
+| `lulcw:` | `https://w3id.org/lulcw#`, used from version 0.1.0 (2026-10-24); the w3id redirect is still to request, else a GitHub Pages IRI | our bridging module | ours |
 | `lulcwd:` | same base + `data/` | instances of the knowledge graph | ours |
 | `gwml2:` | `http://gwml2.org/def/gwml2#` | GWML2 classes, in the OWL rendering of SAWGraph's water ontology v1.0 (`http://purl.org/spatialai/spatial/water-full`) | checked; **licence not stated**: keep local copies of the terms we use, with attribution |
 | `hyfo:` | `http://hyfo.spatialai.org/v1/hyfo#` | HyFO | checked (declared in the SAWGraph ontology) |
@@ -47,12 +47,12 @@ Rules for the relations:
 | `lulcw:` class | Meaning (source data) | Reuse / alignment | CQ |
 |---|---|---|---|
 | `Piezometer` | Hub'Eau monitoring well (`code_bss`, `bss_id`) | ⊑ `gwml2:GW_Well`; closeMatch `hyfo:WaterWell` | 1, 11, 13 |
-| `AbstractionPoint` | BNPE reporting ouvrage (`code_ouvrage`); distinguish facility from individual intakes/boreholes when the source does | groundwater well subclass only with supporting type evidence; a name is a clue, not proof | 2, 12 |
-| `AquiferUnit` | Working name for a BD LISA hydrogeological entity, including non-aquifer units | ⊑ `gwml2:GW_HydrogeoUnit`; do not make every instance a `GW_Aquifer` | 1, 3, 4 |
-| `AlluvialAquifer` | recent and ancient alluvium (`718BP0x`, `671AB0x`) | ⊑ `AquiferUnit`, ⊑ `gwml2:GW_Aquifer`; local confinement assessed separately | 3, 5, 14 |
-| `MultilayerAquiferSystem` | the Pliocene `671AA00` | ⊑ `AquiferUnit`, ⊑ `gwml2:GW_AquiferSystem` | 3, 14 |
-| `KarstAquifer` | Corbières `681AM00` | ⊑ `AquiferUnit`, ⊑ `gwml2:GW_Aquifer`; closeMatch SWEET `Aquifer` | 3 |
-| `ConfiningUnit` | BD LISA nature 7 (impermeable) | ⊑ `AquiferUnit`; closeMatch SWEET `Aquitard` (GWML2's confining bed is not a class in the rendering) | 3 |
+| `AbstractionFacility` (was `AbstractionPoint`; + `Intake`) | BNPE reporting ouvrage (`code_ouvrage`); distinguish facility from individual intakes/boreholes when the source does | groundwater well subclass only with supporting type evidence; a name is a clue, not proof | 2, 12 |
+| `HydrogeologicalUnit` (working name `AquiferUnit` until 0.1.0) | A BD LISA hydrogeological entity, including non-aquifer units | ⊑ `gwml2:GW_HydrogeoUnit`; do not make every instance a `GW_Aquifer` | 1, 3, 4 |
+| `AlluvialAquifer` | recent and ancient alluvium (`718BP0x`, `671AB0x`) | ⊑ `HydrogeologicalUnit`, ⊑ `gwml2:GW_Aquifer`; local confinement assessed separately | 3, 5, 14 |
+| `MultilayerAquiferSystem` | the Pliocene `671AA00` | ⊑ `HydrogeologicalUnit`, ⊑ `gwml2:GW_AquiferSystem` | 3, 14 |
+| `KarstAquifer` | Corbières `681AM00` | ⊑ `HydrogeologicalUnit`, ⊑ `gwml2:GW_Aquifer`; closeMatch SWEET `Aquifer` | 3 |
+| `ConfiningUnit` | BD LISA nature 7 (impermeable) | ⊑ `HydrogeologicalUnit`; closeMatch SWEET `Aquitard` (GWML2's confining bed is not a class in the rendering) | 3 |
 | `GroundwaterBody` | WFD body (`codes_masse_eau_edl`, e.g. `DG243`) | ours; Sandre URI if it resolves (to check) | 1 |
 | `River` / `Gauge` | Hub'Eau hydrometry | `River` ⊑ a `hyf:` water-body class (to check); `Gauge` ⊑ `sosa:Platform` | 5 |
 | `WeatherCell` | SAFRAN 8 km cell | ⊑ `geo:Feature` | 4 |
@@ -91,13 +91,13 @@ SKOS concept schemes (ours unless stated):
 
 | `lulcw:` property | Domain → range | Reuse | CQ |
 |---|---|---|---|
-| `monitors` | Piezometer → AquiferUnit | ⊑ `hyfo:tapsAquifer` only after checking inherited domain/range; qualified assignments are authoritative | 1 |
-| `pumpsFrom` | AbstractionPoint → AquiferUnit | check inherited types before using ⊑ `hyfo:tapsAquifer`; policy-scoped projection, confident + probable in main runs (§4.3) | 2 |
-| `overlies` | AquiferUnit → AquiferUnit; some mapped direct contact | shortcut backed by `StratigraphicRelation`; indirect ordering derived only within compatible spatial contexts | 3 |
+| `monitors` | Piezometer → HydrogeologicalUnit | ⊑ `hyfo:tapsAquifer` only after checking inherited domain/range; qualified assignments are authoritative | 1 |
+| `pumpsFrom` | AbstractionFacility → HydrogeologicalUnit | check inherited types before using ⊑ `hyfo:tapsAquifer`; policy-scoped projection, confident + probable in main runs (§4.3) | 2 |
+| `overlies` | HydrogeologicalUnit → HydrogeologicalUnit; some mapped direct contact | shortcut backed by `StratigraphicRelation`; indirect ordering derived only within compatible spatial contexts | 3 |
 | `inGroundwaterBody` | Piezometer → GroundwaterBody | — | 1 |
 | `investigationDepth` | Piezometer → xsd:decimal (m) | Hub'Eau `profondeur_investigation`; **not** the screen depth | 1, 11 |
 | `stackPosition` | local unit assignment/setting → xsd:integer (1 = mapped outcrop) | retain stack/source context when a well has several candidates | 14 |
-| `outcropOf` | mapped outcrop feature → AquiferUnit | the feature has geometry via `geo:hasGeometry` | 4 |
+| `outcropOf` | mapped outcrop feature → HydrogeologicalUnit | the feature has geometry via `geo:hasGeometry` | 4 |
 | `connectedTo` | qualified unit/reach hydraulic association | distinguish name/spatial association from evidence of exchange; include place/time | 5 |
 | `hasUse` | dated abstraction observation → WaterUse | facility-level summaries are derived views, not permanent exclusive uses | 2, 12 |
 | `confidence` | UnitAttribution / Influence → Confidence | — | 2, 8 |
@@ -222,7 +222,7 @@ Two limits are stated wherever these links are used:
 | `671AA00` "Sables et argiles pliocènes du Roussillon" (labelled semi-permeable at level 3) | `MultilayerAquiferSystem` |
 | milieu karstic (`681AM00`, `681AN02`, `699AB01`) | `KarstAquifer` |
 | nature 7, impermeable (e.g. `679AB00`, `699AD01`) | `ConfiningUnit` |
-| other units (fissured basement, folded series) | `AquiferUnit`, with their BD LISA attributes |
+| other units (fissured basement, folded series) | `HydrogeologicalUnit`, with their BD LISA attributes |
 
 These broad geological types do not assign local confinement. For CQ14,
 derive mapped cover from stack position; require separate local hydraulic
@@ -284,6 +284,14 @@ aggregate census data validate only at their compatible aggregation scale.
 
 ## 6. Open points (decide in 3.4)
 
+Status on 2026-10-24 (version 0.1.0): the namespace is used provisionally (the redirect
+request needs Assil's GitHub account); the SAWGraph terms are kept as local copies with
+attribution (`ontology/imports/gwml2_hyfo_terms.ttl`); units are documented datatypes, the
+unit being part of each property name (`…M`, `…M2`, `…M3`) and stated in its definition.
+The `hyf:`, HILUCS and Sandre questions belong to the SHOULD modules (CQ5, CQ7); the
+distance and depth thresholds are chosen on the training period in 12.5–12.8.
+
+
 - The namespace: a w3id.org redirect needs a pull request from Assil's
   GitHub account; otherwise GitHub Pages.
 - The SAWGraph licence: ask, or keep local copies of the terms with
@@ -293,3 +301,21 @@ aggregate census data validate only at their compatible aggregation scale.
 - Units: QUDT or documented datatypes.
 - The distance d for pump → well influences, and the |Δ depth| threshold for
   `WellLink` edges: chosen on the training period.
+
+## 7. Implementation (version 0.1.0, 2026-10-24)
+
+| File | Content |
+|---|---|
+| `ontology/lulcw.ttl` | the bridging module: 191 terms for the six MUST CQs and the common answer contract |
+| `ontology/alignments/lulcw-gwml2-hyfo.ttl` | `Piezometer` ⊑ `GW_Well` (closeMatch `hyfo:WaterWell`); `MonitoringStation` ⊑ `GW_MonitoringSite`; `hostedBy` ⊑ `gwMonitoringHost`; units ⊑ `GW_HydrogeoUnit`, `GW_Aquifer`, `GW_AquiferSystem`; `monitors`, `pumpsFrom` ⊑ `hyfo:tapsAquifer` |
+| `ontology/alignments/lulcw-sweet.ttl` | closeMatch only: alluvial, karst and multilayer units → `Aquifer`; confining unit → `Aquitard` |
+| `ontology/imports/*_terms.ttl` | local copies of the reused terms (ROBOT MIREOT; `src/kg/build_imports.py`) |
+| `ontology/lulcw-meta.ttl`, `catalog-v001.xml` | the network's entry point; import IRIs → local files |
+| `ontology/report_profile.txt` | ROBOT report rules used as a gate |
+| `tests/test_ontology.py` | quality gates 1, 2 and 4 of §5 for the TBox |
+
+Not yet in 0.1.0: the SHOULD and COULD modules (outcrops and weather cells, rivers and
+gauges, canal supply, land use and crop alignment, restrictions, explanations and model
+results, comparable pairs, local hydrogeological setting, irrigation assessments,
+scenarios), the SHACL shapes and rules (12.6), the CQ queries and fixtures (12.7) and the
+OOPS! scan.

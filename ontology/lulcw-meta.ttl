@@ -1,0 +1,27 @@
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# Entry point of the LULC-Water network of ontologies (the WHOW-KG pattern, doi:10.1038/
+# s41597-025-04537-4): the lulcw bridging module, its alignment modules and, through them,
+# the local copies of the reused terms. Open this file (catalog-v001.xml resolves the imports
+# to local files); the quality gates in tests/test_ontology.py run on it.
+
+<https://w3id.org/lulcw/meta> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/lulcw/meta/0.1.0> ;
+    owl:versionInfo "0.1.0" ;
+    dcterms:title "LULC-Water meta-ontology"@en , "Méta-ontologie LULC-Water"@fr ;
+    dcterms:description "Network of the LULC-Water bridging module with GWML2 and HyFO (SAWGraph's OWL rendering), SWEET, SOSA, PROV-O, OWL-Time, SKOS and GeoSPARQL, linked by alignment modules rather than merged."@en ,
+        "Réseau formé du module de liaison LULC-Water, de GWML2 et HyFO (rendu OWL de SAWGraph), de SWEET, SOSA, PROV-O, OWL-Time, SKOS et GeoSPARQL, reliés par des modules d'alignement plutôt que fusionnés."@fr ;
+    dcterms:creator "Assil Bouzaine" ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    dcterms:created "2026-10-24"^^xsd:date ;
+    owl:imports <https://w3id.org/lulcw> , <https://w3id.org/lulcw/alignments/gwml2-hyfo> ,
+        <https://w3id.org/lulcw/alignments/sweet> .
+
+dcterms:title a owl:AnnotationProperty .
+dcterms:description a owl:AnnotationProperty .
+dcterms:creator a owl:AnnotationProperty .
+dcterms:license a owl:AnnotationProperty .
+dcterms:created a owl:AnnotationProperty .

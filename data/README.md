@@ -323,3 +323,24 @@ No new download: v4 is v3 rebuilt from the same caches (piezometer chronicles up
 
 Inputs: the dataset's `pumping_points` and `pumping_weekly`, the BNPE points of the
 2026-10-20 snapshot, the quality stations above, the BD LISA V3 GeoPackage.
+
+### Reused vocabularies (Step 12, task 12.4)
+
+| Date | Command | Output | Size |
+|---|---|---|---|
+| 2026-10-24 | `python -m src.kg.build_imports` (downloads once, then ROBOT MIREOT extracts; log with sha256 in `data/raw/vocab/sources.json`) | `data/raw/vocab/` (sources), `ontology/imports/*_terms.ttl` (extracts, committed) | see below |
+
+| File | Source (content negotiation where marked) | Bytes |
+|---|---|---|
+| `sosa.ttl` | `https://www.w3.org/ns/sosa/` (text/turtle) | 27,326 |
+| `prov-o.ttl` | `https://www.w3.org/ns/prov-o` (text/turtle) | 68,795 |
+| `time.ttl` | `https://www.w3.org/2006/time` (text/turtle) | 101,486 |
+| `skos.rdf` | `https://www.w3.org/2004/02/skos/core` (application/rdf+xml; redirects to the 2009 SKOS reference) | 28,966 |
+| `geo.ttl` | GeoSPARQL 1.1 (`owl:versionIRI <http://www.opengis.net/ont/geosparql/1.1>`) from the `1.1.0-ghpages` tag of github.com/opengeospatial/ogc-geosparql; the OGC server now answers its namespace with a catalogue page | 40,630 |
+| `sweet_realmHydro.ttl`, `sweet_matrWater.ttl` | github.com/ESIPFed/sweet, `src/` (CC0) | 12,158; 15,532 |
+
+The GWML2 and HyFO terms have no downloadable source: SAWGraph's Turtle URL returned 404
+and its documentation page (https://ontologies.geoconnex.us/sawgraph-water-ontology, read
+on 2026-10-24) is the source of the hand-written `ontology/imports/gwml2_hyfo_terms.ttl`.
+ROBOT 1.9.11 (`tools/robot.jar`, gitignored) came from the ontodev/robot GitHub release;
+its sha256 matched the published digest (53cd275c…).

@@ -608,8 +608,9 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
    - the positioning matrix in `docs/literature/comparison_table.md`: past heads
      as input? forcings? split? knowledge supplied? explanation validated?
    - fill the open-access rows (Heudorfer 2024, Wu 2025 JGR-MLC if open)
-3. Task 12.4 (ontology module), started 2026-10-24 with the 6 MUST CQs; then
-   12.5–12.8. Task 12.8 includes the equivalence test.
+3. ✅ Task 12.4, version 0.1.0 (2026-10-24; step note §12.4). Next: 12.5, the KG from
+   the parquet tables in the CQ work order (CQ1, CQ3, CQ11, then CQ2, CQ12), then
+   12.6–12.8. Task 12.8 includes the equivalence test.
 
 **Phase 3 (Step 12):** the task list is below. Freeze the ontology design after
 Assil's review of the competency questions.
@@ -639,7 +640,7 @@ Assil's review of the competency questions.
 | 12.1 | Competency questions (16) with example answers | ✅ drafted; the 6 MUST (CQ1, 2, 3, 8, 11, 12) approved by Assil on 2026-10-24, so 12.4 starts with them; the 10 SHOULD/COULD are still under his review |
 | 12.2 | Reuse table, term by term, and the modelling patterns (`docs/ontology_design.md`) | 🔄 started |
 | 12.3 | **CQ2 data step:** attribute each groundwater abstraction point to a unit, with provenance and confidence | ✅ 2026-10-23: `src/kg/pump_attribution.py` → `data/interim/pump_unit_attribution.parquet`. Rules measured on 130 recorded boreholes (flag True → alluvium 95 %; flag False + Pliocene under the point → Pliocene 92 %; False alone 53/112). The record is depth-checked. "Probable" only for the uses that were measured. Plain volume 2012–24: confident 27 %, probable 45 %, possible 21 %, unknown 7 % |
-| 12.4 | Ontology module `lulcw:` + imports/alignments in `ontology/`; IRIs and metadata; the quality gates in `tests/` | 🔄 started 2026-10-24 with the 6 MUST CQs |
+| 12.4 | Ontology module `lulcw:` + imports/alignments in `ontology/`; IRIs and metadata; the quality gates in `tests/` | ✅ 0.1.0 on 2026-10-24 for the 6 MUST CQs: 191 terms (FR/EN labels, definitions), local copies of the reused terms (`src/kg/build_imports.py`), alignments to GWML2/HyFO and SWEET, `python -m tests.test_ontology` (ELK + HermiT consistent, negative control, ROBOT report). SHOULD/COULD modules, the w3id redirect and OOPS! still to do |
 | 12.5 | KG instantiation from the parquet tables (rdflib → Turtle → pyoxigraph) | ⬜ |
 | 12.6 | SHACL shapes and SHACL-AF rules: Influence links, `ProbablyIrrigatedParcel`, `HighIrrigationDemandZone`, `ConfinedSetting` | ⬜ |
 | 12.7 | CQ tests: one SPARQL query plus an oracle per CQ (`tests/cq/`) | ⬜ |

@@ -1,0 +1,29 @@
+@prefix lulcw:   <https://w3id.org/lulcw#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix sohydro: <http://sweetontology.net/realmHydro/> .
+
+# Alignment of the lulcw module to SWEET (ESIP, CC0), the ontology the subject names. Only
+# skos:closeMatch: SWEET's classes are broader and differently axiomatised, so no subclass or
+# equivalence is asserted. SWEET's ConfinedAquifer and UnconfinedAquifer are deliberately not
+# matched to unit types: confinement is a local assessment (CQ14), not a property of a unit.
+
+<https://w3id.org/lulcw/alignments/sweet> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/lulcw/alignments/sweet/0.1.0> ;
+    dcterms:title "Alignment of LULC-Water to SWEET"@en , "Alignement de LULC-Water sur SWEET"@fr ;
+    dcterms:description "Close-match axioms linking lulcw unit types to SWEET classes; no subclass or equivalence is asserted."@en ;
+    dcterms:created "2026-10-24"^^xsd:date ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    owl:imports <https://w3id.org/lulcw> , <https://w3id.org/lulcw/imports/sweet> .
+
+lulcw:AlluvialAquifer skos:closeMatch sohydro:Aquifer .
+lulcw:KarstAquifer skos:closeMatch sohydro:Aquifer .
+lulcw:MultilayerAquiferSystem skos:closeMatch sohydro:Aquifer .
+lulcw:ConfiningUnit skos:closeMatch sohydro:Aquitard .
+
+dcterms:title a owl:AnnotationProperty .
+dcterms:description a owl:AnnotationProperty .
+dcterms:created a owl:AnnotationProperty .
+dcterms:license a owl:AnnotationProperty .

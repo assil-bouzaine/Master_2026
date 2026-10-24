@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Import IRIs of the LULC-Water network -> local files (read by Protégé, ROBOT and
+     tests/test_ontology.py). The w3id.org IRIs do not resolve on the web yet. -->
+<catalog prefer="public" xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
+    <uri name="https://w3id.org/lulcw" uri="lulcw.ttl"/>
+    <uri name="https://w3id.org/lulcw/meta" uri="lulcw-meta.ttl"/>
+    <uri name="https://w3id.org/lulcw/alignments/gwml2-hyfo" uri="alignments/lulcw-gwml2-hyfo.ttl"/>
+    <uri name="https://w3id.org/lulcw/alignments/sweet" uri="alignments/lulcw-sweet.ttl"/>
+    <uri name="https://w3id.org/lulcw/imports/gwml2-hyfo" uri="imports/gwml2_hyfo_terms.ttl"/>
+    <uri name="https://w3id.org/lulcw/imports/sweet" uri="imports/sweet_terms.ttl"/>
+    <uri name="https://w3id.org/lulcw/imports/sosa" uri="imports/sosa_terms.ttl"/>
+    <uri name="https://w3id.org/lulcw/imports/prov" uri="imports/prov_terms.ttl"/>
+    <uri name="https://w3id.org/lulcw/imports/time" uri="imports/time_terms.ttl"/>
+    <uri name="https://w3id.org/lulcw/imports/skos" uri="imports/skos_terms.ttl"/>
+    <uri name="https://w3id.org/lulcw/imports/geo" uri="imports/geo_terms.ttl"/>
+</catalog>

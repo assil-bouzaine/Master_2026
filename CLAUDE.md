@@ -553,7 +553,7 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
     contacts, publication details, monthly drinking-water production.
   - The e-mails are ready in §4–5 there; Assil sends them.
 
-**State at 2026-10-24 16:00 CET: the v4 re-runs (Step 12b) have started, off the laptop.**
+**State at 2026-10-24 19:00 CET: the v4 re-runs (Step 12b) are under way, off the laptop.**
 - **Assil's go (2026-10-24):** "u can use kaggle and colab to train", and no
   model is trained on the laptop any more. This lifts the hold of 2026-10-23
   evening ("keep only v3 running").
@@ -565,9 +565,24 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
   look (core-well medians, drought NSE v3 → v4): Pastas −1.00 → −0.93,
   LightGBM −0.12 → −0.10; left-out wells −0.75 → −0.91 and 25 % data
   −0.26 → −0.35 (harder, as intended by the v4 fixes).
-- **Colab T4, session 1 running** (started 15:10 UTC in `pfe_v3_gpu.ipynb`;
-  the v4 bundle is on Drive as `pfe_colab/gpu_bundle.zip`, md5 90b2ef2b…, the
-  v3 one kept as `gpu_bundle_v3.zip`). Run line:
+- **Colab T4, session 1 ended at 17:13 UTC** (started 15:10 UTC in
+  `pfe_v3_gpu.ipynb`). There was no error and no closing log line: most likely
+  the free-tier idle timeout, 92 min after the last interaction (15:41). Checked
+  18:00 UTC: Colab shows "No active sessions". Done and saved on Drive
+  (`pfe_colab/results_gpu/v4`):
+  - the finals of LSTM, distance ST-GNN and Taccari
+  - the regimes of LSTM and ST-GNN
+  - Taccari left-out wells: fold 0, and fold 1 seeds 0–2
+
+  Left: `final:ealstm`, the rest of `regimes:taccari` (32 seed-runs, ≈ 3 h),
+  `regimes:ealstm`, Chronos-2 ×3 (≈ 4–6 T4-hours in all). First look (unscored
+  medians from the log, 33 core wells, drought NSE v3 → v4):
+  - finals: LSTM 0.01 → 0.04, ST-GNN −0.09 → 0.04, Taccari −0.11 → −0.06
+  - left-out wells: LSTM −1.56 → −0.94, but ST-GNN −0.42 → −0.98. On the v4
+    folds the distance graph no longer loses least (LightGBM −0.91).
+
+  The v4 bundle is on Drive as `pfe_colab/gpu_bundle.zip`; the v3 one is kept as
+  `gpu_bundle_v3.zip`. Run line:
   `!unzip -oq /content/drive/MyDrive/pfe_colab/gpu_bundle.zip -d /content/pfe && PFE_DATASET=v4 python /content/pfe/scripts/colab_run.py`.
   `V4_STEPS`: the finals of LSTM, distance ST-GNN, Taccari, EA-LSTM, then
   their regimes, then Chronos-2 (≈ 6–8 T4-hours, 2–3 sessions).
@@ -580,7 +595,10 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
   Colab Terminal while session 1 ran; parts that hang in the Files panel are
   re-sent, and a `change` event on `#file-tree-upload-input` starts a stalled
   one). In a new runtime: mount Drive (Assil), then the same run line;
-  finished runs are restored from Drive and skipped. Pull with
+  finished runs are restored from Drive and skipped. Suggested order for
+  session 2 (main-table rows first): put
+  `STEPS="final:ealstm chronos2 chronos2_xl chronos2_ft regimes:taccari regimes:ealstm"`
+  before `python` in the run line. Touch the tab at least hourly. Pull with
   `scripts/colab_pull.py` (Drive folder `pfe_colab/results_gpu` → Download).
 - **After both:** `PFE_DATASET=v4` ensemble and `baseline_report` → the v4
   report of record (the v3 report stays as Step 12a's record). To re-check on
@@ -602,8 +620,9 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
 
 **Next for Claude, while the models run or after:**
 1. ✅ Step 12a done (2026-10-23 evening). 🔄 The v4 re-runs started on
-   2026-10-24: Kaggle CPU running, Colab session 1 running (EA-LSTM in
-   session 2), then the v4 report.
+   2026-10-24: Kaggle CPU done; Colab session 1 ended at 17:13 UTC (see State).
+   Then Colab session 2 (EA-LSTM, Chronos-2, the rest of the regimes), then the
+   v4 report.
 2. Literature, from the second review:
    - the positioning matrix in `docs/literature/comparison_table.md`: past heads
      as input? forcings? split? knowledge supplied? explanation validated?

@@ -311,6 +311,11 @@ folder `pfe_colab/results_gpu` (Drive > Download) works too. Then re-run the swe
   GPU-hours, not ~100 h.
 - After a code change, rebuild the bundle and upload it again (or add the changed file to the
   Drive copy with `zip`), so that the next session unzips the new version.
+- **A session can die about 90 min after the last interaction, even with a cell running**
+  (2026-10-24). The last touch was at 15:41 UTC and the run stopped at 17:13 UTC, with no
+  error and without the runner's closing log line; most likely the free-tier idle timeout.
+  During a long run, check the tab at least hourly. A stop costs only the seed in progress
+  (the other seeds are on Drive within 5 min).
 
 ## Dataset v4 re-runs (from 2026-10-24; analysis plan v2, §5)
 

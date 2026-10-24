@@ -20,6 +20,10 @@ than half "Non qualifié" days (the v1-v3 definition, kept for comparison); "str
 2026-10-23, analysis plan v2), weeks whose every value is qualified "Correcte". Values
 qualified "Incorrecte" are dropped before the weekly mean from dataset v4 on; none fall in
 the test period of v3. n_weeks gives the coverage of each variant.
+Suspect placeholders (dataset v4 on, decided 2026-10-24; src.dataset.placeholders): the weeks
+of a run of >= 28 days with a depth of exactly 0.00 m (CORNEILLA PD5, Dec 2022 - Jan 2024,
+60 weeks) leave every variant; "all_unmasked" (test periods only) keeps them, to show the
+scores before this rule, which was written after the test period was seen.
 
 Metrics, per well and period:
     NSE    Nash & Sutcliffe 1970, doi:10.1016/0022-1694(70)90255-6
@@ -43,7 +47,8 @@ import json
 import numpy as np
 import pandas as pd
 
-from src.config import DATASET_DIR, RESULTS_DIR, TEST_PERIODS
+from src.config import DATASET, DATASET_DIR, RESULTS_DIR, TEST_PERIODS
+from src.dataset.placeholders import load_mask
 
 DS = DATASET_DIR
 RESULTS = RESULTS_DIR
@@ -116,8 +121,20 @@ def score(pred):
         d["bench"] = np.nan
     d = with_periods(d, splits)
     test_like = d["split"].str.startswith("test")
+    mask = load_mask() if DATASET >= "v4" else None
+    if DATASET >= "v4" and mask is None:
+        raise FileNotFoundError("placeholder_weeks.parquet missing from the dataset: run "
+                                "python -m src.dataset.placeholders (src.dataset.build does)")
+    unmasked = None
+    if mask is not None:
+        flagged = pd.MultiIndex.from_frame(d[["code_bss", "week"]]).isin(
+            pd.MultiIndex.from_frame(mask[["code_bss", "week"]]))
+        unmasked = d[test_like]
+        d, test_like = d[~flagged], test_like[~flagged]
     variants = [("all", d), ("validated", d[test_like & (d["share_not_validated"] < 0.5)]),
                 ("strict", d[test_like & (d["share_not_validated"] == 0)])]
+    if unmasked is not None:
+        variants.append(("all_unmasked", unmasked))
     rows = []
     for variant, dd in variants:
         for (code, task, h, split), g in dd.groupby(["code_bss", "task", "horizon", "split"]):

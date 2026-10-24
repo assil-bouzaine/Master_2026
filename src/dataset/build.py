@@ -43,6 +43,8 @@ Design (CLAUDE.md section 3, docs/roadmap.md Phase 1)
 Outputs (data/processed/dataset_<version>/)
     wells.parquet            static well attributes
     heads_weekly.parquet     well x week: head, n_days, share not validated, SGI, class
+    placeholder_weeks.parquet  (v4 on) weeks of suspect placeholder values, masked when
+                             scoring (src.dataset.placeholders)
                              (v4: + share of producer-reconstructed values)
     forcing_weekly.parquet   SAFRAN cell x week
     rivers_weekly.parquet    gauge x week (m3/s); gauges.parquet
@@ -505,6 +507,9 @@ def main():
             k: sum(v[k] for v in kept.values())
             for k in ("values_dropped", "weeks_changed", "weeks_emptied")}
     (OUT / "meta.json").write_text(json.dumps(meta, indent=1, ensure_ascii=False))
+    if DATASET >= "v4":  # suspect placeholders, masked when scoring (decided 2026-10-24)
+        from src.dataset.placeholders import main as flag_placeholders
+        flag_placeholders()
 
     # ------------------------------------------------------------ report
     print(f"wells: {len(wells)} (core {int(wells['core'].sum())}), by group:")

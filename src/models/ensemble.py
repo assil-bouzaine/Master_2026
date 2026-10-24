@@ -11,14 +11,18 @@ built):
 Searching all runs instead (11 on v3, 2,036 subsets) would reward runs that happen to do
 well on validation, the winner's curse already seen in the tuning. The test period is
 never used. Averaging models with different errors is a standard way to reduce variance.
+From v4 the Pastas candidate is the reference built from training heads only (decided
+2026-10-24): the full-series fits set their initial constant from test-period heads too.
 """
 import itertools
 
 import pandas as pd
 
+from src.config import DATASET
 from src.models.evaluate import RESULTS, evaluate_run, score
 
-FAMILIES = {"Pastas": ["pastas_seasonal_canal", "pastas_wellmodel"],
+FAMILIES = {"Pastas": (["pastas_seasonal_canal_trainobs_beststart"] if DATASET >= "v4"
+                       else ["pastas_seasonal_canal", "pastas_wellmodel"]),
             # without its own-climatology input, like the networks (decision 2026-10-20)
             "LightGBM": ["lgbm_noclim_tuned"],
             "recurrent": ["lstm", "lstm_tuned", "ealstm_tuned"],

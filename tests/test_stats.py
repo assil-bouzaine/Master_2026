@@ -12,6 +12,8 @@
 5. Holm matches a hand computation.
 6. Paired support: a well scored on different numbers of weeks by the two runs is counted,
    and strict mode refuses the pair (third review, docs/review_codex_2026-10-24.md §7).
+7. Cluster sensitivity: its primary grid reproduces paired() exactly, a shifted origin
+   regroups wells, and leave-one-cluster-out gives one row per cluster.
 """
 import itertools
 
@@ -19,7 +21,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import wilcoxon
 
-from src.analysis.stats import EXACT_MAX_CLUSTERS, holm, paired, sign_flip_p
+from src.analysis.stats import (EXACT_MAX_CLUSTERS, SENS_KM, SENS_SHIFTS, cluster_sensitivity,
+                                clusters, holm, paired, sign_flip_p)
 
 
 def reference_p(groups):
@@ -80,6 +83,24 @@ def main():
         raise AssertionError("strict mode accepted different scored weeks")
     except ValueError:
         pass
+    rng = np.random.default_rng(7)  # 7. cluster sensitivity: 24 wells over ~40 x 40 km
+    codes = [f"S{i}" for i in range(24)]
+    wells = pd.DataFrame({"code_bss": codes, "x": 2.60 + 0.45 * rng.random(24),
+                          "y": 42.50 + 0.35 * rng.random(24)})
+    def tab(nse):
+        return pd.DataFrame({"code_bss": codes, "task": "simulation", "horizon": 0,
+                             "split": "test_drought", "variant": "all", "core": True,
+                             "NSE": nse, "n_weeks": 100})
+    ma, mb = tab(rng.normal(0.2, 0.3, 24)), tab(rng.normal(0.0, 0.3, 24))
+    ref = paired(ma, mb, wells)
+    grids, loco = cluster_sensitivity(ma, mb, wells)
+    prim = grids[grids["primary"]].iloc[0]
+    assert len(grids) == len(SENS_KM) * len(SENS_SHIFTS) and grids["primary"].sum() == 1
+    assert prim["n_clusters"] == ref["n_clusters"] and prim["p_cluster"] == ref["p_cluster"]
+    assert np.isclose(prim["ci_lo"], ref["ci_lo"]) and np.isclose(prim["ci_hi"], ref["ci_hi"])
+    moved = (clusters(wells) != clusters(wells, shift=0.5)).sum()
+    assert moved > 0, "a shifted origin regrouped no well"
+    assert len(loco) == ref["n_clusters"] and loco["n_wells_out"].sum() == 24
     print(f"test_stats: all checks passed (Monte Carlo {mc:.4f} vs exact {exact:.4f})")
 
 

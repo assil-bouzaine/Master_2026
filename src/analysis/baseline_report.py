@@ -9,7 +9,8 @@ wells in the drought phase of the test period (src.config.TEST_PERIODS), with th
 skill against the training climatology next to it.
 
 Outputs
-    docs/results_baselines.md                       tables (do not edit by hand)
+    docs/results_baselines.md                       tables, v1-v3 (do not edit by hand)
+    docs/results_baselines_<version>.md             the same from v4 on
     reports/figures/baselines_nse_<version>.png       validation / drought / recovery NSE
     reports/figures/baselines_hydrographs_<version>.png
 """
@@ -17,7 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from src.analysis.stats import holm, paired
+from src.analysis.stats import SENS_KM, SENS_SHIFTS, cluster_sensitivity, holm, paired
 from src.config import DATASET, FIGURES, ROOT
 from src.models.evaluate import DS, RESULTS, score
 
@@ -40,7 +41,19 @@ FC = [("naive_persistence", "Persistence"), ("naive_anomaly_persist", "Anomaly p
       ("lgbm_fc", "LightGBM"), ("chronos2", "Chronos-2 zero-shot"),
       ("chronos2_xl", "Chronos-2 zero-shot, cross-learning"),
       ("chronos2_ft", "Chronos-2 fine-tuned")]
-REFERENCE = "pastas_seasonal_canal"   # hydrology reference for the significance table
+# Hydrology reference of the significance table. From v4 (decided by Assil on 2026-10-24,
+# third review §3.3, before any multistart result was seen): the Pastas fit built from the
+# training heads only (--train-obs; the default fit sets its initial constant from the whole
+# series, test years included), each well's start chosen by the frozen training-RMSE rule of
+# src.analysis.pastas_stability, whatever its test score. The full-series fits stay as
+# historical rows.
+REFERENCE = "pastas_seasonal_canal_trainobs_beststart" if DATASET >= "v4" else "pastas_seasonal_canal"
+if DATASET >= "v4":
+    SIM.insert(1, (REFERENCE, "Pastas (seasonal + canal), training heads only, best start "
+                              "[reference]"))
+    SIM[2] = ("pastas_seasonal_canal", "Pastas (seasonal + canal), full series at construction "
+                                       "(historical)")
+    SIM[3] = ("pastas_wellmodel", "Pastas WellModel, full series at construction (historical)")
 # RQ1 regimes (docs/analysis_plan.md section 4) of the tuned models: run-name suffixes
 REGIME_MODELS = [("lgbm_noclim", "LightGBM"), ("lstm", "LSTM"),
                  ("ealstm", "EA-LSTM"),
@@ -174,6 +187,49 @@ def significance_table():
     return t
 
 
+def sensitivity_table():
+    """Prespecified sensitivity of the cluster inference (analysis plan §6), drought NSE."""
+    ref = RESULTS / REFERENCE / "metrics_per_well.csv"
+    if not ref.exists():
+        return pd.DataFrame()
+    wells = pd.read_parquet(DS / "wells.parquet")
+    mb = pd.read_csv(ref)
+    rows = []
+    for run, label in SIM:
+        f = RESULTS / run / "metrics_per_well.csv"
+        if run == REFERENCE or not f.exists():
+            continue
+        grids, loco = cluster_sensitivity(pd.read_csv(f), mb, wells)
+        if not len(grids):
+            continue
+        prim = grids[grids["primary"]].iloc[0]
+        rows.append({"model": label, "median_diff": prim["median_diff"],
+                     "p_cluster (10 km)": prim["p_cluster"],
+                     "p_cluster min": grids["p_cluster"].min(),
+                     "p_cluster max": grids["p_cluster"].max(),
+                     "clusters": f"{grids['n_clusters'].min()}–{grids['n_clusters'].max()}",
+                     "median_diff LOCO min": loco["median_diff"].min(),
+                     "median_diff LOCO max": loco["median_diff"].max()})
+    return pd.DataFrame(rows)
+
+
+def mask_table():
+    """Primary endpoints with and without the placeholder mask (amendment of 2026-10-24)."""
+    rows = []
+    for run, label in SIM:
+        s = summary(run)
+        if s is None or np.isnan(pick(s, "simulation", 0, "test_drought", variant="all_unmasked")):
+            continue
+        rows.append({"model": label,
+                     "NSE drought": pick(s, "simulation", 0, "test_drought"),
+                     "NSE drought, unmasked": pick(s, "simulation", 0, "test_drought",
+                                                   variant="all_unmasked"),
+                     "skill drought": pick(s, "simulation", 0, "test_drought", "skill"),
+                     "skill drought, unmasked": pick(s, "simulation", 0, "test_drought", "skill",
+                                                     variant="all_unmasked")})
+    return pd.DataFrame(rows)
+
+
 def compare_versions():
     """Drought NSE and skill of every model across dataset versions (same core wells)."""
     versions = [v for v in ("v1", "v2", "v3", "v4") if (ROOT / "results" / v).exists()]
@@ -243,8 +299,7 @@ def plot_hydrographs():
     heads = pd.read_parquet(DS / "heads_weekly.parquet")
     wells = pd.read_parquet(DS / "wells.parquet").set_index("code_bss")
     picks = ["10975X0032/SABIRO", "10906X0039/C2-1", "10912X0134/BARQUA"]
-    cand = ("pastas_seasonal_canal", "lgbm_noclim_tuned", "lstm_tuned", "stgnn_distance",
-            "ensemble_sim")
+    cand = (REFERENCE, "lgbm_noclim_tuned", "lstm_tuned", "stgnn_distance", "ensemble_sim")
     runs = [r for r in cand if (RESULTS / r / "predictions.parquet").exists()][:5]
     labels = dict(SIM)
     preds = {r: pd.read_parquet(RESULTS / r / "predictions.parquet") for r in runs}
@@ -287,10 +342,13 @@ def main():
     sig = significance_table()
     reg = regimes_table()
     cmp_ = compare_versions()
+    mask_t = mask_table() if DATASET >= "v4" else pd.DataFrame()
+    sens = sensitivity_table() if DATASET >= "v4" else pd.DataFrame()
     sig_cols = ["model", "period", "metric", "n_wells", "median_a", "median_b", "median_diff",
                 "ci_lo", "ci_hi", "share_a_better", "n_clusters", "p_cluster", "p_holm",
                 "p_wilcoxon"]
-    md = ROOT / "docs" / "results_baselines.md"
+    # v3 keeps docs/results_baselines.md (the report of record of Step 12a)
+    md = ROOT / "docs" / ("results_baselines.md" if DATASET < "v4" else f"results_baselines_{DATASET}.md")
     missing = [label for run, label in SIM + FC
                if not (RESULTS / run / "predictions.parquet").exists()]
     parts = [
@@ -318,6 +376,13 @@ def main():
            "wells were scored on different numbers of weeks by the model and the reference "
            "(`support_mismatch`); compare those rows with care.\n"]
           if len(sig) and (sig["support_mismatch"] > 0).any() else []),
+        *(["**Sensitivity of the cluster inference** (drought NSE; fixed on 2026-10-24, "
+           f"analysis plan §6): grids of {', '.join(f'{k:g}' for k in SENS_KM)} km with the "
+           f"origin shifted by {', '.join(f'{x:g}' for x in SENS_SHIFTS)} cell, and the "
+           "median difference with each 10 km cluster left out (LOCO). The 10 km grid at "
+           "origin 0 stays the test of record.\n",
+           fmt(sens, signed=("median_diff", "median_diff LOCO min", "median_diff LOCO max"))
+           .to_markdown(index=False), ""] if len(sens) else []),
         "## RQ1 regimes of the tuned models\n",
         "R2 scores held-out wells in the \"dynamics\" convention (each well's own training "
         "mean and sd convert z to metres); R3 shortens the training period, validation and "
@@ -325,7 +390,14 @@ def main():
         (fmt(reg).to_markdown(index=False) if len(reg) else "(no regime runs yet)"), "",
         " ".join(note for (v, _), note in REGIME_NOTES.items() if v == DATASET), "",
         "## Across dataset versions (drought phase)\n",
-        fmt(cmp_).to_markdown(index=False), ""]
+        fmt(cmp_).to_markdown(index=False), "",
+        *(["## Amendment of 2026-10-24: suspect placeholder values masked\n",
+           "From v4 the weeks of a run of ≥ 28 days with a depth of exactly 0.00 m leave every "
+           "scored variant (`src/dataset/placeholders.py`: CORNEILLA PD5, Dec 2022 – Jan 2024, "
+           "60 weeks, qualified \"Correcte\" by its producer). The rule was written after the "
+           "test period was seen, so the primary endpoints are shown both ways "
+           "(`docs/analysis_plan.md` §13).\n",
+           fmt(mask_t).to_markdown(index=False), ""] if len(mask_t) else [])]
     md.write_text("\n".join(parts), encoding="utf-8")
     print(fmt(t).to_string(index=False))
     print("->", md)

@@ -19,6 +19,11 @@ docs/analysis_plan.md therefore fixes, for every comparison:
   independent), still reported next to it for comparison with v1-v3
 - Holm's step-down adjustment across the comparisons of one table (of p_cluster
   from v2 of the plan)
+- a sensitivity of the cluster inference, fixed on 2026-10-24 before any Phase 4 result
+  (third review, docs/review_codex_2026-10-24.md §7; analysis plan §6): the interval and
+  p_cluster under grids of SENS_KM km with their origin at 0 or shifted by half a cell, and
+  leave-one-cluster-out medians on the primary grid. The primary test stays the 10 km grid
+  at origin 0; the sensitivity is reported next to it, never used to pick a grid.
 """
 import geopandas as gpd
 import numpy as np
@@ -28,6 +33,8 @@ from scipy.stats import wilcoxon
 from src.config import CRS_L93, CRS_WGS84
 
 CLUSTER_KM = 10.0
+SENS_KM = (5.0, 10.0, 20.0)
+SENS_SHIFTS = (0.0, 0.5)  # grid origin shift, in cells (x and y)
 N_BOOT = 4000
 EXACT_MAX_CLUSTERS = 16   # 2^16 = 65,536 sign patterns
 N_FLIP = 20000            # Monte Carlo sign patterns above that
@@ -50,12 +57,30 @@ def sign_flip_p(groups, seed=2026):
     return float(hits / len(t)) if k <= EXACT_MAX_CLUSTERS else float((hits + 1) / (len(t) + 1))
 
 
-def clusters(wells):
-    """Grid-cell id per well (index code_bss)."""
+def clusters(wells, km=CLUSTER_KM, shift=0.0):
+    """Grid-cell id per well (index code_bss); `shift` moves the grid origin by that many
+    cells in x and y."""
     g = gpd.GeoSeries(gpd.points_from_xy(wells["x"], wells["y"]), crs=CRS_WGS84).to_crs(CRS_L93)
-    k = CLUSTER_KM * 1000
-    cell = (np.floor(g.x / k).astype(int).astype(str) + "_" + np.floor(g.y / k).astype(int).astype(str))
+    k = km * 1000
+    cell = (np.floor(g.x / k - shift).astype(int).astype(str) + "_"
+            + np.floor(g.y / k - shift).astype(int).astype(str))
     return pd.Series(cell.values, index=wells["code_bss"].values, name="cluster")
+
+
+def _groups(diff, wells, km=CLUSTER_KM, shift=0.0):
+    """The paired differences of each cluster (list of arrays) and the cluster of each well."""
+    cl = clusters(wells.set_index("code_bss").loc[diff.index].reset_index(), km, shift)
+    cl = cl.loc[diff.index]
+    return [g.to_numpy() for _, g in diff.groupby(cl.to_numpy())], cl
+
+
+def _boot_ci(groups, seed):
+    rng = np.random.default_rng(seed)
+    meds = np.empty(N_BOOT)
+    for i in range(N_BOOT):
+        pick = rng.integers(0, len(groups), len(groups))
+        meds[i] = np.median(np.concatenate([groups[k] for k in pick]))
+    return np.percentile(meds, [2.5, 97.5])
 
 
 def _select(m, task, horizon, split, variant, metric, core_only):
@@ -87,19 +112,41 @@ def paired(ma, mb, wells, split="test_drought", metric="NSE", task="simulation",
         return out | {"median_diff": np.nan, "ci_lo": np.nan, "ci_hi": np.nan,
                       "share_a_better": np.nan, "p_wilcoxon": np.nan, "p_cluster": np.nan}
     diff = j["a"] - j["b"]
-    cl = clusters(wells.set_index("code_bss").loc[j.index].reset_index())
-    groups = [g.to_numpy() for _, g in diff.groupby(cl.loc[j.index].to_numpy())]
-    rng = np.random.default_rng(seed)
-    meds = np.empty(N_BOOT)
-    for i in range(N_BOOT):
-        pick = rng.integers(0, len(groups), len(groups))
-        meds[i] = np.median(np.concatenate([groups[k] for k in pick]))
-    lo, hi = np.percentile(meds, [2.5, 97.5])
+    groups, _ = _groups(diff, wells)
+    lo, hi = _boot_ci(groups, seed)
     p = wilcoxon(j["a"], j["b"]).pvalue if (diff != 0).any() else 1.0
     pc = sign_flip_p(groups, seed) if (diff != 0).any() else 1.0
     return out | {"median_diff": float(diff.median()), "ci_lo": float(lo), "ci_hi": float(hi),
                   "share_a_better": float((diff > 0).mean()), "p_wilcoxon": float(p),
                   "p_cluster": pc, "n_clusters": len(groups)}
+
+
+def cluster_sensitivity(ma, mb, wells, split="test_drought", metric="NSE", task="simulation",
+                        horizon=0, variant="all", core_only=True, seed=2026):
+    """The cluster inference of paired() under other grids, and leave-one-cluster-out.
+    Returns (grids, loco): one row per grid size x origin shift (interval, p_cluster), and
+    one row per cluster of the primary grid (median difference without its wells)."""
+    a = _select(ma, task, horizon, split, variant, metric, core_only)
+    b = _select(mb, task, horizon, split, variant, metric, core_only)
+    j = pd.concat([a.rename("a"), b.rename("b")], axis=1).dropna()
+    diff = j["a"] - j["b"]
+    grids, loco = [], []
+    if len(diff) < 5 or not (diff != 0).any():
+        return pd.DataFrame(grids), pd.DataFrame(loco)
+    for km in SENS_KM:
+        for shift in SENS_SHIFTS:
+            groups, _ = _groups(diff, wells, km, shift)
+            lo, hi = _boot_ci(groups, seed)
+            grids.append({"km": km, "shift": shift, "primary": km == CLUSTER_KM and shift == 0,
+                          "n_clusters": len(groups), "median_diff": float(diff.median()),
+                          "ci_lo": float(lo), "ci_hi": float(hi),
+                          "p_cluster": sign_flip_p(groups, seed)})
+    _, cl = _groups(diff, wells)
+    for c in sorted(cl.unique()):
+        keep = cl != c
+        loco.append({"left_out": c, "n_wells_out": int((~keep).sum()),
+                     "median_diff": float(diff[keep.to_numpy()].median())})
+    return pd.DataFrame(grids), pd.DataFrame(loco)
 
 
 def holm(p):

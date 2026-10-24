@@ -315,25 +315,66 @@ folder `pfe_colab/results_gpu` (Drive > Download) works too. Then re-run the swe
 ## Dataset v4 re-runs (from 2026-10-24; analysis plan v2, §5)
 
 The baselines keep the configuration selected on v3; only the final 5 seeds and the regimes
-are re-run on v4. On the laptop first (after the v3 sweep has finished):
+are re-run on v4. **No model is trained on the laptop** (Assil, 2026-10-24): the CPU baselines
+run on Kaggle (CPU), the neural ones and Chronos-2 on Colab (T4). The laptop only copies the
+selections, makes the bundles, pulls and scores.
 
 ```bash
-.venv/bin/python scripts/v4_from_v3.py                 # v3 best.json -> results/v4 (once
-                                                        # more after the Taccari pull)
-setsid nohup bash scripts/run_v4_cpu.sh > results/v4/cpu_runs.log 2>&1 < /dev/null &
+.venv/bin/python scripts/v4_from_v3.py                       # v3 best.json -> results/v4
+.venv/bin/python scripts/kaggle_cpu.py push                  # CPU baselines -> Kaggle
 PFE_DATASET=v4 .venv/bin/python scripts/make_gpu_bundle.py   # dataset v4, its panels
                                                               # (full, f25, f50), best.json
 ```
 
 Upload the new `gpu_bundle.zip` to Drive `pfe_colab/` (it replaces the v3 bundle; the v3
-results on Drive stay under `results_gpu/v3`). In the notebook, before the usual two cells:
+results on Drive stay under `results_gpu/v3`). In the notebook, before the usual two cells,
+one short line:
 
 ```python
 %env PFE_DATASET=v4
-%env STEPS=final:lstm regimes:lstm final:stgnn regimes:stgnn final:taccari regimes:taccari final:ealstm regimes:ealstm
 ```
+
+With `PFE_DATASET=v4`, `colab_run.py` defaults to `V4_STEPS`: the final seeds of every neural
+baseline first (`final:lstm final:stgnn final:taccari final:ealstm`), then their regimes
+(`regimes:<model>`), then Chronos-2 (`chronos2 chronos2_xl chronos2_ft`). Finals first: they
+make the main v4 table, so a session that stops early still leaves the most useful part.
+Chronos-2 is re-run because v4 changes 73 well-weeks of 2000–2009 (none in the test period),
+which its long context and its fine-tuning see. Before EA-LSTM steps, the runner checks the
+fused cuDNN path against the explicit loop (`tests/test_ealstm.py`) and drops them if it fails.
 
 `final:<model>` is `src.models.tune --final-only` (5 seeds of the copied configuration, no
 search). Results go to `results_gpu/v4` on Drive; `scripts/colab_pull.py` finds the `v4`
-folder in the zip and rescores the runs with `PFE_DATASET=v4`. Estimate on a T4: ~45 runs
-per model at 3–4 min (the EA-LSTM is slower) — two or three sessions.
+folder in the zip and rescores the runs with `PFE_DATASET=v4`. Estimate on a T4, from the v3
+logs: LSTM and distance ST-GNN under 1 h together, Taccari ≈ 3.5 h (its v3 regimes took
+2 h 50 on the T4), EA-LSTM 1–3 h, Chronos-2 ≈ 20 min: two or three sessions.
+
+## Kaggle CPU (from 2026-10-24; no phone verification)
+
+Without phone verification Kaggle still runs kernels, **on CPU only and without internet**.
+Probe kernel of 2026-10-24: Python 3.13.15, 4 CPUs, 32 GB RAM, 20 GB output, no GPU, no
+name resolution; pastas missing, numpy 2.1.3, pandas 2.3.3, LightGBM 4.6.0 (not our pins).
+Kernels run in the background (laptop may be off), up to 12 h per session.
+
+```bash
+.venv/bin/python scripts/kaggle_cpu.py wheels    # once: 28 pinned cp313 wheels (235 MB)
+                                                 # -> private dataset <user>/pfe-wheels-cp313
+.venv/bin/python scripts/kaggle_cpu.py push      # bundle -> <user>/pfe-v4-cpu-bundle, kernel
+.venv/bin/python scripts/kaggle_cpu.py status    # queued / running / complete / error
+.venv/bin/python scripts/kaggle_cpu.py log       # execution log
+.venv/bin/python scripts/kaggle_cpu.py pull      # finished runs -> results/v4/<run>, rescored
+```
+
+- The kernel (`scripts/kaggle_cpu_run.py`) installs the wheels with `pip --no-index` into
+  `/tmp/pins` (first on `PYTHONPATH`), stops if a version differs from `requirements.txt` or a
+  baseline module does not import, then runs `scripts/run_v4_cpu.sh` (`--steps` selects
+  steps; Pastas gets one worker per CPU). Results are copied to the output every 10 min.
+- The wheels come from `uvx pip download --platform manylinux… --python-version 3.13` (the
+  venv has no pip). The list (`PINNED` in `kaggle_cpu.py`) is what an import trace of the CPU
+  baselines showed, plus their runtime dependencies.
+- **Dry-run a new wheel set locally before pushing**, on a clean Python 3.13 and without
+  computing anything: `uv venv --seed --python 3.13 <dir>/py313`, put `cpu_bundle.zip` and the
+  wheels under `<dir>/input`, then `KAGGLE_INPUT=<dir>/input KAGGLE_WORK=<dir>/working
+  PFE_CODE=<dir>/pfe PIN_TARGET=<dir>/pins STEPS=none <dir>/py313/bin/python
+  scripts/kaggle_cpu_run.py`. The first dry run found that Pastas needs `tqdm`.
+- `pull` keeps the whole output in `results/_kaggle_cpu/output`; the next `push` ships it back
+  as `state.zip`, so finished seeds and wells are not recomputed.

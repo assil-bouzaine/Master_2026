@@ -358,17 +358,23 @@ Both are `lulcw:` causal knowledge.
   (`pyogrio.list_layers()` to inspect a GeoPackage or FileGDB).
 
 **Compute plan** (`docs/roadmap.md` §5; how-to in `docs/gpu_howto.md`)
-- **Laptop CPU:** the data work, the knowledge graph, Pastas, single model
-  runs, the EA-LSTM sweep. The graph is tiny: about 65–250 nodes × about
-  1,100 weeks.
+- **Laptop CPU:** the data work, the knowledge graph, scoring and reports.
+  **No model training on the laptop** (Assil, 2026-10-24): CPU fits (LightGBM,
+  Pastas) go to Kaggle, GPU fits to Colab. The graph is tiny: about 65–250
+  nodes × about 1,100 weeks.
+- **Kaggle, CPU only** (since 2026-10-24): without phone verification there
+  is no GPU and **no internet**, but kernels run in the background (4 CPUs,
+  32 GB, Python 3.13, 12 h). The pinned packages come as offline wheels from
+  the private dataset `pfe-wheels-cp313`; `scripts/kaggle_cpu.py`
+  (`docs/gpu_howto.md`, "Kaggle CPU").
 - **GPU:**
   - **Google Colab, free T4** (main GPU since 2026-10-23).
     `scripts/colab_run.py` saves results to Drive every 5 min. Assil clicks
     the Drive permission at each session.
   - **Camber** XSMALL L4: a monthly allowance that renews on the 13th; used
     up until 2026-11-13. **Always STOP the node.**
-  - **Kaggle is unavailable:** its phone-verification SMS does not reach
-    Tunisian numbers.
+  - **No Kaggle GPU:** its phone-verification SMS does not reach Tunisian
+    numbers (Kaggle CPU works, see above).
   - Lightning AI and Modal are untested backups.
 - **The GPU goes to:**
   - tuning sweeps
@@ -539,52 +545,34 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
     contacts, publication details, monthly drinking-water production.
   - The e-mails are ready in §4–5 there; Assil sends them.
 
-**State at 2026-10-23 21:30 CET: nothing is running; Step 12a is done.**
-- **Colab:** the Taccari sweep finished at 18:40 UTC and was pulled at 21:04
-  (Drive folder `pfe_colab/results_gpu` → Download, one 82 MB zip →
-  `scripts/colab_pull.py`, which rescored it under v3). Assil still has to
-  disconnect the runtime (Runtime → Disconnect and delete runtime).
-- **Laptop:** `ealstm_tuned` ✅ (17:46). The EA-LSTM regimes on v3 were stopped
-  at 20:58 (Assil's decision that evening; it amends "the v3 runs finish as
-  planned"). Why:
-  - v4 replaces them: its GPU plan already has `regimes:ealstm`
-  - 19 of the 34 missing runs used the v3 leave-wells-out folds, which split
-    twin wells 20 m apart (C2-1/C2-2): optimistic by design
-  - the other 15 only filled the interim v3 table
-
-  Kept as a record, not reported: `results/v3/ealstm_tuned_lwo/` (fold 0, and
-  fold 1 seed 0); log `results/v3/cpu_runs7.log`. To resume them anyway (not
-  planned): check `pgrep -af src.models`, then
-  `STEPS="ealstm_tune ealstm_regimes" setsid nohup bash scripts/run_cpu.sh > results/v3/cpu_runs8.log 2>&1 < /dev/null &`.
-- **Closing work (done 21:30, all with `PFE_DATASET=v3`):** the v3 ensemble
-  was rebuilt and did not change (`lstm_tuned + stgnn_tuned`);
-  `docs/results_baselines.md` was regenerated (now with the cluster sign-flip
-  table and the EA-LSTM note); the explainer chart has the two new rivals.
-  Results, and one repaired slip (the v2 ensemble, overwritten by a call
-  without `PFE_DATASET`, then restored): step-12a note §5d.
-- **Still open for Assil:** send the v3 results in the next monthly report to
-  the supervisor (this replaces the "Gate 2 addendum").
-- The v4 test of 2026-10-23 (`select` and `naive` done; `lgbm_final` stopped
-  by Claude after 20 min of CPU contention) reruns in `run_v4_cpu.sh`. Never
-  run LightGBM next to a neural run on the laptop.
-- **ON HOLD (Assil, 2026-10-23 evening): "keep only v3 running for now".**
-  Start no v4 run, on the laptop or on Colab, until Assil says so. The steps
-  below are ready for that moment.
-- **Then the dataset v4 re-runs (Step 12b), laptop first:**
-  `setsid nohup bash scripts/run_v4_cpu.sh > results/v4/cpu_runs.log 2>&1 < /dev/null &`
-  - steps: copy the v3 selections, naive, LightGBM (+ regimes), Pastas,
-    WellModel
-  - `select` and `naive` already ran on 2026-10-23 (they are skipped or
-    redone quickly)
-- **Then Colab, for the GPU part:**
-  1. `.venv/bin/python scripts/v4_from_v3.py` (after the Taccari pull)
-  2. `PFE_DATASET=v4 .venv/bin/python scripts/make_gpu_bundle.py`
-  3. upload `gpu_bundle.zip` to Drive `pfe_colab/`
-  4. in the notebook, before the run line:
-     `%env PFE_DATASET=v4` and
-     `%env STEPS=final:lstm regimes:lstm final:stgnn regimes:stgnn final:taccari regimes:taccari final:ealstm regimes:ealstm`
-  5. pull with `scripts/colab_pull.py` (it detects v4)
-  6. then `PFE_DATASET=v4` ensemble and `baseline_report`
+**State at 2026-10-24 16:00 CET: the v4 re-runs (Step 12b) have started, off the laptop.**
+- **Assil's go (2026-10-24):** "u can use kaggle and colab to train", and no
+  model is trained on the laptop any more. This lifts the hold of 2026-10-23
+  evening ("keep only v3 running").
+- **Kaggle CPU, running:** kernel `assilbouzaine/pfe-v4-cpu`, version 2,
+  started 14:45 UTC with `naive lgbm lgbm_final lgbm_regimes pastas wellmodel`
+  (≈ 1–2 h; Pastas with 4 workers). Check with
+  `.venv/bin/python scripts/kaggle_cpu.py status`; when complete,
+  `.venv/bin/python scripts/kaggle_cpu.py pull` (copies to `results/v4`,
+  rescores). If it stopped early, `push` again: it resumes from the pulled
+  output. The `naive` rows must equal the laptop's v4 rows of 2026-10-23 (an
+  environment check).
+- **Colab T4, next (Assil clicks the Drive "Allow"):** the v4 GPU bundle is
+  built (`PFE_DATASET=v4 .venv/bin/python scripts/make_gpu_bundle.py`; it now
+  holds the Taccari selection, copied by `scripts/v4_from_v3.py` on
+  2026-10-24). Upload it to Drive `pfe_colab/` (split into 7 MB parts, as on
+  2026-10-23), then `%env PFE_DATASET=v4` and the usual two cells. With v4,
+  `colab_run.py` runs `V4_STEPS`: the finals of LSTM, distance ST-GNN, Taccari
+  and EA-LSTM first, then their regimes, then Chronos-2 (≈ 6–8 T4-hours, 2–3
+  sessions). Pull with `scripts/colab_pull.py`.
+- **After both:** `PFE_DATASET=v4` ensemble and `baseline_report` → the v4
+  report of record (the v3 report stays as Step 12a's record). To re-check on
+  v4: the Taccari drought-skill result (p_holm 0.013 on v3) and "the graph
+  models lose least on left-out wells" (the v3 folds split twin wells).
+- **Left from 2026-10-23:** Assil disconnects the old Colab runtime if it is
+  still on, and sends the v3 results in the next monthly report to the
+  supervisor. The v3 EA-LSTM regimes stopped at 20:58 are a record only
+  (`results/v3/ealstm_tuned_lwo/`, step-12a note §5d).
 
 **Assil's to-do (no model needed)**
 1. Send the two e-mails in `docs/supervisor_questions.md`:
@@ -595,8 +583,8 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
 3. Later, for task 12.10: an Earth Engine account (sign-in is his).
 
 **Next for Claude, while the models run or after:**
-1. ✅ Step 12a done (2026-10-23 evening). The v4 re-runs wait for Assil's go
-   (on hold).
+1. ✅ Step 12a done (2026-10-23 evening). 🔄 The v4 re-runs started on
+   2026-10-24: Kaggle CPU running, Colab next, then the v4 report.
 2. Literature, from the second review:
    - the positioning matrix in `docs/literature/comparison_table.md`: past heads
      as input? forcings? split? knowledge supplied? explanation validated?

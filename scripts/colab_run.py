@@ -1,8 +1,9 @@
 """Run GPU steps of a sweep in a Google Colab notebook (free T4); results kept on Drive.
 
-Dataset: PFE_DATASET (default v3). For the dataset v4 re-runs (analysis plan v2 §5) set,
-before the run line, %env PFE_DATASET=v4 and %env STEPS=final:lstm regimes:lstm ... (see
-docs/gpu_howto.md); the bundle must have been made with PFE_DATASET=v4.
+Dataset: PFE_DATASET (default v3). For the dataset v4 re-runs (analysis plan v2 §5) set
+%env PFE_DATASET=v4 before the run line: STEPS then defaults to V4_STEPS (the final seeds of
+every neural baseline first, then their regimes, then Chronos-2; docs/gpu_howto.md). The
+bundle must have been made with PFE_DATASET=v4.
 
 Notebook cells (runtime type T4 GPU; docs/gpu_howto.md, Colab section):
     from google.colab import drive; drive.mount('/content/drive')       # Assil clicks Allow
@@ -13,7 +14,9 @@ It:
 2. restores the results saved on Drive (DRIVE/results_gpu) to local disk, so that finished
    seeds, trials and folds are skipped;
 3. installs the pinned packages (scripts/run_gpu.sh with PIN_TARGET: Colab keeps its CUDA
-   torch) and runs tests/test_taccari.py as an import and equality check;
+   torch) and runs tests/test_taccari.py as an import and equality check; when STEPS has
+   EA-LSTM steps, also tests/test_ealstm.py (the fused cuDNN path against the explicit loop;
+   the EA-LSTM steps are dropped if it fails);
 4. runs STEPS through scripts/run_gpu.sh and copies the results to Drive every SYNC_S seconds
    and at the end. The runs work on local disk because SQLite (the Optuna studies) is not
    safe on the Drive mount; databases are copied with SQLite's backup API, so a copy is
@@ -37,8 +40,11 @@ import zipfile
 from contextlib import closing
 from pathlib import Path
 
-STEPS = os.environ.get("STEPS", "taccari tune:taccari regimes:taccari")
 DATASET = os.environ.get("PFE_DATASET", "v3")
+V4_STEPS = ("final:lstm final:stgnn final:taccari final:ealstm regimes:lstm regimes:stgnn "
+            "regimes:taccari regimes:ealstm chronos2 chronos2_xl chronos2_ft")
+STEPS = os.environ.get("STEPS", V4_STEPS if DATASET == "v4"
+                       else "taccari tune:taccari regimes:taccari")
 DRIVE = Path(os.environ.get("PFE_DRIVE", "/content/drive/MyDrive/pfe_colab"))
 CODE = Path(__file__).resolve().parents[1]
 LOCAL = CODE / "results_gpu"              # results_gpu/<v>/<run> and results_gpu/run_colab.log
@@ -152,10 +158,14 @@ def main():
     test_env = dict(env, PYTHONPATH=os.pathsep.join(filter(None, [PINS, env.get("PYTHONPATH")])))
     if run(["python3", "-m", "tests.test_taccari"], test_env) != 0:
         sys.exit("tests/test_taccari.py failed in this session (output above): stopping")
+    steps = STEPS
+    if "ealstm" in steps and run(["python3", "-m", "tests.test_ealstm"], test_env) != 0:
+        steps = " ".join(s for s in steps.split() if "ealstm" not in s)
+        log("tests/test_ealstm.py failed in this session (output above): EA-LSTM steps dropped")
     stop = threading.Event()
     threading.Thread(target=sync_loop, args=(stop,), daemon=True).start()
     try:
-        run(["bash", "scripts/run_gpu.sh"], dict(env, STEPS=STEPS, SKIP_PIP="1"))
+        run(["bash", "scripts/run_gpu.sh"], dict(env, STEPS=steps, SKIP_PIP="1"))
     finally:
         stop.set()
         log(f"{copy_new(LOCAL, SAVED, live=True)} files saved to {SAVED}")

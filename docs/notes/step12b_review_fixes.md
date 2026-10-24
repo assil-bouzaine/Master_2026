@@ -164,3 +164,35 @@ ouvrage):
   - Jeong et al. 2026 (physically interpretable transfer learning,
     doi:10.1016/j.watres.2026.126321; the review describes 62 wells, not checked yet)
   - Schorpp et al. 2023 (Roussillon model, doi:10.1007/s12665-023-10877-4)
+
+## 2026-10-24: the v4 re-runs start, off the laptop
+
+**What was done.**
+- Assil gave the go for the v4 re-runs, with a new rule: no model is trained on the laptop.
+  CPU fits go to Kaggle, GPU fits to Colab; the laptop only copies the selections, makes the
+  bundles, pulls and scores.
+- A probe kernel measured what Kaggle gives an account without phone verification: Python
+  3.13, 4 CPUs, 32 GB RAM, no GPU and **no internet** (`pip install` cannot reach PyPI).
+  Pastas is not installed, and numpy, pandas and LightGBM are at other versions than ours.
+- So the 28 pinned packages that the CPU baselines import are uploaded once as wheels (a
+  private Kaggle dataset) and installed offline in the kernel, which stops if any version
+  differs from `requirements.txt` (`scripts/kaggle_cpu.py`, `scripts/kaggle_cpu_run.py`).
+  A local dry run on a clean Python 3.13, without computing anything, found one missing
+  package (`tqdm`, needed by Pastas) before the real push.
+- The Kaggle kernel runs naive, LightGBM (5 seeds, regimes), Pastas and WellModel on v4.
+- `scripts/v4_from_v3.py` copied the Taccari selection (trial 15, best 3-seed mean 0.582).
+- Colab: with `PFE_DATASET=v4`, `colab_run.py` now runs the finals of every neural baseline
+  first, then the regimes, then Chronos-2, and it checks the EA-LSTM cuDNN path first.
+
+**Why.**
+- Same numbers wherever the code runs: the pinned versions, not Kaggle's, compute every v4
+  row. The `naive` rows, recomputed on Kaggle, must equal the laptop's of 2026-10-23.
+- Finals first: they make the main v4 table, so a Colab session that stops early still
+  leaves the most useful part. `refit` needs the final run anyway (its epoch count).
+- Chronos-2 is re-run too: v4 changes 73 well-weeks, all in 2000–2009 (none in the test
+  period), and Chronos-2's long context and its fine-tuning see those years.
+
+**What to consider.**
+- Kaggle gives no live log through the API; the log and the results arrive when the kernel
+  ends (`kaggle_cpu.py status`, then `pull`).
+- Free Colab can refuse a GPU or stop a session; everything is resumable from Drive.

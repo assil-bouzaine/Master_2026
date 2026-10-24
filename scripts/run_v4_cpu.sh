@@ -3,11 +3,12 @@
 # when the v3 sweep has finished (pgrep -af src.models shows nothing):
 #   setsid nohup bash scripts/run_v4_cpu.sh > results/v4/cpu_runs.log 2>&1 < /dev/null &
 # Sequential and resumable like scripts/run_cpu.sh; the neural models run on Colab
-# (docs/gpu_howto.md, "Dataset v4 re-runs"). STEPS selects a subset.
+# (docs/gpu_howto.md, "Dataset v4 re-runs"). STEPS selects a subset. On Kaggle
+# (scripts/kaggle_cpu_run.py) PY is the image's python with the pinned wheels.
 set -u
 cd "$(dirname "$0")/.."
 export PFE_DATASET=v4 PYTHONIOENCODING=utf-8
-PY=.venv/bin/python
+PY=${PY:-.venv/bin/python}
 JOBS=${JOBS:-2}
 mkdir -p results/v4
 STEPS=${STEPS:-"select naive lgbm lgbm_final lgbm_regimes pastas wellmodel"}

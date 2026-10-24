@@ -365,6 +365,7 @@ Kernels run in the background (laptop may be off), up to 12 h per session.
 .venv/bin/python scripts/kaggle_cpu.py wheels    # once: 28 pinned cp313 wheels (235 MB)
                                                  # -> private dataset <user>/pfe-wheels-cp313
 .venv/bin/python scripts/kaggle_cpu.py push      # bundle -> <user>/pfe-v4-cpu-bundle, kernel
+.venv/bin/python scripts/kaggle_cpu.py kernel    # the staged kernel again (bundle unchanged)
 .venv/bin/python scripts/kaggle_cpu.py status    # queued / running / complete / error
 .venv/bin/python scripts/kaggle_cpu.py log       # execution log
 .venv/bin/python scripts/kaggle_cpu.py pull      # finished runs -> results/v4/<run>, rescored
@@ -382,6 +383,12 @@ Kernels run in the background (laptop may be off), up to 12 h per session.
   wheels under `<dir>/input`, then `KAGGLE_INPUT=<dir>/input KAGGLE_WORK=<dir>/working
   PFE_CODE=<dir>/pfe PIN_TARGET=<dir>/pins STEPS=none <dir>/py313/bin/python
   scripts/kaggle_cpu_run.py`. The first dry run found that Pastas needs `tqdm`.
+- **The push watches the start** (2026-10-24): kernel version 3, pushed 16 s after a new
+  bundle version, ended in ERROR with an empty log and no output; it had never run (the
+  same kernel pushed again two hours later ran). `datasets status` says "ready" for the
+  dataset while its new version may still be unpacked, so a new version now waits 2 min,
+  and a kernel that dies in its first minutes with an empty log is pushed once more. A
+  kernel that fails with a log is not retried: the log tail is printed.
 - `pull` keeps the whole output in `results/_kaggle_cpu/output`; the next `push` ships it back
   as `state.zip`, so finished seeds and wells are not recomputed.
 - **EA-LSTM on Kaggle** (from 2026-10-24, when Colab ran out of GPU quota):

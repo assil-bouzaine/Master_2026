@@ -2,6 +2,7 @@
 
     .venv/bin/python scripts/kaggle_cpu.py wheels     # once: pinned wheels -> private dataset
     .venv/bin/python scripts/kaggle_cpu.py push [--steps "lgbm_final pastas"]
+    .venv/bin/python scripts/kaggle_cpu.py kernel     # push the staged kernel again, same bundle
     .venv/bin/python scripts/kaggle_cpu.py status | log
     .venv/bin/python scripts/kaggle_cpu.py pull       # -> results/v4/<run>, rescored
 
@@ -17,7 +18,14 @@ push: packs code, dataset v4, the daily SAFRAN files (Pastas), the cached featur
   last pulled output as state.zip (resume), as the private dataset <user>/pfe-v4-cpu-bundle;
   waits until Kaggle has processed it; then pushes scripts/kaggle_cpu_run.py as the private
   kernel <user>/pfe-v4-cpu (CPU, internet off). Kaggle starts it at once and it runs
-  without the laptop.
+  without the laptop. The push then watches the start: on 2026-10-24 kernel version 3, pushed
+  16 s after a new bundle version, ended in ERROR with an empty log and no output (it never
+  ran; the same kernel pushed again 2 h later ran). `datasets status` answers "ready" for
+  the dataset while its new version may still be processed, so a new version now gets
+  VERSION_GRACE_S before the kernel is pushed, and a kernel that fails in its first minutes
+  with an empty log is pushed once more.
+kernel: pushes the kernel staged by the last push (results/_kaggle_cpu/kernel) again, when
+  the bundle on Kaggle is still current; same start watch.
 pull: downloads the kernel output to results/_kaggle_cpu/output, copies every finished run
   (predictions.parquet present) to results/v4/<run> and rescores it with src.models.evaluate.
 """
@@ -38,6 +46,8 @@ STAGE = ROOT / "results" / "_kaggle_cpu"              # results/ is gitignored
 OUTPUT = STAGE / "output"
 V4 = ROOT / "results" / "v4"
 BUNDLE, WHEELS, KERNEL = "pfe-v4-cpu-bundle", "pfe-wheels-cp313", "pfe-v4-cpu"
+VERSION_GRACE_S = 120      # after "ready": time for Kaggle to unpack a new dataset version
+WATCH_S, WATCH_STEP_S = 360, 30   # how long the start of a pushed kernel is watched
 DEFAULT_STEPS = "naive lgbm lgbm_final lgbm_regimes pastas wellmodel"
 # pinned distributions imported by naive, LightGBM, Pastas and the evaluation (checked with an
 # import trace), with their runtime dependencies; versions come from requirements.txt
@@ -68,13 +78,16 @@ def upload(folder, slug):
     u = user()
     (folder / "dataset-metadata.json").write_text(json.dumps(
         {"title": slug, "id": f"{u}/{slug}", "licenses": [{"name": "other"}]}, indent=1))
-    if "ready" in kg("datasets", "status", f"{u}/{slug}", check=False):
+    new_version = "ready" in kg("datasets", "status", f"{u}/{slug}", check=False)
+    if new_version:
         kg("datasets", "version", "-p", str(folder), "-m", time.strftime("%Y-%m-%d %H:%M"), "-t")
     else:
         kg("datasets", "create", "-p", str(folder), "-t")
     for _ in range(90):                                # Kaggle processes the upload first
         time.sleep(10)
         if "ready" in kg("datasets", "status", f"{u}/{slug}", check=False):
+            if new_version:              # "ready" may still describe the previous version
+                time.sleep(VERSION_GRACE_S)
             print(f"dataset {u}/{slug} ready")
             return
     sys.exit(f"dataset {slug} not ready after 15 min; run the command again later")
@@ -151,7 +164,33 @@ def push(steps, budget):
          "enable_gpu": False, "enable_tpu": False, "enable_internet": False,
          "dataset_sources": [f"{u}/{BUNDLE}", f"{u}/{WHEELS}"],
          "competition_sources": [], "kernel_sources": [], "model_sources": []}, indent=1))
-    print(kg("kernels", "push", "-p", str(kd)))
+    push_kernel()
+
+
+def push_kernel(retry=True):
+    """Push the staged kernel and watch its start; one more push if it dies at once, silently."""
+    kd = STAGE / "kernel"
+    if not (kd / "kernel-metadata.json").exists():
+        sys.exit("no staged kernel: run `scripts/kaggle_cpu.py push` first")
+    print(kg("kernels", "push", "-p", str(kd)).strip())
+    ref = f"{user()}/{KERNEL}"
+    for waited in range(0, WATCH_S, WATCH_STEP_S):
+        time.sleep(WATCH_STEP_S)
+        status = kg("kernels", "status", ref, check=False).lower()
+        if "error" in status or "cancel" in status:
+            log = kg("kernels", "logs", ref, check=False).strip()
+            if len(log) > 10:            # it ran and stopped: show why, do not retry blindly
+                sys.exit(f"kernel failed after {waited + WATCH_STEP_S} s; log tail:\n{log[-2000:]}")
+            if retry:
+                print(f"kernel ended in ERROR with an empty log after {waited + WATCH_STEP_S} s "
+                      "(it did not start): pushing it once more")
+                return push_kernel(retry=False)
+            sys.exit("the kernel did not start twice: check https://www.kaggle.com/code/" + ref)
+        if "complete" in status:
+            print("kernel already complete: `scripts/kaggle_cpu.py pull`")
+            return
+    print(f"kernel running after {WATCH_S} s: it continues without the laptop "
+          "(`scripts/kaggle_cpu.py status`, then `pull`)")
 
 
 def pull():
@@ -179,7 +218,7 @@ def pull():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("action", choices=["wheels", "push", "status", "log", "pull"])
+    ap.add_argument("action", choices=["wheels", "push", "kernel", "status", "log", "pull"])
     ap.add_argument("--steps", default=DEFAULT_STEPS, help="steps of scripts/run_v4_cpu.sh")
     ap.add_argument("--budget", type=float, default=11.0, help="hours before a clean stop")
     a = ap.parse_args()
@@ -187,6 +226,8 @@ def main():
         wheels()
     elif a.action == "push":
         push(a.steps, a.budget)
+    elif a.action == "kernel":
+        push_kernel()
     elif a.action == "pull":
         pull()
     else:

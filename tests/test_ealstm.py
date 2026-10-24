@@ -42,7 +42,10 @@ def grads(net, fn, x):
 
 def test_equal_to_eager_loop(device="cpu"):
     torch.manual_seed(0)
-    net = EALSTM(12, hidden=32, n_static=4).to(device).eval()
+    # training mode: cuDNN computes RNN gradients only in training mode ("cudnn RNN backward
+    # can only be called in training mode", first GPU run on a Colab T4, 2026-10-24); dropout
+    # 0 keeps the training-mode forward deterministic, so the comparison stays exact
+    net = EALSTM(12, hidden=32, n_static=4, dropout=0.0).to(device).train()
     for L in (1, 5, 104, 156):
         x = batch(8, L, 12, 4, device)
         with torch.no_grad():

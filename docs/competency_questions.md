@@ -160,8 +160,8 @@ Two example wells are used throughout:
 - **Open.**
   - The 211 coded points are mostly drinking-water boreholes, so the flag's accuracy on
     irrigation boreholes may differ. Report it as measured, not assumed.
-  - Main runs use confident links only (or confident + probable, decided on the twin); a
-    sensitivity run uses all links (review §7.3).
+  - Main runs use confident + probable links (decided by Assil on 2026-10-24); sensitivity
+    runs use confident links only, and all links (review §7.3).
 
 ### CQ3: units above unit U (MUST)
 - **Question.** Which units overlie unit U, and what kind of unit lies between them: an
@@ -407,6 +407,9 @@ Two example wells are used throughout:
 ## Next
 
 1. Assil reviews this list: questions to add or drop, priorities, the open points.
+   **2026-10-24:** he approved the 6 MUST questions as drafted (CQ1, CQ2, CQ3, CQ8, CQ11,
+   CQ12), so the ontology module (task 12.4) starts with them; the 10 SHOULD/COULD ones
+   are still under review.
 2. Scope and framing decided on 2026-10-23 (`docs/supervisor_questions.md` §1). The
    Pliocene use conflict is the main story, so CQ12 is now MUST.
 3. Step 2 (reuse): a term-by-term table following review §4.1 (SAWGraph's GWML2 rendering,

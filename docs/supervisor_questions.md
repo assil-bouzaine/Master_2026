@@ -27,6 +27,15 @@ missing pumping data (§5).
 | 11 | Newer RPG years | **No for now.** Keep 2016 + 2023; add 2024 only if the satellite rule needs a validation year. | Land use is stable at group level (vines stable in hectares since 2016); a new format would cost days for little gain. |
 | 16 | Venue | **Environmental Modelling & Software first, JGR: Machine Learning and Computation second**; final check at Gate 4. HESS if the hybrid is strong. | EMS fits methods + software + ontologies. EMS is a hybrid journal (subscription route possible), so we can publish even if no open-access fee is paid. JGR: MLC is fully open access (fee). |
 
+Decided by Assil on 2026-10-24 (no supervisor question needed):
+- **Pump → unit links in the main runs: confident + probable.** They cover 72 % of the
+  plain's declared groundwater volume (confident only: 27 %), and "probable" is given only
+  where a rule's precision was measured (0.92–0.95 on 130 recorded boreholes, drinking
+  water). Confident only, and all links, are sensitivity runs.
+- **Competency questions:** the 6 MUST ones are approved as drafted; the ontology module
+  starts with them while the 10 SHOULD/COULD ones are reviewed.
+- **No model training on the laptop:** CPU fits run on Kaggle (CPU only), GPU fits on Colab.
+
 Already applied before 2026-10-23:
 - the primary metric
 - dataset v3

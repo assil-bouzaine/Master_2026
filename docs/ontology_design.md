@@ -148,9 +148,10 @@ holding:
 - `lulcw:confidence`, **measured**: a rule is "probable" only for the uses on
   which its precision was measured (≥ 0.80 on ≥ 10 recorded boreholes)
 
-A rule then materialises `lulcw:pumpsFrom` for confident links only (main
-runs; confident + probable is proposed, CLAUDE.md §3). That keeps the simple
-queries simple. The sensitivity runs use every attribution.
+A rule then materialises `lulcw:pumpsFrom` for confident and probable links
+(the main runs, decided by Assil on 2026-10-24, CLAUDE.md §3). That keeps the
+simple queries simple. The sensitivity runs use confident links only, and every
+attribution.
 
 Two limits are stated wherever these links are used:
 - A BD LISA stack describes the geological arrangement under a point. It

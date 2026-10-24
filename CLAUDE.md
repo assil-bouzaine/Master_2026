@@ -154,9 +154,10 @@ for the project"). The decisions and their reasons are in
     screen depth. No fixed depth classes. "Similar depth" edges use a
     |Δ depth| threshold chosen on the training period.
   - Every derived link carries `prov:wasDerivedFrom` and `lulcw:confidence`.
-    Main runs use confident links only; a sensitivity run uses all of them.
-    (Proposal of 2026-10-23, for Assil: confident + probable in the main runs,
-    see `docs/notes/step12b_review_fixes.md`.) Confidence levels are measured,
+    **Main runs use confident + probable links** (decided by Assil on
+    2026-10-24: 72 % of the plain's declared groundwater volume, against 27 %
+    for confident only); sensitivity runs use confident links only, and all
+    links (`docs/notes/step12b_review_fixes.md`). Confidence levels are measured,
     not assumed: pump → unit rules get "probable" only for the uses their
     precision was measured on (`src/kg/pump_attribution.py`).
   - Incomplete evidence stays incomplete: a piezometer or pump may have an
@@ -527,9 +528,9 @@ the data (all confirmed). Assil decided the same day:
 - **Until the v3 report is final, every code change must leave v3 behaviour
   identical** (gate it on v4). No sweep has been running since 20:58, so
   `scripts/run_cpu.sh` may be edited again.
-- **Decision waiting for Assil:** main runs with confident + probable pump
-  links (72 % of the plain's declared volume) instead of confident only
-  (27 %). Step 12b note, "What to consider".
+- **Decided by Assil on 2026-10-24:** main runs with confident + probable
+  pump links (72 % of the plain's declared volume) instead of confident only
+  (27 %); confident only and all links are sensitivity runs (§3).
 
 **Plain-words guide for Assil (2026-10-23):** `docs/explainer/index.html` (open it in a
 browser; offline). It covers every step, the four data versions, the decisions and the next
@@ -557,14 +558,21 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
   rescores). If it stopped early, `push` again: it resumes from the pulled
   output. The `naive` rows must equal the laptop's v4 rows of 2026-10-23 (an
   environment check).
-- **Colab T4, next (Assil clicks the Drive "Allow"):** the v4 GPU bundle is
-  built (`PFE_DATASET=v4 .venv/bin/python scripts/make_gpu_bundle.py`; it now
-  holds the Taccari selection, copied by `scripts/v4_from_v3.py` on
-  2026-10-24). Upload it to Drive `pfe_colab/` (split into 7 MB parts, as on
-  2026-10-23), then `%env PFE_DATASET=v4` and the usual two cells. With v4,
-  `colab_run.py` runs `V4_STEPS`: the finals of LSTM, distance ST-GNN, Taccari
-  and EA-LSTM first, then their regimes, then Chronos-2 (≈ 6–8 T4-hours, 2–3
-  sessions). Pull with `scripts/colab_pull.py`.
+- **Colab T4, session 1 running** (started 15:10 UTC in `pfe_v3_gpu.ipynb`;
+  the v4 bundle is on Drive as `pfe_colab/gpu_bundle.zip`, md5 90b2ef2b…, the
+  v3 one kept as `gpu_bundle_v3.zip`). Run line:
+  `!unzip -oq /content/drive/MyDrive/pfe_colab/gpu_bundle.zip -d /content/pfe && PFE_DATASET=v4 python /content/pfe/scripts/colab_run.py`.
+  `V4_STEPS`: the finals of LSTM, distance ST-GNN, Taccari, EA-LSTM, then
+  their regimes, then Chronos-2 (≈ 6–8 T4-hours, 2–3 sessions).
+  **EA-LSTM was dropped in session 1:** `tests/test_ealstm.py` failed on the
+  GPU because it took gradients in eval mode, which cuDNN refuses ("cudnn RNN
+  backward can only be called in training mode"); a test bug, not a model
+  bug (training runs in train mode). Fixed 2026-10-24 (train mode, dropout 0;
+  CPU half passes). **Before session 2:** rebuild the bundle, upload it to
+  Drive (7 MB parts through the Files panel; if a part does not start,
+  dispatch a `change` event on `#file-tree-upload-input`), then the run line
+  again: finished runs are restored from Drive and skipped. Pull with
+  `scripts/colab_pull.py` (Drive folder `pfe_colab/results_gpu` → Download).
 - **After both:** `PFE_DATASET=v4` ensemble and `baseline_report` → the v4
   report of record (the v3 report stays as Step 12a's record). To re-check on
   v4: the Taccari drought-skill result (p_holm 0.013 on v3) and "the graph
@@ -578,19 +586,21 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
 1. Send the two e-mails in `docs/supervisor_questions.md`:
    - §4 to the supervisor (decisions + the defence date)
    - §5 data request: monthly drinking-water production
-2. Review the 16 competency questions (`docs/competency_questions.md`): add,
-   drop, priorities, and the open points listed there.
+2. Review the 10 SHOULD/COULD competency questions
+   (`docs/competency_questions.md`; the 6 MUST were approved on 2026-10-24):
+   add, drop, priorities, and the open points listed there.
 3. Later, for task 12.10: an Earth Engine account (sign-in is his).
 
 **Next for Claude, while the models run or after:**
 1. ✅ Step 12a done (2026-10-23 evening). 🔄 The v4 re-runs started on
-   2026-10-24: Kaggle CPU running, Colab next, then the v4 report.
+   2026-10-24: Kaggle CPU running, Colab session 1 running (EA-LSTM in
+   session 2), then the v4 report.
 2. Literature, from the second review:
    - the positioning matrix in `docs/literature/comparison_table.md`: past heads
      as input? forcings? split? knowledge supplied? explanation validated?
    - fill the open-access rows (Heudorfer 2024, Wu 2025 JGR-MLC if open)
-3. Task 12.4 (ontology module) after Assil's review of the CQs; then 12.5–12.8.
-   Task 12.8 includes the equivalence test.
+3. Task 12.4 (ontology module), started 2026-10-24 with the 6 MUST CQs; then
+   12.5–12.8. Task 12.8 includes the equivalence test.
 
 **Phase 3 (Step 12):** the task list is below. Freeze the ontology design after
 Assil's review of the competency questions.
@@ -610,17 +620,17 @@ Assil's review of the competency questions.
 | 10 Baselines on dataset v2 | ✅ done | `docs/notes/step10_baselines_v2.md` |
 | 11 Gate 2 summary | ✅ answered 2026-10-23: the choices are left to Assil (decisions in `docs/supervisor_questions.md`) | `docs/summary_gate2_results.md` |
 | **12a Fixes from the critical review** | **✅ 2026-10-23:** evaluation, analysis plan, dataset v3, all v3 baselines (EA-LSTM regimes on v4 only), final v3 report | `docs/feedback.md`, `docs/analysis_plan.md`, `docs/notes/step12a_fixes.md` |
-| **12b Fixes from the second review** | **✅ 2026-10-23** (code, dataset v4, analysis plan v2, tests); the baseline re-runs on v4 wait for Assil's go | `docs/review_codex_2026-10-23.md`, `docs/review_codex_response.md`, `docs/notes/step12b_review_fixes.md` |
+| **12b Fixes from the second review** | **✅ 2026-10-23** (code, dataset v4, analysis plan v2, tests); 🔄 the baseline re-runs on v4 started 2026-10-24 (Kaggle CPU + Colab T4) | `docs/review_codex_2026-10-23.md`, `docs/review_codex_response.md`, `docs/notes/step12b_review_fixes.md` |
 | **12 Phase 3: ontology + KG** | **🔄 started 2026-10-23.** 12.1 drafted, 12.2 started, 12.3 done | `docs/review_2026-10-23.md`, `docs/competency_questions.md`, `docs/ontology_design.md`, `docs/notes/step12_ontology.md` |
 
 ### Step 12: Phase 3 tasks, in order
 
 | # | Task | Status |
 |---|---|---|
-| 12.1 | Competency questions (16) with example answers | ✅ drafted; Assil reviews |
+| 12.1 | Competency questions (16) with example answers | ✅ drafted; the 6 MUST (CQ1, 2, 3, 8, 11, 12) approved by Assil on 2026-10-24, so 12.4 starts with them; the 10 SHOULD/COULD are still under his review |
 | 12.2 | Reuse table, term by term, and the modelling patterns (`docs/ontology_design.md`) | 🔄 started |
 | 12.3 | **CQ2 data step:** attribute each groundwater abstraction point to a unit, with provenance and confidence | ✅ 2026-10-23: `src/kg/pump_attribution.py` → `data/interim/pump_unit_attribution.parquet`. Rules measured on 130 recorded boreholes (flag True → alluvium 95 %; flag False + Pliocene under the point → Pliocene 92 %; False alone 53/112). The record is depth-checked. "Probable" only for the uses that were measured. Plain volume 2012–24: confident 27 %, probable 45 %, possible 21 %, unknown 7 % |
-| 12.4 | Ontology module `lulcw:` + imports/alignments in `ontology/`; IRIs and metadata; the quality gates in `tests/` | ⬜ after 12.3 and Assil's CQ review |
+| 12.4 | Ontology module `lulcw:` + imports/alignments in `ontology/`; IRIs and metadata; the quality gates in `tests/` | 🔄 started 2026-10-24 with the 6 MUST CQs |
 | 12.5 | KG instantiation from the parquet tables (rdflib → Turtle → pyoxigraph) | ⬜ |
 | 12.6 | SHACL shapes and SHACL-AF rules: Influence links, `ProbablyIrrigatedParcel`, `HighIrrigationDemandZone`, `ConfinedSetting` | ⬜ |
 | 12.7 | CQ tests: one SPARQL query plus an oracle per CQ (`tests/cq/`) | ⬜ |

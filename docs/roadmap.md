@@ -165,16 +165,16 @@ correct, documented, tested, and cover the subject's objectives SO1 and SO2.
 
 | # | Task | Done when |
 |---|---|---|
-| 3.1 | Competency questions (16) with example answers (`docs/competency_questions.md`) | Assil and the supervisor agree on the list |
+| 3.1 | Competency questions (16): inputs, outputs, evidence, uncertainty and acceptance cases (`docs/competency_questions.md`; strengthened 2026-10-24) | six MUST approved; record review of the remaining scope and freeze the detailed contracts |
 | 3.2 | Reuse table, term by term, and the modelling patterns (`docs/ontology_design.md`) | every term has a checked source or a `lulcw:` definition |
 | 3.3 | **CQ2 data step:** attribute each groundwater abstraction point to a unit, with provenance and confidence | ✅ 2026-10-23 (`src/kg/pump_attribution.py`): rules measured on 130 recorded boreholes, use-aware confidence, coverage by volume and use |
 | 3.4 | Write `lulcw:` + imports/alignment axioms in `ontology/` (IRIs, metadata, FR/EN labels, definitions) | the reasoner is consistent; OOPS! shows no critical pitfall |
 | 3.5 | KG instantiation from the parquet tables (rdflib → Turtle → pyoxigraph) | rebuilt from cold by one command |
-| 3.6 | SHACL shapes + SHACL-AF rules (Influence links, ProbablyIrrigatedParcel, HighIrrigationDemandZone, ConfinedSetting) | validation passes |
-| 3.7 | CQ tests: one SPARQL query plus an oracle each (`tests/cq/`) | all pass |
+| 3.6 | SHACL shapes + SHACL-AF rules (qualified influences, dated irrigation/demand assessments and evidence-based local confinement) | validation passes, including unknown/conflicting evidence; stack position alone never proves confinement |
+| 3.7 | CQ tests: one or more queries per CQ, synthetic edge cases and independent data oracles (`tests/cq/`) | all 16 fixture contracts pass; MUST CQs have representative real-data checks; SHOULD/COULD gaps reported separately |
 | 3.8 | Export SPARQL → `HeteroData` (+ rewired/random variants for arms E–F) | loads in PyG; node and edge counts reported; the **equivalence test** passes (pandas rules on the same tables give the same edges) |
 | 3.9 | Alignment experiment: RPG → AGROVOC gold set; OntoAligner fuzzy, retrieval and LLM matchers (local LLM on Colab) | P/R/F1 table |
-| 3.10 | Satellite rule: Sentinel-2 summer NDVI per RPG parcel (Earth Engine) + soil wetness → `ProbablyIrrigatedParcel` | checked against independent irrigation evidence (Agreste census, ASA perimeters, BNPE irrigation points), else labelled a heuristic; agreement with RPG crops alone does not validate irrigation |
+| 3.10 | Satellite rule: quality-qualified Sentinel-2 NDVI + soil wetness → dated probable-irrigation assessment | independent labels validate parcel-seasons; census data support compatible aggregate checks; crop agreement, canal access or pump proximity alone do not validate irrigation; otherwise retain heuristic status |
 | 3.11 | Text extraction, small and measured (thesis) | precision on 10–20 papers |
 
 Tools: Protégé (editing), `rdflib`, `pyoxigraph`, `pyshacl` (advanced mode),

@@ -137,8 +137,9 @@ for the project"). The decisions and their reasons are in
   - the water uses (a SKOS scheme of the BNPE uses)
   - the driver groups (e.g. "summer demand")
   - the causal knowledge, at two levels:
-    - class-level axioms, such as "an abstraction decreases the head of the
-      unit it pumps from"
+    - class-level mechanism specifications, such as a non-increasing head
+      response to increased abstraction from a connected unit under stated
+      conditions; qualified model constraints, not proof of observed causality
     - instance-level **`lulcw:Influence`** nodes, following the W3C n-ary
       relation pattern. Each carries its source, target, sign, distance,
       confidence and evidence, and is derived by SHACL-AF SPARQL rules
@@ -146,7 +147,7 @@ for the project"). The decisions and their reasons are in
 - **Modelling rules** (review §4.2):
   - Aquifer types come from a written mapping rule, not from BD LISA
     `natureeh`:
-    - alluvium → unconfined aquifer
+    - alluvium → alluvial aquifer; assess local confinement separately (CQ14)
     - Pliocene multilayer → aquifer system
     - karst → aquifer
     - impermeable units → confining bed
@@ -173,6 +174,12 @@ for the project"). The decisions and their reasons are in
 - **Scope:** driven by the competency questions
   (`docs/competency_questions.md`; 16, Assil reviewing). Time-box: Phase 3 =
   6 weeks, of which the KG build ≤ 4 weeks.
+  - **CQ review, 2026-10-24:** all 16 now specify inputs, outputs, evidence,
+    uncertainty and acceptance cases (`docs/notes/step12c_competency_review.md`).
+    Use the revised contracts and `docs/ontology_design.md` for implementation:
+    spatially qualified stacks; separate cover/confinement; resolution-aware pump
+    evidence; dated irrigation assessments; annual accounting without duplicating
+    alternative assignments. These refine the approved architecture and scope.
 - **Alignment (subject SO1).**
   - Manual gold sets:
     - **RPG crop codes → AGROVOC**: the main experiment

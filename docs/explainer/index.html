@@ -591,7 +591,8 @@
 
   <ul>
     <li><strong>Borrowed words.</strong> We <button class="term" data-term="reuse">reuse</button> international vocabularies (for wells, observations, time, places), like using standard LEGO bricks so that other projects can connect. We only invent the pieces that are missing, in our own small module called <code>lulcw:</code>.</li>
-    <li><strong>A checklist of 16 questions.</strong> The map must answer questions like "which pumps take water from the same layer as this well, how far away, and how sure are we?". These <button class="term" data-term="cq">competency questions</button> are its requirements and later its tests. You are reviewing them.</li>
+    <li><strong>A checklist of 16 questions.</strong> The map must answer questions like "which pumps may take water from the same layer as this well, how far away, and on what evidence?". These <button class="term" data-term="cq">competency questions</button> were strengthened on 24 October: each now defines the answer, its evidence, missing information and test cases. The six core questions are approved; the remaining scope is under review.</li>
+    <li><strong>Knowing what we do not know.</strong> A covered layer is not necessarily confined, a nearby river is not proof of recharge, and a green field is not proof of irrigation. The questions keep recorded facts, inferred possibilities and model results distinct, so the map can explain uncertainty instead of hiding it.</li>
     <li><strong>An honest claim.</strong> The same facts written in plain tables would give the computer exactly the same links. So if the predictions improve, the credit goes to the knowledge. The map's own value is that the knowledge becomes explicit, checkable, traceable and reusable. A test will show the two give the same links.</li>
   </ul>
 
@@ -618,7 +619,7 @@
     <ul>
       <li>The design: <code>docs/ontology_design.md</code> (reused vocabularies such as GWML2 through SAWGraph, SWEET, SOSA/SSN, OWL-Time, PROV-O, SKOS, GeoSPARQL). The questions: <code>docs/competency_questions.md</code>.</li>
       <li>The detective: <code>src/kg/pump_attribution.py</code>; its results: <code>data/interim/pump_unit_attribution_eval.json</code>; explained in <code>docs/notes/step12b_review_fixes.md</code>.</li>
-      <li>Coming next in this phase: write the module and its checks (SHACL rules, a reasoner), fill the map from our tables, write one test query per question (SPARQL), export the links for the model, the crop-name matching experiment (RPG to AGROVOC) and the satellite rule for probably irrigated fields.</li>
+      <li>Coming next in this phase: implement the strengthened contracts in the module and its checks (SHACL rules, a reasoner), fill the map from our tables, write query tests including missing and conflicting evidence, export the links for the model, the crop-name matching experiment (RPG to AGROVOC) and the dated satellite rule for probably irrigated fields.</li>
     </ul>
   </details>
   <p class="nextlink"><a href="#model">Next: the smart model and its tests</a></p>

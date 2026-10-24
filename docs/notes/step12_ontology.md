@@ -1,5 +1,10 @@
 # Step 12: Phase 3, ontology and knowledge graph
 
+**Latest CQ revision (2026-10-24):** see
+[step12c_competency_review.md](step12c_competency_review.md). The entries below
+record the earlier work and its historical examples; the current requirements
+are in [competency_questions.md](../competency_questions.md).
+
 ## 12.1 Competency questions (draft, 2026-10-23)
 
 ### What was done

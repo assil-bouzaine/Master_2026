@@ -28,7 +28,8 @@ explains the whole project with pictures (open it in a browser).
 | 10 | Baselines v2: more data, tuning, ensemble, ablation | done | [step10_baselines_v2.md](step10_baselines_v2.md) |
 | 12a | Fixes from the critical review: evaluation, analysis plan, dataset v3, new baselines, knowledge-graph pre-check | done (2026-10-23; EA-LSTM regimes on v4 only) | [step12a_fixes.md](step12a_fixes.md) |
 | 12b | Fixes from the second review: dataset v4, strict validated data, grouped folds, cluster-level test, R3 window statistics, analysis plan v2 | done (v4 re-runs of the baselines wait for Assil's go) | [step12b_review_fixes.md](step12b_review_fixes.md) |
-| 12 | Phase 3: ontology and knowledge graph | in progress (12.1 drafted, waiting for review; 12.3 pump → unit attribution done) | [step12_ontology.md](step12_ontology.md) |
+| 12c | Review and strengthen all 16 competency questions | documentation complete (2026-10-24); query/fixture implementation remains Phase 3 work | [step12c_competency_review.md](step12c_competency_review.md) |
+| 12 | Phase 3: ontology and knowledge graph | in progress (six MUST CQs approved; all 16 contracts revised; 12.3 attribution done) | [step12_ontology.md](step12_ontology.md) |
 
 Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 
@@ -59,11 +60,11 @@ Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 | **Elementary polygon (BD LISA)** | Smallest map unit of BD LISA; each carries a vertical *stack* of aquifer entities, ordered from the surface down (`OrdRelatif` 1 = top). |
 | **Overlies edge** | "Entity A lies directly on top of entity B" somewhere in the plain. Becomes a relation in the knowledge graph and an edge in the model's graph. |
 | **Head (charge hydraulique)** | Water level in a well expressed as an altitude (m NGF). Water flows from high head to low head. |
-| **Vertical gradient** | Difference in head between a shallow and a deep layer at the same place. Shallow > deep means water tends to go down; deep > shallow means up. |
+| **Vertical hydraulic gradient** | Head difference divided by the relevant vertical separation, using comparable datums and screened intervals. A nearby pair's head difference alone is not a vertical gradient. |
 | **Nested piezometers** | Two or more wells at the same site screened at different depths (e.g. C2-1/C2-2). The only clean way to measure a vertical gradient. |
 | **Investigation depth** | `profondeur_investigation` in Hub'Eau: how deep the borehole goes. Not the screen depth (the open interval that the water comes from), which is only in the BSS borehole logs. |
-| **Artesian** | The head is above the ground surface: the water would flow out of the well by itself. Sign of a confined, pressurised aquifer. |
-| **Confined vs unconfined** | Unconfined: the water table is free (alluvium). Confined: the aquifer sits under a clay layer and is under pressure (deep Pliocene). |
+| **Artesian / flowing artesian** | Artesian pressure raises water above the top of a confined aquifer. Flowing conditions require it to reach the outlet; head above ground is a proxy for this, not a record of actual flow. |
+| **Confined vs unconfined** | Hydraulic conditions of an aquifer at a location. Mapped cover or an alluvial name alone does not establish confinement; local evidence is needed. |
 | **SAFRAN / SIM2** | Météo-France's gridded reconstruction of daily weather (8 km cells) and of the soil water balance (model ISBA). Our source for rain and evapotranspiration. |
 | **ETP** | Potential evapotranspiration: how much water the air *could* take from a well-watered surface (mm). Actual ET (EVAP) is what was really evaporated. |
 | **Effective rain / drainage** | Rain left after evaporation (PE), and the part that drains below the roots (DRAINC) towards the water table: a proxy for recharge. |
@@ -86,6 +87,10 @@ Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 | **Knowledge graph (KG)** | The facts written with that vocabulary ("well C2-1 monitors unit 718BP02"), stored as a network of entities and relations. |
 | **RDF triple** | The unit of a knowledge graph: subject, relation, object. RDF is the standard format. |
 | **Competency question (CQ)** | A question the ontology must be able to answer. The CQs are its requirements, and each becomes a SPARQL test. |
+| **Answer contract** | The inputs, expected output, evidence, units and missing-data behaviour a query must satisfy; one CQ may require several queries. |
+| **Open-world assumption** | A fact missing from the ontology is unknown, not automatically false. A zero or a claim of absence needs evidence of coverage. |
+| **Evidence resolution** | The level at which a claim was checked, such as alluvium as a group versus one exact BD LISA unit. Confidence at one level does not establish confidence at the other. |
+| **Oracle / test fixture** | An oracle is an independently computed expected answer. A fixture is a small controlled example used to check correct answers and prohibited inferences. |
 | **SPARQL** | The query language of RDF knowledge graphs (like SQL for tables). |
 | **SHACL / SHACL-AF** | SHACL checks that the graph has the expected shape (every `pumpsFrom` has a source); SHACL-AF rules derive new facts (a "high irrigation demand zone"). |
 | **Bridging module (`lulcw:`)** | Our own small ontology: it links the reused standard vocabularies and adds the causal relations with their sign. |

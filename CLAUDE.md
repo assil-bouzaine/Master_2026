@@ -550,14 +550,14 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
 - **Assil's go (2026-10-24):** "u can use kaggle and colab to train", and no
   model is trained on the laptop any more. This lifts the hold of 2026-10-23
   evening ("keep only v3 running").
-- **Kaggle CPU, running:** kernel `assilbouzaine/pfe-v4-cpu`, version 2,
-  started 14:45 UTC with `naive lgbm lgbm_final lgbm_regimes pastas wellmodel`
-  (≈ 1–2 h; Pastas with 4 workers). Check with
-  `.venv/bin/python scripts/kaggle_cpu.py status`; when complete,
-  `.venv/bin/python scripts/kaggle_cpu.py pull` (copies to `results/v4`,
-  rescores). If it stopped early, `push` again: it resumes from the pulled
-  output. The `naive` rows must equal the laptop's v4 rows of 2026-10-23 (an
-  environment check).
+- **Kaggle CPU ✅ done** (kernel `assilbouzaine/pfe-v4-cpu` v2, 14:43–15:20
+  UTC, 36 min on 4 CPUs; pulled and rescored 2026-10-24): naive, LightGBM
+  (`lgbm_sim`, `lgbm_fc`, `lgbm_noclim_tuned` + `_lwo/_f25/_f50`), Pastas,
+  `pastas_seasonal_canal`, `pastas_wellmodel` in `results/v4`. The naive rows
+  equal the laptop's v4 rows of 2026-10-23 (environment check passed). First
+  look (core-well medians, drought NSE v3 → v4): Pastas −1.00 → −0.93,
+  LightGBM −0.12 → −0.10; left-out wells −0.75 → −0.91 and 25 % data
+  −0.26 → −0.35 (harder, as intended by the v4 fixes).
 - **Colab T4, session 1 running** (started 15:10 UTC in `pfe_v3_gpu.ipynb`;
   the v4 bundle is on Drive as `pfe_colab/gpu_bundle.zip`, md5 90b2ef2b…, the
   v3 one kept as `gpu_bundle_v3.zip`). Run line:

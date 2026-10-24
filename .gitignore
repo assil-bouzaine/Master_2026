@@ -26,3 +26,6 @@ venv/
 Articles/
 results/
 gpu_bundle.zip
+
+# ontology tools (ROBOT jar, downloaded by Claude; see docs/notes/step12_ontology.md)
+tools/

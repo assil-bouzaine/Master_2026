@@ -3,7 +3,8 @@
 # when the v3 sweep has finished (pgrep -af src.models shows nothing):
 #   setsid nohup bash scripts/run_v4_cpu.sh > results/v4/cpu_runs.log 2>&1 < /dev/null &
 # Sequential and resumable like scripts/run_cpu.sh; the neural models run on Colab
-# (docs/gpu_howto.md, "Dataset v4 re-runs"). STEPS selects a subset. On Kaggle
+# (docs/gpu_howto.md, "Dataset v4 re-runs"), except EA-LSTM, which also runs on a CPU
+# (final:ealstm, regimes:ealstm). STEPS selects a subset. On Kaggle
 # (scripts/kaggle_cpu_run.py) PY is the image's python with the pinned wheels.
 set -u
 cd "$(dirname "$0")/.."
@@ -22,6 +23,12 @@ for s in $STEPS; do
     lgbm_regimes) $PY -m src.models.lgbm --no-clim --regimes lwo f25 f50 ;;
     pastas)       $PY -m src.models.pastas_baseline --variant pastas pastas_seasonal_canal --workers $JOBS ;;
     wellmodel)    $PY -m src.models.pastas_baseline --variant pastas_wellmodel --workers $JOBS ;;
+    pastas_starts)   $PY -m src.models.pastas_baseline --variant pastas_seasonal_canal \
+                       --starts 0 1 2 3 4 5 6 7 8 9 --workers $JOBS ;;          # stability check
+    pastas_trainobs) $PY -m src.models.pastas_baseline --variant pastas_seasonal_canal \
+                       --starts 0 1 2 3 4 5 6 7 8 9 --train-obs --workers $JOBS ;;
+    final:*)      $PY -m src.models.tune --model "${s#final:}" --final-only ;;   # v3 choice
+    regimes:*)    $PY -m src.models.regimes --model "${s#regimes:}" ;;
     *)            echo "unknown step $s" ;;
   esac || echo "!! step $s failed, continuing"
 done

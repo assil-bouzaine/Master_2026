@@ -109,6 +109,7 @@ def bundle():
     os.environ["PFE_DATASET"] = "v4"
     from src.config import DATASET_DIR, RAW   # noqa: E402
     include = [ROOT / "src", ROOT / "scripts" / "run_v4_cpu.sh", ROOT / "requirements.txt",
+               ROOT / "tests" / "__init__.py", ROOT / "tests" / "test_ealstm.py",
                DATASET_DIR, *sorted((RAW / "safran").glob("sim2_66_[0-9]*.parquet")),
                *sorted((V4 / "_cache").glob("panel*.parquet")),
                *sorted(V4.glob("*_tuning/best.json")), *sorted(V4.glob("*_tuned/best.json"))]

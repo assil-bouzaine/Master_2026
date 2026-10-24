@@ -99,6 +99,22 @@ def install():
     log(f"{len(wheels)} wheels installed; versions = requirements.txt for {', '.join(CHECKED)}")
 
 
+def ealstm_ok(env):
+    """EA-LSTM steps need torch (the image's: it is not among the pinned wheels) and the
+    fused-kernel check tests/test_ealstm.py, as on Colab."""
+    r = subprocess.run([sys.executable, "-c", "import torch; print(torch.__version__)"],
+                       capture_output=True, text=True, cwd=CODE, env=env)
+    if r.returncode:
+        log(f"no torch in this image: EA-LSTM steps dropped\n{r.stderr[-500:]}")
+        return False
+    t = subprocess.run([sys.executable, "-m", "tests.test_ealstm"], capture_output=True,
+                       text=True, cwd=CODE, env=env)
+    print(t.stdout + t.stderr, flush=True)
+    log(f"torch {r.stdout.strip()}; tests/test_ealstm.py "
+        + ("passed" if t.returncode == 0 else "FAILED: EA-LSTM steps dropped"))
+    return t.returncode == 0
+
+
 def save():
     """RESULTS -> OUT, without the feature caches (they are in the bundle)."""
     shutil.copytree(RESULTS, OUT, dirs_exist_ok=True, ignore=shutil.ignore_patterns("_cache"))
@@ -134,11 +150,15 @@ def main():
     install()
     env = dict(os.environ, PY=sys.executable, PYTHONPATH=pythonpath(), PYTHONIOENCODING="utf-8",
                PYTHONUNBUFFERED="1", JOBS=str(len(os.sched_getaffinity(0))))
-    log(f"{env['JOBS']} CPUs; steps {STEPS}; budget {BUDGET_H} h")
+    steps = STEPS
+    if "ealstm" in steps and not ealstm_ok(env):
+        # "none", not "": an empty STEPS would make run_v4_cpu.sh run its default steps
+        steps = " ".join(s for s in steps.split() if "ealstm" not in s) or "none"
+    log(f"{env['JOBS']} CPUs; steps {steps}; budget {BUDGET_H} h")
     stop = threading.Event()
     threading.Thread(target=sync_loop, args=(stop,), daemon=True).start()
     try:
-        rc = run(STEPS, env)
+        rc = run(steps, env)
         log(f"steps ended (exit {rc})" if time.time() < DEADLINE
             else "time budget used: push again to continue")
     finally:

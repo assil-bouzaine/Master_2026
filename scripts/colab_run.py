@@ -160,7 +160,8 @@ def main():
         sys.exit("tests/test_taccari.py failed in this session (output above): stopping")
     steps = STEPS
     if "ealstm" in steps and run(["python3", "-m", "tests.test_ealstm"], test_env) != 0:
-        steps = " ".join(s for s in steps.split() if "ealstm" not in s)
+        # "none", not "": an empty STEPS would make run_gpu.sh run its default sweep
+        steps = " ".join(s for s in steps.split() if "ealstm" not in s) or "none"
         log("tests/test_ealstm.py failed in this session (output above): EA-LSTM steps dropped")
     stop = threading.Event()
     threading.Thread(target=sync_loop, args=(stop,), daemon=True).start()

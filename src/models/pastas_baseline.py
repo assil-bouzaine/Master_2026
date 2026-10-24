@@ -2,6 +2,8 @@
 
     python -m src.models.pastas_baseline              # both variants, resumable
     python -m src.models.pastas_baseline --variant pastas
+    python -m src.models.pastas_baseline --variant pastas_seasonal_canal --starts 0 1 2 [--train-obs]
+                                                      # stability check of the reference
 
 Collenteur et al. 2019, Pastas, Groundwater 57(6), doi:10.1111/gwat.12925.
 
@@ -42,10 +44,19 @@ Outputs (results/<variant>/):
     wells/<code>.parquet       weekly simulation per well (resumable cache)
     params.csv                 fitted parameters and fit statistics per well
     predictions.parquet        all wells, evaluate format
+
+Stability check (2026-10-24): the v4 refit on Kaggle moved the drought median NSE of
+pastas_seasonal_canal from -0.73 to -0.51, although the heads of 43 of its 47 wells are
+identical to v3: the optimum is poorly determined. --starts k... fits every well once per start
+into results/<variant>_start<k>: start 0 uses Pastas' default initial values, start k > 0
+values drawn around them (seeded by start and well). --train-obs gives Pastas only the
+training-period heads (results/<variant>_trainobs_start<k>): by default the initial constant
+is the mean of the whole series, test period included. The default run is unchanged.
 """
 import argparse
 import json
 import warnings
+import zlib
 from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
@@ -119,9 +130,26 @@ def build_model(code, variant, obs, prec, evap, pump, canal, simple, regional=No
     return ml
 
 
+def perturb(ml, code, start, obs_train):
+    """Initial values of start > 0: Pastas' defaults times a log-normal factor (sd 0.5), the
+    constant shifted by N(0, sd of the training heads); a draw outside the bounds keeps the
+    default. Seeded by (start, well), so every start can be repeated."""
+    rng = np.random.default_rng([start, zlib.crc32(code.encode())])
+    for name, p in ml.parameters[ml.parameters["vary"].astype(bool)].iterrows():
+        x = p["initial"]
+        if name == "constant_d":
+            x = x + rng.normal(0.0, obs_train.std())
+        elif x != 0:
+            x = x * np.exp(rng.normal(0.0, 0.5))
+        lo, hi = (float(p[k]) if pd.notna(p[k]) else np.nan for k in ("pmin", "pmax"))
+        if (np.isfinite(lo) and x <= lo) or (np.isfinite(hi) and x >= hi):
+            continue
+        ml.set_parameter(name, initial=x)
+
+
 def fit_well(args):
     """Fit one well; fall back to simpler response functions if the solver fails."""
-    code, variant, obs, prec, evap, pump, canal, splits, end, regional = args
+    code, variant, obs, prec, evap, pump, canal, splits, end, regional, start = args
     import pastas as ps
 
     ps.set_log_level("ERROR")
@@ -131,6 +159,8 @@ def fit_well(args):
     for simple in (False, True):
         try:
             ml = build_model(code, variant, obs, prec, evap, pump, canal, simple, regional)
+            if start:
+                perturb(ml, code, start, obs[tmin:tmax])
             ml.solve(tmin=tmin, tmax=tmax, report=False)
             break
         except Exception as e:  # noqa: BLE001 - record and try the simpler model
@@ -146,6 +176,11 @@ def fit_well(args):
              "has_pumping": "pumping" in ml.stressmodels or "wells" in ml.stressmodels,
              "n_wells_model": len(pump[0]) if variant == "pastas_wellmodel" and pump else 0,
              "error": " | ".join(errors)}
+    if start is not None:          # the solver's criterion (squared noise on the training
+        try:                       # weeks), to compare the starts of one well
+            stats.update(start=start, train_sse_noise=float((ml.noise(tmin=tmin, tmax=tmax) ** 2).sum()))
+        except Exception:  # noqa: BLE001
+            stats.update(start=start, train_sse_noise=float("nan"))
     stats.update({f"p_{k}": v for k, v in p.items()})
     return code, weekly, stats
 
@@ -183,9 +218,14 @@ def well_stresses(code, wells_gw, start, end):
     return stresses, dist
 
 
+def run_name(variant, start=None, train_obs=False):
+    return variant + ("_trainobs" if train_obs else "") + ("" if start is None else f"_start{start}")
+
+
 def run_variant(variant, wells, heads, forcing, pump_near, canal, splits, end, workers,
-                regional=None, wells_gw=None):
-    out = RESULTS / variant
+                regional=None, wells_gw=None, start=None, train_obs=False):
+    name = run_name(variant, start, train_obs)
+    out = RESULTS / name
     (out / "wells").mkdir(parents=True, exist_ok=True)
     jobs, cached_stats = [], []
     for _, w in wells.iterrows():
@@ -194,6 +234,8 @@ def run_variant(variant, wells, heads, forcing, pump_near, canal, splits, end, w
         if cache.exists():
             continue
         obs = heads.loc[heads["code_bss"] == code].set_index("week")["head"]
+        if train_obs:
+            obs = obs[:splits["train"][1]]
         if obs[splits["model_start"]:splits["train"][1]].notna().sum() < MIN_TRAIN_WEEKS:
             continue
         f = forcing.loc[w["cell_id"]]
@@ -205,8 +247,8 @@ def run_variant(variant, wells, heads, forcing, pump_near, canal, splits, end, w
             pw = pump_near.loc[code][gcols].sum(axis=1)
             pump = weekly_to_daily(pw, f.index.min(), f.index.max())
         jobs.append((code, variant, obs, f["prec"], f["evap"], pump, canal, splits, end,
-                     regional if variant == "pastas_regional" else None))
-    print(f"[{variant}] {len(jobs)} wells to fit ({len(wells)} in dataset)", flush=True)
+                     regional if variant == "pastas_regional" else None, start))
+    print(f"[{name}] {len(jobs)} wells to fit ({len(wells)} in dataset)", flush=True)
     stats_path = out / "params_partial.jsonl"
     with ProcessPoolExecutor(max_workers=workers) as ex:
         for code, weekly, stats in ex.map(fit_well, jobs):
@@ -225,13 +267,17 @@ def run_variant(variant, wells, heads, forcing, pump_near, canal, splits, end, w
     if stats_path.exists():
         params = pd.read_json(stats_path, lines=True).drop_duplicates("code_bss", keep="last")
         params.to_csv(out / "params.csv", index=False)
-    return evaluate_run(variant)
+    return evaluate_run(name)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--variant", choices=VARIANTS, nargs="*", default=list(VARIANTS))
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--starts", type=int, nargs="*", default=None,
+                    help="stability check: one run per start (see the module docstring)")
+    ap.add_argument("--train-obs", action="store_true",
+                    help="with --starts: training-period heads only")
     args = ap.parse_args()
     splits = json.loads((DS / "splits.json").read_text())
     wells = pd.read_parquet(DS / "wells.parquet")
@@ -253,16 +299,19 @@ def main():
     wells_gw = None
     if "pastas_wellmodel" in args.variant:
         wells_gw = groundwater_points(wells, seasonal_drinking_water(pw, pts), pts)
+    if args.train_obs and args.starts is None:
+        ap.error("--train-obs belongs to the stability check: give --starts too")
     for v in args.variant:
         pump_near = pump_seasonal if ("seasonal" in v or v in ("pastas_regional", "pastas_flex")) \
             else pump_flat
-        s = run_variant(v, wells, heads, forcing, pump_near, canal, splits, end, args.workers,
-                        regional, wells_gw)
-        core = s[(s["group"] == "all core") & (s["variant"] == "all")]
-        print(f"== {v}\n" + core[["split", "n_wells", "NSE", "KGE", "RMSE"]].round(3)
-              .to_string(index=False))
-        groups = s[(s["group"] != "all core") & (s["variant"] == "all") & (s["split"] == "test")]
-        print(groups[["group", "n_wells", "NSE", "RMSE"]].round(3).to_string(index=False))
+        for start in (args.starts if args.starts is not None else [None]):
+            s = run_variant(v, wells, heads, forcing, pump_near, canal, splits, end, args.workers,
+                            regional, wells_gw, start, args.train_obs)
+            core = s[(s["group"] == "all core") & (s["variant"] == "all")]
+            print(f"== {run_name(v, start, args.train_obs)}\n" + core[
+                ["split", "n_wells", "NSE", "KGE", "RMSE"]].round(3).to_string(index=False))
+            groups = s[(s["group"] != "all core") & (s["variant"] == "all") & (s["split"] == "test")]
+            print(groups[["group", "n_wells", "NSE", "RMSE"]].round(3).to_string(index=False))
 
 
 if __name__ == "__main__":

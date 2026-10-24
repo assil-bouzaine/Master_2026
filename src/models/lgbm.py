@@ -51,6 +51,7 @@ import pandas as pd
 from src.config import R3_STARTS
 from src.models.evaluate import DS, RESULTS, evaluate_run
 from src.models.features import R3_WINDOW_STATS, build_panel, input_columns, lagged_panel
+from src.models.manifest import write_manifest
 
 SEEDS = (0, 1, 2, 3, 4)
 BASE = {"objective": "l2", "learning_rate": 0.03, "num_leaves": 31, "min_data_in_leaf": 40,
@@ -137,16 +138,23 @@ def tune(D, cols, n_trials, out, targets=SIM_TARGETS):
                                                "validation_median_nse_3seed": mean,
                                                "single_seed_best": study.best_value,
                                                "n_trials": len(study.trials)}, indent=1))
-    return final_seeds(D, cols, b)
+    return final_seeds(D, cols, b, save_dir=out)
 
 
-def final_seeds(D, cols, b):
-    """The selected configuration b (best.json "params") trained with the 5 seeds."""
+def final_seeds(D, cols, b, save_dir=None):
+    """The selected configuration b (best.json "params") trained with the 5 seeds. With
+    `save_dir`, each booster is saved there (model_seed_<k>.txt) with a manifest.json."""
     params = dict(BASE, **{k: v for k, v in b.items() if k != "target"})
     preds = []
     for s in SEEDS:
-        z, _ = fit_predict(D, cols, s, params, b["target"])
+        z, booster = fit_predict(D, cols, s, params, b["target"])
         preds.append(z)
+        if save_dir is not None:
+            booster.save_model(str(save_dir / f"model_seed_{s}.txt"),
+                               num_iteration=booster.best_iteration)
+    if save_dir is not None:
+        write_manifest(save_dir, {"params": params, "target": b["target"], "inputs": cols},
+                       SEEDS)
     Z = np.vstack(preds)
     o = D[["code_bss", "week"]].copy()
     o["pred"] = D["mu"].values + D["sd"].values * Z.mean(axis=0)
@@ -182,9 +190,13 @@ def regimes(D, cols, run, which):
             for s in SEEDS:
                 f = d / f"seed_{s}.parquet"
                 if not f.exists():
-                    z, _ = fit_predict(D, cols, s, params, b["target"], train_mask,
-                                       train_mask if name == "lwo" else True)
+                    z, booster = fit_predict(D, cols, s, params, b["target"], train_mask,
+                                             train_mask if name == "lwo" else True)
+                    booster.save_model(str(d / f"model_seed_{s}.txt"),
+                                       num_iteration=booster.best_iteration)
                     keys.assign(z=z).to_parquet(f, index=False)
+                    write_manifest(d, {"params": params, "target": b["target"], "inputs": cols,
+                                       "regime": name, "fold": sub or None}, [s])
                     print(f"    {out.name} {sub} seed {s} done", flush=True)
                 zs.append(keys.merge(pd.read_parquet(f), on=["code_bss", "week"], how="left")["z"]
                           .to_numpy())
@@ -257,7 +269,8 @@ def main():
     if args.tune or args.final_only:
         out = RESULTS / tuned
         if args.final_only:
-            pred = final_seeds(P, cols, json.loads((out / "best.json").read_text())["params"])
+            pred = final_seeds(P, cols, json.loads((out / "best.json").read_text())["params"],
+                               save_dir=out)
         else:
             pred = tune(P, cols, args.tune, out, ("z",) if args.no_clim else SIM_TARGETS)
         pred.to_parquet(out / "predictions.parquet", index=False)

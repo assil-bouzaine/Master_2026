@@ -35,7 +35,9 @@ from src.config import CRS_L93, CRS_WGS84
 from src.models.evaluate import DS, RESULTS, evaluate_run
 from src.models.features import build_panel
 from src.models.lstm import (DEVICE, arrays, cached_seed, input_cols, median_nse, refit_epochs,
-                             regime_masks, save_seed, seed_mean_predictions, write_config)
+                             regime_masks, save_seed, save_seed_model, schema_of,
+                             seed_mean_predictions, write_config)
+from src.models.manifest import write_manifest, write_schema
 
 RUN = "stgnn_distance"
 K = 3
@@ -95,9 +97,10 @@ def predict_all(net, X, lookback, batch=8, ts=None):
 
 def train_seed(seed, A, X, Z, split, core, mu, sd, head, epochs, patience=8, hidden=64,
                dropout=0.2, lr=1e-3, lookback=LOOKBACK, train_mask=None, es_wells=None,
-               fixed_epochs=None, make_net=None):
+               fixed_epochs=None, make_net=None, state_out=None):
     """Shared training loop for graph models (also used by src.models.taccari through
-    make_net, which builds the network from the number of inputs)."""
+    make_net, which builds the network from the number of inputs). With a dict
+    `state_out`, the weights of the selected epoch are copied into it (to save)."""
     torch.manual_seed(seed)
     np.random.seed(seed)
     torch.set_num_threads(int(os.environ.get("PFE_THREADS", 4)))
@@ -145,6 +148,8 @@ def train_seed(seed, A, X, Z, split, core, mu, sd, head, epochs, patience=8, hid
         net.load_state_dict(best_state)
     else:
         best, best_ep = float("nan"), n_ep
+    if state_out is not None:
+        state_out.update({k: v.detach().cpu().clone() for k, v in net.state_dict().items()})
     return predict_all(net, X, lookback), best, best_ep
 
 
@@ -178,6 +183,8 @@ def run_graph_model(args, build, prepare=None):
     out = RESULTS / args.run / (f"fold_{args.fold}" if args.fold is not None else "")
     out.mkdir(parents=True, exist_ok=True)
     fp = write_config(out, args, input_cols(P))
+    write_schema(out, schema_of(P, codes, X.shape[2], args.lookback,
+                                {"model": args.run, "graph_nodes": len(codes)}))
     train_mask, keep = regime_masks(split, weeks, codes, args.fold, args.train_start,
                                     refit=args.refit_from is not None)
     for s in args.seeds:
@@ -185,11 +192,14 @@ def run_graph_model(args, build, prepare=None):
         if cached_seed(path, fp):
             continue
         fixed = refit_epochs(args.refit_from, s) if args.refit_from else None
+        state = {}
         pz, best, best_ep = train_seed(s, None, X, Z, split, core, mu, sd, head, args.epochs,
                                        lr=args.lr, lookback=args.lookback,
                                        train_mask=train_mask, es_wells=keep, fixed_epochs=fixed,
-                                       make_net=make_net)
+                                       make_net=make_net, state_out=state)
+        save_seed_model(out, s, state, best, best_ep, fp)
         save_seed(path, pz, codes, weeks, best, best_ep, fp)
+        write_manifest(out, vars(args) | {"fingerprint": fp}, [s])
         print(f"seed {s}: best validation median NSE {best:.3f} (epoch {best_ep})", flush=True)
     if args.fold is not None:
         return

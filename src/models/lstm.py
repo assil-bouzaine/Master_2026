@@ -22,7 +22,9 @@ Training: weeks of the train split with an observed head; loss = MSE in z, each 
 weighted equally (same reason as lgbm.py). Early stopping on the median validation NSE
 over the core wells that are trained on. Each seed is cached in
 results/<run>/seed_<k>.parquet (+ .json with the best epoch), so an interrupted run
-resumes; the reported prediction is the mean over seeds.
+resumes; the reported prediction is the mean over seeds. From 2026-10-24 a seed also saves
+the weights of its selected epoch (seed_<k>.pt), and the folder a schema.json (inputs and
+their standardisation) and a manifest.json (code, data, environment): src.models.manifest.
 Leave-wells-out (--fold k): the wells of fold k (splits.json) are removed from the loss
 and from early stopping; their predictions are kept in fold_<k>/ and assembled by
 src.models.regimes. Refit (--refit-from run): trained on train + validation for the
@@ -43,6 +45,7 @@ from torch import _VF, nn
 from src.config import DATASET
 from src.models.evaluate import DS, RESULTS, evaluate_run
 from src.models.features import STATIC, build_panel
+from src.models.manifest import save_checkpoint, write_manifest, write_schema
 
 DYNAMIC = ["rain", "ETP", "EVAP", "PE", "DRAINC", "RUNC", "T", "SWI", "pump_gw", "canal",
            "season_sin", "season_cos"]
@@ -112,14 +115,21 @@ def input_cols(P):
     return DYNAMIC + [c for c in RIVER_DYNAMIC if c in P.columns] + STATIC
 
 
+def input_stats(P):
+    """Mean and sd of each input over the training rows: the standardisation of arrays()."""
+    P = P.sort_values(["code_bss", "week"])
+    tr = P[P["split"] == "train"]
+    cols = input_cols(P)
+    return tr[cols].mean(), tr[cols].std().replace(0, 1)
+
+
 def arrays(P):
     """(N wells, T weeks, F) inputs standardised with training statistics."""
     P = P.sort_values(["code_bss", "week"])
     codes = list(dict.fromkeys(P["code_bss"]))
     weeks = np.sort(P["week"].unique())
-    tr = P[P["split"] == "train"]
     cols = input_cols(P)
-    mean, std = tr[cols].mean(), tr[cols].std().replace(0, 1)
+    mean, std = input_stats(P)
     X = ((P[cols] - mean) / std).fillna(0.0).to_numpy(np.float32).reshape(len(codes), len(weeks), -1)
     piv = lambda c: P[c].to_numpy().reshape(len(codes), len(weeks))  # noqa: E731
     return codes, weeks, X, piv("z").astype(np.float32), piv("split"), piv("core").astype(bool), \
@@ -174,7 +184,9 @@ def regime_masks(split, weeks, codes, fold=None, train_start=None, refit=False):
 
 def train_seed(seed, X, Z, split, core, mu, sd, head, epochs, patience=8,
                hidden=64, dropout=0.2, lr=1e-3, arch="lstm", train_mask=None, es_wells=None,
-               fixed_epochs=None):
+               fixed_epochs=None, state_out=None):
+    """One seed; returns (predictions in z, best validation median NSE, best epoch). With a
+    dict `state_out`, the weights of the selected epoch are copied into it (to save)."""
     torch.manual_seed(seed)
     np.random.seed(seed)
     torch.set_num_threads(int(os.environ.get("PFE_THREADS", 4)))   # fewer on a busy laptop
@@ -226,7 +238,25 @@ def train_seed(seed, X, Z, split, core, mu, sd, head, epochs, patience=8,
         net.load_state_dict(best_state)
     else:
         best, best_ep = float("nan"), n_ep
+    if state_out is not None:
+        state_out.update({k: v.detach().cpu().clone() for k, v in net.state_dict().items()})
     return predict_all(net, X), best, best_ep
+
+
+def schema_of(P, codes, n_features, lookback, extra=None):
+    """What a checkpoint needs to see the same inputs again (written to schema.json)."""
+    mean, std = input_stats(P)
+    tgt = P.drop_duplicates("code_bss").set_index("code_bss")[["mu", "sd"]]
+    return {"nodes": list(codes), "n_features": int(n_features), "lookback": int(lookback),
+            "input_cols": list(mean.index), "input_mean": [float(f"{v:.9g}") for v in mean],
+            "input_sd": [float(f"{v:.9g}") for v in std],
+            "target_mu_sd": {c: [float(f"{m:.9g}"), float(f"{s:.9g}")]
+                             for c, (m, s) in tgt.iterrows()}} | (extra or {})
+
+
+def save_seed_model(out, s, state, best, best_ep, fp):
+    save_checkpoint(out / f"seed_{s}.pt", state,
+                    {"seed": s, "best_epoch": best_ep, "best_val_nse": best, "fingerprint": fp})
 
 
 def run_fingerprint(args, inputs):
@@ -325,6 +355,7 @@ def main():
     out = RESULTS / args.run / (f"fold_{args.fold}" if args.fold is not None else "")
     out.mkdir(parents=True, exist_ok=True)
     fp = write_config(out, args, input_cols(P))
+    write_schema(out, schema_of(P, codes, X.shape[2], args.lookback, {"arch": args.arch}))
     train_mask, keep = regime_masks(split, weeks, codes, args.fold, args.train_start,
                                     refit=args.refit_from is not None)
     for s in args.seeds:
@@ -332,11 +363,14 @@ def main():
         if cached_seed(path, fp):
             continue
         fixed = refit_epochs(args.refit_from, s) if args.refit_from else None
+        state = {}
         pz, best, best_ep = train_seed(s, X, Z, split, core, mu, sd, head, args.epochs,
                                        hidden=args.hidden, dropout=args.dropout, lr=args.lr,
                                        arch=args.arch, train_mask=train_mask, es_wells=keep,
-                                       fixed_epochs=fixed)
+                                       fixed_epochs=fixed, state_out=state)
+        save_seed_model(out, s, state, best, best_ep, fp)
         save_seed(path, pz, codes, weeks, best, best_ep, fp)
+        write_manifest(out, vars(args) | {"fingerprint": fp}, [s])
         print(f"seed {s}: best validation median NSE {best:.3f} (epoch {best_ep})", flush=True)
     if args.fold is not None:
         return  # folds are assembled by src.models.regimes

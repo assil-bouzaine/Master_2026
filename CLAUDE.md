@@ -604,6 +604,15 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
   report of record (the v3 report stays as Step 12a's record). To re-check on
   v4: the Taccari drought-skill result (p_holm 0.013 on v3) and "the graph
   models lose least on left-out wells" (the v3 folds split twin wells).
+  **Check first (found 2026-10-24): the Pastas reference is not stable.**
+  - Its drought NSE moved from −0.73 (v3, laptop) to −0.51 (v4, Kaggle).
+  - Only 6 wells' heads differ between v3 and v4, all before 2010, outside
+    its 2012–2019 calibration.
+  - Yet 13 wells with identical data changed by more than 0.05; one of them
+    is the median well (PZSTGL, −0.73 → −0.51). So the fits depend on the
+    machine.
+  - It is the reference of the significance tests: refit it several times
+    (or from perturbed starts) on Kaggle and report the spread first.
 - **Left from 2026-10-23:** Assil disconnects the old Colab runtime if it is
   still on, and sends the v3 results in the next monthly report to the
   supervisor. The v3 EA-LSTM regimes stopped at 20:58 are a record only

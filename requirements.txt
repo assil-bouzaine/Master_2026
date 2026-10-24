@@ -89,3 +89,13 @@ colorlog==6.12.0
 mako==1.4.3
 optuna==5.0.0
 sqlalchemy==2.1.4
+# Added 2026-10-24 for Phase 3 (ontology and knowledge graph; uv pip install, no other pin
+# changed). ROBOT 1.9.11 (Java 17) is a jar in tools/ (gitignored), sha256 53cd275c8e4c0dad
+# 1fc2c1c34174876795cd7d6b6926e1444adcbb0cb3c7ab26, from github.com/ontodev/robot releases
+html5rdf==1.2.1
+owlrl==7.6.2
+prettytable==3.18.0
+pyoxigraph==0.5.13
+pyshacl==0.40.1
+rdflib==7.6.0
+wcwidth==0.9.3

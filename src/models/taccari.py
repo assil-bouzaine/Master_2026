@@ -183,7 +183,10 @@ class GatedTCN(nn.Module):
     therefore takes the input on its grid and runs the same kernel with stride 2 and no
     dilation: the final output equals the full causal dilated stack (zeros before the window
     start, as before) at about 1/6 of the cost (tests/test_taccari.py checks the equality;
-    the mix-hop, norm and residual are position-wise)."""
+    the mix-hop, norm and residual are position-wise). Memory: with the defaults (6 layers,
+    kernel 3, dilations 1..32) the receptive field is 1 + 2 * 63 = 127 weeks, so a 156-week
+    lookback gives 127 weeks of raw input to the output (plus the rolling-mean features);
+    describe it as such, not as 156 weeks (third review §4)."""
 
     def __init__(self, c, kernel, dilation):
         super().__init__()

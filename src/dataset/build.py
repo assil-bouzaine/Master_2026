@@ -189,7 +189,9 @@ def weekly_heads(code):
 
 
 def sgi(heads):
-    """Monthly SGI per well, reference = training period; returns week-level values."""
+    """Monthly SGI per well; returns week-level values. Reference = every monthly mean up to
+    the end of training (TRAIN_END), with no lower bound: for long records it reaches back
+    before the 2005 start of the training window (docs/analysis_plan.md §12)."""
     h = heads.set_index("week")["head"]
     monthly = h.resample("MS").mean().dropna()
     ref = monthly[monthly.index <= TRAIN_END]

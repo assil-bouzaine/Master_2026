@@ -77,7 +77,9 @@ def rows_from(code, g, issues, means):
 
 
 def finetune(pipe, P, past, out, steps=1000):
-    """Fine-tune on each well's training series; validation series for model selection."""
+    """Fine-tune on each well's training series; validation series for model selection.
+    The series are every panel week up to the end of training, so the 2000-2004 warm-up
+    years serve as targets too, not only 2005-2019 (docs/analysis_plan.md §12)."""
     def series(end):
         items = []
         for _, g in P[P["week"] <= end].groupby("code_bss"):

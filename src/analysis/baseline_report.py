@@ -314,6 +314,10 @@ def main():
         "wells as independent, is shown for comparison only (analysis plan v2, §6).\n",
         (fmt(sig[sig_cols], signed=("median_diff", "ci_lo", "ci_hi")).to_markdown(index=False)
          if len(sig) else "(reference run missing)"), "",
+        *([f"**Paired support:** in {int((sig['support_mismatch'] > 0).sum())} of these rows, some "
+           "wells were scored on different numbers of weeks by the model and the reference "
+           "(`support_mismatch`); compare those rows with care.\n"]
+          if len(sig) and (sig["support_mismatch"] > 0).any() else []),
         "## RQ1 regimes of the tuned models\n",
         "R2 scores held-out wells in the \"dynamics\" convention (each well's own training "
         "mean and sd convert z to metres); R3 shortens the training period, validation and "

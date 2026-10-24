@@ -67,13 +67,22 @@ def _select(m, task, horizon, split, variant, metric, core_only):
 
 
 def paired(ma, mb, wells, split="test_drought", metric="NSE", task="simulation", horizon=0,
-           variant="all", core_only=True, seed=2026):
+           variant="all", core_only=True, seed=2026, strict=False):
     """Compare run a with run b well by well. Positive differences mean a is better
-    (for error metrics such as RMSE, pass the negated metric or read the sign)."""
+    (for error metrics such as RMSE, pass the negated metric or read the sign).
+    Paired support (third review, docs/review_codex_2026-10-24.md §7): each run is scored on
+    its own available weeks, so a well scored on different numbers of weeks in the two runs is
+    counted in `support_mismatch`; strict=True (primary contrasts) refuses such a pair."""
     a = _select(ma, task, horizon, split, variant, metric, core_only)
     b = _select(mb, task, horizon, split, variant, metric, core_only)
     j = pd.concat([a.rename("a"), b.rename("b")], axis=1).dropna()
-    out = {"n_wells": len(j), "median_a": j["a"].median(), "median_b": j["b"].median()}
+    na = _select(ma, task, horizon, split, variant, "n_weeks", core_only).reindex(j.index)
+    nb = _select(mb, task, horizon, split, variant, "n_weeks", core_only).reindex(j.index)
+    mismatch = sorted(j.index[na.to_numpy() != nb.to_numpy()])
+    if strict and mismatch:
+        raise ValueError(f"{split}: scored on different weeks in the two runs: {mismatch}")
+    out = {"n_wells": len(j), "median_a": j["a"].median(), "median_b": j["b"].median(),
+           "support_mismatch": len(mismatch)}
     if len(j) < 5:
         return out | {"median_diff": np.nan, "ci_lo": np.nan, "ci_hi": np.nan,
                       "share_a_better": np.nan, "p_wilcoxon": np.nan, "p_cluster": np.nan}

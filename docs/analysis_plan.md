@@ -100,6 +100,20 @@ rule was fixed; its numbers are superseded by `docs/results_baselines.md`.
   (`build_panel(train_start=...)`); with 2016–2019 only, the mean of a well
   moves by a median 0.16 m (max 1.82 m). The skill benchmark stays the
   full-period climatology, so every regime is measured with the same yardstick.
+- **What each regime may use (stated 2026-10-25, third review §3.2).**
+  - R3 reduces the *head history*, not the forcing history: losses, early
+    stopping and the head-derived statistics (mean, sd, climatology, artesian
+    share) use the window only, while the input standardisation of the neural
+    models keeps the whole training period (forcings and static attributes are
+    known for every year). The hyperparameters are those selected on the full
+    training period, so R3 is a controlled reduction of fitting data, not a
+    whole model development with 25 % of the history; and a shorter, more recent
+    window changes both the amount *and the recency* of the training data.
+  - R2 reuses the configuration selected on the validation weeks of *all* core
+    wells (`<model>_tuning/best.json`): the held-out wells take no part in
+    gradient updates or early stopping, but they did inform that selection. R2 is
+    therefore a **fixed-configuration transfer** test. A nested check (selection
+    on the other folds only) is planned for the primary D vs C contrast only.
 
 ## 5. Model selection and tuning (equal budget, CLAUDE.md rule 11)
 
@@ -245,9 +259,14 @@ Added in v2:
   family (4 tests). Everything else is exploratory and labelled so.
 - **Equivalence test, not an arm:** the edges exported by SPARQL from the KG
   must equal the edges built by pandas rules from the same tables (a test in
-  `tests/`). Equal edges give equal predictions, so accuracy gains are credited
-  to the knowledge; the ontology is credited with traceability, consistency
-  and reuse (competency questions, SHACL, provenance), not with accuracy.
+  `tests/`). Accuracy gains are credited to the knowledge; the ontology is
+  credited with traceability, consistency and reuse (competency questions,
+  SHACL, provenance), not with accuracy. Equal edges are necessary, not
+  sufficient, for equal predictions (third review, 2026-10-25): the test also
+  compares node identity and order, relation directions, features and units,
+  edge weights, masks, time alignment and constraint eligibility, and a forward
+  pass with fixed weights must agree within a tolerance. The pandas side derives
+  everything from the source tables, never from the graph's answers.
 - **Satellite concept:** arm B is also run without `ProbablyIrrigatedParcel`
   (one ablation row).
 - **Pumping robustness:** D vs C and B vs A under the three reconstructions of
@@ -275,16 +294,31 @@ Added in v2:
   level offset). The baseline results are therefore **exploratory** and
   described so.
 - Before any Phase 4 run, this plan is tagged `analysis-plan-v2` in git (after
-  Gate 3 confirms §10). The Phase 4 comparisons are then confirmatory.
+  Gate 3 confirms §10). The Phase 4 comparisons are then **pre-specified**:
+  fixed before the Phase 4 runs, but on a benchmark (the 2022–25 drought) that
+  was examined while the method was designed. The tag cannot make those
+  observations unseen, so they are not called confirmatory (corrected
+  2026-10-25, third review §3.1). Amendments after the tag are recorded, dated,
+  without rewriting the story.
 - **Confirmation check:** at the end of Phase 4 every frozen model is also
-  scored on (1) the weeks observed after the freeze date, and (2) the 2025–26
-  weeks once ADES has validated them (strict variant). It is short, so it is
-  reported as a check of direction and size, not as a new primary endpoint.
+  scored on (1) the weeks observed after the freeze date: the only independent
+  temporal check, scored with the saved frozen models and never used to select
+  them; and (2) the 2025–26 weeks once ADES has validated them (strict
+  variant): already examined, so a data-quality sensitivity check, not an
+  independent test. Both are short, so they are reported as checks of direction
+  and size, not as new primary endpoints.
 
 ## 12. Wording of claims (added in v2)
 
 - "Simulation" for the main task, "hindcast" for the forecast task, "left-out
-  monitored wells" for R2.
+  monitored wells" and "fixed-configuration transfer" for R2; "pre-specified
+  comparisons on a previously examined benchmark" for the Phase 4 results on
+  the 2022–25 drought (§11).
+- The SGI reference of each well is every monthly mean up to the end of the
+  training period (2019), including the years before 2005 for long records
+  (`src/dataset/build.py`, `sgi()`); it is not limited to the 2005–2019 training
+  window. Chronos-2 fine-tuning likewise uses every week up to 2019, the
+  2000–2004 warm-up years included. Neither uses information after 2019.
 - An exact additive decomposition explains the model's computation; it is not
   the physical contribution. **Ontology consistency** (entities exist, signs
   agree), **faithfulness** (fidelity+/−) and **causal correctness** (recovery on

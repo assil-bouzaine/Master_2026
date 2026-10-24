@@ -10,13 +10,16 @@
 4. Monte Carlo mode (more than EXACT_MAX_CLUSTERS clusters) stays within 0.01 of the
    exact value.
 5. Holm matches a hand computation.
+6. Paired support: a well scored on different numbers of weeks by the two runs is counted,
+   and strict mode refuses the pair (third review, docs/review_codex_2026-10-24.md §7).
 """
 import itertools
 
 import numpy as np
+import pandas as pd
 from scipy.stats import wilcoxon
 
-from src.analysis.stats import EXACT_MAX_CLUSTERS, holm, sign_flip_p
+from src.analysis.stats import EXACT_MAX_CLUSTERS, holm, paired, sign_flip_p
 
 
 def reference_p(groups):
@@ -61,6 +64,22 @@ def main():
 
     adj = holm([0.01, 0.04, 0.03])  # 5. Holm: 0.01*3; max(0.03*2, 0.03); max(0.04, 0.06)
     assert np.allclose(adj, [0.03, 0.06, 0.06]), adj
+
+    codes = [f"W{i}" for i in range(6)]  # 6. paired support
+    wells = pd.DataFrame({"code_bss": codes, "x": 2.6 + 0.1 * np.arange(6), "y": 42.6})
+    def table(nse, n_weeks):
+        return pd.DataFrame({"code_bss": codes, "task": "simulation", "horizon": 0,
+                             "split": "test_drought", "variant": "all", "core": True,
+                             "NSE": nse, "n_weeks": n_weeks})
+    ma = table(np.linspace(0.1, 0.6, 6), [100] * 6)
+    mb = table(np.linspace(0.0, 0.5, 6), [100] * 5 + [90])
+    assert paired(ma, mb, wells)["support_mismatch"] == 1
+    assert paired(ma, ma, wells)["support_mismatch"] == 0
+    try:
+        paired(ma, mb, wells, strict=True)
+        raise AssertionError("strict mode accepted different scored weeks")
+    except ValueError:
+        pass
     print(f"test_stats: all checks passed (Monte Carlo {mc:.4f} vs exact {exact:.4f})")
 
 

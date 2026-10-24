@@ -22,7 +22,6 @@ Leave-wells-out: the wells of the fold stay in the graph (their weather and pump
 known) but leave the loss and the early stopping.
 """
 import argparse
-import json
 import os
 import time
 
@@ -35,8 +34,8 @@ from torch import nn
 from src.config import CRS_L93, CRS_WGS84
 from src.models.evaluate import DS, RESULTS, evaluate_run
 from src.models.features import build_panel
-from src.models.lstm import (DEVICE, arrays, input_cols, median_nse, refit_epochs,
-                             regime_masks, save_seed, seed_mean_predictions)
+from src.models.lstm import (DEVICE, arrays, cached_seed, input_cols, median_nse, refit_epochs,
+                             regime_masks, save_seed, seed_mean_predictions, write_config)
 
 RUN = "stgnn_distance"
 K = 3
@@ -178,24 +177,23 @@ def run_graph_model(args, build, prepare=None):
     make_net = build(codes, wells, X.shape[2], args)
     out = RESULTS / args.run / (f"fold_{args.fold}" if args.fold is not None else "")
     out.mkdir(parents=True, exist_ok=True)
-    (out / "config.json").write_text(json.dumps(vars(args) | {"inputs": input_cols(P)}, indent=1))
+    fp = write_config(out, args, input_cols(P))
     train_mask, keep = regime_masks(split, weeks, codes, args.fold, args.train_start,
                                     refit=args.refit_from is not None)
     for s in args.seeds:
         path = out / f"seed_{s}.parquet"
-        if path.exists():
-            print(f"seed {s}: cached")
+        if cached_seed(path, fp):
             continue
         fixed = refit_epochs(args.refit_from, s) if args.refit_from else None
         pz, best, best_ep = train_seed(s, None, X, Z, split, core, mu, sd, head, args.epochs,
                                        lr=args.lr, lookback=args.lookback,
                                        train_mask=train_mask, es_wells=keep, fixed_epochs=fixed,
                                        make_net=make_net)
-        save_seed(path, pz, codes, weeks, best, best_ep)
+        save_seed(path, pz, codes, weeks, best, best_ep, fp)
         print(f"seed {s}: best validation median NSE {best:.3f} (epoch {best_ep})", flush=True)
     if args.fold is not None:
         return
-    pred, n = seed_mean_predictions(out, P)
+    pred, n = seed_mean_predictions(out, P, args.seeds)
     pred.to_parquet(out / "predictions.parquet", index=False)
     s = evaluate_run(args.run)
     c = s[(s["group"] == "all core") & (s["variant"] == "all")]

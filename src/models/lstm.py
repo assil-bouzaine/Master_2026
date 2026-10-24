@@ -29,6 +29,7 @@ src.models.regimes. Refit (--refit-from run): trained on train + validation for 
 number of epochs early stopping chose for the same seed in `run`.
 """
 import argparse
+import hashlib
 import json
 import os
 import time
@@ -39,6 +40,7 @@ import pandas as pd
 import torch
 from torch import _VF, nn
 
+from src.config import DATASET
 from src.models.evaluate import DS, RESULTS, evaluate_run
 from src.models.features import STATIC, build_panel
 
@@ -227,14 +229,62 @@ def train_seed(seed, X, Z, split, core, mu, sd, head, epochs, patience=8,
     return predict_all(net, X), best, best_ep
 
 
-def save_seed(path, pz, codes, weeks, best, best_ep):
+def run_fingerprint(args, inputs):
+    """Hash of the settings that change a seed's result (not the seed list, not the run name)."""
+    cfg = {k: v for k, v in vars(args).items() if k not in ("seeds", "run")}
+    cfg |= {"inputs": list(inputs), "dataset": DATASET}
+    return hashlib.sha256(json.dumps(cfg, sort_keys=True, default=str).encode()).hexdigest()[:16]
+
+
+def write_config(out, args, inputs):
+    """config.json of a run folder, with the run's fingerprint. A folder made with other
+    settings stops the run instead of being overwritten: its cached seeds would otherwise be
+    reused under the new settings (third review, docs/review_codex_2026-10-24.md §7)."""
+    fp = run_fingerprint(args, inputs)
+    new = vars(args) | {"inputs": list(inputs), "dataset": DATASET, "fingerprint": fp}
+    f = out / "config.json"
+    if f.exists():
+        old = json.loads(f.read_text())
+        if "fingerprint" in old:
+            same = old["fingerprint"] == fp
+        else:  # written before 2026-10-25: compare the settings both versions record
+            keys = (set(old) & set(new)) - {"seeds", "run", "fingerprint"}
+            same = all(old[k] == json.loads(json.dumps(new[k])) for k in keys)
+        if not same:
+            raise SystemExit(f"{out} was made with other settings ({f}); use another --run "
+                             "or move the folder away")
+    f.write_text(json.dumps(new, indent=1))
+    return fp
+
+
+def cached_seed(path, fp):
+    """Is this seed already done with these settings? A seed made with other settings stops
+    the run; one saved before fingerprints existed is accepted on its folder's config check."""
+    if not path.exists():
+        return False
+    meta = path.with_suffix(".json")
+    got = json.loads(meta.read_text()).get("fingerprint") if meta.exists() else None
+    if got is not None and got != fp:
+        raise SystemExit(f"{path} was made with other settings (fingerprint {got}, now {fp})")
+    print(f"{path.stem}: cached" + ("" if got else " (saved before fingerprints)"))
+    return True
+
+
+def save_seed(path, pz, codes, weeks, best, best_ep, fp=None):
     df = pd.DataFrame(pz, index=codes, columns=pd.DatetimeIndex(weeks)).stack(future_stack=True)
     df.rename("z").rename_axis(["code_bss", "week"]).reset_index().to_parquet(path, index=False)
-    path.with_suffix(".json").write_text(json.dumps({"best_val_nse": best, "best_epoch": best_ep}))
+    path.with_suffix(".json").write_text(json.dumps({"best_val_nse": best, "best_epoch": best_ep,
+                                                     "fingerprint": fp}))
 
 
-def seed_mean_predictions(out, P):
-    seeds = [pd.read_parquet(f) for f in sorted(out.glob("seed_*.parquet"))]
+def seed_mean_predictions(out, P, seeds=None):
+    """Mean over the seeds of a run; with `seeds`, exactly those (all must exist)."""
+    files = (sorted(out.glob("seed_*.parquet")) if seeds is None
+             else [out / f"seed_{s}.parquet" for s in seeds])
+    missing = [f.name for f in files if not f.exists()]
+    if missing:
+        raise FileNotFoundError(f"{out}: missing {missing}")
+    seeds = [pd.read_parquet(f) for f in files]
     zz = pd.concat(seeds).groupby(["code_bss", "week"])["z"].agg(["mean", "std"]).reset_index()
     zz = zz.merge(P[["code_bss", "week", "mu", "sd"]], on=["code_bss", "week"])
     pred = pd.DataFrame({"code_bss": zz["code_bss"], "week": zz["week"],
@@ -274,24 +324,23 @@ def main():
     codes, weeks, X, Z, split, core, mu, sd, head = arrays(P)
     out = RESULTS / args.run / (f"fold_{args.fold}" if args.fold is not None else "")
     out.mkdir(parents=True, exist_ok=True)
-    (out / "config.json").write_text(json.dumps(vars(args) | {"inputs": input_cols(P)}, indent=1))
+    fp = write_config(out, args, input_cols(P))
     train_mask, keep = regime_masks(split, weeks, codes, args.fold, args.train_start,
                                     refit=args.refit_from is not None)
     for s in args.seeds:
         path = out / f"seed_{s}.parquet"
-        if path.exists():
-            print(f"seed {s}: cached")
+        if cached_seed(path, fp):
             continue
         fixed = refit_epochs(args.refit_from, s) if args.refit_from else None
         pz, best, best_ep = train_seed(s, X, Z, split, core, mu, sd, head, args.epochs,
                                        hidden=args.hidden, dropout=args.dropout, lr=args.lr,
                                        arch=args.arch, train_mask=train_mask, es_wells=keep,
                                        fixed_epochs=fixed)
-        save_seed(path, pz, codes, weeks, best, best_ep)
+        save_seed(path, pz, codes, weeks, best, best_ep, fp)
         print(f"seed {s}: best validation median NSE {best:.3f} (epoch {best_ep})", flush=True)
     if args.fold is not None:
         return  # folds are assembled by src.models.regimes
-    pred, n = seed_mean_predictions(out, P)
+    pred, n = seed_mean_predictions(out, P, args.seeds)
     pred.to_parquet(out / "predictions.parquet", index=False)
     s = evaluate_run(args.run)
     core_s = s[(s["group"] == "all core") & (s["variant"] == "all")]

@@ -35,10 +35,12 @@ Each well's weekly head is explained as the sum of responses to stresses:
   doi:10.5194/hess-25-2931-2021), suited to semi-arid climates where summer
   rain barely recharges the aquifer.
 
-Calibration on the training period (2012-2019) with an AR(1) noise model and
-warm-up from 2005; the deterministic simulation (no noise model, no observed
-heads) is then run to the end of the record. Pumping before 2012 (no BNPE)
-is held at its 2012-2014 mean so the model does not see a fake step.
+Calibration from `model_start` to the end of the training period with an AR(1) noise
+model: 2005-2019 for datasets v2-v4, the stresses from 2000 serving as warm-up (2012-2019
+with warm-up from 2005 for v1; corrected 2026-10-24, third review: this note had kept the
+v1 window). The deterministic simulation (no noise model, no observed heads) is then run to
+the end of the record. Pumping before 2012 (no BNPE) is held at its 2012-2014 mean so the
+model does not see a fake step.
 
 Outputs (results/<variant>/):
     wells/<code>.parquet       weekly simulation per well (resumable cache)
@@ -46,8 +48,10 @@ Outputs (results/<variant>/):
     predictions.parquet        all wells, evaluate format
 
 Stability check (2026-10-24): the v4 refit on Kaggle moved the drought median NSE of
-pastas_seasonal_canal from -0.73 to -0.51, although the heads of 43 of its 47 wells are
-identical to v3: the optimum is poorly determined. --starts k... fits every well once per start
+pastas_seasonal_canal from -0.73 to -0.51. Of its 55 fitted wells, 6 have changed heads
+(73 weeks, 71 of them inside the 2005-2019 calibration); but 13 of the 43 drought-scored
+wells with identical heads also moved by more than 0.05: the optimum is poorly determined.
+--starts k... fits every well once per start
 into results/<variant>_start<k>: start 0 uses Pastas' default initial values, start k > 0
 values drawn around them (seeded by start and well). --train-obs gives Pastas only the
 training-period heads (results/<variant>_trainobs_start<k>): by default the initial constant
@@ -176,11 +180,19 @@ def fit_well(args):
              "has_pumping": "pumping" in ml.stressmodels or "wells" in ml.stressmodels,
              "n_wells_model": len(pump[0]) if variant == "pastas_wellmodel" and pump else 0,
              "error": " | ".join(errors)}
-    if start is not None:          # the solver's criterion (squared noise on the training
-        try:                       # weeks), to compare the starts of one well
-            stats.update(start=start, train_sse_noise=float((ml.noise(tmin=tmin, tmax=tmax) ** 2).sum()))
-        except Exception:  # noqa: BLE001
-            stats.update(start=start, train_sse_noise=float("nan"))
+    if start is not None:
+        # train_objective: the value the solver minimised, the sum of squares of the noise
+        # times its weights (pastas/solver/objective/misfit.py; scipy's cost is half of it).
+        # train_sse_noise (unweighted noise) is kept for the runs pushed before 2026-10-25;
+        # it is not the solver's criterion when the noise weights vary (gaps).
+        stats["start"] = start
+        for key, f in (("train_objective", lambda: 2 * float(ml.solver.result.cost)),
+                       ("train_sse_noise",
+                        lambda: float((ml.noise(tmin=tmin, tmax=tmax) ** 2).sum()))):
+            try:
+                stats[key] = f()
+            except Exception:  # noqa: BLE001
+                stats[key] = float("nan")
     stats.update({f"p_{k}": v for k, v in p.items()})
     return code, weekly, stats
 

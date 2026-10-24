@@ -209,9 +209,10 @@ ouvrage):
     EA-LSTM's final and regimes.
   - Colab, when the quota is back: Chronos-2 ×3, then the rest of Taccari's regimes.
 - **Pastas stability check.** The v4 refit on Kaggle moved the reference's drought median
-  NSE from −0.73 to −0.51. Only 4 of its 47 wells have changed heads, all before 2010 and
-  outside its 2012–2019 calibration, yet 13 wells with identical heads changed by more than
-  0.05, and most wells' parameters moved. The check refits every well from 10 starting
+  NSE from −0.73 to −0.51. Only 4 of its 47 drought-scored wells (6 of the 55 fitted) have
+  changed heads, all before 2010 but inside its 2005–2019 calibration (corrected
+  2026-10-25: "outside its 2012–2019 calibration" was the v1 window), yet 13 of the 43
+  wells with identical heads changed by more than 0.05, and most wells' parameters moved. The check refits every well from 10 starting
   points (start 0 = Pastas' defaults), and once more with training-period heads only.
   `tests/test_pastas_starts.py` checks the drawn starting values without solving a model.
 
@@ -234,3 +235,52 @@ ouvrage):
   becomes "none"); the next Colab steps (Chronos-2, Taccari) never reach that case.
 - What becomes the v4 reference (the record, the best of the starts, or training-only
   heads) is decided with Assil once the spread is known.
+
+## 2026-10-25: third review (Codex) and the quick fixes
+
+**What was done.**
+- Codex reviewed the project as a research methodologist (`docs/review_codex_2026-10-24.md`).
+  Claude checked its factual claims in the code and the data; all 16 hold. Verdicts and
+  status per point: `docs/review_codex_2026-10-24_response.md`.
+- **Wrong statements corrected.**
+  - Pastas calibrates on **2005–2019**, not 2012–2019 (that was the v1 window). The heads
+    that changed between v3 and v4 are therefore inside its calibration. The puzzle stays:
+    13 of the 43 drought-scored wells with *identical* heads still moved by more than 0.05.
+  - The "best start" was picked with the unweighted noise, but Pastas minimises the noise
+    times its weights. The best start is now chosen by the RMSE of the simulated head on
+    the training weeks, a rule fixed before any multistart result; new runs also store the
+    solver's own objective.
+  - The analysis plan called the Phase 4 results "confirmatory". They are
+    **pre-specified**, on a drought we already looked at; only weeks observed after the
+    freeze are a truly independent check.
+  - "Equal edges give equal predictions" was too strong: the export test (12.8) will also
+    compare nodes, features, weights and masks, and run the model with fixed weights.
+- **Rules written down.** R3 (less data) shortens the head history, not the weather
+  history; R2 (left-out wells) reuses settings chosen with all wells ("fixed-configuration
+  transfer"); the SGI reference uses every month up to 2019; Chronos-2 fine-tunes on the
+  2000–2004 warm-up weeks too; Taccari's memory is 127 weeks, not its 156-week window.
+- **Two checks added.**
+  - A cached seed is reused only if it was made with the same settings (a fingerprint in
+    each seed and in `config.json`); a left-out-wells fold is assembled only with all its
+    seeds (`tests/test_run_cache.py`).
+  - Two compared models must be scored on the same weeks: `stats.paired()` counts wells
+    scored on different numbers of weeks (none in the v3 or v4 tables today) and refuses
+    them in strict mode (`tests/test_stats.py`).
+
+**Why.**
+- Pastas is the yardstick of every significance test, so how its fits are made and chosen
+  must be clean and written down before its results are seen.
+- A result reused from a different setting, or a comparison on different weeks, would be
+  silently wrong; a check that stops the run costs nothing.
+- Calling a result "confirmatory" when its test data shaped the method would not survive
+  peer review; saying exactly what was fixed and when does.
+
+**What to consider.**
+- **The biggest point is scientific, not technical:** with the approved pump policy, no
+  irrigation volume gets an accepted layer (0 confident, 0 probable, 137 Mm³ possible). The
+  model's pump links are drinking-water links, so the paper can speak about drinking-water
+  pressure, and about farm pumping only through the all-links sensitivity. Assil decides
+  the framing (CLAUDE.md, State).
+- Still to do before Phase 4: save model weights with a run manifest (none are saved
+  today), fix one backbone for arms C–F, and decide how unattributed pumping enters every
+  arm.

@@ -25,6 +25,7 @@ from src.models.tune import MODULE
 
 N_FOLDS = 5
 FRACTIONS = R3_STARTS
+DEFAULT_SEEDS = [0, 1, 2, 3, 4]   # the default --seeds of src.models.lstm and stgnn
 
 
 EXTRA = []
@@ -37,16 +38,38 @@ def base_cmd(model, run):
     return cmd + (["--arch", model] if model in ("lstm", "ealstm") else []) + EXTRA
 
 
-def assemble_lwo(run):
-    """Held-out predictions of every fold -> one predictions.parquet, then score it."""
+def expected_seeds():
+    """The seeds every fold must have: --seeds among the extra arguments, else the default."""
+    if "--seeds" in EXTRA:
+        i = EXTRA.index("--seeds") + 1
+        out = []
+        while i < len(EXTRA) and not EXTRA[i].startswith("--"):
+            out.append(int(EXTRA[i]))
+            i += 1
+        return out
+    return DEFAULT_SEEDS
+
+
+def fold_seed_files(run, k, want):
+    """The seed files of fold k, which must be exactly the seeds `want`."""
+    files = sorted((RESULTS / run / f"fold_{k}").glob("seed_*.parquet"))
+    got = sorted(int(f.stem.split("_")[1]) for f in files)
+    if got != list(want):
+        raise FileNotFoundError(f"{run}/fold_{k} has seeds {got}, expected {list(want)}")
+    return files
+
+
+def assemble_lwo(run, seeds=None):
+    """Held-out predictions of every fold -> one predictions.parquet, then score it. Every
+    fold must hold exactly the expected seeds: a partly finished fold is not an ensemble
+    (third review, docs/review_codex_2026-10-24.md §7)."""
     folds = json.loads((DS / "splits.json").read_text())["leave_wells_out"]["fold_of_well"]
     P = build_panel()
     musd = P.drop_duplicates("code_bss").set_index("code_bss")[["mu", "sd"]]
+    want = sorted(expected_seeds() if seeds is None else seeds)
     parts = []
     for k in range(N_FOLDS):
-        seeds = sorted((RESULTS / run / f"fold_{k}").glob("seed_*.parquet"))
-        if not seeds:
-            raise FileNotFoundError(f"{run}/fold_{k} has no seeds")
+        seeds = fold_seed_files(run, k, want)
         z = pd.concat(pd.read_parquet(f) for f in seeds)
         z = z[z["code_bss"].map(folds) == k]
         parts.append(z.groupby(["code_bss", "week"])["z"].agg(["mean", "std"]).reset_index()

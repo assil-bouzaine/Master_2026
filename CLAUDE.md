@@ -618,13 +618,28 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
   models lose least on left-out wells" (the v3 folds split twin wells).
   **Check first (found 2026-10-24): the Pastas reference is not stable.**
   - Its drought NSE moved from −0.73 (v3, laptop) to −0.51 (v4, Kaggle).
-  - Only 6 wells' heads differ between v3 and v4, all before 2010, outside
-    its 2012–2019 calibration.
-  - Yet 13 wells with identical data changed by more than 0.05; one of them
-    is the median well (PZSTGL, −0.73 → −0.51). So the fits depend on the
-    machine.
+  - 6 of its 55 fitted wells have changed heads between v3 and v4 (73 weeks,
+    all before 2010, 71 of them **inside** its 2005–2019 calibration; corrected
+    2026-10-25, the earlier "outside its 2012–2019 calibration" was the v1
+    window).
+  - Yet 13 of the 43 drought-scored wells with identical heads changed by
+    more than 0.05; one of them is the median well (PZSTGL, −0.73 → −0.51).
+    The cause is not established (solver, environment or starting values).
   - It is the reference of the significance tests: refit it several times
-    (or from perturbed starts) on Kaggle and report the spread first.
+    (or from perturbed starts) on Kaggle and report the spread first. The best
+    start is chosen by the training-period simulation RMSE (rule frozen
+    2026-10-25, before any multistart result; `src/analysis/pastas_stability.py`).
+- **Third review (Codex, 2026-10-24 night):** `docs/review_codex_2026-10-24.md`;
+  every factual claim checked, verdicts and status in
+  `docs/review_codex_2026-10-24_response.md`. Quick fixes done 2026-10-25
+  (step 12b note, last section). **Open for Assil:** (1) the main pump links
+  carry no irrigation volume (plain: 0 confident, 0 probable, 137 Mm³
+  possible), so the main story is drinking-water pressure and farm effects come
+  only from the all-links sensitivity: confirm the framing; (2) the Pastas v4
+  reference built from training heads only (`--train-obs`), whatever its
+  score; (3) at Gate 3, one backbone for C and D (only the edges differ) plus a
+  random-ID and a distance-matched rewiring control. Before Phase 4: save model
+  weights and a run manifest (none are saved today).
 - **Left from 2026-10-23:** Assil disconnects the old Colab runtime if it is
   still on, and sends the v3 results in the next monthly report to the
   supervisor. The v3 EA-LSTM regimes stopped at 20:58 are a record only
@@ -638,6 +653,9 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
    (`docs/competency_questions.md`; the 6 MUST were approved on 2026-10-24):
    add, drop, priorities, and the open points listed there.
 3. Later, for task 12.10: an Earth Engine account (sign-in is his).
+4. The three open points of the third review (State above;
+   `docs/review_codex_2026-10-24_response.md` §2): irrigation framing, the
+   training-heads-only Pastas reference, the C/D backbone for Gate 3.
 
 **Next for Claude, while the models run or after:**
 1. ✅ Step 12a done (2026-10-23 evening). 🔄 The v4 re-runs started on

@@ -6,6 +6,7 @@ The explainer is a static page opened from the file system, so its data is a scr
 (`window.EXPLAINER = {...}`): browsers block fetch() on file:// pages. Every number drawn in
 a chart comes from here. Sources:
     data/processed/dataset_v3, dataset_v4      wells, weekly levels, folds, build records
+    data/processed/dataset_v4/placeholder_weeks.parquet   weeks left out of the scores
     data/processed/dataset_v1, dataset_v2      build records (meta.json)
     results/v3/<run>/metrics_summary.csv       scores of the baselines (v3 report)
     data/interim/pump_unit_attribution_eval.json   task 12.3
@@ -65,13 +66,21 @@ def wells():
 
 
 def series():
+    """Weekly heads of the example wells; suspect placeholder weeks (src.dataset.placeholders)
+    are moved to `masked`, so the page draws them apart instead of as measured levels."""
     h = pd.read_parquet(PROCESSED / "dataset_v4" / "heads_weekly.parquet")
+    flagged = pd.read_parquet(PROCESSED / "dataset_v4" / "placeholder_weeks.parquet")
     weeks = pd.date_range("2005-01-02", h["week"].max(), freq="W-SUN")
-    out = {}
+    out, masked = {}, {}
     for code in EXAMPLES:
         s = h[h["code_bss"] == code].set_index("week")["head"].reindex(weeks)
-        out[code] = [None if np.isnan(v) else round(float(v), 2) for v in s]
-    return {"start": str(weeks[0].date()), "n": len(weeks), "values": out}
+        bad = s.index.isin(flagged.loc[flagged["code_bss"] == code, "week"])
+        val = lambda keep: [round(float(v), 2) if k and not np.isnan(v) else None  # noqa: E731
+                            for v, k in zip(s, keep)]
+        out[code] = val(~bad)
+        if bad.any():
+            masked[code] = val(bad)
+    return {"start": str(weeks[0].date()), "n": len(weeks), "values": out, "masked": masked}
 
 
 def versions():

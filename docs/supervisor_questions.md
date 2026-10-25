@@ -36,6 +36,29 @@ Decided by Assil on 2026-10-24 (no supervisor question needed):
   starts with them while the 10 SHOULD/COULD ones are reviewed.
 - **No model training on the laptop:** CPU fits run on Kaggle (CPU only), GPU fits on Colab.
 
+Decided by Assil on 2026-10-24, late evening, after the third review
+(`docs/review_codex_2026-10-24.md`; reasons and checks in
+`docs/review_codex_2026-10-24_response.md` §2):
+- **Framing (refines decision 5): drinking-water pressure is the main claim.** Under the
+  main pump policy no groundwater irrigation volume gets an accepted unit (0 % of 161 Mm³
+  declared 2012–2024: 85 % only "possible", 15 % unknown), while drinking water gets 98 % at
+  unit-group and 84 % at exact-unit resolution. The model's claims are therefore about
+  drinking-water pumping on the Pliocene within the agricultural context; the use conflict
+  stays the motivation; farm-pumping effects come only from the all-links sensitivity,
+  labelled provisional. The policy itself is unchanged.
+- **The hydrology reference from v4: Pastas from training heads only**, decided before the
+  Kaggle multistart results: the `--train-obs` fit, its start chosen by the frozen
+  training-RMSE rule, whatever its test score, with its spread over the starts reported.
+  Deciding after the results would look like choosing the reference that suits us.
+- **Arms C–F share one backbone**, adopted now rather than at Gate 3: only the edges change
+  between C and D, with the controls fixed in advance (hybrid without message passing,
+  random-ID / shuffled statics, distance-matched rewiring, several graph draws;
+  `docs/analysis_plan.md` §10). Otherwise D vs C would compare architectures, not edges.
+- **Suspect placeholders masked by a rule:** a run of ≥ 28 days at a depth of exactly
+  0.00 m leaves every scored variant from v4 (CORNEILLA PD5, 413 days), the v4 primary table
+  is shown both ways, and the producer is asked (§6). These weeks are not measurements, and
+  the rule was written after the test period was seen, hence the two versions.
+
 Already applied before 2026-10-23:
 - the primary metric
 - dataset v3
@@ -82,7 +105,9 @@ Already applied before 2026-10-23:
 >   Les nitrates et la socio-économie restent des perspectives.
 > - **Cadrage :** le conflit d'usages sur le Pliocène (eau potable / agriculture) comme fil
 >   principal, et la recharge par les canaux comme cas d'étude secondaire pour les
->   alluvions.
+>   alluvions. Les conclusions du modèle porteront sur la pression des prélèvements d'eau
+>   potable : la nappe captée par les forages agricoles est trop incertaine, leur effet ne
+>   sera estimé qu'en analyse de sensibilité.
 > - **Modèle principal :** un modèle hybride où le graphe de connaissances alimente un
 >   réseau de graphes qui prédit des fonctions de réponse à signe imposé. Les contraintes
 >   physiques sont ainsi garanties et les explications exactes. Un réseau de graphes
@@ -140,3 +165,39 @@ copied.
 > Bien cordialement,
 > Assil Bouzaine
 > Master Science des données, ISAMM — Université de la Manouba
+
+## 6. Note to the producer of CORNEILLA PD5 (French; added 2026-10-25)
+
+To the Syndicat Mixte pour la Protection et la Gestion des Nappes Souterraines de la
+Plaine du Roussillon (SMNPR), producer of the series (code producteur 20001584000016 in
+Hub'Eau). Assil sends it. Why: from 30 Nov 2022 to 16 Jan 2024 the station reports a depth of
+exactly 0.00 m on 413 consecutive days, qualified "Correcte" (contrôle niveau 2), while
+flowing wells of the same network record negative depths. We mask these weeks when scoring
+(`docs/analysis_plan.md` §1, §14); the producer's answer decides whether the mask stays, the
+values become "artesian, head unknown", or a corrected series replaces them.
+
+> **Objet :** Piézomètre 10971X0155/PD5 (Corneilla) — profondeur 0,00 m de novembre 2022 à
+> janvier 2024
+>
+> Madame, Monsieur,
+>
+> Étudiant en Master (Université de la Manouba, projet de recherche PRIMA SAVE Water), je
+> modélise les niveaux des nappes de la plaine du Roussillon à partir des données ADES /
+> Hub'Eau, dont celles de votre réseau.
+>
+> Pour le piézomètre 10971X0155/PD5 (Corneilla-del-Vercol), la chronique publiée indique une
+> profondeur de la nappe de exactement 0,00 m chaque jour du 30 novembre 2022 au 16 janvier
+> 2024 (413 valeurs, « Valeur mesurée », « Donnée contrôlée niveau 2 », qualification
+> « Correcte »), soit un niveau égal à la cote du repère (11,77 m NGF), alors que les autres
+> ouvrages de la nappe pliocène baissaient. Avant et après cette période, la profondeur est
+> d'environ 4 m puis 1,7 m. S'agit-il d'une période où l'ouvrage était artésien (niveau
+> au-dessus du repère, non mesurable), d'une valeur par défaut liée à un capteur, ou d'une
+> autre raison ? Une chronique corrigée existe-t-elle ?
+>
+> Dans l'attente, nous excluons ces semaines de nos évaluations. Je vous remercie par
+> avance de votre aide.
+>
+> Bien cordialement,
+> Assil Bouzaine
+> Master Science des données, ISAMM — Université de la Manouba
+

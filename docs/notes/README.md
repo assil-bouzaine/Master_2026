@@ -27,7 +27,7 @@ explains the whole project with pictures (open it in a browser).
 | 9 | Phase 2: baselines on v1 | done | [step09_baselines.md](step09_baselines.md) |
 | 10 | Baselines v2: more data, tuning, ensemble, ablation | done | [step10_baselines_v2.md](step10_baselines_v2.md) |
 | 12a | Fixes from the critical review: evaluation, analysis plan, dataset v3, new baselines, knowledge-graph pre-check | done (2026-10-23; EA-LSTM regimes on v4 only) | [step12a_fixes.md](step12a_fixes.md) |
-| 12b | Fixes from the second review: dataset v4, strict validated data, grouped folds, cluster-level test, R3 window statistics, analysis plan v2 | done; v4 re-runs of the baselines started 2026-10-24 (Kaggle CPU baselines done; Colab session 1 done; EA-LSTM and the Pastas stability check running on Kaggle CPU); third review (Codex) checked and its quick fixes done, 2026-10-25 | [step12b_review_fixes.md](step12b_review_fixes.md) |
+| 12b | Fixes from the second review: dataset v4, strict validated data, grouped folds, cluster-level test, R3 window statistics, analysis plan v2 | done; v4 re-runs of the baselines started 2026-10-24 (Kaggle CPU baselines done; Colab session 1 done; EA-LSTM and the Pastas stability check running on Kaggle CPU); third review (Codex) checked and its quick fixes done, 2026-10-25; second pass the same night: PD5 placeholder mask, pump coverage by resolution, drought-class scores, saved models and manifests, Pastas replay, tuning budget, analysis-plan amendments (§14) | [step12b_review_fixes.md](step12b_review_fixes.md) |
 | 12c | Review and strengthen all 16 competency questions | documentation complete (2026-10-24); query/fixture implementation remains Phase 3 work | [step12c_competency_review.md](step12c_competency_review.md) |
 | 12 | Phase 3: ontology and knowledge graph | in progress (six MUST CQs approved; all 16 contracts revised; 12.3 attribution done; 12.4 ontology module 0.1.0 with quality gates; 12.5 knowledge graph filled from the tables, ontology 0.1.1, 2026-10-24) | [step12_ontology.md](step12_ontology.md) |
 
@@ -113,6 +113,15 @@ Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 | **w3id.org** | A free service for permanent web addresses of research vocabularies; our IRIs `https://w3id.org/lulcw#...` will resolve once a redirect is registered there. |
 | **ABox / instance data** | The facts part of a knowledge graph (this well, this pump, this volume), as opposed to the vocabulary (TBox). Ours is `data/processed/kg/lulcw_kg_v4.ttl`, built by `src/kg/build_kg.py`. |
 | **Turtle** | A readable text format for RDF triples (`.ttl`); prefixes such as `lulcw:` shorten the long web addresses. |
+| **Placeholder value** | A number written into a data series when no real measurement exists (a sensor default such as a depth of exactly 0.00 m for months). It looks valid, may even be qualified "Correcte", and must be found by a plausibility rule. |
+| **Confusion matrix** | A table of observed classes (rows) against predicted classes (columns); the diagonal holds the correct predictions. |
+| **Balanced accuracy** | The mean of the recall of each observed class, so a frequent class (43 % "très bas" months) cannot dominate the score. |
+| **Weighted kappa (QWK)** | Agreement between two ordered classifications, corrected for chance; quadratic weights punish a two-class miss four times more than a one-class miss. 1 = perfect, 0 = chance. |
+| **POD / FAR / CSI** | For a yes/no event (here "low levels"): probability of detection (share of events predicted), false-alarm ratio (share of predicted events that did not happen), critical success index (hits / all hits, misses and false alarms). |
+| **Wilson interval** | A confidence interval for a proportion (e.g. 36 of 39 boreholes correct) that behaves well with small samples and proportions near 0 or 1. |
+| **Inference replay** | Re-running a saved model (weights or parameters) and checking it gives the stored predictions: proof that the model, not only its output, was saved. |
+| **Leave-one-cluster-out (LOCO)** | Recomputing a result with each spatial cluster of wells removed in turn, to see whether one area drives it. |
+| **Run manifest** | A file saved with a run that records the code version, data hashes, settings, seeds and machine: what is needed to reproduce or audit it. |
 | **WKT (well-known text)** | A text form of a geometry, e.g. `POINT(653200.0 6176400.0)`; in GeoSPARQL it starts with its coordinate system (here EPSG:2154). |
 | **Flat-rate volume (volume forfaitaire)** | A BNPE volume estimated from a standard rate (e.g. per hectare) instead of measured by a meter. 60 % of the declared groundwater irrigation volume is flat-rate. |
 | **Pre-specified vs confirmatory** | A comparison fixed in writing before it is run is pre-specified. It is confirmatory only if its test data played no part in designing the method; our 2022–25 drought did, so only weeks observed later are an independent check. |

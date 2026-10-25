@@ -4,7 +4,7 @@
 
 Found on 2026-10-24 while picking representative hydrographs by rule (third review §7):
 CORNEILLA PD5 (10971X0155/PD5, core, Pliocene, 153 m deep) reports a depth to water of
-exactly 0.00 m on 413 consecutive days (30 Nov 2022 - 15 Jan 2024), "Valeur mesurée",
+exactly 0.00 m on 413 consecutive days (30 Nov 2022 - 16 Jan 2024), "Valeur mesurée",
 "Donnée contrôlée niveau 2", qualified "Correcte" by its producer (SMNPR), during the drought;
 the head is then the station altitude, 11.77 m NGF, against ~7.9 m before and 10.1 m after.
 Wells that do flow record it as a negative depth (F: 2,011 days, S: 3,033, FAITOU: 5,208),
@@ -12,7 +12,7 @@ and PD5 never does: 0.00 is a default value here, not a measured head and not an
 cap. The producer's qualification does not catch it, so the v4 quality filter ("Incorrecte"
 dropped) cannot either.
 
-Rule (decided by Assil on 2026-10-24, docs/analysis_plan.md §13): a run of records with a
+Rule (decided by Assil on 2026-10-24, docs/analysis_plan.md §1 and §14): a run of records with a
 depth of exactly 0 (consecutive records, no gap above MAX_GAP_DAYS) spanning at least
 MIN_RUN_DAYS days is a suspect placeholder; every week (W-SUN label) holding one of its days
 leaves every scored variant (src.models.evaluate, dataset v4 on; the v3 report is unchanged).

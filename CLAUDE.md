@@ -56,6 +56,9 @@ its data arrive by February.
   - **E:** D with its edges rewired, degrees preserved
   - **F:** random and complete graphs
 
+  C–F share one backbone, the hybrid: only the edges change (decided 2026-10-24;
+  controls and the full experiment contract in `docs/analysis_plan.md` §10).
+
 - **Venue (decided 2026-10-23; final check at Gate 4):**
   - first choice: *Environmental Modelling & Software*, a hybrid journal, so
     the paper can be published without an open-access fee
@@ -160,7 +163,10 @@ for the project"). The decisions and their reasons are in
     for confident only); sensitivity runs use confident links only, and all
     links (`docs/notes/step12b_review_fixes.md`). Confidence levels are measured,
     not assumed: pump → unit rules get "probable" only for the uses their
-    precision was measured on (`src/kg/pump_attribution.py`).
+    precision was measured on (`src/kg/pump_attribution.py`). The 72 % is at
+    unit-group resolution: at exact-unit resolution it is 61.8 %, and
+    irrigation gets 0 % at both (`docs/pump_coverage.md`). Pumping outside the
+    policy enters every arm as an explicit "unattributed" input, never as zero.
   - Incomplete evidence stays incomplete: a piezometer or pump may have an
     "unknown" or several candidate units; SHACL does not force exactly one.
   - Annual and dated facts are SOSA observations with `sosa:phenomenonTime`
@@ -222,6 +228,13 @@ for the project"). The decisions and their reasons are in
   settings tuned on v3. Until those re-runs exist, v3 is the report of
   record. Set `PFE_DATASET` explicitly in every command: the code default
   (`src/config.py`) is still v2.
+- **Suspect placeholders are masked when scoring** (decided 2026-10-24): from
+  v4, the weeks of a run of ≥ 28 days with a depth of exactly 0.00 m leave every
+  scored variant (`src/dataset/placeholders.py` →
+  `<dataset>/placeholder_weeks.parquet`). One case: CORNEILLA PD5, Dec 2022 –
+  Jan 2024, 60 weeks, qualified "Correcte". The v4 report also shows the
+  primary endpoints without the mask (`all_unmasked`); a note to the producer
+  is in `docs/supervisor_questions.md` §6.
 - **Splits** (`docs/analysis_plan.md`):
   - train ≤ 2019, validation 2020-01 → 2022-04
   - test May 2022 → latest, scored as **drought** (May 2022 → Nov 2025) and
@@ -271,6 +284,13 @@ for the project"). The decisions and their reasons are in
   - the distance-graph ST-GNN (GRU, 3-NN graph)
   - the Taccari-graph ST-GNN (doi:10.1038/s41598-024-75385-2)
   - Equal tuning budget: 24 Optuna trials, then re-selection over 3 seeds.
+    Budgets and model sizes are reported (`docs/tuning_budget_v3.md`).
+  - **Hydrology reference from v4** (decided 2026-10-24, before its results):
+    Pastas seasonal + canal built from the **training heads only**
+    (`--train-obs`), the start of each well chosen by the frozen
+    training-RMSE rule (`src/analysis/pastas_stability.py` writes
+    `pastas_seasonal_canal_trainobs_beststart`), whatever its test score. The
+    full-series fits stay as historical rows.
 - **Main model (decided 2026-10-23): the hybrid** (`docs/feedback.md` §5.5).
   - The KG feeds a heterogeneous GNN.
   - The GNN outputs the parameters of **sign-constrained response
@@ -337,7 +357,10 @@ for the project"). The decisions and their reasons are in
 **Research framing (decided 2026-10-23):**
 - **(A) the use conflict on the Pliocene** (drinking water against agriculture)
   is the main story: 20 of the 33 core wells, the CQ2 evidence, the 2024 BRGM
-  event.
+  event. **Refined 2026-10-24 (Assil):** no irrigation volume passes the main
+  pump policy, so the model's claims are about **drinking-water pressure** on
+  the Pliocene within the agricultural context; farm-pumping effects come only
+  from the all-links sensitivity, labelled provisional.
 - **(B) canal-return recharge** is a secondary case study for the alluvium. It
   keeps the land-use side of the subject visible.
 
@@ -553,7 +576,7 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
     contacts, publication details, monthly drinking-water production.
   - The e-mails are ready in §4–5 there; Assil sends them.
 
-**State at 2026-10-24 22:45 CET: the v4 re-runs (Step 12b) are under way, off the laptop (Kaggle kernel version 4 running); task 12.5 done.**
+**State at 2026-10-25 00:30 CET: the v4 re-runs (Step 12b) are under way, off the laptop (Kaggle kernel version 4 running, checked 23:20 UTC); task 12.5 and the third review (both passes) done; the explainer is current (chapters 2, 5, 7–11).**
 - **Assil's go (2026-10-24):** "u can use kaggle and colab to train", and no
   model is trained on the laptop any more. This lifts the hold of 2026-10-23
   evening ("keep only v3 running").
@@ -601,7 +624,8 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
   the run line (≈ 3.5 T4-hours). Touch the tab at least hourly. Pull with
   `scripts/colab_pull.py` (Drive folder `pfe_colab/results_gpu` → Download).
 - **Kaggle CPU, kernel version 4** (pushed 21:11 UTC, budget 11 h, so it ends
-  by about 08:15 UTC on 2026-10-25; step note 12b, last section). Version 3
+  by about 08:15 UTC on 2026-10-25; still RUNNING at 23:20 UTC, after the laptop
+  crashed at about 23:11 UTC, which does not affect it; step note 12b, last section). Version 3
   (18:52 UTC) never started: ERROR, empty log, no output, 16 s after a new
   bundle version. Version 4 is the same kernel and bundle, pushed again with
   `scripts/kaggle_cpu.py kernel`; `push` now waits after a new bundle version
@@ -631,15 +655,19 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
     2026-10-25, before any multistart result; `src/analysis/pastas_stability.py`).
 - **Third review (Codex, 2026-10-24 night):** `docs/review_codex_2026-10-24.md`;
   every factual claim checked, verdicts and status in
-  `docs/review_codex_2026-10-24_response.md`. Quick fixes done 2026-10-25
-  (step 12b note, last section). **Open for Assil:** (1) the main pump links
-  carry no irrigation volume (plain: 0 confident, 0 probable, 137 Mm³
-  possible), so the main story is drinking-water pressure and farm effects come
-  only from the all-links sensitivity: confirm the framing; (2) the Pastas v4
-  reference built from training heads only (`--train-obs`), whatever its
-  score; (3) at Gate 3, one backbone for C and D (only the edges differ) plus a
-  random-ID and a distance-matched rewiring control. Before Phase 4: save model
-  weights and a run manifest (none are saved today).
+  `docs/review_codex_2026-10-24_response.md`. Quick fixes done 2026-10-24;
+  **second pass done 2026-10-25** (every recommendation checked against the
+  code; step 12b note, last section; analysis plan §14). **Decided by Assil on
+  2026-10-24:** (1) main story = drinking-water pressure (irrigation gets 0 % of
+  the main pump links; farm effects only from the all-links sensitivity); (2)
+  the v4 Pastas reference = training heads only, frozen best-start rule; (3)
+  arms C–F share one backbone, with the review's controls; (4) suspect
+  placeholder weeks masked (CORNEILLA PD5, depth 0.00 m for 413 days).
+  Done in the second pass: `docs/pump_coverage.md` (main policy 61.8 % at
+  exact-unit resolution), `docs/results_hydro_<v>.md` (SGI drought classes),
+  saved models + manifests, `tests/test_replay.py`, `tests/test_pumping_conservation.py`,
+  `tests/test_regime_boundaries.py`, `docs/tuning_budget_v3.md`,
+  `stats.cluster_sensitivity`. All local v4 runs rescored with the mask.
 - **Left from 2026-10-23:** Assil disconnects the old Colab runtime if it is
   still on, and sends the v3 results in the next monthly report to the
   supervisor. The v3 EA-LSTM regimes stopped at 20:58 are a record only
@@ -653,15 +681,21 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
    (`docs/competency_questions.md`; the 6 MUST were approved on 2026-10-24):
    add, drop, priorities, and the open points listed there.
 3. Later, for task 12.10: an Earth Engine account (sign-in is his).
-4. The three open points of the third review (State above;
-   `docs/review_codex_2026-10-24_response.md` §2): irrigation framing, the
-   training-heads-only Pastas reference, the C/D backbone for Gate 3.
+4. Send the note about CORNEILLA PD5 to its producer (SMNPR):
+   `docs/supervisor_questions.md` §6 (French text ready).
 
 **Next for Claude, while the models run or after:**
 1. ✅ Step 12a done (2026-10-23 evening). 🔄 The v4 re-runs started on
    2026-10-24: Kaggle CPU done; Colab session 1 ended at 17:13 UTC (see State).
-   Then Colab session 2 (EA-LSTM, Chronos-2, the rest of the regimes), then the
-   v4 report.
+   Then Colab session 2 (Chronos-2, the rest of the Taccari regimes), then the
+   v4 report. **After the Kaggle kernel v4 ends:** `scripts/kaggle_cpu.py pull`
+   (it rescores with the placeholder mask), `PFE_DATASET=v4 python -m
+   src.analysis.pastas_stability` (writes the reference run
+   `pastas_seasonal_canal_trainobs_beststart`), `tests/test_replay.py
+   pastas_seasonal_canal_trainobs_beststart`, then `src.models.ensemble`,
+   `src.analysis.baseline_report` (→ `docs/results_baselines_v4.md`) and
+   `src.analysis.hydro_errors` on v4. Rebuild the GPU bundle before the next
+   Colab session so new runs save weights (the bundle on Drive is older code).
 2. Literature, from the second review:
    - the positioning matrix in `docs/literature/comparison_table.md`: past heads
      as input? forcings? split? knowledge supplied? explanation validated?
@@ -692,7 +726,7 @@ Assil's review of the competency questions.
 | 10 Baselines on dataset v2 | ✅ done | `docs/notes/step10_baselines_v2.md` |
 | 11 Gate 2 summary | ✅ answered 2026-10-23: the choices are left to Assil (decisions in `docs/supervisor_questions.md`) | `docs/summary_gate2_results.md` |
 | **12a Fixes from the critical review** | **✅ 2026-10-23:** evaluation, analysis plan, dataset v3, all v3 baselines (EA-LSTM regimes on v4 only), final v3 report | `docs/feedback.md`, `docs/analysis_plan.md`, `docs/notes/step12a_fixes.md` |
-| **12b Fixes from the second review** | **✅ 2026-10-23** (code, dataset v4, analysis plan v2, tests); 🔄 the baseline re-runs on v4 started 2026-10-24 (Kaggle CPU + Colab T4) | `docs/review_codex_2026-10-23.md`, `docs/review_codex_response.md`, `docs/notes/step12b_review_fixes.md` |
+| **12b Fixes from the second review** | **✅ 2026-10-23** (code, dataset v4, analysis plan v2, tests); 🔄 the baseline re-runs on v4 started 2026-10-24 (Kaggle CPU + Colab T4); third review checked and done (two passes, 2026-10-24/25) | `docs/review_codex_2026-10-23.md`, `docs/review_codex_response.md`, `docs/notes/step12b_review_fixes.md` |
 | **12 Phase 3: ontology + KG** | **🔄 started 2026-10-23.** 12.1 drafted, 12.2 started, 12.3–12.5 done | `docs/review_2026-10-23.md`, `docs/competency_questions.md`, `docs/ontology_design.md`, `docs/notes/step12_ontology.md` |
 
 ### Step 12: Phase 3 tasks, in order

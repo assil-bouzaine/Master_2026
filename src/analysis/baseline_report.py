@@ -396,7 +396,7 @@ def main():
            "scored variant (`src/dataset/placeholders.py`: CORNEILLA PD5, Dec 2022 – Jan 2024, "
            "60 weeks, qualified \"Correcte\" by its producer). The rule was written after the "
            "test period was seen, so the primary endpoints are shown both ways "
-           "(`docs/analysis_plan.md` §13).\n",
+           "(`docs/analysis_plan.md` §1, §14).\n",
            fmt(mask_t).to_markdown(index=False), ""] if len(mask_t) else [])]
     md.write_text("\n".join(parts), encoding="utf-8")
     print(fmt(t).to_string(index=False))

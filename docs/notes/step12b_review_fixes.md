@@ -284,3 +284,69 @@ ouvrage):
 - Still to do before Phase 4: save model weights with a run manifest (none are saved
   today), fix one backbone for arms C–F, and decide how unattributed pumping enters every
   arm.
+
+## 2026-10-25: third review, second pass (every recommendation checked against the code)
+
+**What was done.** Assil asked to check each recommendation of `codex.md` (now
+`docs/review_codex_2026-10-24.md`) against the code, judge it, and do the good ones. The first
+pass had done the quick fixes; this pass found three recommendations without any answer and
+did everything that needs no model training (status per point in
+`docs/review_codex_2026-10-24_response.md` §1 and §3).
+- **Assil decided (2026-10-24, late evening):** the main story is drinking-water pressure on
+  the Pliocene (farm pumping only from the all-links sensitivity); the v4 Pastas reference is
+  the fit built from training heads only, decided before its results; arms C–F share one
+  backbone, with the review's controls; suspect placeholder values are masked by a rule.
+- **A data error.** CORNEILLA PD5, a core Pliocene well, reports a depth of exactly 0.00 m on
+  413 consecutive days (Nov 2022 – Jan 2024), qualified "Correcte". Its head is then the
+  altitude of its benchmark, 11.77 m, a year above its neighbours. Wells that really flow
+  record negative depths; PD5 never does. Rule: a run of ≥ 28 days at depth 0 leaves every
+  scored variant from v4 (`src/dataset/placeholders.py`); the v4 report also shows the scores
+  without it. Effect on the core drought medians: +0.01 to +0.10 NSE by model, Pastas skill
+  −0.05. A note to the producer is in `docs/supervisor_questions.md` §6.
+- **Pumping coverage, done properly** (`docs/pump_coverage.md`). The "72 %" of the main pump
+  policy is the unit-group figure; at exact-unit resolution it is 61.8 % of the declared
+  volume, and 56.2 % of what the model sees once imputed years are counted. Drinking water
+  98.0 / 83.7 %; irrigation 0 %.
+- **Drought classes** (`docs/results_hydro_<v>.md`). The brief says SGI accuracy is reported,
+  but nothing computed it. Now: simulated SGI with the observed reference, IPS class scores,
+  confusion matrices, timing and size of the annual minima; hydrographs chosen by a rule.
+  On v3 the tuned LSTM and the ensemble detect 72–73 % of low-level drought months with 17 %
+  false alarms; Pastas 49 %; climatology 1 %.
+- **Reproducibility.** Neural and LightGBM runs now save their fitted models and a manifest
+  (`src/models/manifest.py`); Pastas is replayed from its stored parameters to 1e-11 m
+  (`tests/test_replay.py`); the weekly pumping is checked layer by layer
+  (`tests/test_pumping_conservation.py`); what each regime may use is a table (analysis plan
+  §4) with a test (`tests/test_regime_boundaries.py`).
+- **Reporting.** Tuning budget (`docs/tuning_budget_v3.md`), cluster-test sensitivity over
+  grids and leave-one-cluster-out (`stats.cluster_sensitivity`), the analysis-plan amendments
+  (§14), and the abstracts of Chu et al. 2026 and Jeong et al. 2026 (PubMed).
+
+**Why.**
+- The PD5 weeks are not a measurement. Leaving them in would score every model against a
+  number nobody measured, in the drought the paper is about. Writing the rule *after* seeing
+  the test period is allowed only if the result is shown both ways: that is what the
+  `all_unmasked` variant is for.
+- A coverage figure has to be computed at the resolution the model will use. Graph edges go
+  to exact units, where the alluvium rule is only 63 % precise.
+- Saving the fitted models is what makes the promised check on new weeks possible: a stored
+  prediction cannot be extended into 2027.
+- Deciding the Pastas reference before its results are seen protects it from looking chosen.
+
+**What to consider.**
+- **The pumping forcing has a small calendar artefact:** flat uses (drinking water, industry)
+  get 7/365.25 of the annual volume per week label, so a year with 53 week labels (2006,
+  2012, 2017, 2023) carries 1.9 % more of them. Every model sees the same input, so it is
+  kept in v4; any annual accounting must use the declared layer (the KG), not weekly sums.
+- **Equal trials are not equal capacity:** the Taccari ST-GNN has 230 k parameters, the LSTM
+  78 k. Say it next to the results.
+- **The cluster test depends on the grid:** LightGBM vs the full-series Pastas has p 0.014
+  on the 10 km grid but 0.002–0.125 across the other grids (a 20 km grid has 6 clusters and
+  cannot go below p = 0.031). The 10 km grid stays the test of record.
+- **Before the freeze:** the v4 neural finals have no saved weights (they ran before this
+  change); re-run them with weights if they are to enter the check on new weeks. The
+  Colab bundle on Drive is the older code: rebuild it before the next GPU session if the new
+  runs should save weights.
+- **Next:** pull the Kaggle output (EA-LSTM, Pastas multistart) and run
+  `src.analysis.pastas_stability`, which writes the reference run
+  `pastas_seasonal_canal_trainobs_beststart`; then the v4 report
+  (`docs/results_baselines_v4.md`), `hydro_errors` on v4, and 12.6.

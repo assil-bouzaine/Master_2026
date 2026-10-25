@@ -172,6 +172,7 @@
     ["hiddenwells", "Hidden-well test", "Some wells are hidden while the computer studies, then it must guess them. Repeated 5 times with different groups. It tests wells that are monitored but left out, not places with no well at all.", "Experts: leave-wells-out cross-validation"],
     ["fold", "Group of hidden wells", "One of the 5 groups of the hidden-well test. From v4, wells closer than 2 km always share a group.", "Experts: fold"],
     ["quality", "Quality labels", "Each measurement is labelled by its operator: \"Correcte\" (checked, fine), \"Non qualifié\" (not checked yet), \"Incorrecte\" (checked, wrong). Version 4 removes the wrong ones."],
+    ["placeholder", "Placeholder value", "A number written into a record when nothing was really measured, such as a depth of exactly 0.00 m every day for months. It looks valid and can even be labelled \"Correcte\", so only a written rule catches it."],
     ["reconstructed", "Reconstruction", "Values filled in by reasoned guessing when the real numbers do not exist: weekly pumping (only yearly totals are declared), pumping before 2012, or 2025–2026 (not published yet).", "Experts: imputed data"],
     ["sgi", "Drought class", "A level turned into \"how unusual for this month at this well\", from \"very low\" to \"very high\", like the official drought bulletins.", "Experts: SGI (Standardised Groundwater Index), BRGM IPS classes"],
     ["ontology", "Knowledge map", "A dictionary of the things in our world (well, layer, pump) and of how they can be linked (pumps from, lies on), written so that a computer can read and check it. The facts written with it form the knowledge graph.", "Experts: ontology, knowledge graph (KG)"],
@@ -254,7 +255,8 @@
   const dateTxt = d => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
   const idxOf = iso => Math.round((Date.parse(iso + "T00:00:00Z") - t0) / (7 * DAY));
 
-  /* line chart with period bands; series = [{name, values, color}] */
+  /* line chart with period bands; series = [{name, values, color, dash?, optional?}];
+     an optional series is left out of the tooltip where it has no value */
   function lineChart(host, series, opts) {
     host.innerHTML = "";
     const W = 760, H = 334, m = { l: 52, r: 16, t: 42, b: 34 };
@@ -294,7 +296,8 @@
         d += (pen ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1);
         pen = true;
       });
-      el("path", { d: d, fill: "none", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg, { stroke: s.color });
+      el("path", Object.assign({ d: d, fill: "none", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" },
+        s.dash ? { "stroke-dasharray": s.dash } : {}), svg, { stroke: s.color });
     });
     // hover layer
     const cross = el("line", { y1: m.t, y2: H - m.b, "stroke-width": 1 }, svg, { stroke: "var(--ink-2)", opacity: 0 });
@@ -307,7 +310,7 @@
       let html = `<b>Week of ${dateTxt(weekDate(cur))}</b>`;
       series.forEach((s, k) => {
         const v = s.values[cur];
-        if (v === null) { dots[k].style.opacity = 0; html += `<br>${s.name}: no measurement`; return; }
+        if (v === null) { dots[k].style.opacity = 0; if (!s.optional) html += `<br>${s.name}: no measurement`; return; }
         dots[k].setAttribute("cx", x(cur)); dots[k].setAttribute("cy", y(v)); dots[k].style.opacity = 1;
         html += `<br>${s.name}: ${fmt(v, 2)} m`;
       });
@@ -335,10 +338,13 @@
     ["10906X0039/C2-1", "Millas, shallow"], ["10906X0038/C2-2", "Millas, deep"]];
   const levelBox = $("#level-wells");
   function drawLevel(code) {
-    const w = wellBy[code];
-    lineChart($("#chart-level"), [{ name: w.name, values: D.series.values[code], color: LAYER_VAR[w.layer] }],
-      { label: `Weekly water level of ${w.name}, ${w.town}, 2005 to now` });
-    $("#level-legend").innerHTML = `<span><i class="key line" style="background:${LAYER_VAR[w.layer]}"></i>${w.name} (${w.town}): ${LAYER_NAME[w.layer]}, ${w.depth} m deep</span>`;
+    const w = wellBy[code], masked = (D.series.masked || {})[code];
+    const lines = [{ name: w.name, values: D.series.values[code], color: LAYER_VAR[w.layer] }];
+    if (masked) lines.push({ name: "left out of the scores", values: masked, color: "var(--critical)", dash: "5 4", optional: true });
+    lineChart($("#chart-level"), lines,
+      { label: `Weekly water level of ${w.name}, ${w.town}, 2005 to now` + (masked ? ", with the weeks left out of the scores dashed" : "") });
+    $("#level-legend").innerHTML = `<span><i class="key line" style="background:${LAYER_VAR[w.layer]}"></i>${w.name} (${w.town}): ${LAYER_NAME[w.layer]}, ${w.depth} m deep</span>` +
+      (masked ? `<span><i class="key line" style="background:repeating-linear-gradient(90deg, var(--critical) 0 5px, transparent 5px 9px)"></i>dashed: not a measurement (depth exactly 0.00 m), left out of the scores</span>` : "");
     $$("button", levelBox).forEach(b => b.setAttribute("aria-pressed", String(b.dataset.code === code)));
   }
   EX.forEach(([code, lab]) => {
@@ -574,8 +580,9 @@
         "Each week records whether all its measurements were checked",
         "In the hidden-well test, wells closer than 2 km are always hidden together",
         "The less-data test computes each well's averages from its own years only",
+        "Added on 24 October: the scores leave out 60 weeks at Corneilla whose record is a placeholder (a depth of exactly 0.00 m for 413 days); the table itself keeps them",
         "Everything else is identical to version 3"],
-      why: "The second check-up. Status: built and tested. Re-running all the rivals on it waits for your go." }
+      why: "The second check-up. Status: built and tested; the rivals are being re-run on it, on Kaggle and Colab, since 24 October." }
   };
   const tabs = $("#version-tabs");
   function showVersion(v) {
@@ -598,6 +605,7 @@
     ["Last real pumping year", v => String(V[v].last_bnpe)],
     ["Pumping data rules", v => (v === "v1" || v === "v2" ? "basic" : "written rules")],
     ["Bad measurements removed", v => String(V[v].dropped)],
+    ["Placeholder weeks left out of the scores", v => (v === "v4" ? "60 (Corneilla)" : "none")],
     ["Hidden-well groups", v => (v === "v4" ? "close wells together" : "random")],
     ["Less-data test averages", v => (v === "v4" ? "own years only" : "all study years")]
   ];
@@ -613,7 +621,7 @@
     ["made", "Where?", "One place, done well: the Roussillon plain.", "Open data on everything and 35-year records. A Master's needs one system done end to end. A small demo in Tunisia (Manouba) only if its data arrive by February."],
     ["made", "How often?", "One value per week.", "The level changes slowly; weeks are enough and less noisy."],
     ["made", "What game?", "Simulation (no peeking at real levels), not forecasting; the title says \"simulation\".", "We want to understand causes. Chronos-2 already wins the forecasting game."],
-    ["made", "Which story?", "Main story: towns against farms on the deep layers. Side story: canal leaks refilling the river gravel.", "20 of the 33 core wells are in the deep layers, 99 % of tap water comes from underground, and a BRGM bulletin documented a rise in 2024 after pumping was reduced."],
+    ["made", "Which story?", "Main story: tap-water pumping pressing on the deep layers, in a plain of farms (sharpened on 24 October). Side story: canal leaks refilling the river gravel.", "20 of the 33 core wells are in the deep layers, 99 % of tap water comes from underground, and a BRGM bulletin documented a rise in 2024 after pumping was reduced. No farm well has a sure enough layer, so farm pumping is tested only on the side, with all links, and marked provisional."],
     ["made", "The karst wells?", "Kept.", "The karst lies under the deep layers, so it belongs in the map. Results are always shown per layer."],
     ["made", "Which main model?", "The hybrid: footprints shaped by the knowledge map, with fixed directions, plus a small free part.", "Every link of the map gets a job, the rules hold by construction and the explanations are exact. A free black-box network is the comparison."],
     ["made", "How to enforce the rules?", "Built into the model, not checked afterwards (PiShield dropped).", "Our rules are about the direction of a response, which PiShield cannot express."],
@@ -627,12 +635,16 @@
     ["made", "When to fix the plan?", "Freeze the analysis plan with a git tag before Phase 4, then check on new weeks.", "So that results cannot steer the analysis."],
     ["made", "What does the knowledge map claim?", "Clarity, checking and reuse; better predictions are credited to the knowledge itself.", "The same facts in plain tables would give the same links."],
     ["made", "Where to publish?", "Environmental Modelling & Software first, then JGR: Machine Learning and Computation.", "It fits methods, software and ontologies, and it does not require a publication fee."],
-    ["wait", "Pump links in the main runs?", "Recommended: confident + probable (72 % of the plain's volume) instead of confident only (27 %).", "The probable links are drinking-water pumps whose clue was right 92–95 % of the time."],
-    ["wait", "The 16 questions of the knowledge map", "Review them: add, drop, set priorities.", "The design of the map is frozen after your review."],
+    ["made", "Pump links in the main runs?", "Confident + probable links (24 October). Confident only, and all links, are side tests.", "They cover 72 % of the plain's declared underground pumping for the layer family (62 % for the exact layer), against 27 % for confident only. Pumping without a sure layer is never counted as zero."],
+    ["made", "Re-run the rivals on v4?", "Yes, on Kaggle and Colab, never on the laptop (24 October).", "The laptop stays free, and Kaggle keeps running even when it is off."],
+    ["made", "Which Pastas is the yardstick?", "From v4: the Pastas fit that only sees the levels of the study years, its start picked by a fixed rule, whatever its final-exam score (24 October, before its results).", "The usual set-up peeks at the whole series, final exam included, to set its starting level. Choosing after seeing the scores would look like picking the winner."],
+    ["made", "C against D: what changes?", "Only the links: same model, inputs, budget and random starts for arms C to F, plus three controls fixed in advance (24 October).", "Otherwise a gain could come from the model, not from the meaning of the links."],
+    ["made", "The flat line at Corneilla?", "Left out of every score by a written rule: 28 days or more at a depth of exactly 0.00 m (24 October). Scores are also shown without the rule.", "For 413 days the record says 0.00 m, labelled correct, while wells where water really flows out record negative depths. It is not a measurement."],
+    ["wait", "The 16 questions of the knowledge map", "The 6 core ones are approved (24 October); review the other 10: add, drop, set priorities.", "The design of the map is frozen after your review."],
     ["wait", "Two e-mails", "Send them: the decisions and the defence date to the supervisor; the request for monthly drinking-water data.", "The defence date sets the whole schedule; monthly data would separate pumping from weather."],
-    ["wait", "Re-run the rivals on v4", "On hold until you say go.", "The v3 runs finish first."],
+    ["wait", "A note about Corneilla", "Send it to the operator of the well (SMNPR); the French text is ready.", "Their answer decides whether the rule stays or a corrected record replaces the flat line."],
     ["wait", "Earth Engine account", "Later, for the satellite rule (task 12.10).", "The sign-in is yours."],
-    ["wait", "Two paywalled papers", "Read Chu et al. 2026 and Jeong et al. 2026 through the university.", "They are close to our hybrid model and our explanation checks."]
+    ["wait", "Two paywalled papers", "Read the full texts of Chu et al. 2026 and Jeong et al. 2026 through the university (their summaries are read).", "Jeong already checks learned responses against independent estimates, so we cite that idea and do not claim it."]
   ];
   const decList = $("#decision-list");
   function showDec(f) {

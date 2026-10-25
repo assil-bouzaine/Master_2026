@@ -282,7 +282,7 @@
       <div class="legend" id="level-legend"></div>
       <details class="numbers"><summary>About these wells</summary><div id="level-about"></div></details>
     </div>
-    <figcaption>Real measurements, one value per week, from dataset v4. Gaps are weeks without a measurement. The karst well (Estagel) swings by tens of metres; the deep layers move by a few metres only.</figcaption>
+    <figcaption>Real measurements, one value per week, from dataset v4. Gaps are weeks without a measurement. The karst well (Estagel) swings by tens of metres; the deep layers move by a few metres only. At Corneilla, the dashed piece (December 2022 to January 2024) is not a measurement: the record gives a depth of exactly 0.00 m every day for 413 days, a <button class="term" data-term="placeholder">placeholder</button>. Those weeks are left out of every score (chapter 7).</figcaption>
   </figure>
 
   <details class="deeper">
@@ -412,7 +412,7 @@
     <li><strong><button class="term" data-term="chronos">Chronos-2</button></strong>: a big pre-trained forecasting model. It looks at past levels, so it plays a different game, the <button class="term" data-term="forecast">forecast</button>, where it is the champion.</li>
     <li><strong>A <button class="term" data-term="ensemble">team of models</button></strong>: the average of the best ones.</li>
   </ul>
-  <p><strong>A fair contest.</strong> Every rival got the same number of tries to find its best settings (<button class="term" data-term="tuning">tuning</button>, 24 tries each, then a re-check of the best three). Every neural network was trained 5 times from different <button class="term" data-term="seed">random starts</button> and averaged, so luck matters less.</p>
+  <p><strong>A fair contest.</strong> Every rival got the same number of tries to find its best settings (<button class="term" data-term="tuning">tuning</button>, 24 tries each, then a re-check of the best three). Every neural network was trained 5 times from different <button class="term" data-term="seed">random starts</button> and averaged, so luck matters less. Equal tries are not equal size, though: the Taccari graph has about 230,000 adjustable numbers, the LSTM about 78,000. We say so next to the results.</p>
 
   <figure>
     <div class="panel">
@@ -433,6 +433,7 @@
     <li>Most of the remaining mistake is a level that stays too high or too low by a fixed amount in 2024–2025, as if something changed in the pumping that our data do not show.</li>
     <li>Pumping counted over the whole plain did not help. Pumping has to be linked to the right layer and the right wells. That is exactly what the knowledge map will add.</li>
     <li>The two newest rivals did not beat the plain LSTM. The EA-LSTM is the weakest network in the drought (it cuts the mistakes by a third). The Taccari graph, with pumps, rivers and rain as extra nodes, scores about the same as the simple distance graph.</li>
+    <li>In <button class="term" data-term="sgi">drought classes</button> ("very low" to "very high", like the official bulletins), the tuned LSTM and the team spot about 3 in 4 of the drought months when the level was low, and about 1 in 6 of their "low" calls is a false alarm. Pastas spots half of them, the normal-year guess almost none.</li>
   </ul>
 
   <h3>Is it proven? Counting neighbourhoods, not wells</h3>
@@ -444,7 +445,9 @@
     <ul>
       <li>Full table: <code>docs/results_baselines.md</code>, made by <code>src/analysis/baseline_report.py</code>. Picture of all models on four wells: <a href="../../reports/figures/baselines_hydrographs_v3.png">reports/figures/baselines_hydrographs_v3.png</a>.</li>
       <li>Other scores: <button class="term" data-term="nse">NSE</button> (drought: LSTM 0.01, ensemble 0.02, Pastas −0.73) and KGE'' (a version of KGE that does not depend on the height of sea level).</li>
-      <li>The fair test is a cluster sign-flip permutation test on 10 km cells; the old per-well Wilcoxon test said "proven" (p ≤ 0.03), the fair one does not (p_holm 0.07–0.33), except the tuned Taccari graph on drought skill (p_holm 0.013). See <code>docs/analysis_plan.md</code> §6 and <code>src/analysis/stats.py</code>.</li>
+      <li>The fair test is a cluster sign-flip permutation test on 10 km cells; the old per-well Wilcoxon test said "proven" (p ≤ 0.03), the fair one does not (p_holm 0.07–0.33), except the tuned Taccari graph on drought skill (p_holm 0.013). See <code>docs/analysis_plan.md</code> §6 and <code>src/analysis/stats.py</code>. From version 4 it is also shown on 5 and 20 km cells, shifted cells, and with each neighbourhood left out in turn; the 10 km cells stay the test of record.</li>
+      <li>From version 4, the Pastas yardstick of the fair test is the fit that sees only the study years' levels (chapter 11).</li>
+      <li>Drought classes and other hydrology checks (timing and size of each year's lowest level): <code>docs/results_hydro_v3.md</code>, made by <code>src/analysis/hydro_errors.py</code>. Tries, time and size of every rival: <code>docs/tuning_budget_v3.md</code>.</li>
       <li>Other exams: hiding wells (<button class="term" data-term="hiddenwells">hidden-well test</button>) hurts every model; studying only the last 25–50 % of the years costs little.</li>
     </ul>
   </details>
@@ -497,14 +500,14 @@
       <li>The grouping of close wells follows Roberts et al. 2017 (doi:10.1111/ecog.02881): when data points depend on each other, test on blocks, not on random picks.</li>
     </ul>
   </details>
-  <p class="nextlink"><a href="#reviews">Next: two check-ups</a></p>
+  <p class="nextlink"><a href="#reviews">Next: three check-ups</a></p>
 </section>
 
 <!-- ============================================================ 7 -->
-<section id="reviews" data-title="Two check-ups" data-depth="60 m">
+<section id="reviews" data-title="Three check-ups" data-depth="60 m">
   <p class="chapter-no">Chapter 7</p>
-  <h2>Two check-ups</h2>
-  <p class="short">Twice we asked for a strict review of our own work, to find mistakes before a journal reviewer does. Both made the project more honest.</p>
+  <h2>Three check-ups</h2>
+  <p class="short">Three times we asked for a strict review of our own work, to find mistakes before a journal reviewer does. Each one made the project more honest.</p>
 
   <p>A <button class="term" data-term="review">review</button> is like a teacher checking your homework before the exam. It hurts a little, and it saves you later.</p>
 
@@ -537,11 +540,22 @@
     <li>The plan will be frozen before the next phase, so results cannot steer it.</li>
   </ul>
 
+  <h3>Third check-up (24 October, codex again)</h3>
+  <p>Again, every number it gave was right. It caught three sentences of ours that were wrong, and one consequence we had missed:</p>
+  <ul>
+    <li><strong>Farm wells have no sure layer.</strong> Under our main rule for pump links, not one cubic metre of farm groundwater gets a layer we trust. So the main story now speaks about tap-water pumping on the deep layers; farm pumping is only tested on the side (chapter 8).</li>
+    <li><strong>Three wrong sentences, fixed.</strong> Pastas studies 2005–2019, not 2012–2019. It is started from several points, and the best one was picked with a slightly different score than the one Pastas itself uses; now a fixed rule, written before any result, picks it. And our next results will be "planned in advance, on a drought we have already looked at", not a "confirmation": only weeks measured after the plan is frozen can confirm anything.</li>
+    <li><strong>One change at a time.</strong> Arms C to F now share exactly the same model, so only the links differ (chapter 9).</li>
+    <li><strong>Saved models.</strong> New runs keep the trained model and a record of how it was made (code, data, settings, machine). A saved model can be checked again, and run on new weeks after the plan is frozen.</li>
+  </ul>
+  <p><strong>What we found ourselves while checking.</strong> Choosing example wells by a fixed rule showed a flat line at Corneilla: for 413 days the record gives a depth of exactly 0.00 m, labelled "Correcte" by its operator. Wells where water really flows out record a negative depth; this one never does. It is a <button class="term" data-term="placeholder">placeholder</button>, not a measurement. You decided to leave those weeks out of every score by a written rule, to show the scores both ways, and to ask the operator (the dashed piece in chapter 2).</p>
+
   <details class="deeper">
     <summary>Go deeper</summary>
     <ul>
-      <li>First review: <code>docs/feedback.md</code>; project review: <code>docs/review_2026-10-23.md</code>; second review: <code>docs/review_codex_2026-10-23.md</code> with the point-by-point answer in <code>docs/review_codex_response.md</code>.</li>
-      <li>The analysis plan (version 2): <code>docs/analysis_plan.md</code>; its §13 lists every change and why.</li>
+      <li>First review: <code>docs/feedback.md</code>; project review: <code>docs/review_2026-10-23.md</code>; second review: <code>docs/review_codex_2026-10-23.md</code> with the point-by-point answer in <code>docs/review_codex_response.md</code>; third review: <code>docs/review_codex_2026-10-24.md</code>, answered in <code>docs/review_codex_2026-10-24_response.md</code>.</li>
+      <li>The analysis plan (version 2): <code>docs/analysis_plan.md</code>; its §13 lists the changes of version 2 and §14 the changes made after the third review, before the plan is frozen.</li>
+      <li>The rule for placeholders: <code>src/dataset/placeholders.py</code>; the note to the operator: <code>docs/supervisor_questions.md</code> §6.</li>
     </ul>
   </details>
   <p class="nextlink"><a href="#knowledge">Next: the knowledge map</a></p>
@@ -612,6 +626,7 @@
     </div>
     <figcaption>Underground water pumped in the plain, 2012–2024 (declared volumes, million m³), by use and by how sure we are of the layer. Almost all drinking water is confident or probable; farm water is possible at best.</figcaption>
   </figure>
+  <p><strong>What the links can say (decided on 24 October).</strong> The main runs use the confident and probable links. They cover 72 % of the plain's declared underground pumping if we only ask for the layer family, and 62 % if we ask for the exact layer. Farm wells get 0 %: all their links are possible or unknown. So the main results will speak about <strong>tap-water pumping</strong> on the deep layers, in a plain of farms; farm pumping is tested only on the side, with all links, and marked provisional. Pumping without a sure layer is never counted as zero: every model will get it as a separate input, "pumping of unknown layer".</p>
   <p><strong>A first answer.</strong> Around the Millas wells, 110 million m³ of drinking water were pumped within 5 km from 2012 to 2023. About 65 % came from the river gravel layers and about 35 % from the deep layers.</p>
 
   <h3>The map is filled (done on 24 October)</h3>
@@ -675,10 +690,11 @@
     <li><strong>E</strong>: D with its links scrambled.</li>
     <li><strong>F</strong>: random links, and everything linked to everything.</li>
   </ul>
+  <p>C to F use exactly the same model, inputs, budget and random starts: only the links change (decided on 24 October). Three extra checks are fixed in advance: the model with no links at all; the wells' fixed facts shuffled between wells, to see whether the model only uses them as name tags (Heudorfer et al. 2024); and links scrambled but kept at the same distances, so that a gain from the meaning of the links is not mistaken for a gain from closeness.</p>
 
   <h3>Catching a cheater</h3>
   <ul>
-    <li><strong>A practice world</strong> (<button class="term" data-term="twin">semi-synthetic twin</button>): fake water levels made from our real weather and pumps with rules we choose, so we know the right answer. Some practice worlds are deliberately made with rules the model does not have, a missing cause, or wrong links, so the test is not too easy.</li>
+    <li><strong>A practice world</strong> (<button class="term" data-term="twin">semi-synthetic twin</button>): fake water levels made from our real weather and pumps with rules we choose, so we know the right answer. Some practice worlds are deliberately made with rules the model does not have, a missing cause, or wrong links, so the test is not too easy. A small one is built before the big runs, to make sure the tests can catch a cheater at all.</li>
     <li><strong>A scrambled map</strong> (<button class="term" data-term="rewiring">rewiring</button>): if the model does just as well with nonsense links, it was not using the map.</li>
     <li><strong>Agreement between repeats</strong>: if five trainings tell five different stories, none can be trusted.</li>
     <li><strong>Three ways of spreading pumping over the weeks</strong>: a conclusion must hold whichever guess we use.</li>
@@ -690,7 +706,8 @@
   <details class="deeper">
     <summary>Go deeper</summary>
     <ul>
-      <li>Phase 4 plan: <code>docs/roadmap.md</code> Phase 4 and <code>docs/analysis_plan.md</code> §10–§12. Main model description: <code>docs/feedback.md</code> §5.5.</li>
+      <li>Phase 4 plan: <code>docs/roadmap.md</code> Phase 4 and <code>docs/analysis_plan.md</code> §10–§12 (the "experiment contract" of §10 says what each comparison keeps fixed). Main model description: <code>docs/feedback.md</code> §5.5.</li>
+      <li>The name-tag check follows Heudorfer et al. 2024 (doi:10.5194/hess-28-525-2024): fixed facts about wells can act as identifiers rather than knowledge.</li>
       <li>Shortcut tests follow Marconato et al. 2023 (arXiv:2305.19951); the soft rules follow Ross et al. 2017 (arXiv:1703.03717); built-in signs follow monotone networks (arXiv:2205.11775).</li>
     </ul>
   </details>
@@ -723,8 +740,8 @@
         <text class="cat-label" x="726" y="200">Phase 6: the paper</text>
         <rect x="723" y="220" width="217" height="26" rx="5" fill="var(--other)"/>
         <text class="cat-label" x="730" y="238" fill="var(--paper)">Phase 7: thesis, defence</text>
-        <line x1="111" y1="20" x2="111" y2="250" stroke="var(--critical)" stroke-width="2"/>
-        <text class="art-label" x="70" y="16">today, 23 Oct</text>
+        <line x1="117" y1="20" x2="117" y2="250" stroke="var(--critical)" stroke-width="2"/>
+        <text class="art-label" x="76" y="16">today, 25 Oct</text>
         <polygon points="256,96 262,102 256,108 250,102" fill="var(--ink)"/>
         <polygon points="440,134 446,140 440,146 434,140" fill="var(--ink)"/>
         <text class="art-sub" x="180" y="148">Gate 3</text>
@@ -737,8 +754,9 @@
   <h3>Right now</h3>
   <ul>
     <li>All the rivals of version 3 have finished and are in the scores chart. We stopped the EA-LSTM's extra tests (wells left out, less data) on 23 October, because version 4 redoes them with a fairer split. The results go into the monthly report for the supervisor.</li>
-    <li>Re-running all the rivals on dataset v4 is ready but <strong>on hold until you say go</strong>.</li>
-    <li>The knowledge map work continues once you have reviewed the 16 questions.</li>
+    <li><strong>The rivals are being re-run on version 4</strong> since your go of 24 October, never on your laptop. Kaggle (processors only, no graphics card) has done the simple rivals, LightGBM and Pastas; the first Colab session (with a graphics card) did the LSTM and the two graph networks. Kaggle is now running the Pastas stability check and the EA-LSTM, until about 9 a.m. on Sunday 25 October; the EA-LSTM's extra tests need one more Kaggle run. Chronos-2 and the rest of the Taccari tests wait for the next Colab session. Then comes the version 4 report.</li>
+    <li>The third check-up is done; you took its four decisions on 24 October (chapter 11).</li>
+    <li>The knowledge map is filled. Next: the rules inside the map that derive the links (task 12.6), the query tests, and the export of the links for the model.</li>
   </ul>
   <p class="nextlink"><a href="#decisions">Next: the decisions board</a></p>
 </section>
@@ -756,7 +774,7 @@
   <ul class="decisions" id="decision-list"></ul>
   <details class="deeper">
     <summary>Go deeper</summary>
-    <p>The full table of decisions with their reasons: <code>docs/supervisor_questions.md</code> §1 and <code>CLAUDE.md</code> §3. The e-mails to send are in <code>docs/supervisor_questions.md</code> §4–5.</p>
+    <p>The full table of decisions with their reasons: <code>docs/supervisor_questions.md</code> §1 and <code>CLAUDE.md</code> §3. The e-mails to send are in <code>docs/supervisor_questions.md</code> §4–5, the note about Corneilla in §6.</p>
   </details>
   <p class="nextlink"><a href="#words">Next: the word list</a></p>
 </section>

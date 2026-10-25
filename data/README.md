@@ -315,6 +315,28 @@ No new download: v4 is v3 rebuilt from the same caches (piezometer chronicles up
 | Leave-wells-out folds: wells < 2 km apart in one block (45 blocks), blocks dealt by core wells per aquifer group | closest wells in different folds 2,153 m (v3: 20 m); 4 Pliocene core wells per fold |
 | `pct_days_artesian_f25`, `_f50`: artesian share per R3 window | used by `build_panel(train_start=...)` |
 
+Added 2026-10-25 (third review, second pass; decided by Assil on 2026-10-24), no download:
+
+| Date | Command | Output | Rows |
+|---|---|---|---|
+| 2026-10-25 | `PFE_DATASET=v4 python -m src.dataset.placeholders` (also run by `src.dataset.build` from v4) | `data/processed/dataset_v4/placeholder_weeks.parquet` | 60 well-weeks, one run: 10971X0155/PD5 (CORNEILLA, core, Pliocene), depth 0.00 m on 413 consecutive days, 2022-11-30 → 2024-01-16, qualified "Correcte" |
+
+Rule: a run of ≥ 28 days with a depth to water of exactly 0.00 m (records ≤ 7 days apart) is a
+suspect placeholder; its weeks leave every scored variant (`src/models/evaluate.py`). Flowing
+wells record negative depths (F 2,011 days, S 3,033, FAITOU 5,208); PD5 never does. Every
+other run at depth 0 is at most 7 days long and kept (days at depth 0 in total since 2000:
+BSS004PRUN 39, BSS004PRUL 32, BSS004PRUM 17, F3N4 12, all non-core except F3N4; seven other
+stations 1–6 days; PD5 itself has 20 more days at 0 outside its long run). None of the
+flagged weeks is before the test period, so no model input or training week changes. The
+other dataset files are unchanged; all local v4 runs were rescored on 2026-10-25.
+
+Known limit of the weekly pumping (`tests/test_pumping_conservation.py`, 2026-10-25): flat
+uses (drinking water, industry, energy) get 7/365.25 of the annual volume per week label, so
+a year keeps 52 × 7/365.25 = 0.9966 or 53 × 7/365.25 = 1.0157 of it; the four 53-week years
+since 2005 (2006, 2012, 2017, 2023) carry 1.9 % more flat pumping than the others. Seasonal
+uses (irrigation, canals) sum exactly to their annual volume. Kept in v4 (every model sees the
+same input); annual accounting uses the declared records (the KG), not weekly sums.
+
 ### Pump → aquifer unit attribution (Step 12, task 12.3)
 
 | Date | Command | Output | Rows |
@@ -323,6 +345,10 @@ No new download: v4 is v3 rebuilt from the same caches (piezometer chronicles up
 
 Inputs: the dataset's `pumping_points` and `pumping_weekly`, the BNPE points of the
 2026-10-20 snapshot, the quality stations above, the BD LISA V3 GeoPackage.
+
+| Date | Command | Output | Rows |
+|---|---|---|---|
+| 2026-10-25 | `PFE_DATASET=v4 python -m src.kg.pump_coverage` | `data/interim/pump_unit_coverage.csv` (zone × year × imputed × use × unit group × rule × confidence at unit-group and exact-unit resolution → m³), `docs/pump_coverage.md` | plain, declared 2012–2024: 712.0 Mm³; main policy 72.3 % (unit group) / 61.8 % (exact unit); irrigation 0 % |
 
 ### Reused vocabularies (Step 12, task 12.4)
 

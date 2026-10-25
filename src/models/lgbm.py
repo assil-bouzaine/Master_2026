@@ -254,8 +254,14 @@ def main():
     ap.add_argument("--final-only", action="store_true",
                     help="5 seeds of the configuration in <tuned>/best.json, no search "
                          "(dataset v4 re-runs reuse the v3 selection, scripts/v4_from_v3.py)")
+    ap.add_argument("--land-use", choices=["on", "placebo"],
+                    help="with --final-only --no-clim: add the crop-demand inputs, real or placebo "
+                         "(analysis plan §14 item 13) -> lgbm_noclim_tuned_lu_<on|placebo>, with "
+                         "the settings and seeds of lgbm_noclim_tuned, its run without them")
     args = ap.parse_args()
-    P = build_panel(refresh=args.refresh_panel)
+    if args.land_use and not (args.final_only and args.no_clim and not args.regimes):
+        ap.error("--land-use is the pre-registered test: use it with --final-only --no-clim")
+    P = build_panel(refresh=args.refresh_panel, land_use=args.land_use)
     P = P[P["mu"].notna()].reset_index(drop=True)  # wells with training data
     P["resid"] = np.nan
     cols = [c for c in input_columns(P) if c != "resid" and not (args.no_clim and c == "clim_z")]
@@ -269,12 +275,15 @@ def main():
     if args.tune or args.final_only:
         out = RESULTS / tuned
         if args.final_only:
-            pred = final_seeds(P, cols, json.loads((out / "best.json").read_text())["params"],
-                               save_dir=out)
+            best = json.loads((out / "best.json").read_text())["params"]
+            if args.land_use:  # the tuned run's settings, a separate output folder
+                out = RESULTS / f"{tuned}_lu_{args.land_use}"
+                out.mkdir(parents=True, exist_ok=True)
+            pred = final_seeds(P, cols, best, save_dir=out)
         else:
             pred = tune(P, cols, args.tune, out, ("z",) if args.no_clim else SIM_TARGETS)
         pred.to_parquet(out / "predictions.parquet", index=False)
-        s = evaluate_run(tuned)
+        s = evaluate_run(out.name)
         c = s[(s["group"] == "all core") & (s["variant"] == "all")]
         print(c[["split", "n_wells", "NSE", "skill", "KGE", "RMSE"]].round(3).to_string(index=False))
         return

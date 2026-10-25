@@ -82,6 +82,9 @@ substantial task, and links each closed gap to its file and result (CLAUDE.md §
 - **fabio-rovai/open-ontologies** (v2.1.0, MIT): a Rust MCP server for ontology
   change control, with OWL-RL reasoning that issues Lean-checked certificates.
   **Not adopted.** Our quality gates already use ROBOT with HermiT/ELK, pySHACL and
-  pyoxigraph. It has no SHACL-AF rules (we need `sh:SPARQLRule` for distance tests),
-  and it would add a second engine to every gate. Its semantic `plan`/diff could be
-  reconsidered at the ontology freeze, if a release needs a change audit.
+  pyoxigraph. Its Rust engine validates SHACL constraints (including SPARQL-based
+  ones) but does not run SHACL-AF rules; its Python layer runs them by calling pySHACL
+  in advanced mode, the library we already use (`python/src/open_ontologies_lite/shacl.py`,
+  checked 2026-10-25; an earlier line here said it had no SHACL-AF rules at all). It would
+  add a second engine to every gate. Its semantic `plan`/diff could be reconsidered at
+  the ontology freeze, if a release needs a change audit.

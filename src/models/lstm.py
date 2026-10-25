@@ -50,6 +50,7 @@ from src.models.manifest import save_checkpoint, write_manifest, write_schema
 DYNAMIC = ["rain", "ETP", "EVAP", "PE", "DRAINC", "RUNC", "T", "SWI", "pump_gw", "canal",
            "season_sin", "season_cos"]
 RIVER_DYNAMIC = ["river_tet", "river_agly", "river_tech", "river_near"]  # in panels from v3
+LU_DYNAMIC = ["crop_demand"]  # land-use panels only (analysis plan §14 item 13)
 LOOKBACK = 104
 RUN = "lstm"
 # Runs on a GPU automatically when one is present (Colab/Kaggle/Camber), else CPU.
@@ -112,7 +113,8 @@ ARCHS = {"lstm": Net, "ealstm": EALSTM}
 
 
 def input_cols(P):
-    return DYNAMIC + [c for c in RIVER_DYNAMIC if c in P.columns] + STATIC
+    return (DYNAMIC + [c for c in RIVER_DYNAMIC if c in P.columns]
+            + [c for c in LU_DYNAMIC if c in P.columns] + STATIC)
 
 
 def input_stats(P):
@@ -347,9 +349,11 @@ def main():
     ap.add_argument("--fold", type=int, default=None, help="leave-wells-out fold (0-4)")
     ap.add_argument("--train-start", default=None, help="shorter training period (regime R3)")
     ap.add_argument("--refit-from", default=None, help="refit on train+validation (epochs of run)")
+    ap.add_argument("--land-use", choices=["on", "placebo"], default=None,
+                    help="add the crop-demand input, real or placebo (analysis plan §14 item 13)")
     args = ap.parse_args()
     set_lookback(args.lookback)
-    P = build_panel(train_start=args.train_start)  # R3 window statistics from v4
+    P = build_panel(train_start=args.train_start, land_use=args.land_use)  # R3 window statistics from v4
     P = P[P["mu"].notna()]
     codes, weeks, X, Z, split, core, mu, sd, head = arrays(P)
     out = RESULTS / args.run / (f"fold_{args.fold}" if args.fold is not None else "")

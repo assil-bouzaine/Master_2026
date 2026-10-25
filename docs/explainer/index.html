@@ -515,10 +515,10 @@
 </section>
 
 <!-- ============================================================ 7 -->
-<section id="reviews" data-title="Three check-ups" data-depth="60 m">
+<section id="reviews" data-title="Four check-ups" data-depth="60 m">
   <p class="chapter-no">Chapter 7</p>
-  <h2>Three check-ups</h2>
-  <p class="short">Three times we asked for a strict review of our own work, to find mistakes before a journal reviewer does. Each one made the project more honest.</p>
+  <h2>Four check-ups</h2>
+  <p class="short">Four times we asked for a strict review of our own work, to find mistakes before a journal reviewer does. Each one made the project more honest.</p>
 
   <p>A <button class="term" data-term="review">review</button> is like a teacher checking your homework before the exam. It hurts a little, and it saves you later.</p>
 
@@ -561,9 +561,19 @@
   </ul>
   <p><strong>What we found ourselves while checking.</strong> Choosing example wells by a fixed rule showed a flat line at Corneilla: for 413 days the record gives a depth of exactly 0.00 m, labelled "Correcte" by its operator. Wells where water really flows out record a negative depth; this one never does. It is a <button class="term" data-term="placeholder">placeholder</button>, not a measurement. You decided to leave those weeks out of every score by a written rule, to show the scores both ways, and to ask the operator (the dashed piece in chapter 2).</p>
 
+  <h3>Fourth check-up (25 October, codex: back to the subject)</h3>
+  <p>This one did not check numbers; it checked the project against the official subject. It found a real hole: the subject is about <strong>how land use and farming affect water</strong>, and no crop information was used anywhere yet, not in the data, not in the models, not in the knowledge map. You took three decisions the same day (chapter 11):</p>
+  <ul>
+    <li><strong>Crop maps for every year</strong> 2015–2025 (the <button class="term" data-term="rpg">RPG</button>), for the whole département, so every well's 3 km circle is covered.</li>
+    <li><strong>Three questions of the knowledge map became core:</strong> crops and their water needs, satellite signs of irrigation, and explanations of real model outputs.</li>
+    <li><strong>A fair test written in advance:</strong> the same models with and without a weekly "<button class="term" data-term="thirst">crop thirst</button>" number, plus a fake version with the crops of another well. If only the real one helps, the model uses the crop information.</li>
+  </ul>
+  <p>While building it we learned two things. First, many changes in the crop maps are paperwork, not fields: peaches got their own code, and much pasture was simply declared for the first time (<button class="term" data-term="registration">registration effect</button>). Second, the size is right: the crops that are almost always irrigated need about half of the water farmers declare, which fits, because declared water also covers losses.</p>
+
   <details class="deeper">
     <summary>Go deeper</summary>
     <ul>
+      <li>Fourth review: <code>docs/review_codex_2026-10-25.md</code>, answered in <code>docs/review_codex_2026-10-25_response.md</code> (with the working road); the crop work: <code>docs/notes/step12d_land_use.md</code>.</li>
       <li>First review: <code>docs/feedback.md</code>; project review: <code>docs/review_2026-10-23.md</code>; second review: <code>docs/review_codex_2026-10-23.md</code> with the point-by-point answer in <code>docs/review_codex_response.md</code>; third review: <code>docs/review_codex_2026-10-24.md</code>, answered in <code>docs/review_codex_2026-10-24_response.md</code>.</li>
       <li>The analysis plan (version 2): <code>docs/analysis_plan.md</code>; its §13 lists the changes of version 2 and §14 the changes made after the third review, before the plan is frozen.</li>
       <li>The rule for placeholders: <code>src/dataset/placeholders.py</code>; the note to the operator: <code>docs/supervisor_questions.md</code> §6.</li>
@@ -767,7 +777,8 @@
     <li>All the rivals of version 3 have finished and are in the scores chart. We stopped the EA-LSTM's extra tests (wells left out, less data) on 23 October, because version 4 redoes them with a fairer split. The results go into the monthly report for the supervisor.</li>
     <li><strong>The rivals are being re-run on version 4</strong> since your go of 24 October, never on your laptop. Done: the simple rivals, LightGBM, Pastas and its stability check, the EA-LSTM (Kaggle, processors only), the LSTM and the two graph networks (first Colab session, with a graphics card). The first version-4 results are in chapter 5. Kaggle is running the EA-LSTM's last extra tests (until late afternoon on 25 October). Chronos-2 and the rest of the Taccari tests wait for the next Colab session, which needs you to click "allow" for Google Drive. Then the version-4 report becomes final.</li>
     <li>The third check-up is done; you took its four decisions on 24 October (chapter 11).</li>
-    <li>The knowledge map is filled. Next: the rules inside the map that derive the links (task 12.6), the query tests, and the export of the links for the model.</li>
+    <li><strong>Crops come in (25 October).</strong> The yearly crop maps are being downloaded, the crops are sorted into 14 groups with their water needs, and the weekly <button class="term" data-term="thirst">crop thirst</button> around each well is computed and tested. The fair test with and without it is ready, and goes to Kaggle when the running job ends.</li>
+    <li>The knowledge map is filled. Next: the rules inside the map that derive the links (task 12.6), now including the crop links, the query tests, and the export of the links for the model.</li>
   </ul>
   <p class="nextlink"><a href="#decisions">Next: the decisions board</a></p>
 </section>

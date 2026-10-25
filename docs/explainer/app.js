@@ -195,7 +195,10 @@
     ["bdlisa", "BD LISA", "The national map of France's underground layers, with a code for each layer."],
     ["rpg", "RPG", "The register of farm fields and crops that farmers declare each year for EU subsidies."],
     ["safran", "SAFRAN", "Météo-France's daily weather for all of France on 8 km squares: rain, temperature, evaporation, soil wetness."],
-    ["bss", "BSS code", "The national ID number of every borehole in France."]
+    ["bss", "BSS code", "The national ID number of every borehole in France."],
+    ["kc", "Crop coefficient", "How much water a crop uses compared with a short lawn, through its season: low after planting, highest in mid-season. Its water need is about this number times the weather's evaporation.", "Experts: Kc (FAO-56)"],
+    ["thirst", "Crop thirst", "The water the crops around a well would need beyond the rain that fell, week by week. It says what crops would need, not what was really pumped.", "Experts: potential irrigation demand"],
+    ["registration", "Registration effect", "A change in the crop maps that comes from what farmers declare (a new code, land declared for the first time), not from a change in the fields."]
   ];
   const WORD = {};
   WORDS.forEach(w => { WORD[w[0]] = w; });
@@ -640,7 +643,10 @@
     ["made", "Which Pastas is the yardstick?", "From v4: the Pastas fit that only sees the levels of the study years, its start picked by a fixed rule, whatever its final-exam score (24 October, before its results).", "The usual set-up peeks at the whole series, final exam included, to set its starting level. Choosing after seeing the scores would look like picking the winner."],
     ["made", "C against D: what changes?", "Only the links: same model, inputs, budget and random starts for arms C to F, plus three controls fixed in advance (24 October).", "Otherwise a gain could come from the model, not from the meaning of the links."],
     ["made", "The flat line at Corneilla?", "Left out of every score by a written rule: 28 days or more at a depth of exactly 0.00 m (24 October). Scores are also shown without the rule.", "For 413 days the record says 0.00 m, labelled correct, while wells where water really flows out record negative depths. It is not a measurement."],
-    ["wait", "The 16 questions of the knowledge map", "The 6 core ones are approved (24 October); review the other 10: add, drop, set priorities.", "The design of the map is frozen after your review."],
+    ["made", "Back to the subject: crops", "Yearly crop maps 2015–2025 for the whole département; a weekly crop-thirst number per well (25 October).", "The subject is about land use and water, and no crop information was used yet (fourth check-up). The département, not only the plain, so the mountain wells are measured too."],
+    ["made", "Which questions are core?", "Nine: the six of 24 October, plus crops and their water needs, satellite signs of irrigation, and explanations of real outputs (25 October).", "Finishing the core questions must mean the subject's whole chain is covered: land use, water, model, explanation."],
+    ["made", "Does crop information help?", "A test written before any run: the same models with and without the crop thirst, plus a fake version with another well's crops (25 October).", "Only a fair comparison can show the model uses the crops; a no is reported as it is."],
+    ["wait", "The other questions of the knowledge map", "Nine are core (six approved on 24 October, three made core on 25 October); review the other 7: add, drop, set priorities.", "The design of the map is frozen after your review."],
     ["wait", "Two e-mails", "Send them: the decisions and the defence date to the supervisor; the request for monthly drinking-water data.", "The defence date sets the whole schedule; monthly data would separate pumping from weather."],
     ["wait", "A note about Corneilla", "Send it to the operator of the well (SMNPR); the French text is ready.", "Their answer decides whether the rule stays or a corrected record replaces the flat line."],
     ["wait", "Earth Engine account", "Later, for the satellite rule (task 12.10).", "The sign-in is yours."],

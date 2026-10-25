@@ -287,6 +287,7 @@ uses are causal (known at the issue week), but some inputs are not:
 | Weekly spread of irrigation and canal volumes | **no** | weights normalised by the deficit of the whole year |
 | River discharge | mostly | gaps ≤ 8 weeks are interpolated between both ends |
 | Static attributes, KG | yes | fixed before the test period |
+| RPG crop areas (crop-demand feature) | **no** | edition y holds the declarations of campaign y and is published afterwards (the 2025 edition was online in October 2026); 2005–2014 backfilled with 2015 |
 
 Results of the forecast task are reported as hindcast skill; an operational
 claim would need causal versions of the pumping and river inputs.
@@ -569,11 +570,16 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
 13. **Land use (decided by Assil on 2026-10-25, after `docs/review_codex_2026-10-25.md`;
     written before any land-use run).** The subject's land-use pathway is tested, not
     assumed.
-    - *Feature:* weekly potential irrigation demand per well, the sum over irrigable
-      crop groups of (clipped area within 3 km in RPG year y) × max(0, Kc(crop, month) ×
-      ETP − effective rain), with FAO-56 Kc calendars. It is a potential requirement,
-      never presented as metered irrigation (CQ7). Years before 2015 (no parcel-level
-      RPG) carry the 2015 crop mix, flagged as a static backfill (§7b).
+    - *Feature:* weekly potential irrigation demand per well, the sum over the crop
+      classes assumed usually or partly irrigated (`configs/lu_crop_classes.csv`) of
+      (clipped area within 3 km in RPG year y) × max(0, Kc(class, date) × ETP − rain),
+      weekly sums on the well's SAFRAN cell, Kc on calendar dates from the FAO-56 stage
+      tables (`src/dataset/crop_demand.py`). It is a potential requirement, never
+      presented as metered irrigation (CQ7). Years before 2015 (no parcel-level RPG)
+      carry the 2015 crop mix, flagged as a static backfill (§7b). *Wording fixed on
+      2026-10-25, before any land-use run: "Kc(crop, month)" and "effective rain" became
+      Kc on calendar dates and rain, as implemented; SIM2's effective rain is a water
+      surplus, not the rain available to a crop.*
     - *Test (RQ1, exploratory on the v4 baselines):* the tuned LightGBM without its
       own climatology and the tuned LSTM, each with and without the feature, v3
       settings, 5 seeds for the LSTM; a placebo with the crop areas permuted across

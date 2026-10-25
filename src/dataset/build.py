@@ -334,20 +334,10 @@ def build_pumping(forcing):
     return pts, out, last
 
 
-def build_pumping_v3(d, pts, forcing):
-    """BNPE rules of src/dataset/bnpe_v3.py; weekly spread with weights summing to 1."""
-    lon0, lat0, lon1, lat1 = PLAIN_BBOX
-    m = PLAIN_MARGIN_DEG
-    plain = pts["longitude"].between(lon0 - m, lon1 + m) & pts["latitude"].between(lat0 - m, lat1 + m)
-    pts["zone"] = np.where(plain, "plain", "outside")
-    end_year = int(forcing["week"].max().year)
-    annual, log = harmonise(d, restricted_years(), int(MODEL_START[:4]) - 2, end_year,
-                            pts.set_index("code_ouvrage")["zone"])
-    for line in log:
-        print("  bnpe", line)
-    last = int(d["annee"].max())
-    pts = pts[pts["code_ouvrage"].isin(annual["code_ouvrage"])].reset_index(drop=True)
-
+def spread_weights(forcing):
+    """Weekly weights of an annual volume by SAFRAN cell (reconstruction 1 of the analysis
+    plan §8): w_irr follows the April-October climatic deficit of the year (irrigation,
+    canals), w_flat = 7/365.25 (other uses). Columns cell_id, year, week, w_irr, w_flat."""
     f = forcing[["cell_id", "week", "ETP", "rain"]].copy()
     f["year"] = f["week"].dt.year
     f["deficit"] = (f["ETP"] - f["rain"]).clip(lower=0)
@@ -368,7 +358,24 @@ def build_pumping_v3(d, pts, forcing):
         denom[cur] = annual_def[cur] + f.loc[cur, "cell_id"].map(to_come).fillna(0)
     f["w_irr"] = f["deficit"] / denom
     f["w_flat"] = 7 / 365.25
+    return f[["cell_id", "year", "week", "w_irr", "w_flat"]]
 
+
+def build_pumping_v3(d, pts, forcing):
+    """BNPE rules of src/dataset/bnpe_v3.py; weekly spread with weights summing to 1."""
+    lon0, lat0, lon1, lat1 = PLAIN_BBOX
+    m = PLAIN_MARGIN_DEG
+    plain = pts["longitude"].between(lon0 - m, lon1 + m) & pts["latitude"].between(lat0 - m, lat1 + m)
+    pts["zone"] = np.where(plain, "plain", "outside")
+    end_year = int(forcing["week"].max().year)
+    annual, log = harmonise(d, restricted_years(), int(MODEL_START[:4]) - 2, end_year,
+                            pts.set_index("code_ouvrage")["zone"])
+    for line in log:
+        print("  bnpe", line)
+    last = int(d["annee"].max())
+    pts = pts[pts["code_ouvrage"].isin(annual["code_ouvrage"])].reset_index(drop=True)
+
+    f = spread_weights(forcing)
     a = annual.merge(pts[["code_ouvrage", "cell_id"]], on="code_ouvrage")
     out = a.merge(f[["cell_id", "year", "week", "w_irr", "w_flat"]],
                   left_on=["cell_id", "annee"], right_on=["cell_id", "year"])

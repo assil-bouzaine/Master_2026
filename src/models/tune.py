@@ -112,7 +112,14 @@ def main():
     ap.add_argument("--epochs", type=int, default=40)
     ap.add_argument("--final-only", action="store_true")
     ap.add_argument("--no-final", action="store_true", help="search only (smoke tests)")
+    ap.add_argument("--land-use", choices=["on", "placebo"], default=None,
+                    help="with --final-only: the tuned configuration with the crop-demand input, "
+                         "real or placebo -> <model>_tuned_lu_<on|placebo> (analysis plan §14 item 13)")
     args = ap.parse_args()
+    if args.land_use and not args.final_only:
+        ap.error("--land-use reuses the tuned configuration: use it with --final-only")
+    if args.land_use and args.model not in ("lstm", "ealstm"):
+        ap.error("--land-use is implemented for the LSTM family (the pre-registered test)")
     out = RESULTS / f"{args.model}_tuning"
     out.mkdir(parents=True, exist_ok=True)
     study = optuna.create_study(study_name=args.model, direction="maximize",
@@ -140,9 +147,12 @@ def main():
         print(f"selected trial {number}: {p} 3-seed validation {mean:.3f}", flush=True)
     if args.no_final:
         return
-    cmd = [sys.executable, "-m", MODULE[args.model], "--run", f"{args.model}_tuned",
+    run = f"{args.model}_tuned" + (f"_lu_{args.land_use}" if args.land_use else "")
+    cmd = [sys.executable, "-m", MODULE[args.model], "--run", run,
            "--lookback", str(p["lookback"]), "--hidden", str(p["hidden"]),
            "--dropout", str(p["dropout"]), "--lr", str(p["lr"])]
+    if args.land_use:
+        cmd += ["--land-use", args.land_use]
     if args.model in ("lstm", "ealstm"):
         cmd += ["--arch", args.model]
     subprocess.run(cmd, check=True)

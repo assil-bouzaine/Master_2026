@@ -36,7 +36,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 
-from src.config import CRS_L93, CRS_WGS84, DATASET, R3_STARTS
+from src.config import CRS_L93, CRS_WGS84, DATASET, INTERIM, R3_STARTS
 from src.dataset.load import FORCING_VARS, _pumping_near_wells
 from src.dataset.pumping import canal_series, seasonal_drinking_water
 from src.models.evaluate import DS, RESULTS
@@ -90,9 +90,49 @@ def nearest_gauge(wells):
     return dict(zip(wells["code_bss"], np.array(NEAR_CANDIDATES)[d.argmin(axis=1)]))
 
 
-def build_panel(refresh=False, train_start=None):
+LAND_USE = {"on": "demand_irrigable_m3", "placebo": "demand_irrigable_placebo_m3"}
+
+
+def with_land_use(P, land_use, cache, base_cache):
+    """P plus the crop-demand index of src.dataset.crop_demand (analysis plan §14 item 13):
+    `crop_demand` (thousand m3/week, like pump_gw) and its 4/13/52-week means; "placebo"
+    puts the index computed with another well's crop areas under the same names. The cache
+    is rebuilt when the index or the base panel is newer; where the index file is absent
+    (the Kaggle bundle ships the caches only), the cache is used as it is."""
+    src = INTERIM / f"crop_demand_weekly_{DATASET}.parquet"
+    if cache.exists():
+        stale = src.exists() and any(p.exists() and p.stat().st_mtime > cache.stat().st_mtime
+                                     for p in (src, base_cache))
+        if not stale:
+            return pd.read_parquet(cache)
+    d = pd.read_parquet(src, columns=["code_bss", "week", LAND_USE[land_use]])
+    d = d.rename(columns={LAND_USE[land_use]: "crop_demand"}).sort_values(["code_bss", "week"])
+    d["crop_demand"] = d["crop_demand"] / 1e3
+    for k in (4, 13, 52):
+        d[f"crop_demand_m{k}"] = (d.groupby("code_bss")["crop_demand"]
+                                  .transform(lambda s: s.rolling(k, min_periods=1).mean()))
+    P = P.merge(d, on=["code_bss", "week"], how="left")
+    if P["crop_demand"].isna().any():
+        raise RuntimeError(f"weeks of the panel without a crop-demand value: rebuild {src.name}")
+    P.to_parquet(cache, index=False)
+    return P
+
+
+def build_panel(refresh=False, train_start=None, land_use=None):
     """The panel; with train_start (regime R3, dataset v4 on) the per-well statistics come
-    from [train_start, end of training] only. Ignored before v4."""
+    from [train_start, end of training] only. Ignored before v4. land_use ("on" or
+    "placebo", dataset v4 on) adds the crop-demand inputs, with its own cache file; the
+    default panel is unchanged."""
+    if land_use:
+        if land_use not in LAND_USE or DATASET < "v4":
+            raise ValueError(f"land_use must be one of {list(LAND_USE)} on dataset v4 or later")
+        base = build_panel(refresh, train_start)
+        window = {v: k for k, v in R3_STARTS.items()}.get(train_start) if train_start else None
+        stem = f"panel_{window}" if window else "panel"
+        cache = CACHE.with_name(f"{stem}_lu_{land_use}.parquet")
+        if refresh and cache.exists():
+            cache.unlink()
+        return with_land_use(base, land_use, cache, CACHE.with_name(f"{stem}.parquet"))
     if not R3_WINDOW_STATS:
         train_start = None
     window = None

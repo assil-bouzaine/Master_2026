@@ -1,15 +1,15 @@
-class,rpg_groups,code_overrides,fao56_crop_kc_table12,kc_ini,kc_mid,kc_end,fao56_stages_table11,l_ini,l_dev,l_mid,l_late,plant_month,irrigation_assumption
-vine,21,,Grapes - Wine,0.30,0.70,0.45,Grapes Mid Latitudes (wine),30,60,40,80,4,partly
-orchard_deciduous,20,,"Apricots, Peaches, Stone Fruit - no ground cover, no frosts",0.55,0.90,0.65,Deciduous Orchard Calif. USA,30,50,130,30,3,usually
-citrus,,AGR,"Citrus, no ground cover - 70% canopy",0.70,0.65,0.70,Citrus Mediterranean,60,90,120,95,1,usually
-olive,23,,Olives (40 to 60% ground coverage by canopy),0.65,0.70,0.70,Olives Mediterranean,30,90,60,90,3,partly
-nut,22,,Walnut Orchard,0.50,1.10,0.65,Walnuts Utah USA (no Mediterranean row),20,10,130,30,4,partly
-vegetable,25,,Small Vegetables,0.70,1.05,0.95,Tomato Mediterranean,30,40,45,30,4,usually
-artichoke,,ART,Artichokes,0.50,1.00,0.95,Artichoke California (2nd yr),20,25,250,30,5,usually
-maize,2,,Maize Field (grain),0.30,1.20,0.35,Maize (grain) Spain,30,40,50,30,4,usually
-winter_cereal,1 3 4,,Winter Wheat - with non-frozen soils,0.70,1.15,0.30,Winter Wheat Mediterranean,30,140,40,30,11,rainfed
-oilseed,5 6 7,,Sunflower,0.35,1.07,0.35,Grains (small) Mediterranean,20,30,60,40,4,rainfed
-fodder,16,,Alfalfa Hay - averaged cutting effects,0.40,0.95,0.90,Alfalfa total season (Mar-Oct assumed),30,30,150,35,3,partly
-grassland,17 18 19,,Grazing Pasture - Extensive Grazing,0.30,0.75,0.75,constant over Mar-Oct (assumed),30,30,150,35,3,rainfed
-other_annual,8 9 14 15 24 26,,Grains (small) as a placeholder,0.30,1.15,0.40,Grains (small) Mediterranean,20,30,60,40,4,rainfed
-no_crop,11 27 28,,none (fallow and non-productive land),,,,none,,,,,,none
+class,rpg_groups,code_overrides,fao56_crop_kc_table12,kc_ini,kc_mid,kc_end,fao56_stages_table11,l_ini,l_dev,l_mid,l_late,plant_month,irrigation_assumption,perennial
+vine,21,,Grapes - Wine,0.30,0.70,0.45,Grapes Mid Latitudes (wine),30,60,40,80,4,partly,yes
+orchard_deciduous,20,,"Apricots, Peaches, Stone Fruit - no ground cover, no frosts",0.55,0.90,0.65,Deciduous Orchard Calif. USA,30,50,130,30,3,usually,yes
+citrus,,AGR,"Citrus, no ground cover - 70% canopy",0.70,0.65,0.70,Citrus Mediterranean,60,90,120,95,1,usually,yes
+olive,23,,Olives (40 to 60% ground coverage by canopy),0.65,0.70,0.70,Olives Mediterranean,30,90,60,90,3,partly,yes
+nut,22,,Walnut Orchard,0.50,1.10,0.65,Walnuts Utah USA (FAO-56 has no Mediterranean walnut row),20,10,130,30,4,partly,yes
+vegetable,25,,Small Vegetables,0.70,1.05,0.95,Tomato Mediterranean,30,40,45,30,4,usually,no
+artichoke,,ART,Artichokes,0.50,1.00,0.95,Artichoke California (2nd yr),20,25,250,30,5,usually,yes
+maize,2,,Maize Field (grain),0.30,1.20,0.35,Maize (grain) Spain,30,40,50,30,4,usually,no
+winter_cereal,1 3 4,,Winter Wheat - with non-frozen soils,0.70,1.15,0.30,Winter Wheat Mediterranean,30,140,40,30,11,rainfed,no
+oilseed,5 6 7,,Sunflower,0.35,1.07,0.35,Sunflower Medit. (April/May; April taken),25,35,45,25,4,rainfed,no
+fodder,16,,Alfalfa Hay - averaged cutting effects,0.40,0.95,0.90,none in FAO-56 for alfalfa (cuttings); season from March assumed,30,30,150,35,3,partly,yes
+grassland,17 18 19,,Grazing Pasture - Extensive Grazing,0.30,0.75,0.75,none in FAO-56 for pasture; season from March assumed,30,30,150,35,3,rainfed,yes
+other_annual,8 9 14 15 24 26,,Grains (small) as a placeholder,0.30,1.15,0.40,Grains (small) Mediterranean,20,30,60,40,4,rainfed,no
+no_crop,11 27 28,,none (fallow and non-productive land),,,,none,,,,,,none,

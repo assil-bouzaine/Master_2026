@@ -102,6 +102,25 @@ the farm-borehole links stay "possible". So the agricultural signal enters as cr
   +1,150 ha (+16 %) between 2010 and 2020, so part of the orchard area on newly declared
   land is real planting, which the RPG alone cannot separate from registration.
 
+## Second Codex review of 2026-10-25 (answered the same afternoon)
+`docs/review_codex_2026-10-25b.md`, verdicts in `docs/review_codex_2026-10-25b_response.md`.
+It read the work at 13:09, half built: its two failing tests and missing files were true
+then and were resolved by the full rebuild. Three findings held and were fixed:
+- **Run identity (P1).** A resumed LSTM could have mixed seeds from different land-use
+  inputs: the fingerprint hashed settings and input names, not values. Each land-use
+  panel now has an identity record (`<panel>.json`) with a content hash of its land-use
+  columns, checked on every use and put into the LSTM fingerprint and both manifests.
+- **Cache key (P2).** The crop-area cache now keys on the well coordinates, the CRS, the
+  buffer and a calculation version.
+- **The placebo claim was too strong.** One permutation cannot separate crop geography,
+  registration and real change. Assil added the **frozen** variant (2019 crop areas in
+  every year) before any run; the claim of each contrast is fixed in the plan.
+- **A regression of mine, found while fixing P1:** the `--land-use` option put
+  `land_use: None` into every LSTM fingerprint, so a Kaggle kernel resuming EA-LSTM folds
+  begun with older code would have stopped. An unset option is now left out (tested).
+- `tests/test_land_use_inputs.py` checks the snapshot before packaging: editions and lags,
+  schema, the four panels against the current index and their records.
+
 ## Corrections made on 2026-10-25 (afternoon), after re-checking the morning's work
 - **15 wells outside the clip.** The first clip (plain bbox + 3 km) did not hold the 3 km
   zones of the 15 mountain wells (group "other", not core): their index was a false 0.

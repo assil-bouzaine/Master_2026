@@ -490,8 +490,10 @@ Added in v2:
   the physical contribution. **Ontology consistency** (entities exist, signs
   agree), **faithfulness** (fidelity+/−) and **causal correctness** (recovery on
   the twin) are three separate properties, each with its own evidence.
-- Land use is static context (RPG 2016 and 2023); no annual land-use effect is
-  claimed. `ProbablyIrrigatedParcel` is a heuristic unless it is checked against
+- Land use enters as an annual crop-demand index (RPG 2015–2025, §14 item 13); no
+  causal effect of land-use change is claimed. The claims each land-use contrast may
+  support are fixed in §14 item 13 (before 2026-10-25 this read "static context (RPG 2016
+  and 2023)"). `ProbablyIrrigatedParcel` is a heuristic unless it is checked against
   independent irrigation evidence; agreement with RPG crops does not validate
   irrigation.
 - The use conflict on the Pliocene is the motivation; the thesis does not claim
@@ -593,11 +595,34 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
     - *Test (RQ1, exploratory on the v4 baselines):* the tuned LightGBM without its
       own climatology and the tuned LSTM, each with and without the feature, v3
       settings, 5 seeds for the LSTM; a placebo with the crop areas permuted across
-      wells (static features as identifiers, Heudorfer et al. 2024,
-      doi:10.5194/hess-28-525-2024). Endpoint: drought-phase median NSE and skill on
+      wells (a derangement: each well keeps its weather and gets another well's crop
+      areas). Heudorfer et al. 2024 (doi:10.5194/hess-28-525-2024), who found static
+      features acting as identifiers, motivate such a control; they do not validate this
+      particular design. Endpoint: drought-phase median NSE and skill on
       the core wells, cluster sign-flip, Holm over the two models; per aquifer group
       as secondary; the wide row and the placebo are reported with the same endpoint,
       not counted in the Holm family. A null or negative result is reported as is.
+    - *Frozen variant (decided by Assil on 2026-10-25, before any land-use run, after the
+      second Codex review of that day):* the main index with the crop areas of the 2019
+      RPG edition (the last one inside the training period) in every year. Reported with
+      the same endpoint, outside the Holm family: frozen vs without, and on vs frozen.
+    - *What each result may claim.* A positive main contrast supports "incremental
+      predictive information from the demand index", not an effect of land-use change. A
+      gain over the placebo shows information tied to the well's own crop areas, but does
+      not separate static agricultural geography, registration changes and actual crop
+      change. Only a gain of the dated index over the frozen one supports a statement
+      about the change of crop areas over the years, and even then registration changes
+      remain part of it (`src/analysis/rpg_coverage.py`).
+    - *Run identity.* Land-use runs record the variant and a content hash of their
+      land-use inputs (with the index file, the crop-class table and the RPG editions);
+      the LSTM puts the hash into its fingerprint, so cached seeds made from other
+      land-use inputs stop the run (`tests/test_land_use_inputs.py`).
     - *Phase 4:* crop demand and canal return are `lulcw:Influence` types of the
-      hybrid; arm B reports with and without them.
+      hybrid; arm B reports with and without them. Before crop demand gets a response
+      sign, its pathway is specified (groundwater abstraction by attributed facilities,
+      canal-return recharge, or another qualified pathway) and unknown water sources stay
+      unknown; it must not count the same assumed withdrawal twice, once through the
+      reconstructed pumping (under reconstruction 3 irrigation already follows the crop
+      calendar) and again as an independent demand effect (second Codex review of
+      2026-10-25). To be settled at Gate 3.
     - *Reconstruction (3) of §8* uses the same Kc calendar and crop mix.

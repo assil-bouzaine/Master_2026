@@ -515,10 +515,10 @@
 </section>
 
 <!-- ============================================================ 7 -->
-<section id="reviews" data-title="Four check-ups" data-depth="60 m">
+<section id="reviews" data-title="Five check-ups" data-depth="60 m">
   <p class="chapter-no">Chapter 7</p>
-  <h2>Four check-ups</h2>
-  <p class="short">Four times we asked for a strict review of our own work, to find mistakes before a journal reviewer does. Each one made the project more honest.</p>
+  <h2>Five check-ups</h2>
+  <p class="short">Five times we asked for a strict review of our own work, to find mistakes before a journal reviewer does. Each one made the project more honest.</p>
 
   <p>A <button class="term" data-term="review">review</button> is like a teacher checking your homework before the exam. It hurts a little, and it saves you later.</p>
 
@@ -569,6 +569,14 @@
     <li><strong>A fair test written in advance:</strong> the same models with and without a weekly "<button class="term" data-term="thirst">crop thirst</button>" number, plus a fake version with the crops of another well. If only the real one helps, the model uses the crop information.</li>
   </ul>
   <p>While building it we learned two things. First, many changes in the crop maps are paperwork, not fields: peaches got their own code, and much pasture was simply declared for the first time (<button class="term" data-term="registration">registration effect</button>). Second, the size is right: the crops that are almost always irrigated need about half of the water farmers declare, which fits, because declared water also covers losses. The 2020 farm census then showed that only about 1 vine in 20 is irrigated, so you decided that the crop thirst counts only the crops that are mostly watered (orchards, vegetables); the version with all vines stays as a side test.</p>
+
+  <h3>Fifth check-up (25 October afternoon, codex on the crop work)</h3>
+  <p>Codex looked at the crop work while it was half built, and said: finish it and lock it before running the test. Two of its warnings were real problems in the code:</p>
+  <ul>
+    <li><strong>A run could mix old and new crop numbers.</strong> If the crop file changed while a model was half trained, the finished parts could have been kept with the old numbers. Now every crop table carries a fingerprint of its numbers, and a run that sees other numbers stops.</li>
+    <li><strong>Moving a well would not have refreshed its crops.</strong> The saved crop areas now remember where each well is.</li>
+  </ul>
+  <p>It also said the fake-crops test cannot tell <em>where</em> the crops are from <em>how they change</em>. You added a fourth version: the 2019 crops kept frozen for every year. If the real, changing crops do no better than the frozen ones, the model is using crop geography, not change. While fixing this, we found and fixed a small mistake of ours that would have stopped some unfinished runs on Kaggle.</p>
 
   <details class="deeper">
     <summary>Go deeper</summary>

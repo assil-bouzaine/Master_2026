@@ -125,6 +125,7 @@ def bundle():
                ROOT / "tests" / "__init__.py", ROOT / "tests" / "test_ealstm.py",
                DATASET_DIR, *sorted((RAW / "safran").glob("sim2_66_[0-9]*.parquet")),
                *sorted((V4 / "_cache").glob("panel*.parquet")),
+               *sorted((V4 / "_cache").glob("panel*.json")),  # land-use identity records
                *sorted(V4.glob("*_tuning/best.json")), *sorted(V4.glob("*_tuned/best.json"))]
     ds = STAGE / "dataset"
     shutil.rmtree(ds, ignore_errors=True)

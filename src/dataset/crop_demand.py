@@ -42,8 +42,14 @@ France only: `zone_partly_foreign` flags wells whose zone reaches Spain or Andor
 
 Placebo (analysis plan §14 item 13): `demand_main_placebo_m3` gives each well its own
 weather with the main classes' areas of another well (`placebo_donor`, a seeded
-derangement: no well keeps its own areas). A model that gains from the real index but not from the
-placebo uses the crop information, not just a per-well signature.
+derangement: no well keeps its own areas). A gain over the placebo shows that the index
+carries information tied to the well's own crop areas beyond the shared weather and a
+generic demand pattern. It does not separate static agricultural geography, changes in
+registration and actual crop change (second Codex review of 2026-10-25): that is the job
+of the frozen variant, `demand_main_frozen_m3`, the main classes with the areas of the
+FROZEN_EDITION (2019, the last training-period edition) in every year (Assil, 2026-10-25,
+before any run). A dated index that beats the frozen one carries information from the
+change of the crop areas over time.
 
 Outputs: data/interim/crop_area_3km.parquet        clipped ha by well x edition x crop code
          data/interim/crop_area_3km_meta.json      what the area cache was built from
@@ -67,6 +73,8 @@ AREA_OUT = INTERIM / "crop_area_3km.parquet"
 AREA_META = INTERIM / "crop_area_3km_meta.json"
 FOREIGN = INTERIM / "foreign_land_66.parquet"
 PLACEBO_SEED = 0
+FROZEN_EDITION = 2019           # last RPG edition inside the training period (to 2019)
+CALC_VERSION = "2026-10-25b"    # change it when the clipped-area computation changes
 
 
 def load_classes(path=CLASSES):
@@ -170,7 +178,11 @@ def build_areas(wells, rebuild=False):
     files = {y: INTERIM / f"rpg_dept_{y}.parquet" for y in rpg_years()}
     if not files:
         raise FileNotFoundError("no rpg_dept_<year>.parquet: run src.ingest.rpg --clip dept")
-    meta = {"buffer_m": BUFFER_M, "wells": sorted(wells["code_bss"]),
+    # the zones are defined by the well coordinates: a corrected location must rebuild the
+    # cache even when the identifier stays (second Codex review of 2026-10-25, P2)
+    meta = {"calc_version": CALC_VERSION, "crs": CRS_L93, "buffer_m": BUFFER_M,
+            "wells": {c: [round(float(x), 9), round(float(y), 9)]
+                      for c, x, y in sorted(zip(wells["code_bss"], wells["x"], wells["y"]))},
             "inputs": {str(y): [p.stat().st_size, int(p.stat().st_mtime)] for y, p in files.items()}}
     if not rebuild and AREA_OUT.exists() and AREA_META.exists() and json.loads(AREA_META.read_text()) == meta:
         return pd.read_parquet(AREA_OUT)
@@ -200,7 +212,8 @@ def derangement(codes, seed=PLACEBO_SEED):
 def demand(wells, forcing, areas, classes, foreign):
     """Well x week demand (m3/week), per irrigation assumption, with the edition used.
     `demand_main_placebo_m3`: the well's own weather with the main classes' areas of
-    another well (derangement), the placebo of the analysis plan §14 item 13."""
+    another well (derangement); `demand_main_frozen_m3`: the main classes with the areas of
+    FROZEN_EDITION in every year (analysis plan §14 item 13)."""
     weeks = pd.DatetimeIndex(sorted(forcing["week"].unique()))
     kc = kc_weekly(weeks, classes)
     f = forcing.set_index(["cell_id", "week"])[["ETP", "rain"]]
@@ -213,12 +226,16 @@ def demand(wells, forcing, areas, classes, foreign):
     assumption = classes["irrigation_assumption"]
     used = pd.Series(weeks.year.map(ymap), index=weeks)
 
-    def areas_by_week(code):
+    if FROZEN_EDITION not in avail:
+        raise RuntimeError(f"RPG edition {FROZEN_EDITION} (frozen variant) is not among {avail}")
+
+    def areas_by_edition(code):
         if code in wide.index.get_level_values(0):
-            a = wide.loc[code].reindex(avail, fill_value=0.0)
-        else:  # a well with no parcel within 3 km
-            a = pd.DataFrame(0.0, index=avail, columns=wide.columns)
-        return a.reindex(used.to_numpy()).set_axis(weeks)
+            return wide.loc[code].reindex(avail, fill_value=0.0)
+        return pd.DataFrame(0.0, index=avail, columns=wide.columns)  # no parcel within 3 km
+
+    def areas_by_week(code):
+        return areas_by_edition(code).reindex(used.to_numpy()).set_axis(weeks)
 
     donor = derangement(wells["code_bss"])
     rows = []
@@ -236,11 +253,14 @@ def demand(wells, forcing, areas, classes, foreign):
         main = [c for c in cols if assumption[c] in MAIN]
         wide_cls = [c for c in cols if assumption[c] in WIDE]
         placebo = (need[main] * areas_by_week(donor[w["code_bss"]])[main] * 10.0).sum(axis=1).to_numpy()
+        frozen_ha = areas_by_edition(w["code_bss"]).loc[FROZEN_EDITION, main]
+        frozen = (need[main].mul(frozen_ha, axis=1) * 10.0).sum(axis=1).to_numpy()
         rows.append(pd.DataFrame({
             "code_bss": w["code_bss"], "week": weeks,
             "demand_usually_m3": part("usually"), "demand_partly_m3": part("partly"),
             "demand_rainfed_m3": part("rainfed"),
             "demand_main_placebo_m3": placebo, "placebo_donor": donor[w["code_bss"]],
+            "demand_main_frozen_m3": frozen,
             "main_ha": a_t[main].sum(axis=1).to_numpy(), "wide_ha": a_t[wide_cls].sum(axis=1).to_numpy(),
             "rpg_year_used": used.to_numpy(),
             "zone_partly_foreign": bool(foreign[w["code_bss"]] > 0),

@@ -50,7 +50,8 @@ import pandas as pd
 
 from src.config import R3_STARTS
 from src.models.evaluate import DS, RESULTS, evaluate_run
-from src.models.features import R3_WINDOW_STATS, build_panel, input_columns, lagged_panel
+from src.models.features import (R3_WINDOW_STATS, build_panel, input_columns, lagged_panel,
+                                  land_use_identity)
 from src.models.manifest import write_manifest
 
 SEEDS = (0, 1, 2, 3, 4)
@@ -141,9 +142,10 @@ def tune(D, cols, n_trials, out, targets=SIM_TARGETS):
     return final_seeds(D, cols, b, save_dir=out)
 
 
-def final_seeds(D, cols, b, save_dir=None):
+def final_seeds(D, cols, b, save_dir=None, extra=None):
     """The selected configuration b (best.json "params") trained with the 5 seeds. With
-    `save_dir`, each booster is saved there (model_seed_<k>.txt) with a manifest.json."""
+    `save_dir`, each booster is saved there (model_seed_<k>.txt) with a manifest.json;
+    `extra` (e.g. the land-use identity record) is added to the manifest's configuration."""
     params = dict(BASE, **{k: v for k, v in b.items() if k != "target"})
     preds = []
     for s in SEEDS:
@@ -153,8 +155,8 @@ def final_seeds(D, cols, b, save_dir=None):
             booster.save_model(str(save_dir / f"model_seed_{s}.txt"),
                                num_iteration=booster.best_iteration)
     if save_dir is not None:
-        write_manifest(save_dir, {"params": params, "target": b["target"], "inputs": cols},
-                       SEEDS)
+        write_manifest(save_dir, {"params": params, "target": b["target"], "inputs": cols}
+                       | (extra or {}), SEEDS)
     Z = np.vstack(preds)
     o = D[["code_bss", "week"]].copy()
     o["pred"] = D["mu"].values + D["sd"].values * Z.mean(axis=0)
@@ -254,9 +256,9 @@ def main():
     ap.add_argument("--final-only", action="store_true",
                     help="5 seeds of the configuration in <tuned>/best.json, no search "
                          "(dataset v4 re-runs reuse the v3 selection, scripts/v4_from_v3.py)")
-    ap.add_argument("--land-use", choices=["on", "placebo", "wide"],
-                    help="with --final-only --no-clim: add the crop-demand inputs, main, placebo or "
-                         "wide (analysis plan §14 item 13) -> lgbm_noclim_tuned_lu_<variant>, with "
+    ap.add_argument("--land-use", choices=["on", "placebo", "wide", "frozen"],
+                    help="with --final-only --no-clim: add the crop-demand inputs, main, placebo, "
+                         "wide or frozen (analysis plan §14 item 13) -> lgbm_noclim_tuned_lu_<variant>, with "
                          "the settings and seeds of lgbm_noclim_tuned, its run without them")
     args = ap.parse_args()
     if args.land_use and not (args.final_only and args.no_clim and not args.regimes):
@@ -276,10 +278,12 @@ def main():
         out = RESULTS / tuned
         if args.final_only:
             best = json.loads((out / "best.json").read_text())["params"]
+            extra = None
             if args.land_use:  # the tuned run's settings, a separate output folder
                 out = RESULTS / f"{tuned}_lu_{args.land_use}"
                 out.mkdir(parents=True, exist_ok=True)
-            pred = final_seeds(P, cols, best, save_dir=out)
+                extra = {"land_use": land_use_identity(args.land_use)}
+            pred = final_seeds(P, cols, best, save_dir=out, extra=extra)
         else:
             pred = tune(P, cols, args.tune, out, ("z",) if args.no_clim else SIM_TARGETS)
         pred.to_parquet(out / "predictions.parquet", index=False)

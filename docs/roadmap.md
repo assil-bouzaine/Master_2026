@@ -150,13 +150,15 @@ river inputs, leak fixed). See `docs/notes/step08_dataset.md` and
   - the regimes
   - equal-budget tuning
   - the drought/recovery evaluation (`docs/analysis_plan.md`)
-- Running: EA-LSTM (laptop), Taccari-graph ST-GNN (Colab).
+- Ran (v3): EA-LSTM, Taccari-graph ST-GNN. Since 2026-10-24 no model is trained on the
+  laptop (Assil): CPU fits go to Kaggle, GPU fits to Colab (§5).
 - Then: ensemble, report, Gate 2 addendum. **No new baselines after this.**
 - **Gate 2:** answered 2026-10-23 (the choices are left to Assil).
 - **Second review (2026-10-23, Step 12b):** dataset v4 (quality filter, grouped
   folds, R3 window statistics) and analysis plan v2. Every baseline is re-run on
-  v4 with the configuration selected on v3 (laptop: `scripts/run_v4_cpu.sh`;
-  Colab: `final:`/`regimes:` steps), then the v4 report. No re-tuning.
+  v4 with the configuration selected on v3 (Kaggle CPU: `scripts/run_v4_cpu.sh`
+  through `scripts/kaggle_cpu.py`; Colab: `final:`/`regimes:` steps), then the v4 report.
+  No re-tuning.
 
 ### Phase 3: ontology and knowledge graph (26 Oct – 6 Dec, 6 weeks)
 
@@ -289,8 +291,9 @@ the prototype page.
 
 | Work | Where | Why |
 |---|---|---|
-| Ingest, KG, SHACL, Pastas, single runs, EA-LSTM sweep | **Laptop** (4 cores, 11 GB) | The graph is tiny (≈ 65–250 nodes × 1,100 weeks). |
-| Tuning sweeps, Phase 4 arms, twin experiments | **Google Colab** free T4 (main); **Camber** L4 monthly allowance (renews on the 13th) | Kaggle is unavailable (no verification SMS to Tunisia). |
+| Ingest, KG, SHACL, data preparation, scoring and reports | **Laptop** (4 cores, 11 GB) | No model training on the laptop (Assil, 2026-10-24). The graph is tiny (≈ 65–250 nodes × 1,100 weeks). |
+| CPU fits: LightGBM, Pastas, EA-LSTM on CPU, the land-use test | **Kaggle, CPU only** (4 CPUs, 32 GB, 12 h, no internet; offline wheels) | Kaggle CPU works without phone verification; its GPU needs an SMS that does not reach Tunisian numbers (`docs/gpu_howto.md`, "Kaggle CPU"). |
+| Tuning sweeps, Phase 4 arms, twin experiments | **Google Colab** free T4 (main); **Camber** L4 monthly allowance (renews on the 13th) | GPU fits. |
 | LLM matchers (OntoAligner), text extraction | Colab GPU, local open 7–8B model | Reproducible; no paid API |
 | Sentinel-2 NDVI per parcel, AlphaEarth (optional) | **Google Earth Engine** (Assil's account) | Server side; only the parcel summaries are downloaded |
 
@@ -329,7 +332,7 @@ Rules:
 | The hybrid model misses nonlinearity | Phase 4 | Bounded residual network; the black-box HGT as comparison. |
 | Ontology work balloons | Phase 3 still open on 6 Dec | Freeze to the MUST competency questions; the rest is future work. |
 | A reused vocabulary disappears or has an unclear licence (SAWGraph) | Phase 3.2 | Keep local copies of the terms we use; cite the source; fall back to `lulcw:` terms with `skos:closeMatch`. |
-| GPU access (Colab limits, Camber allowance) | Any sweep | Resumable runs; Camber renews monthly; the laptop for small sweeps. |
+| GPU access (Colab limits, Camber allowance) | Any sweep | Resumable runs; Camber renews monthly; Kaggle CPU for what fits on a CPU. |
 | Defence date earlier than June | Supervisor's answer | Cut Phase 7 extras (transfer demo, text extraction) first. |
 | Data drift (2025: 52 % "Non qualifié") | — | Results with and without unqualified values. |
 

@@ -13,9 +13,15 @@ seeds), well by well on the core wells, in the drought phase:
   placebo         placebo vs without, and on vs placebo: a gain that the placebo also shows
                   is not evidence that the crop information is used
   wide            wide (vines, olives, nuts, fodder added) vs without
+  frozen          frozen (the 2019 crop areas in every year) vs without, and on vs frozen:
+                  only a gain of the dated index over the frozen one is evidence that the
+                  change of crop areas over the years adds information (added by Assil on
+                  2026-10-25 before any run, after the second Codex review of that day)
   aquifer groups  the main contrast per group (secondary)
 
-Placebo, wide and group rows are reported with the same endpoint, outside the Holm family.
+Placebo, wide, frozen and group rows are reported with the same endpoint, outside the Holm
+family. The claim a positive main contrast supports is "incremental predictive information
+from the demand index", not an effect of land-use change.
 Runs not yet available are listed as missing; nothing is computed for them.
 
 Output: results/<dataset>/land_use_test.csv (printed)
@@ -40,12 +46,13 @@ def contrasts():
     wells = pd.read_parquet(DS / "wells.parquet")
     rows, missing = [], []
     for label, base in MODELS.items():
-        runs = {v: metrics(base + s) for v, s in
-                (("without", ""), ("on", "_lu_on"), ("placebo", "_lu_placebo"), ("wide", "_lu_wide"))}
-        missing += [base + s for v, s in (("without", ""), ("on", "_lu_on"), ("placebo", "_lu_placebo"),
-                                          ("wide", "_lu_wide")) if runs[v] is None]
+        variants = (("without", ""), ("on", "_lu_on"), ("placebo", "_lu_placebo"),
+                    ("wide", "_lu_wide"), ("frozen", "_lu_frozen"))
+        runs = {v: metrics(base + s) for v, s in variants}
+        missing += [base + s for v, s in variants if runs[v] is None]
         pairs = [("main", "on", "without"), ("placebo", "placebo", "without"),
-                 ("placebo", "on", "placebo"), ("wide", "wide", "without")]
+                 ("placebo", "on", "placebo"), ("wide", "wide", "without"),
+                 ("frozen", "frozen", "without"), ("frozen", "on", "frozen")]
         for kind, a, b in pairs:
             if runs[a] is None or runs[b] is None:
                 continue

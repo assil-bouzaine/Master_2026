@@ -44,7 +44,7 @@ from torch import _VF, nn
 
 from src.config import DATASET
 from src.models.evaluate import DS, RESULTS, evaluate_run
-from src.models.features import STATIC, build_panel
+from src.models.features import STATIC, build_panel, land_use_identity
 from src.models.manifest import save_checkpoint, write_manifest, write_schema
 
 DYNAMIC = ["rain", "ETP", "EVAP", "PE", "DRAINC", "RUNC", "T", "SWI", "pump_gw", "canal",
@@ -261,19 +261,23 @@ def save_seed_model(out, s, state, best, best_ep, fp):
                     {"seed": s, "best_epoch": best_ep, "best_val_nse": best, "fingerprint": fp})
 
 
-def run_fingerprint(args, inputs):
-    """Hash of the settings that change a seed's result (not the seed list, not the run name)."""
-    cfg = {k: v for k, v in vars(args).items() if k not in ("seeds", "run")}
-    cfg |= {"inputs": list(inputs), "dataset": DATASET}
+def run_fingerprint(args, inputs, extra=None):
+    """Hash of the settings that change a seed's result (not the seed list, not the run name).
+    An unset --land-use is left out, so runs fingerprinted before that option existed keep
+    their fingerprint; a land-use run adds `extra`, the content hash of its land-use inputs
+    (second Codex review of 2026-10-25, P1: other crop data must not reuse cached seeds)."""
+    cfg = {k: v for k, v in vars(args).items()
+           if k not in ("seeds", "run") and not (k == "land_use" and v is None)}
+    cfg |= {"inputs": list(inputs), "dataset": DATASET} | (extra or {})
     return hashlib.sha256(json.dumps(cfg, sort_keys=True, default=str).encode()).hexdigest()[:16]
 
 
-def write_config(out, args, inputs):
+def write_config(out, args, inputs, extra=None):
     """config.json of a run folder, with the run's fingerprint. A folder made with other
     settings stops the run instead of being overwritten: its cached seeds would otherwise be
     reused under the new settings (third review, docs/review_codex_2026-10-24.md §7)."""
-    fp = run_fingerprint(args, inputs)
-    new = vars(args) | {"inputs": list(inputs), "dataset": DATASET, "fingerprint": fp}
+    fp = run_fingerprint(args, inputs, extra)
+    new = vars(args) | {"inputs": list(inputs), "dataset": DATASET, "fingerprint": fp} | (extra or {})
     f = out / "config.json"
     if f.exists():
         old = json.loads(f.read_text())
@@ -349,16 +353,18 @@ def main():
     ap.add_argument("--fold", type=int, default=None, help="leave-wells-out fold (0-4)")
     ap.add_argument("--train-start", default=None, help="shorter training period (regime R3)")
     ap.add_argument("--refit-from", default=None, help="refit on train+validation (epochs of run)")
-    ap.add_argument("--land-use", choices=["on", "placebo", "wide"], default=None,
-                    help="add the crop-demand input: main, placebo or wide (analysis plan §14 item 13)")
+    ap.add_argument("--land-use", choices=["on", "placebo", "wide", "frozen"], default=None,
+                    help="add the crop-demand input: main, placebo, wide or frozen (analysis plan §14 item 13)")
     args = ap.parse_args()
     set_lookback(args.lookback)
     P = build_panel(train_start=args.train_start, land_use=args.land_use)  # R3 window statistics from v4
+    lu = land_use_identity(args.land_use, args.train_start) if args.land_use else None
+    extra = {"land_use_sha256_16": lu["content_sha256_16"]} if lu else None
     P = P[P["mu"].notna()]
     codes, weeks, X, Z, split, core, mu, sd, head = arrays(P)
     out = RESULTS / args.run / (f"fold_{args.fold}" if args.fold is not None else "")
     out.mkdir(parents=True, exist_ok=True)
-    fp = write_config(out, args, input_cols(P))
+    fp = write_config(out, args, input_cols(P), extra)
     write_schema(out, schema_of(P, codes, X.shape[2], args.lookback, {"arch": args.arch}))
     train_mask, keep = regime_masks(split, weeks, codes, args.fold, args.train_start,
                                     refit=args.refit_from is not None)
@@ -374,7 +380,7 @@ def main():
                                        fixed_epochs=fixed, state_out=state)
         save_seed_model(out, s, state, best, best_ep, fp)
         save_seed(path, pz, codes, weeks, best, best_ep, fp)
-        write_manifest(out, vars(args) | {"fingerprint": fp}, [s])
+        write_manifest(out, vars(args) | {"fingerprint": fp} | ({"land_use": lu} if lu else {}), [s])
         print(f"seed {s}: best validation median NSE {best:.3f} (epoch {best_ep})", flush=True)
     if args.fold is not None:
         return  # folds are assembled by src.models.regimes

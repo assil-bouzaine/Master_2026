@@ -77,16 +77,16 @@ its data arrive by February.
 
 ### 1b. How each objective of the subject is covered
 
-| Subject (`Documents/sujet.docx`) | Covered by |
-|---|---|
-| LULC-Water meta-ontology in OWL | A network of reused ontologies plus our bridging module `lulcw:` (the WHOW-KG pattern), presented as the meta-ontology |
-| SO1: fuse and align existing ontologies (SWEET, INSPIRE, AgroPortal) | Reuse and alignment axioms (§3); the RPG → AGROVOC alignment experiment (gold set + OntoAligner, P/R/F1) |
-| SO2: semantic enrichment of remote sensing (rules) | One derived concept, `lulcw:ProbablyIrrigatedParcel`: Sentinel-2 summer NDVI + soil wetness, by a SHACL-AF rule (CQ15); checked against independent irrigation evidence, otherwise labelled a heuristic; one ablation row tests whether it adds information |
-| SO3: the ontology structures and constrains the model | Graph exported from the KG (SPARQL → HeteroData); response-sign constraints from the causal axioms |
-| SO4: explanations along the causal chain | Contributions → SPARQL chains → templates, with faithfulness tests |
-| SO5: dashboard "semantic intelligence" queries | The competency-question queries plus one map page; one scenario query (CQ16) |
-| Phase 1 of the subject: text extraction from articles | Small, measured version: 10–20 papers, local LLM, manual check, precision (thesis) |
-| Risks: drought / pollution / use conflicts | Drought (head + SGI); use conflict as a framing and CQ12; pollution is future work |
+| Subject (`Documents/sujet.docx`) | Covered by | Status on 2026-10-25 (✅ done · 🔄 in progress · ⬜ not started) |
+|---|---|---|
+| LULC-Water meta-ontology in OWL | A network of reused ontologies plus our bridging module `lulcw:` (the WHOW-KG pattern), presented as the meta-ontology | 🔄 `lulcw:` 0.1.1 for the 6 first MUST CQs, local copies of the reused terms, quality gates pass; land-use and SHOULD/COULD modules to add |
+| SO1: fuse and align existing ontologies (SWEET, INSPIRE, AgroPortal) | Reuse and alignment axioms (§3); the RPG → AGROVOC alignment experiment (gold set + OntoAligner, P/R/F1) | 🔄 alignments to GWML2/HyFO and SWEET done; crop classes (LU-2) done; AGROVOC experiment ⬜ (12.9) |
+| SO2: semantic enrichment of remote sensing (rules) | One derived concept, `lulcw:ProbablyIrrigatedParcel`: Sentinel-2 summer NDVI + soil wetness, by a SHACL-AF rule (CQ15); checked against independent irrigation evidence, otherwise labelled a heuristic; one ablation row tests whether it adds information | ⬜ (12.10, needs the Earth Engine login); the census evidence on irrigated crops is in hand |
+| SO3: the ontology structures and constrains the model | Graph exported from the KG (SPARQL → HeteroData); response-sign constraints from the causal axioms | 🔄 factual KG built (12.5); rules, export and constraints ⬜ (12.6–12.8, Phase 4); the land-use index is built and its test coded, not run |
+| SO4: explanations along the causal chain | Contributions → SPARQL chains → templates, with faithfulness tests | ⬜ (Phase 5) |
+| SO5: dashboard "semantic intelligence" queries | The competency-question queries plus one map page; one scenario query (CQ16) | ⬜ (12.7, Phase 5) |
+| Phase 1 of the subject: text extraction from articles | Small, measured version: 10–20 papers, local LLM, manual check, precision (thesis) | ⬜ (12.11) |
+| Risks: drought / pollution / use conflicts | Drought (head + SGI); use conflict as a framing and CQ12; pollution is future work | 🔄 drought scored in the baselines (head, SGI classes); CQ12 specified; pollution future work |
 
 ---
 
@@ -574,6 +574,11 @@ the step note before choosing a substantial task.** Decided by Assil the same da
 Then (4), before any run: the main index counts only the classes usually irrigated
 (orchards, vegetables, artichokes, maize, citrus); vines, olives, nuts and fodder only in
 the "wide" sensitivity row, because the 2020 census irrigates about 4–7 % of the vines.
+(5) After the second Codex review of the day (`docs/review_codex_2026-10-25b.md`, answered
+in `docs/review_codex_2026-10-25b_response.md`), still before any run: a "frozen" variant
+(the 2019 crop areas in every year) separates crop geography from change over the years;
+a positive main result is worded "incremental predictive information from the demand
+index"; land-use runs carry a content hash of their inputs.
 The agricultural path the data can carry: crop demand → farm-pumping timing, and canal
 irrigation → alluvium return flow; farm-borehole links stay a sensitivity.
 
@@ -702,11 +707,13 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
 **Next for Claude, while the models run or after:**
 0. **Land-use thread first** (road: `docs/review_codex_2026-10-25_response.md` §4).
    LU-1 and LU-3 (per well) done 2026-10-25. **LU-4 launch:** when kernel 5 has ended,
-   `scripts/kaggle_cpu.py pull` (it rescores), then `scripts/kaggle_cpu.py push --steps
-   "lu:lgbm lu:lstm"` (the bundle carries the land-use panels; LightGBM minutes, LSTM some
-   hours on 4 CPUs), pull when done, then `PFE_DATASET=v4 python -m
-   src.analysis.land_use_test` and report as pre-registered (main contrast, Holm over the
-   two models; placebo, wide and groups outside the family). Next: 12.6 with the land-use
+   `scripts/kaggle_cpu.py pull` (it rescores); then `PFE_DATASET=v4 python -m
+   tests.test_land_use_inputs` must pass (the snapshot is complete and current); then
+   `scripts/kaggle_cpu.py push --steps "lu:lgbm lu:lstm"` (the bundle carries the four
+   land-use panels and their identity records; LightGBM minutes, LSTM some hours on
+   4 CPUs), pull when done, then `PFE_DATASET=v4 python -m src.analysis.land_use_test` and
+   report as pre-registered (main contrast, Holm over the two models; placebo, wide, frozen
+   and groups outside the family; claims as fixed in §14 item 13). Next: 12.6 with the land-use
    rules (parcel-year observations, crop classes, `HighIrrigationDemandZone`), LU-2's
    AGROVOC candidates with 12.9.
 1. ✅ Step 12a done (2026-10-23 evening). 🔄 The v4 re-runs: Kaggle kernel 4
@@ -768,7 +775,7 @@ Assil's review of the competency questions.
 | LU-1 | Annual RPG 2015–2025 clipped to the département extent (`src.ingest.rpg --clip dept --drop-raw`; first clipped to the plain, which missed the 15 mountain wells, so redone on 2026-10-25 with Assil's approval); registration-coverage check | ✅ 2026-10-25: 11 editions (74–83 k parcels each), crop groups stable over 245 codes; `src/analysis/rpg_coverage.py`: orchards +876 ha 2015–25, only +86 by conversion; vines −2,134 ha by conversion (1,339 in 2024–25). About 10 GB transferred, more than announced: `--plan` now prints sizes first |
 | LU-2 | Crop table: RPG code → group → AGROVOC candidate → FAO-56 Kc calendar → irrigable class (feeds 12.9's gold set) | 🔄 2026-10-25: `configs/lu_crop_classes.csv` (14 classes, FAO-56 Kc and stages, 0 unmapped parcels); irrigation assumptions to check against the Agreste 2020 census; AGROVOC candidates with 12.9 |
 | LU-3 | Weekly potential-demand index per well and unit (clipped area); pumping reconstruction (3) | ✅ per well 2026-10-25: `src/dataset/crop_demand.py` (main = usually irrigated classes, wide sensitivity, placebo), `src/dataset/pumping_cropcal.py` (within-year r with the deficit 0.96 → 0.61), size check 0.4–0.6 of declared irrigation; tests pass. Per unit: with 12.6 |
-| LU-4 | Pre-registered land-use ablation on Kaggle CPU (§14 item 13) | 🔄 2026-10-25: code, the three land-use panels (`results/v4/_cache/panel_lu_{on,placebo,wide}.parquet`) and the scoring script `src/analysis/land_use_test.py` ready; push after Kaggle kernel 5 is pulled |
+| LU-4 | Pre-registered land-use ablation on Kaggle CPU (§14 item 13) | 🔄 2026-10-25: code, the four land-use panels with identity records (`results/v4/_cache/panel_lu_{on,placebo,wide,frozen}.{parquet,json}`), the scoring script `src/analysis/land_use_test.py` and the snapshot check `tests/test_land_use_inputs.py` ready; push after Kaggle kernel 5 is pulled |
 | LU-5 | = 12.10, validated against Agreste irrigated areas, else a heuristic | ⬜ |
 | LU-6 | End-to-end example (alluvium + Pliocene well): RPG parcels → KG path → Gate 3 | ⬜ |
 | Gate 3 | Ontology review with the supervisor | ⬜ |

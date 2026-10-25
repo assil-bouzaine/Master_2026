@@ -30,6 +30,7 @@ the per-well statistics (mu, sd, the climatology, the artesian share) from
 period does not inherit them from the earlier years. v1-v3 runs only masked
 the loss (kept as they were, for reproducibility).
 """
+import hashlib
 import json
 
 import geopandas as gpd
@@ -90,19 +91,61 @@ def nearest_gauge(wells):
     return dict(zip(wells["code_bss"], np.array(NEAR_CANDIDATES)[d.argmin(axis=1)]))
 
 
-LAND_USE = {"on": "demand_main_m3", "placebo": "demand_main_placebo_m3", "wide": "demand_wide_m3"}
+LAND_USE = {"on": "demand_main_m3", "placebo": "demand_main_placebo_m3", "wide": "demand_wide_m3",
+            "frozen": "demand_main_frozen_m3"}
+LU_COLS = ["crop_demand", "crop_demand_m4", "crop_demand_m13", "crop_demand_m52"]
+
+
+def land_use_content_sha(P):
+    """sha256 (16 hex) of the land-use columns of a panel, independent of row order."""
+    d = P[["code_bss", "week"] + LU_COLS].sort_values(["code_bss", "week"])
+    h = hashlib.sha256()
+    h.update("\n".join(d["code_bss"].astype(str)).encode())
+    h.update(d["week"].to_numpy().astype("datetime64[ns]").astype("int64").tobytes())
+    h.update(np.ascontiguousarray(d[LU_COLS].to_numpy(dtype="float64")).tobytes())
+    return h.hexdigest()[:16]
+
+
+def _sha16(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while block := f.read(1 << 20):
+            h.update(block)
+    return h.hexdigest()[:16]
+
+
+def lu_cache_path(land_use, train_start=None):
+    window = {v: k for k, v in R3_STARTS.items()}.get(train_start) if train_start else None
+    stem = f"panel_{window}" if window else "panel"
+    return CACHE.with_name(f"{stem}_lu_{land_use}.parquet")
+
+
+def land_use_identity(land_use, train_start=None):
+    """The identity record of a land-use panel (<cache>.json): variant, hash of its land-use
+    columns and where they came from. The hash is recomputed from the cached panel and must
+    match, so a run never records one input and trains on another (second Codex review of
+    2026-10-25, P1). Runners put content_sha256_16 into their fingerprint and manifest."""
+    cache = lu_cache_path(land_use, train_start)
+    rec = json.loads(cache.with_suffix(".json").read_text())
+    got = land_use_content_sha(pd.read_parquet(cache, columns=["code_bss", "week"] + LU_COLS))
+    if got != rec["content_sha256_16"]:
+        raise RuntimeError(f"{cache.name}: land-use columns {got} differ from their record "
+                           f"{rec['content_sha256_16']}; rebuild the panel")
+    return rec
 
 
 def with_land_use(P, land_use, cache, base_cache):
     """P plus the crop-demand index of src.dataset.crop_demand (analysis plan §14 item 13):
     `crop_demand` (thousand m3/week, like pump_gw) and its 4/13/52-week means. "on" is the
     main index (classes usually irrigated), "placebo" the main index computed with another
-    well's crop areas, "wide" the sensitivity that adds the partly irrigated classes; all
-    under the same column names. The cache
-    is rebuilt when the index or the base panel is newer; where the index file is absent
-    (the Kaggle bundle ships the caches only), the cache is used as it is."""
+    well's crop areas, "wide" the sensitivity that adds the partly irrigated classes, "frozen"
+    the main index with the 2019 crop areas in every year; all under the same column names.
+    The cache and its identity record (<cache>.json) are rebuilt when the index or the base
+    panel is newer, or the record is missing; where the index file is absent (the Kaggle
+    bundle ships the caches and records only), the cache is used as it is."""
     src = INTERIM / f"crop_demand_weekly_{DATASET}.parquet"
-    if cache.exists():
+    record = cache.with_suffix(".json")
+    if cache.exists() and (record.exists() or not src.exists()):
         stale = src.exists() and any(p.exists() and p.stat().st_mtime > cache.stat().st_mtime
                                      for p in (src, base_cache))
         if not stale:
@@ -117,24 +160,34 @@ def with_land_use(P, land_use, cache, base_cache):
     if P["crop_demand"].isna().any():
         raise RuntimeError(f"weeks of the panel without a crop-demand value: rebuild {src.name}")
     P.to_parquet(cache, index=False)
+    from src.dataset.crop_demand import AREA_META, CLASSES, FROZEN_EDITION, PLACEBO_SEED
+    area = json.loads(AREA_META.read_text()) if AREA_META.exists() else {}
+    record.write_text(json.dumps({
+        "variant": land_use, "source_column": LAND_USE[land_use],
+        "content_sha256_16": land_use_content_sha(P),
+        "source": {"file": src.name, "sha256_16": _sha16(src)},
+        "crop_classes": {"file": CLASSES.name, "sha256_16": _sha16(CLASSES)},
+        "rpg_editions": sorted(int(y) for y in area.get("inputs", {})),
+        "area_calc_version": area.get("calc_version"),
+        "frozen_edition": FROZEN_EDITION, "placebo_seed": PLACEBO_SEED,
+        "base_panel": {"file": base_cache.name, "sha256_16": _sha16(base_cache)},
+    }, indent=1))
     return P
 
 
 def build_panel(refresh=False, train_start=None, land_use=None):
     """The panel; with train_start (regime R3, dataset v4 on) the per-well statistics come
     from [train_start, end of training] only. Ignored before v4. land_use ("on",
-    "placebo" or "wide", dataset v4 on) adds the crop-demand inputs, with its own cache
-    file; the default panel is unchanged."""
+    "placebo", "wide" or "frozen", dataset v4 on) adds the crop-demand inputs, with its own
+    cache file and identity record; the default panel is unchanged."""
     if land_use:
         if land_use not in LAND_USE or DATASET < "v4":
             raise ValueError(f"land_use must be one of {list(LAND_USE)} on dataset v4 or later")
         base = build_panel(refresh, train_start)
-        window = {v: k for k, v in R3_STARTS.items()}.get(train_start) if train_start else None
-        stem = f"panel_{window}" if window else "panel"
-        cache = CACHE.with_name(f"{stem}_lu_{land_use}.parquet")
+        cache = lu_cache_path(land_use, train_start)
         if refresh and cache.exists():
             cache.unlink()
-        return with_land_use(base, land_use, cache, CACHE.with_name(f"{stem}.parquet"))
+        return with_land_use(base, land_use, cache, cache.with_name(cache.name.split("_lu_")[0] + ".parquet"))
     if not R3_WINDOW_STATS:
         train_start = None
     window = None

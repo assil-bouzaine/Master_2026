@@ -8,6 +8,7 @@
 @prefix geo:     <http://www.opengis.net/ont/geosparql#> .
 @prefix sosa:    <http://www.w3.org/ns/sosa/> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
 
 # SHACL shapes of the LULC-Water knowledge graph (task 12.6; docs/ontology_design.md §5, gate 4).
 # Validated by src/kg/apply_rules.py on the facts (src/kg/build_kg.py) plus the outputs of the
@@ -26,7 +27,10 @@
     sh:declare
         [ sh:prefix "lulcw" ; sh:namespace "https://w3id.org/lulcw#"^^xsd:anyURI ] ,
         [ sh:prefix "prov" ; sh:namespace "http://www.w3.org/ns/prov#"^^xsd:anyURI ] ,
-        [ sh:prefix "rdfs" ; sh:namespace "http://www.w3.org/2000/01/rdf-schema#"^^xsd:anyURI ] .
+        [ sh:prefix "rdfs" ; sh:namespace "http://www.w3.org/2000/01/rdf-schema#"^^xsd:anyURI ] ,
+        [ sh:prefix "skos" ; sh:namespace "http://www.w3.org/2004/02/skos/core#"^^xsd:anyURI ] ,
+        [ sh:prefix "sosa" ; sh:namespace "http://www.w3.org/ns/sosa/"^^xsd:anyURI ] ,
+        [ sh:prefix "time" ; sh:namespace "http://www.w3.org/2006/time#"^^xsd:anyURI ] .
 
 #################################################################
 # Wells and facilities: identity, and at least one attribution (CQ1, CQ2)
@@ -279,7 +283,8 @@ lulcwsh:DerivationRuleShape a sh:NodeShape ;
     sh:targetClass lulcw:DerivationRule ;
     sh:property [ sh:path rdfs:comment ; sh:minCount 1 ] ,
         [ sh:path lulcw:ruleVersion ; sh:minCount 1 ; sh:maxCount 1 ] ,
-        [ sh:path lulcw:searchRadiusM ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minExclusive 0 ] .
+        [ sh:path lulcw:searchRadiusM ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minExclusive 0 ] ,
+        [ sh:path lulcw:demandThresholdM3 ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minInclusive 0 ] .
 
 #################################################################
 # Well links (CQ11)
@@ -460,3 +465,163 @@ lulcwsh:AnnualAbstractionRecordShape a sh:NodeShape ;
         [ sh:path lulcw:inRelease ; sh:minCount 1 ; sh:maxCount 1 ] ,
         [ sh:path lulcw:waterUse ; sh:maxCount 1 ] ,
         [ sh:path sosa:usedProcedure ; sh:maxCount 1 ] .
+
+#################################################################
+# Land use (CQ7)
+#################################################################
+
+lulcwsh:CropCodeShape a sh:NodeShape ;
+    sh:targetClass lulcw:CropCode ;
+    sh:property [ sh:path skos:notation ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path skos:prefLabel ; sh:minCount 1 ] ,
+        [ sh:path skos:inScheme ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:rpgGroupCode ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ] ,
+        [ sh:path lulcw:cropClass ; sh:maxCount 1 ; sh:class lulcw:CropClass ;
+          sh:message "a crop code has at most one crop class (code overrides come before groups)" ] .
+
+lulcwsh:CropClassShape a sh:NodeShape ;
+    sh:targetClass lulcw:CropClass ;
+    sh:property [ sh:path skos:notation ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:irrigationAssumption ; sh:maxCount 1 ; sh:class lulcw:IrrigationAssumption ] ,
+        [ sh:path lulcw:kcInitial ; sh:maxCount 1 ; sh:minInclusive 0 ; sh:maxInclusive 2 ] ,
+        [ sh:path lulcw:kcMid ; sh:maxCount 1 ; sh:minInclusive 0 ; sh:maxInclusive 2 ] ,
+        [ sh:path lulcw:kcEnd ; sh:maxCount 1 ; sh:minInclusive 0 ; sh:maxInclusive 2 ] ,
+        [ sh:path lulcw:plantingMonth ; sh:maxCount 1 ; sh:minInclusive 1 ; sh:maxInclusive 12 ] ;
+    sh:sparql [
+        sh:message "a crop class other than 'unmapped' states its irrigation assumption" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this a lulcw:CropClass .
+    FILTER NOT EXISTS { $this lulcw:irrigationAssumption ?a }
+    FILTER NOT EXISTS { $this skos:notation "unmapped" }
+}""" ] , [
+        sh:message "a cropped class states its FAO-56 coefficients, stage lengths and season start" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:irrigationAssumption ?a .
+    FILTER (?a != lulcw:NotCropped)
+    FILTER (NOT EXISTS { $this lulcw:kcInitial ?k1 } || NOT EXISTS { $this lulcw:kcMid ?k2 }
+            || NOT EXISTS { $this lulcw:kcEnd ?k3 } || NOT EXISTS { $this lulcw:initialStageDays ?s1 }
+            || NOT EXISTS { $this lulcw:developmentStageDays ?s2 } || NOT EXISTS { $this lulcw:midSeasonStageDays ?s3 }
+            || NOT EXISTS { $this lulcw:lateSeasonStageDays ?s4 } || NOT EXISTS { $this lulcw:plantingMonth ?m })
+}""" ] .
+
+lulcwsh:CropDemandZoneShape a sh:NodeShape ;
+    sh:targetClass lulcw:CropDemandZone ;
+    sh:property [ sh:path lulcw:zoneOf ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:Piezometer ] ,
+        [ sh:path lulcw:zoneRadiusM ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minExclusive 0 ] .
+
+lulcwsh:CropAreaObservationShape a sh:NodeShape ;
+    sh:targetClass lulcw:CropAreaObservation ;
+    sh:property [ sh:path sosa:hasFeatureOfInterest ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:class lulcw:CropDemandZone ] ,
+        [ sh:path sosa:observedProperty ; sh:minCount 1 ; sh:maxCount 1 ; sh:hasValue lulcw:ClippedCropArea ] ,
+        [ sh:path sosa:hasSimpleResult ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minInclusive 0 ] ,
+        [ sh:path sosa:phenomenonTime ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path sosa:usedProcedure ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:cropCode ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:CropCode ] ,
+        [ sh:path lulcw:rpgEdition ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ] ;
+    sh:sparql [
+        sh:message "an RPG edition states the crops of its own year only (a 2023 observation never answers 2020)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:rpgEdition ?value ; sosa:phenomenonTime ?t .
+    ?t time:hasBeginning ?b . ?b time:inXSDDate ?d .
+    FILTER (YEAR(?d) != ?value)
+}""" ] .
+
+lulcwsh:CropClassAreaShape a sh:NodeShape ;
+    sh:targetClass lulcw:CropClassArea ;
+    sh:property [ sh:path sosa:hasFeatureOfInterest ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:class lulcw:CropDemandZone ] ,
+        [ sh:path sosa:hasSimpleResult ; sh:minCount 1 ; sh:maxCount 1 ; sh:minInclusive 0 ] ,
+        [ sh:path lulcw:cropClass ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:CropClass ] ,
+        [ sh:path lulcw:rpgEdition ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:derivationRule ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path prov:wasDerivedFrom ; sh:minCount 1 ; sh:class lulcw:CropAreaObservation ] ;
+    sh:sparql [
+        sh:message "the class area differs from the sum of the code areas it cites" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this sosa:hasSimpleResult ?value ; prov:wasDerivedFrom ?o .
+    ?o sosa:hasSimpleResult ?a .
+}
+GROUP BY $this ?value
+HAVING (ABS(?value - SUM(?a)) > 1e-6)""" ] , [
+        sh:message "a cited code area is from another zone, year or class" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this prov:wasDerivedFrom ?value ; sosa:hasFeatureOfInterest ?z ; lulcw:rpgEdition ?ed ;
+          lulcw:cropClass ?cls .
+    ?value lulcw:cropCode ?code .
+    OPTIONAL { ?code lulcw:cropClass ?c . }
+    FILTER (NOT EXISTS { ?value sosa:hasFeatureOfInterest ?z ; lulcw:rpgEdition ?ed . }
+            || COALESCE(?c, <https://w3id.org/lulcw/data/crop-class/unmapped>) != ?cls)
+}""" ] , [
+        sh:message "a code area of the class in this zone and year is not counted" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this sosa:hasFeatureOfInterest ?z ; lulcw:rpgEdition ?ed ; lulcw:cropClass ?cls .
+    ?value sosa:hasFeatureOfInterest ?z ; lulcw:rpgEdition ?ed ; lulcw:cropCode ?code ;
+           a lulcw:CropAreaObservation .
+    OPTIONAL { ?code lulcw:cropClass ?c . }
+    FILTER (COALESCE(?c, <https://w3id.org/lulcw/data/crop-class/unmapped>) = ?cls)
+    FILTER NOT EXISTS { $this prov:wasDerivedFrom ?value }
+}""" ] .
+
+lulcwsh:CropDemandEstimateShape a sh:NodeShape ;
+    sh:targetClass lulcw:CropDemandEstimate ;
+    sh:property [ sh:path sosa:hasFeatureOfInterest ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:class lulcw:CropDemandZone ] ,
+        [ sh:path sosa:observedProperty ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:in ( lulcw:PotentialIrrigationDemandMain lulcw:PotentialIrrigationDemandWide ) ] ,
+        [ sh:path sosa:hasSimpleResult ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minInclusive 0 ] ,
+        [ sh:path sosa:phenomenonTime ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path sosa:usedProcedure ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:rpgEdition ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ] ;
+    sh:sparql [
+        sh:message "the wide-class estimate is below the main-class estimate of the same zone and year (the wide set contains the main classes)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this sosa:observedProperty lulcw:PotentialIrrigationDemandWide ; sosa:hasSimpleResult ?w ;
+          sosa:hasFeatureOfInterest ?z ; lulcw:rpgEdition ?ed .
+    ?value sosa:observedProperty lulcw:PotentialIrrigationDemandMain ; sosa:hasFeatureOfInterest ?z ;
+           lulcw:rpgEdition ?ed ; sosa:hasSimpleResult ?m .
+    FILTER (?w < ?m - 0.5)
+}""" ] .
+
+lulcwsh:IrrigationDemandAssessmentShape a sh:NodeShape ;
+    sh:targetClass lulcw:IrrigationDemandAssessment ;
+    sh:property [ sh:path sosa:hasFeatureOfInterest ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:class lulcw:CropDemandZone ] ,
+        [ sh:path lulcw:demandCategory ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:in ( lulcw:HighIrrigationDemand lulcw:BelowHighIrrigationDemand ) ] ,
+        [ sh:path sosa:phenomenonTime ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path prov:wasDerivedFrom ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:CropDemandEstimate ] ,
+        [ sh:path lulcw:derivationRule ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:sparql [
+        sh:message "the category disagrees with the estimate and the threshold of the rule that assessed it" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:demandCategory ?value ; prov:wasDerivedFrom ?e ; lulcw:derivationRule ?r .
+    ?e sosa:hasSimpleResult ?v . ?r lulcw:demandThresholdM3 ?thr .
+    FILTER ((?v >= ?thr) != (?value = lulcw:HighIrrigationDemand))
+}""" ] , [
+        sh:message "the assessment's zone or year differs from those of its estimate" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this prov:wasDerivedFrom ?e ; sosa:hasFeatureOfInterest ?z ; sosa:phenomenonTime ?t .
+    FILTER NOT EXISTS { ?e sosa:hasFeatureOfInterest ?z ; sosa:phenomenonTime ?t . }
+}""" ] .

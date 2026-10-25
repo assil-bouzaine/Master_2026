@@ -16,6 +16,9 @@
 #   order 31  pumping influences, facility -> piezometer, through a shared unit or group (CQ8)
 #   order 40  a well link or an influence is selected by a policy only if every unit
 #             attribution it derives from is (an unaccepted segment blocks the path)
+#   order 50  land use (CQ7): the crop class of each RPG crop code, the clipped area of each
+#             class per zone and RPG year (unmapped codes kept), and a dated high-irrigation-
+#             demand assessment per zone and year
 # Distances are horizontal, in Lambert-93 metres, parsed from the GeoSPARQL WKT points;
 # math:sqrt is the XPath 3.1 function (W3C), registered in rdflib by the runner.
 # The rules' descriptions and parameters are the data nodes at the end of this file
@@ -35,7 +38,9 @@
         [ sh:prefix "geo" ; sh:namespace "http://www.opengis.net/ont/geosparql#"^^xsd:anyURI ] ,
         [ sh:prefix "rdfs" ; sh:namespace "http://www.w3.org/2000/01/rdf-schema#"^^xsd:anyURI ] ,
         [ sh:prefix "xsd" ; sh:namespace "http://www.w3.org/2001/XMLSchema#"^^xsd:anyURI ] ,
-        [ sh:prefix "math" ; sh:namespace "http://www.w3.org/2005/xpath-functions/math#"^^xsd:anyURI ] .
+        [ sh:prefix "math" ; sh:namespace "http://www.w3.org/2005/xpath-functions/math#"^^xsd:anyURI ] ,
+        [ sh:prefix "skos" ; sh:namespace "http://www.w3.org/2004/02/skos/core#"^^xsd:anyURI ] ,
+        [ sh:prefix "sosa" ; sh:namespace "http://www.w3.org/ns/sosa/"^^xsd:anyURI ] .
 
 #################################################################
 # CQ3: stratigraphic relations, spatially qualified
@@ -361,6 +366,117 @@ WHERE {
 """ .
 
 #################################################################
+# CQ7: land use
+#################################################################
+
+lulcwr:CropClassMappingShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/crop-class> ;
+    sh:order 50 ;
+    sh:rule lulcwr:cropClassOfCode .
+
+# The mapping of configs/lu_crop_classes.csv: a code listed as an override of a class takes
+# that class; otherwise the class that takes its RPG crop group; otherwise none (its area is
+# then counted as unmapped).
+lulcwr:cropClassOfCode a sh:SPARQLRule ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+CONSTRUCT { ?code lulcw:cropClass ?class . }
+WHERE {
+    ?code a lulcw:CropCode ; skos:notation ?n .
+    {
+        ?class a lulcw:CropClass ; lulcw:overrideCode ?n .
+    } UNION {
+        ?code lulcw:rpgGroupCode ?g .
+        ?class a lulcw:CropClass ; lulcw:rpgGroupCode ?g .
+        FILTER NOT EXISTS { ?other a lulcw:CropClass ; lulcw:overrideCode ?n . }
+    }
+}
+""" .
+
+lulcwr:CropClassAreaShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/crop-class-area> ;
+    sh:order 51 ;
+    sh:rule lulcwr:cropClassArea , lulcwr:cropClassAreaEvidence .
+
+# Clipped area per zone, RPG edition and class: the sum of its codes' observations. Codes
+# without a class go to the "unmapped" class, so every total keeps them.
+lulcwr:cropClassArea a sh:SPARQLRule ;
+    sh:order 1 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?ca a lulcw:CropClassArea ;
+        sosa:hasFeatureOfInterest ?zone ; sosa:observedProperty lulcw:ClippedCropArea ;
+        sosa:hasSimpleResult ?ha ; sosa:phenomenonTime ?t ; lulcw:rpgEdition ?ed ;
+        lulcw:cropClass ?cls ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    {
+        SELECT ?zone ?t ?ed ?cls (SUM(?a) AS ?ha) WHERE {
+            ?o a lulcw:CropAreaObservation ; sosa:hasFeatureOfInterest ?zone ;
+               sosa:phenomenonTime ?t ; lulcw:rpgEdition ?ed ; lulcw:cropCode ?code ;
+               sosa:hasSimpleResult ?a .
+            OPTIONAL { ?code lulcw:cropClass ?c . }
+            BIND (COALESCE(?c, <crop-class/unmapped>) AS ?cls)
+        }
+        GROUP BY ?zone ?t ?ed ?cls
+    }
+    BIND (IRI(CONCAT("https://w3id.org/lulcw/data/crop-class-area/", STRAFTER(STR(?zone), "/zone/"),
+                     "/", STR(?ed), "/", STRAFTER(STR(?cls), "/crop-class/"))) AS ?ca)
+}
+""" .
+
+lulcwr:cropClassAreaEvidence a sh:SPARQLRule ;
+    sh:order 2 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT { ?ca prov:wasDerivedFrom ?o . }
+WHERE {
+    ?o a lulcw:CropAreaObservation ; sosa:hasFeatureOfInterest ?zone ; lulcw:rpgEdition ?ed ;
+       lulcw:cropCode ?code .
+    OPTIONAL { ?code lulcw:cropClass ?c . }
+    BIND (COALESCE(?c, <crop-class/unmapped>) AS ?cls)
+    BIND (IRI(CONCAT("https://w3id.org/lulcw/data/crop-class-area/", STRAFTER(STR(?zone), "/zone/"),
+                     "/", STR(?ed), "/", STRAFTER(STR(?cls), "/crop-class/"))) AS ?ca)
+    ?ca lulcw:derivationRule $this .
+}
+""" .
+
+lulcwr:DemandAssessmentShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/high-irrigation-demand> ;
+    sh:order 52 ;
+    sh:rule lulcwr:assessDemand .
+
+# A dated category for every zone and calendar year with a main demand estimate: high when the
+# estimate reaches the rule's threshold (lulcw:demandThresholdM3), below otherwise.
+lulcwr:assessDemand a sh:SPARQLRule ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?as a lulcw:IrrigationDemandAssessment ;
+        sosa:hasFeatureOfInterest ?zone ; sosa:observedProperty lulcw:PotentialIrrigationDemandMain ;
+        sosa:phenomenonTime ?t ; lulcw:demandCategory ?cat ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasDerivedFrom ?est ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    $this lulcw:demandThresholdM3 ?thr .
+    ?est a lulcw:CropDemandEstimate ; sosa:observedProperty lulcw:PotentialIrrigationDemandMain ;
+         sosa:hasFeatureOfInterest ?zone ; sosa:phenomenonTime ?t ; sosa:hasSimpleResult ?v .
+    BIND (IF(?v >= ?thr, lulcw:HighIrrigationDemand, lulcw:BelowHighIrrigationDemand) AS ?cat)
+    BIND (IRI(CONCAT(STR(?est), "/assessment")) AS ?as)
+}
+""" .
+
+#################################################################
 # The rules as data: descriptions and parameters (copied into the graph by the runner, which
 # adds lulcw:ruleVersion and the execution record)
 #################################################################
@@ -396,3 +512,18 @@ WHERE {
     rdfs:label "path selection"@en ;
     rdfs:seeAlso lulcwr:selectPaths ;
     rdfs:comment "A well link or an influence is selected by an export policy only if every unit attribution it derives from is selected by that policy: a segment the policy does not accept blocks the path."@en .
+
+<https://w3id.org/lulcw/data/rule/crop-class> a lulcw:DerivationRule ;
+    rdfs:label "crop class of an RPG crop code"@en ;
+    rdfs:seeAlso lulcwr:cropClassOfCode ;
+    rdfs:comment "The class-mapping rule of configs/lu_crop_classes.csv: a code listed as an override of a class takes that class; otherwise the class that takes its RPG crop group; otherwise none, and its area is counted as unmapped (CQ7)."@en .
+
+<https://w3id.org/lulcw/data/rule/crop-class-area> a lulcw:DerivationRule ;
+    rdfs:label "crop class area"@en ;
+    rdfs:seeAlso lulcwr:cropClassArea , lulcwr:cropClassAreaEvidence ;
+    rdfs:comment "Clipped area of each crop class in each crop demand zone and RPG edition: the sum of the clipped areas of its codes, each edition for its own year; unmapped codes stay in the totals as the class 'unmapped' (CQ7)."@en .
+
+<https://w3id.org/lulcw/data/rule/high-irrigation-demand> a lulcw:DerivationRule ;
+    rdfs:label "high irrigation demand"@en ;
+    rdfs:seeAlso lulcwr:assessDemand ;
+    rdfs:comment "Dated category of each zone and calendar year: high irrigation demand when the main potential demand estimate reaches the threshold, below otherwise. The threshold (lulcw:demandThresholdM3) is the upper tercile of the main estimates of the training years 2015-2019, computed by src/kg/apply_rules.py from the graph: it never uses a test-period value. A potential requirement, not observed irrigation."@en .

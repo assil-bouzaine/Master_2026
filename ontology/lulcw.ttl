@@ -19,9 +19,9 @@
 # M2 = square metre, M3 = cubic metre) and are stated in each definition.
 
 <https://w3id.org/lulcw> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/0.2.0> ;
-    owl:versionInfo "0.2.0" ;
-    owl:priorVersion <https://w3id.org/lulcw/0.1.1> ;
+    owl:versionIRI <https://w3id.org/lulcw/0.3.0> ;
+    owl:versionInfo "0.3.0" ;
+    owl:priorVersion <https://w3id.org/lulcw/0.2.0> ;
     dcterms:title "LULC-Water bridging module"@en , "Module de liaison LULC-Water"@fr ;
     dcterms:description "Bridging module of the LULC-Water network of ontologies (SAVE Water, PRIMA): wells, abstraction facilities, hydrogeological units and the qualified, evidence-carrying assertions (unit attributions, stratigraphic relations, well links, influences, annual abstraction accounting) that structure, constrain and explain a groundwater-level model of the Roussillon multilayer aquifer."@en ,
         "Module de liaison du réseau d'ontologies LULC-Water (SAVE Water, PRIMA) : piézomètres, ouvrages de prélèvement, entités hydrogéologiques et assertions qualifiées, porteuses de preuves (attributions à une entité, relations stratigraphiques, liens entre piézomètres, influences, bilans annuels des prélèvements), qui structurent, contraignent et expliquent un modèle des niveaux piézométriques de l'aquifère multicouche du Roussillon."@fr ;
@@ -32,7 +32,8 @@
     vann:preferredNamespaceUri "https://w3id.org/lulcw#" ;
     rdfs:comment "Namespace provisional until the w3id.org redirect is accepted (docs/ontology_design.md §6)."@en ,
         "0.1.1 (2026-10-24, task 12.5): water use EnergyUse (BNPE code ENE); GeoSPARQL hasMetricArea added to the reused terms for polygon areas."@en ,
-        "0.2.0 (2026-10-25, task 12.6): admitsConfidence and searchRadiusM, so that export policies and spatial rules carry their parameters as data; constraint eligibility defined from the evidence of the pathway, applied only under a policy that selects every segment. The SHACL shapes and SHACL-AF rules are in ontology/shapes/ and ontology/rules/."@en ;
+        "0.2.0 (2026-10-25, task 12.6): admitsConfidence and searchRadiusM, so that export policies and spatial rules carry their parameters as data; constraint eligibility defined from the evidence of the pathway, applied only under a policy that selects every segment. The SHACL shapes and SHACL-AF rules are in ontology/shapes/ and ontology/rules/."@en ,
+        "0.3.0 (2026-10-25, task 12.6, CQ7): land use and crops: RPG crop codes, crop classes with their FAO-56 parameters and irrigation assumptions, crop demand zones, clipped crop areas per RPG year, potential irrigation demand estimates and their dated categories."@en ;
     owl:imports <https://w3id.org/lulcw/imports/sosa> , <https://w3id.org/lulcw/imports/prov> ,
         <https://w3id.org/lulcw/imports/time> , <https://w3id.org/lulcw/imports/skos> ,
         <https://w3id.org/lulcw/imports/geo> .
@@ -867,3 +868,155 @@ lulcw:excludedVolumeM3 a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:ra
 lulcw:facilityCount a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:integer ;
     rdfs:label "facility count"@en , "nombre d'ouvrages"@fr ;
     skos:definition "Number of facilities an accounting result covers."@en .
+
+#################################################################
+# Land use and crops (0.3.0, task 12.6, CQ7): dated crop areas around the wells, crop classes
+# with their FAO-56 parameters, potential irrigation demand and its dated category
+#################################################################
+
+lulcw:CropCode a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "RPG crop code"@en , "code culture RPG"@fr ;
+    skos:definition "A crop code of the French land-parcel register (RPG, CODE_CULTU), with its official label and crop group; the concept a declared parcel's crop refers to, aligned to shared vocabularies separately (task 12.9)."@en .
+
+lulcw:CropClass a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "crop class"@en , "classe de culture"@fr ;
+    skos:definition "One of the harmonised crop classes of the project (configs/lu_crop_classes.csv), grouping RPG crop codes by a written rule (code overrides first, then the RPG crop group), with the FAO-56 single crop coefficients and growth stages used outside OWL and an irrigation assumption."@en .
+
+lulcw:CropDemandZone a owl:Class ;
+    rdfs:subClassOf geo:Feature ;
+    rdfs:label "crop demand zone"@en , "zone de demande des cultures"@fr ;
+    skos:definition "The area within a fixed horizontal radius of a piezometer (3 km in this project) over which declared parcels are clipped: a named, reproducible reference query, not a capture zone or a hydraulic limit."@en .
+
+lulcw:CropAreaObservation a owl:Class ;
+    rdfs:subClassOf sosa:Observation ;
+    rdfs:label "crop area observation"@en , "observation de surface cultivée"@fr ;
+    skos:definition "The area, in hectares, of the parcels of one RPG crop code inside one crop demand zone in one RPG campaign year, clipped at the zone boundary (a parcel half inside counts half). Parcel geometries stay outside the graph."@en .
+
+lulcw:CropClassArea a owl:Class ;
+    rdfs:subClassOf sosa:Observation ;
+    rdfs:label "crop class area"@en , "surface par classe de culture"@fr ;
+    skos:definition "The clipped area, in hectares, of one crop class in one crop demand zone and RPG campaign year, derived by a rule from the crop area observations of its codes; codes without a class are summed as unmapped area, never dropped."@en .
+
+lulcw:CropDemandEstimate a owl:Class ;
+    rdfs:subClassOf sosa:Observation ;
+    rdfs:label "potential irrigation demand estimate"@en , "estimation de la demande potentielle d'irrigation"@fr ;
+    skos:definition "Potential irrigation demand of a crop demand zone over one calendar year, in cubic metres, computed outside OWL: for each week, the clipped area times max(0, Kc times the week's reference evapotranspiration minus its rainfall), summed over the year. A crop water requirement under stated assumptions, not a metered or declared irrigation volume."@en .
+
+lulcw:IrrigationDemandAssessment a owl:Class ;
+    rdfs:subClassOf sosa:Observation ;
+    rdfs:label "irrigation demand assessment"@en , "évaluation de la demande d'irrigation"@fr ;
+    skos:definition "A dated categorical assessment of the potential irrigation demand of a crop demand zone in one calendar year, by a documented rule and threshold; it never gives a zone a timeless status."@en .
+
+lulcw:IrrigationAssumption a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "irrigation assumption"@en , "hypothèse d'irrigation"@fr ;
+    skos:definition "How commonly a crop class is irrigated in the study area, as an assumption backed by the 2020 agricultural census of the département; not the irrigation status of a parcel."@en .
+lulcw:IrrigationAssumptionScheme a skos:ConceptScheme ;
+    rdfs:label "irrigation assumptions"@en , "hypothèses d'irrigation"@fr ;
+    skos:definition "Values of lulcw:IrrigationAssumption."@en .
+lulcw:UsuallyIrrigated a lulcw:IrrigationAssumption ; skos:inScheme lulcw:IrrigationAssumptionScheme ; skos:topConceptOf lulcw:IrrigationAssumptionScheme ;
+    skos:prefLabel "usually irrigated"@en , "généralement irriguée"@fr ;
+    rdfs:label "usually irrigated"@en , "généralement irriguée"@fr ;
+    skos:definition "Most of the area of the class is irrigated in the département (e.g. orchards, vegetables); the classes of the main demand index."@en .
+lulcw:PartlyIrrigated a lulcw:IrrigationAssumption ; skos:inScheme lulcw:IrrigationAssumptionScheme ; skos:topConceptOf lulcw:IrrigationAssumptionScheme ;
+    skos:prefLabel "partly irrigated"@en , "partiellement irriguée"@fr ;
+    rdfs:label "partly irrigated"@en , "partiellement irriguée"@fr ;
+    skos:definition "A minority of the area of the class is irrigated (e.g. vines); added only in the wide sensitivity index."@en .
+lulcw:Rainfed a lulcw:IrrigationAssumption ; skos:inScheme lulcw:IrrigationAssumptionScheme ; skos:topConceptOf lulcw:IrrigationAssumptionScheme ;
+    skos:prefLabel "rainfed"@en , "pluviale"@fr ;
+    rdfs:label "rainfed"@en , "pluviale"@fr ;
+    skos:definition "The class is assumed not irrigated in the study area (e.g. winter cereals, pasture)."@en .
+lulcw:NotCropped a lulcw:IrrigationAssumption ; skos:inScheme lulcw:IrrigationAssumptionScheme ; skos:topConceptOf lulcw:IrrigationAssumptionScheme ;
+    skos:prefLabel "not cropped"@en , "non cultivée"@fr ;
+    rdfs:label "not cropped"@en , "non cultivée"@fr ;
+    skos:definition "Fallow or non-productive declared land, with no crop water requirement."@en .
+
+lulcw:DemandCategory a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "irrigation demand category"@en , "catégorie de demande d'irrigation"@fr ;
+    skos:definition "Category of a zone's potential irrigation demand in one year, relative to a stated threshold."@en .
+lulcw:DemandCategoryScheme a skos:ConceptScheme ;
+    rdfs:label "irrigation demand categories"@en , "catégories de demande d'irrigation"@fr ;
+    skos:definition "Values of lulcw:DemandCategory."@en .
+lulcw:HighIrrigationDemand a lulcw:DemandCategory ; skos:inScheme lulcw:DemandCategoryScheme ; skos:topConceptOf lulcw:DemandCategoryScheme ;
+    skos:prefLabel "high irrigation demand"@en , "forte demande d'irrigation"@fr ;
+    rdfs:label "high irrigation demand"@en , "forte demande d'irrigation"@fr ;
+    skos:definition "The zone's potential irrigation demand in the year reaches the threshold of the rule that assessed it (a potential requirement, not observed irrigation)."@en .
+lulcw:BelowHighIrrigationDemand a lulcw:DemandCategory ; skos:inScheme lulcw:DemandCategoryScheme ; skos:topConceptOf lulcw:DemandCategoryScheme ;
+    skos:prefLabel "below high irrigation demand"@en , "sous la forte demande d'irrigation"@fr ;
+    rdfs:label "below high irrigation demand"@en , "sous la forte demande d'irrigation"@fr ;
+    skos:definition "The zone's potential irrigation demand in the year is below the threshold of the rule that assessed it; not a statement that no irrigation occurs."@en .
+
+lulcw:ClippedCropArea a sosa:ObservableProperty ;
+    rdfs:label "clipped crop area"@en , "surface cultivée découpée"@fr ;
+    skos:definition "Area of declared parcels inside a zone, clipped at its boundary, in hectares."@en .
+lulcw:PotentialIrrigationDemandMain a sosa:ObservableProperty ;
+    rdfs:label "potential irrigation demand, main classes"@en , "demande potentielle d'irrigation, classes principales"@fr ;
+    skos:definition "Potential irrigation demand of the crop classes usually irrigated, over a calendar year, in cubic metres."@en .
+lulcw:PotentialIrrigationDemandWide a sosa:ObservableProperty ;
+    rdfs:label "potential irrigation demand, wide classes"@en , "demande potentielle d'irrigation, classes élargies"@fr ;
+    skos:definition "Potential irrigation demand of the crop classes usually or partly irrigated, over a calendar year, in cubic metres."@en .
+
+lulcw:cropCode a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:CropAreaObservation ; rdfs:range lulcw:CropCode ;
+    rdfs:label "has crop code"@en , "a pour code culture"@fr ;
+    skos:definition "The RPG crop code whose parcels a crop area observation measures."@en .
+lulcw:cropClass a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:range lulcw:CropClass ;
+    rdfs:label "has crop class"@en , "a pour classe de culture"@fr ;
+    skos:definition "The crop class of an RPG crop code under the class-mapping rule, or the class a crop class area is about."@en .
+lulcw:irrigationAssumption a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:CropClass ; rdfs:range lulcw:IrrigationAssumption ;
+    rdfs:label "has irrigation assumption"@en , "a pour hypothèse d'irrigation"@fr ;
+    skos:definition "How commonly the crop class is assumed to be irrigated in the study area."@en .
+lulcw:zoneOf a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:CropDemandZone ; rdfs:range lulcw:Piezometer ;
+    rdfs:label "zone of"@en , "zone de"@fr ;
+    skos:definition "The piezometer at the centre of a crop demand zone."@en .
+lulcw:demandCategory a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:IrrigationDemandAssessment ; rdfs:range lulcw:DemandCategory ;
+    rdfs:label "has demand category"@en , "a pour catégorie de demande"@fr ;
+    skos:definition "The category an irrigation demand assessment gives the zone for its year."@en .
+
+lulcw:rpgGroupCode a owl:DatatypeProperty ; rdfs:range xsd:integer ;
+    rdfs:label "RPG crop group code"@en , "code du groupe de cultures RPG"@fr ;
+    skos:definition "Number of an RPG crop group (CODE_GROUP): the group of a crop code, or a group a crop class takes by the mapping rule."@en .
+lulcw:overrideCode a owl:DatatypeProperty ; rdfs:domain lulcw:CropClass ; rdfs:range xsd:string ;
+    rdfs:label "override crop code"@en , "code culture prioritaire"@fr ;
+    skos:definition "An RPG crop code assigned to the crop class whatever its group (the mapping rule applies overrides first)."@en .
+lulcw:kcInitial a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:CropClass ; rdfs:range xsd:double ;
+    rdfs:label "initial crop coefficient"@en , "coefficient cultural initial"@fr ;
+    skos:definition "FAO-56 single crop coefficient of the initial stage (Kc ini), dimensionless."@en .
+lulcw:kcMid a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:CropClass ; rdfs:range xsd:double ;
+    rdfs:label "mid-season crop coefficient"@en , "coefficient cultural de mi-saison"@fr ;
+    skos:definition "FAO-56 single crop coefficient of the mid-season stage (Kc mid), dimensionless."@en .
+lulcw:kcEnd a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:CropClass ; rdfs:range xsd:double ;
+    rdfs:label "end-season crop coefficient"@en , "coefficient cultural de fin de saison"@fr ;
+    skos:definition "FAO-56 single crop coefficient at the end of the late season (Kc end), dimensionless."@en .
+lulcw:initialStageDays a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:CropClass ; rdfs:range xsd:integer ;
+    rdfs:label "initial stage length (days)"@en , "durée de la phase initiale (jours)"@fr ;
+    skos:definition "Length in days of the FAO-56 initial growth stage."@en .
+lulcw:developmentStageDays a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:CropClass ; rdfs:range xsd:integer ;
+    rdfs:label "development stage length (days)"@en , "durée de la phase de développement (jours)"@fr ;
+    skos:definition "Length in days of the FAO-56 crop development stage."@en .
+lulcw:midSeasonStageDays a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:CropClass ; rdfs:range xsd:integer ;
+    rdfs:label "mid-season stage length (days)"@en , "durée de la mi-saison (jours)"@fr ;
+    skos:definition "Length in days of the FAO-56 mid-season stage."@en .
+lulcw:lateSeasonStageDays a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:CropClass ; rdfs:range xsd:integer ;
+    rdfs:label "late-season stage length (days)"@en , "durée de l'arrière-saison (jours)"@fr ;
+    skos:definition "Length in days of the FAO-56 late-season stage."@en .
+lulcw:plantingMonth a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:CropClass ; rdfs:range xsd:integer ;
+    rdfs:label "season start month"@en , "mois de début de saison"@fr ;
+    skos:definition "Month (1 to 12) whose first day starts the crop season in the demand computation."@en .
+lulcw:perennial a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:CropClass ; rdfs:range xsd:boolean ;
+    rdfs:label "perennial"@en , "pérenne"@fr ;
+    skos:definition "Whether the crop class is perennial (it keeps its initial coefficient off season) rather than annual (no requirement off season)."@en .
+lulcw:zoneRadiusM a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:CropDemandZone ; rdfs:range xsd:double ;
+    rdfs:label "zone radius (m)"@en , "rayon de la zone (m)"@fr ;
+    skos:definition "Radius in metres (Lambert-93) of a crop demand zone around its piezometer."@en .
+lulcw:rpgEdition a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:integer ;
+    rdfs:label "RPG edition"@en , "édition du RPG"@fr ;
+    skos:definition "The annual RPG edition (campaign year) a crop area observation or a demand estimate uses."@en .
+lulcw:demandThresholdM3 a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:DerivationRule ; rdfs:range xsd:double ;
+    rdfs:label "demand threshold (m³)"@en , "seuil de demande (m³)"@fr ;
+    skos:definition "Annual potential irrigation demand of a zone, in cubic metres, at or above which an assessment rule gives the high category; frozen on the training years before any test evaluation."@en .

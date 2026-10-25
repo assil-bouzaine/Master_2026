@@ -17,20 +17,29 @@
    CQ2  each policy selects only the confidence levels it admits; group-level evidence never
         becomes lulcw:pumpsFrom; a path is selected only when every segment is; changing the
         policy changes the selection, never the evidence
+   CQ7  a code override beats the crop group (AGR is citrus, not orchard); a code of no class
+        stays in the totals as unmapped; class areas are the sums of their codes' clipped areas;
+        the high-demand threshold is the upper tercile of the training years' estimates (800 m³
+        here) and every zone-year gets a dated category
    The fixture graph, with the rule outputs, has no violation.
 3. Negative controls, each inserted on purpose and reported as a violation: an ordering chained
    across two polygons, a self-paired well link, an eligible influence with an unknown sign,
    an influence resting on an explicit unknown, an attribution with both a target and a reason
    for unknown, `overlies` without a witness, a piezometer without an attribution, a selection
-   of a confidence level the policy does not admit, a path selected without its segments.
+   of a confidence level the policy does not admit, a path selected without its segments, a
+   class area that is not the sum of its codes, a category that disagrees with the threshold,
+   an RPG edition used for another year, a crop code with two classes.
 4. Data-backed regression (when the graph and the rule outputs exist), against pandas on the
    source tables: the stratigraphic relations equal the pairs of the BD LISA stack table for
    the graph's polygons, and the direct contacts of the plain's polygons equal the overlies
    edges of Step 6b (bdlisa_overlies_plain.csv, polygon counts included); the well links equal
    the same-unit pairs within 5 km of wells.parquet (distances, depth differences); the
    exact-unit influences equal the facility-well pairs of the attribution table of task 12.3
-   and the BNPE coordinates; the policy selections equal the attribution counts; the
-   validation report of src.kg.apply_rules is the one of the current files and has no violation.
+   and the BNPE coordinates; the policy selections equal the attribution counts; the crop class
+   of every code equals src.dataset.crop_demand.code_to_class, the class areas equal the clipped
+   areas summed with pandas, the demand estimates equal the weekly index spread over its days and
+   summed by calendar year, and the threshold and categories follow; the validation report of
+   src.kg.apply_rules is the one of the current files and has no violation.
 """
 import json
 import re
@@ -42,11 +51,12 @@ import pyogrio
 import pyoxigraph as ox
 import rdflib
 from rdflib import Literal, URIRef
-from rdflib.namespace import RDF, RDFS, XSD
+from rdflib.namespace import RDF, RDFS, SKOS, XSD
 
 from src.analysis.bdlisa_profile import GPKG
 from src.analysis.bnpe_profile import load as load_bnpe
 from src.config import CRS_L93, CRS_WGS84, DATASET, DATASET_DIR, INTERIM, PROCESSED
+from src.dataset.crop_demand import AREA_OUT, code_to_class, load_classes
 from src.kg.apply_rules import (RULES, SHAPES, check, ontology_network, rule_records,
                                 run_rules)
 from src.kg.build_kg import BNPE_SNAPSHOT
@@ -55,9 +65,12 @@ KG = PROCESSED / "kg"
 L = rdflib.Namespace("https://w3id.org/lulcw#")
 PROV = rdflib.Namespace("http://www.w3.org/ns/prov#")
 GEO = rdflib.Namespace("http://www.opengis.net/ont/geosparql#")
+SOSA = rdflib.Namespace("http://www.w3.org/ns/sosa/")
+TIME = rdflib.Namespace("http://www.w3.org/2006/time#")
 D = "https://w3id.org/lulcw/data/"
 PRE = """PREFIX lulcw: <https://w3id.org/lulcw#> PREFIX prov: <http://www.w3.org/ns/prov#>
 PREFIX geo: <http://www.opengis.net/ont/geosparql#> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/> PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 BASE <https://w3id.org/lulcw/data/>
 """
 RADIUS = 5000.0
@@ -213,7 +226,78 @@ def build_fixture():
     fx.facility("F3", 300, 0, None, None)                # explicit unknown
     fx.facility("F4", 400, 0, U, L.Possible)             # exact, possible
     fx.facility("F5", 0, 20000, U, L.Confident)          # beyond the radius of every well
+    add_landuse(fx)
     return fx, {"A": A, "B": B, "C": C, "X": X, "Y": Y, "Z": Z, "U": U, "V": V, "G": G}
+
+
+def add_landuse(fx):
+    """CQ7 fixture: zone W1 in 2023 has 4 ha of PEC (group 20: orchard), 2 ha of AGR (group 20 but
+    an override of citrus) and 1 ha of ZZZ (no class); main demand 1000 m³ in 2016, 400 m³ in 2017
+    (the training years: upper tercile 800 m³) and 2000 m³ in 2023."""
+    a = fx.g.add
+    scheme, cscheme = d("crop-code-scheme/rpg"), d("crop-class-scheme/lulcw")
+    a((scheme, RDF.type, SKOS.ConceptScheme))
+    a((cscheme, RDF.type, SKOS.ConceptScheme))
+
+    def cls(name, groups=(), overrides=(), assumption=None):
+        c = d(f"crop-class/{name}")
+        a((c, RDF.type, L.CropClass))
+        a((c, SKOS.inScheme, cscheme))
+        a((c, SKOS.notation, Literal(name)))
+        for gnum in groups:
+            a((c, L.rpgGroupCode, Literal(gnum, datatype=XSD.integer)))
+        for o in overrides:
+            a((c, L.overrideCode, Literal(o)))
+        if assumption is not None:
+            a((c, L.irrigationAssumption, assumption))
+            for prop, v in ((L.kcInitial, 0.5), (L.kcMid, 0.9), (L.kcEnd, 0.6)):
+                a((c, prop, Literal(v, datatype=XSD.double)))
+            for prop, v in ((L.initialStageDays, 30), (L.developmentStageDays, 50),
+                            (L.midSeasonStageDays, 130), (L.lateSeasonStageDays, 30), (L.plantingMonth, 3)):
+                a((c, prop, Literal(v, datatype=XSD.integer)))
+
+    cls("orchard", groups=(20,), assumption=L.UsuallyIrrigated)
+    cls("citrus", overrides=("AGR",), assumption=L.UsuallyIrrigated)
+    cls("unmapped")
+    codes = {}
+    for n, group in (("PEC", 20), ("AGR", 20), ("ZZZ", 99)):
+        c = codes[n] = d(f"crop-code/{n}")
+        for prop, v in ((RDF.type, L.CropCode), (SKOS.inScheme, scheme), (SKOS.notation, Literal(n)),
+                        (SKOS.prefLabel, Literal(n, lang="fr")),
+                        (L.rpgGroupCode, Literal(group, datatype=XSD.integer))):
+            a((c, prop, v))
+    zone, proc = d("zone/W1"), d("procedure/test")
+    a((zone, RDF.type, L.CropDemandZone))
+    a((zone, L.zoneOf, d("piezometer/W1")))
+    a((zone, L.zoneRadiusM, Literal(3000.0, datatype=XSD.double)))
+    a((proc, RDF.type, SOSA.Procedure))
+
+    def year(y):
+        iv, b = d(f"interval/year/{y}"), d(f"instant/{y}-01-01")
+        a((iv, RDF.type, TIME.ProperInterval))
+        a((iv, TIME.hasBeginning, b))
+        a((b, TIME.inXSDDate, Literal(f"{y}-01-01", datatype=XSD.date)))
+        return iv
+
+    for n, ha in (("PEC", 4.0), ("AGR", 2.0), ("ZZZ", 1.0)):
+        o = d(f"crop-area/W1/2023/{n}")
+        for prop, v in ((RDF.type, L.CropAreaObservation), (SOSA.hasFeatureOfInterest, zone),
+                        (SOSA.observedProperty, L.ClippedCropArea),
+                        (SOSA.hasSimpleResult, Literal(ha, datatype=XSD.double)),
+                        (SOSA.phenomenonTime, year(2023)), (SOSA.usedProcedure, proc),
+                        (L.cropCode, codes[n]), (L.rpgEdition, Literal(2023, datatype=XSD.integer))):
+            a((o, prop, v))
+    year(2016)
+    for y, main, wide in ((2016, 1000.0, 1500.0), (2017, 400.0, 900.0), (2023, 2000.0, 2500.0)):
+        for name, prop_v, v in (("main", L.PotentialIrrigationDemandMain, main),
+                                ("wide", L.PotentialIrrigationDemandWide, wide)):
+            o = d(f"crop-demand/W1/{y}/{name}")
+            for prop, val in ((RDF.type, L.CropDemandEstimate), (SOSA.hasFeatureOfInterest, zone),
+                              (SOSA.observedProperty, prop_v),
+                              (SOSA.hasSimpleResult, Literal(v, datatype=XSD.double)),
+                              (SOSA.phenomenonTime, year(y)), (SOSA.usedProcedure, proc),
+                              (L.rpgEdition, Literal(y, datatype=XSD.integer))):
+                a((o, prop, val))
 
 
 def select(g, q):
@@ -224,7 +308,7 @@ def select(g, q):
 def test_fixtures(rules, shapes, net):
     fx, u = build_fixture()
     facts = fx.g
-    records = rule_records(rules, "test")
+    records = rule_records(rules, "test", facts)
     added = run_rules(facts, rules, records)
     g = facts + records + added
 
@@ -277,11 +361,25 @@ def test_fixtures(rules, shapes, net):
     touched = {p for s, p, _ in added if (s, RDF.type, L.UnitAttribution) in facts}
     assert touched == {L.selectedUnder}, f"the rules changed the evidence: {touched}"
 
+    # CQ7
+    cc = {k.rsplit("/", 1)[-1]: c.rsplit("/", 1)[-1] for k, c in select(
+        g, "SELECT ?k ?c WHERE { ?k a lulcw:CropCode ; lulcw:cropClass ?c }")}
+    assert cc == {"PEC": "orchard", "AGR": "citrus"}, cc           # ZZZ has no class
+    areas = {c.rsplit("/", 1)[-1]: ha for c, ha in select(
+        g, "SELECT ?c ?ha WHERE { ?x a lulcw:CropClassArea ; lulcw:cropClass ?c ; sosa:hasSimpleResult ?ha }")}
+    assert areas == {"orchard": 4.0, "citrus": 2.0, "unmapped": 1.0}, areas
+    assert abs(float(g.value(d("rule/high-irrigation-demand"), L.demandThresholdM3)) - 800.0) < 1e-9
+    cats = {int(y): c.split("#")[-1] for y, c in select(g, """SELECT ?y ?c WHERE {
+        ?x a lulcw:IrrigationDemandAssessment ; lulcw:demandCategory ?c ;
+           prov:wasDerivedFrom/lulcw:rpgEdition ?y }""")}
+    assert cats == {2016: "HighIrrigationDemand", 2017: "BelowHighIrrigationDemand",
+                    2023: "HighIrrigationDemand"}, cats
+
     conforms, _, results = check(g, shapes, net)
     assert conforms and violations(results) == 0, results
     infos = sum(n for k, n in results.items() if k.startswith("Info"))
     assert infos == 1, results                                    # W2's missing depth
-    print(f"  2. fixtures: CQ3, CQ11, CQ8 and CQ2 cases hold; {len(added)} derived triples; "
+    print(f"  2. fixtures: CQ3, CQ11, CQ8, CQ2 and CQ7 cases hold; {len(added)} derived triples; "
           f"no violation, 1 info (the missing depth)")
     return g
 
@@ -331,7 +429,23 @@ def test_negative_controls(g, shapes, net):
         "a path selected without its segments": (
             [(d("influence/pumping/F1/1/to/W1/1"), L.selectedUnder, d("policy/confident-only"))], (),
             "PathSelectionShape", None),
+        "a class area that is not the sum of its codes": (
+            [(d("crop-class-area/W1/2023/orchard"), SOSA.hasSimpleResult, Literal(5.0, datatype=XSD.double))],
+            [(d("crop-class-area/W1/2023/orchard"), SOSA.hasSimpleResult, Literal(4.0, datatype=XSD.double))],
+            "CropClassAreaShape", "sum of the code areas"),
+        "a category that disagrees with the threshold": (
+            [(d("crop-demand/W1/2017/main/assessment"), L.demandCategory, L.HighIrrigationDemand)],
+            [(d("crop-demand/W1/2017/main/assessment"), L.demandCategory, L.BelowHighIrrigationDemand)],
+            "IrrigationDemandAssessmentShape", "disagrees with the estimate"),
+        "an RPG edition used for another year": (
+            [(d("crop-area/W1/2023/PEC"), SOSA.phenomenonTime, d("interval/year/2016"))],
+            [(d("crop-area/W1/2023/PEC"), SOSA.phenomenonTime, d("interval/year/2023"))],
+            "CropAreaObservationShape", "its own year"),
+        "a crop code with two classes": (
+            [(d("crop-code/AGR"), L.cropClass, d("crop-class/orchard"))], (),
+            "CropCodeShape", "at most one crop class"),
     }
+
     for name, (add, remove, shape, text) in cases.items():
         res = bad(add, remove)
         assert violations(res, shape, text) > 0, f"{name}: not caught\n{res}"
@@ -455,6 +569,48 @@ def test_data(store):
     assert sel == {"main": conf["Confident"] + conf["Probable"], "confident-only": conf["Confident"],
                    "all-links": sum(conf.values())}, (sel, conf)
 
+    # land use (CQ7)
+    classes = load_classes()
+    ar = pd.read_parquet(AREA_OUT)
+    groups = ar.groupby("CODE_CULTU")["CODE_GROUP"].first()
+    spec = dict(zip(groups.index, code_to_class(groups.index.to_numpy(), groups.to_numpy(), classes)))
+    kg_cls = {n: (c.rsplit("/", 1)[-1] if c else "unmapped") for n, c in rows(store, """SELECT ?n ?c WHERE {
+            ?k a lulcw:CropCode ; skos:notation ?n . OPTIONAL { ?k lulcw:cropClass ?c } }""")}
+    assert kg_cls == spec, f"crop classes differ: {sorted(set(kg_cls.items()) ^ set(spec.items()))[:5]}"
+    ar["cls"] = ar["CODE_CULTU"].map(spec)
+    want_area = ar.groupby(["code_bss", "rpg_year", "cls"])["ha"].sum()
+    got_area = {(b, int(ed), c.rsplit("/", 1)[-1]): ha for b, ed, c, ha in rows(store, """SELECT ?b ?ed ?c ?ha WHERE {
+            ?x a lulcw:CropClassArea ; sosa:hasFeatureOfInterest/lulcw:zoneOf/lulcw:bssCode ?b ;
+               lulcw:rpgEdition ?ed ; lulcw:cropClass ?c ; sosa:hasSimpleResult ?ha }""")}
+    assert set(got_area) == set(want_area.index), "class areas: other zone-year-class keys"
+    close = lambda a, b: abs(a - b) <= 2e-6 * max(1.0, abs(b)) + 1e-4  # noqa: E731  Turtle doubles: 7 digits
+    assert all(close(got_area[k], v) for k, v in want_area.items()), "class areas differ"
+    dem = pd.read_parquet(INTERIM / f"crop_demand_weekly_{DATASET}.parquet",
+                          columns=["code_bss", "week", "demand_main_m3", "demand_wide_m3"])
+    days = dem.loc[dem.index.repeat(7)].reset_index(drop=True)   # each week spread over its 7 days
+    days["day"] = days["week"] - pd.to_timedelta(np.tile(np.arange(6, -1, -1), len(dem)), unit="D")
+    tot = days.groupby(["code_bss", days["day"].dt.year])[["demand_main_m3", "demand_wide_m3"]].sum() / 7.0
+    tot = tot[tot.index.get_level_values(1).isin(range(2015, 2026))]
+    est = {(b, int(y), q.split("#")[-1]): v for b, y, q, v in rows(store, """SELECT ?b ?y ?q ?v WHERE {
+            ?e a lulcw:CropDemandEstimate ; sosa:hasFeatureOfInterest/lulcw:zoneOf/lulcw:bssCode ?b ;
+               lulcw:rpgEdition ?y ; sosa:observedProperty ?q ; sosa:hasSimpleResult ?v }""")}
+    assert len(est) == 2 * len(tot), (len(est), len(tot))
+
+    def close_m3(a, b, atol=0.051):   # estimates are stored to 0.1 m³ (the threshold too)
+        return abs(a - b) <= 2e-6 * max(1.0, abs(b)) + atol
+    for (b, y), r in tot.iterrows():
+        assert close_m3(est[(b, y, "PotentialIrrigationDemandMain")], r["demand_main_m3"]), (b, y)
+        assert close_m3(est[(b, y, "PotentialIrrigationDemandWide")], r["demand_wide_m3"]), (b, y)
+    train = tot[tot.index.get_level_values(1) <= 2019]["demand_main_m3"]
+    thr = rows(store, "SELECT ?t WHERE { <rule/high-irrigation-demand> lulcw:demandThresholdM3 ?t }")[0][0]
+    assert close_m3(thr, float(np.quantile(train, 2 / 3)), 0.11), thr
+    high = {(b, int(y)) for b, y in rows(store, """SELECT ?b ?y WHERE {
+            ?a lulcw:demandCategory lulcw:HighIrrigationDemand ;
+               sosa:hasFeatureOfInterest/lulcw:zoneOf/lulcw:bssCode ?b ; prov:wasDerivedFrom/lulcw:rpgEdition ?y }""")}
+    # categories from the stored estimates (checked above against pandas): with 325 training
+    # values the tercile falls on the 217th one, so one zone-year sits on the threshold (high)
+    assert high == {(b, y) for (b, y, q), v in est.items() if q == "PotentialIrrigationDemandMain" and v >= thr}
+
     # the validation report belongs to these files and has no violation
     s = json.loads((KG / f"lulcw_kg_{DATASET}_rules_summary.json").read_text())
     n_rules = len(rdflib.Graph().parse(KG / f"lulcw_kg_{DATASET}_rules.ttl"))
@@ -462,7 +618,9 @@ def test_data(store):
     assert s["shacl_conforms_no_violation"] and not any(k.startswith("Violation") for k in s["shacl_results"])
     print(f"  4. data: {len(want)} exact influences, {len(pairs)} well links and the relations of "
           f"{len(polys)} polygons equal the pandas oracles; plain contacts = Step 6b's {len(step6b)} "
-          f"edges; selections = attribution counts; report: no violation")
+          f"edges; selections = attribution counts; crop classes of {len(spec)} codes, "
+          f"{len(want_area)} class areas and {len(est)} demand estimates = pandas; threshold "
+          f"{thr:,.0f} m³, {len(high)} high-demand zone-years; report: no violation")
 
 
 def main():

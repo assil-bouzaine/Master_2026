@@ -13,6 +13,9 @@ Scope: the six MUST competency questions (docs/competency_questions.md), in thei
   CQ2, CQ12 groundwater abstraction facilities and their intakes, the pump -> unit
             attributions of task 12.3 with their measured rule evaluations, the annual
             declared volumes (SOSA observations) and the export policies
+  CQ7       land use (src/kg/landuse.py, task 12.6): RPG crop codes, crop classes with their
+            FAO-56 parameters, a crop demand zone per piezometer, clipped crop areas per RPG
+            edition and calendar-year potential irrigation demand
 
 Only facts and assertions whose derivation already exists outside the graph enter here.
 The links that the model's graph is made of (stratigraphic relations and `overlies`, well
@@ -60,6 +63,7 @@ from src.analysis.bdlisa_profile import GPKG, group_of
 from src.analysis.bnpe_profile import load as load_bnpe
 from src.analysis.piezo_profile import PLAIN_BBOX
 from src.config import CRS_L93, CRS_WGS84, DATASET, DATASET_DIR, INTERIM, PROCESSED, RAW, ROOT
+from src.kg import landuse
 from src.kg import pump_attribution as pa
 
 L = Namespace("https://w3id.org/lulcw#")
@@ -666,7 +670,8 @@ def producing_commit(output, code):
 def main():
     versions = {"kg": git_version(),
                 "pump": producing_commit(INTERIM / "pump_unit_attribution.parquet",
-                                         "src/kg/pump_attribution.py")}
+                                         "src/kg/pump_attribution.py"),
+                "crop": producing_commit(landuse.DEMAND, "src/dataset/crop_demand.py")}
     wells = pd.read_parquet(DATASET_DIR / "wells.parquet")
     bnpe = load_bnpe(BNPE_SNAPSHOT)
     gw = bnpe[bnpe["source"] == "groundwater"]
@@ -710,14 +715,16 @@ def main():
                         ext["plain-box-margin"][0], ev_table)
     n_rec = annual_records(kg, rel, gw)
     policies(kg)
+    land = landuse.add(kg, rel, wells, versions)
 
     head = URIRef(D + f"kg-{DATASET}")
     kg.node(head, OWL.Ontology)
     kg.add(head, OWL.imports, URIRef("https://w3id.org/lulcw/meta"))
     kg.add(head, DCT.title, Literal(f"LULC-Water knowledge graph, dataset {DATASET}", lang="en"))
     kg.add(head, DCT.description, Literal(
-        "Source facts and qualified assertions for the six MUST competency questions (task 12.5); "
-        "derived links come from the SHACL-AF rules of task 12.6.", lang="en"))
+        "Source facts and qualified assertions for the MUST competency questions CQ1, CQ2, CQ3, "
+        "CQ7, CQ8, CQ11 and CQ12 (tasks 12.5, 12.6); derived links come from the SHACL-AF rules "
+        "of task 12.6.", lang="en"))
     kg.add(head, DCT.created, Literal(date.today().isoformat(), datatype=XSD.date))
     kg.add(head, PROV.wasGeneratedBy, ex["kg"])
     kg.add(head, OWL.versionInfo, Literal(versions["kg"]))
@@ -746,6 +753,7 @@ def main():
         "polygons": len(keep), "polygons_in_plain_box": int(keep.intersects(plain_box).sum()),
         "piezometers_without_polygon": int(w_cp.isna().sum()),
         "facilities_without_polygon": int(f_cp.isna().sum()),
+        "land_use": land, "crop_demand_code_version": versions["crop"],
     }
     (OUT / f"lulcw_kg_{DATASET}_summary.json").write_text(json.dumps(summary, indent=1,
                                                                      ensure_ascii=False))

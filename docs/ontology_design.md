@@ -336,6 +336,12 @@ selects every segment. New files:
 | `src/kg/apply_rules.py` | runs the rules on the facts, writes the derived links to their own file, validates facts + links (ontology mixed in) |
 | `tests/test_kg_rules.py` | synthetic fixtures for the CQ3, CQ8, CQ11 and CQ2 acceptance cases, 9 negative controls, pandas oracles on the real graph |
 
+Version 0.3.0 (2026-10-25, task 12.6, CQ7): the land-use module (39 terms): `CropCode`, `CropClass`,
+`CropDemandZone`, the observations `CropAreaObservation`, `CropClassArea`, `CropDemandEstimate`, the
+dated `IrrigationDemandAssessment` with `HighIrrigationDemand` / `BelowHighIrrigationDemand`, the
+irrigation assumptions, and the FAO-56 parameters of a class. Facts from `src/kg/landuse.py`; the
+class of each code, the class areas and the assessments are derived by rules (step note §12.6).
+
 ## 8. Instances: the knowledge graph (task 12.5, 2026-10-24)
 
 `src/kg/build_kg.py` writes `data/processed/kg/lulcw_kg_<dataset>.ttl` from the source

@@ -437,3 +437,8 @@ did everything that needs no model training (status per point in
   and Taccari's regimes, about 3.5 T4-hours: Assil clicks the Drive permission). Then pull,
   rebuild the ensemble only if its candidates changed (they are final now), regenerate both
   reports, and update the explainer's scores to v4.
+
+**2026-10-25 evening, Kaggle kernel 5:** ended cleanly at 16:46 UTC (EA-LSTM fold 4 of the
+left-out wells, R3 50 %, R3 25 % and the refit; budget not reached), pulled and rescored: every
+EA-LSTM regime is now in `results/v4` (refit: drought NSE −0.05, skill 0.53 on the core wells).
+The interim reports are regenerated together with Colab session 2.

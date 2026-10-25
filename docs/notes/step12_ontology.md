@@ -419,3 +419,73 @@ depth check of the records and the coverage by volume and use are in
   classes with their FAO-56 parameters, a dated `HighIrrigationDemandZone` assessment with a
   threshold frozen on the training years), which need the land-use module of the ontology;
   then 12.7 (CQ queries and fixtures) and 12.8 (export and equivalence test).
+
+## 12.6 (continued) Land use inside the graph (2026-10-25)
+
+### What was done
+- **Ontology 0.3.0, the land-use module** (39 terms; all quality gates pass, 233 terms in all):
+  RPG crop codes and crop classes as SKOS concepts, the irrigation assumptions (usually,
+  partly, rainfed, not cropped), a crop demand zone per well, three kinds of observations
+  (clipped crop area per code, crop class area, potential irrigation demand per calendar
+  year) and a dated irrigation-demand assessment with its two categories.
+- **Facts (`src/kg/landuse.py`, called by `build_kg`; the graph grows to 356,377 triples):**
+  198 RPG crop codes with their official label and group (2023 table, else 2024), the 14
+  crop classes plus an "unmapped" bucket with their FAO-56 coefficients and stages (each citing
+  its Table 11/12 row) and their irrigation assumption (citing the two Agreste 2020 census
+  reports), one 3 km zone per well, 13,684 clipped crop areas (zone × RPG edition × code, each
+  edition for its own year) and 1,430 calendar-year demand estimates (2015–2025, main and
+  wide). Every source is a release with its URL or file and date: the 11 RPG editions, the two
+  code tables, FAO-56 (checked page), the two census reports, the class table, the derived
+  tables of LU-3 and the commit that produced them.
+- **Rules:**
+  - *crop class of each code:* overrides first (AGR → citrus, ART → artichoke), then the RPG
+    group, else none: 198 of 198 codes get a class (none unmapped);
+  - *class areas:* 5,465 zone × year × class sums, each citing the code areas it adds;
+  - *high irrigation demand:* a dated category for each zone and year; the threshold is the
+    upper tercile of the main estimates of 2015–2019 (training years only), computed by the
+    runner from the graph: 597,028 m³ per zone and year. 248 of 715 zone-years
+    are "high".
+- **Shapes:** a code has at most one class; a cropped class has all its FAO-56 parameters; an
+  RPG edition answers only for its own year; a class area equals the sum of the code areas it
+  cites, cites all of them and only matching ones; the wide estimate is never below the main
+  one; each category agrees with its estimate and the threshold. Result: no violation (the same 8 notes on wells without an investigation depth); but the validation of the larger graph took 26 min (51 s before the land-use facts): to speed up.
+- **Tests:** the CQ7 acceptance cases on the fixture (an override beats the group; an unknown
+  code stays in the totals as unmapped; the threshold of two training values 1000 and 400 m³ is
+  800 m³), 4 more deliberate errors (13 in all), and pandas oracles on the real graph: the
+  class of every code equals `code_to_class`, the class areas equal the clipped areas summed by
+  pandas, the demand estimates equal the weekly index spread over its days and summed by year
+  (a different computation from the builder's), the threshold and the categories follow.
+
+### Why
+- **Per-code observations, classes by a rule.** CQ7 asks for the original codes, their mapped
+  class and the unmapped area. Keeping the code-level areas and deriving the classes inside the
+  graph makes the mapping itself inspectable (the RPG → AGROVOC experiment of 12.9 will add
+  its alignments to the same code concepts).
+- **Each RPG edition for its own year.** A crop map of 2023 cannot describe 2020. The
+  years before 2015 (backfilled with the 2015 edition in the model's index) and the unfinished
+  2026 are not stated as observations.
+- **Demand stays a potential requirement.** It is computed outside OWL (FAO-56 with SAFRAN)
+  and stored as an estimate with its method; the category is dated and relative to a stated
+  threshold, never a timeless "irrigated zone".
+- **Calendar years, not 53-week years.** The weekly index is labelled by Sundays; summing
+  labels would give some years 371 days. The week across 1 January is split by days.
+
+### What to consider
+- **The threshold is relative to these 65 zones** (an upper tercile), useful for templated
+  explanations (CQ10) and the dashboard (SO5); it is not an agronomic norm.
+- **No crop-demand influence yet.** The analysis plan (§14 item 13) wants the pathway from crop
+  demand to the head and its sign settled at Gate 3, without counting a withdrawal twice
+  (reconstruction 3 already follows the crop calendar).
+- **The greedy pattern order.** The first land-use run hung on the evidence rule: the earlier
+  "$this first" fix put an unrelated pattern next to it (3,500 class areas × 13,684 code areas).
+  The runner now orders patterns greedily (fewest unknown variables, joined to what is bound);
+  the fixture results are unchanged.
+- **Numbers in the Turtle files keep 7 significant digits.** rdflib writes doubles as
+  `5.970276e+05`: areas above 1,000 ha lose digits beyond 0.001 ha, volumes above a million m³
+  beyond 1 m³. Far below any precision we use, but the data tests compare with a relative
+  tolerance for that reason (and estimates are stored to 0.1 m³).
+- **The tercile falls on a data value.** With 325 training zone-years, numpy's linear tercile is
+  exactly the 217th value, so one zone-year sits on the threshold and counts as high (≥).
+- **Next:** speed up the validation of the larger graph (time each land-use shape, as for the
+  links part), then 12.7, the CQ queries with their fixtures (CQ7 can now be answered from the
+  graph), and 12.8, the export and the equivalence test.

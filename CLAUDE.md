@@ -79,10 +79,10 @@ its data arrive by February.
 
 | Subject (`Documents/sujet.docx`) | Covered by | Status on 2026-10-25 (✅ done · 🔄 in progress · ⬜ not started) |
 |---|---|---|
-| LULC-Water meta-ontology in OWL | A network of reused ontologies plus our bridging module `lulcw:` (the WHOW-KG pattern), presented as the meta-ontology | 🔄 `lulcw:` 0.2.0 for the 6 first MUST CQs, with SHACL shapes and SHACL-AF rules (12.6), local copies of the reused terms, quality gates pass; land-use and SHOULD/COULD modules to add |
+| LULC-Water meta-ontology in OWL | A network of reused ontologies plus our bridging module `lulcw:` (the WHOW-KG pattern), presented as the meta-ontology | 🔄 `lulcw:` 0.3.0: the 6 first MUST CQs and the land-use module (CQ7), with SHACL shapes and SHACL-AF rules (12.6), local copies of the reused terms, quality gates pass; SHOULD/COULD modules to add |
 | SO1: fuse and align existing ontologies (SWEET, INSPIRE, AgroPortal) | Reuse and alignment axioms (§3); the RPG → AGROVOC alignment experiment (gold set + OntoAligner, P/R/F1) | 🔄 alignments to GWML2/HyFO and SWEET done; crop classes (LU-2) done; AGROVOC experiment ⬜ (12.9) |
 | SO2: semantic enrichment of remote sensing (rules) | One derived concept, `lulcw:ProbablyIrrigatedParcel`: Sentinel-2 summer NDVI + soil wetness, by a SHACL-AF rule (CQ15); checked against independent irrigation evidence, otherwise labelled a heuristic; one ablation row tests whether it adds information | ⬜ (12.10, needs the Earth Engine login); the census evidence on irrigated crops is in hand |
-| SO3: the ontology structures and constrains the model | Graph exported from the KG (SPARQL → HeteroData); response-sign constraints from the causal axioms | 🔄 factual KG built (12.5); rules derive the model's links and their sign eligibility, shapes validate them (12.6, 2026-10-25); land-use rules, export and constraints ⬜ (12.6–12.8, Phase 4); the land-use index is built and its test coded, not run |
+| SO3: the ontology structures and constrains the model | Graph exported from the KG (SPARQL → HeteroData); response-sign constraints from the causal axioms | 🔄 factual KG built (12.5); rules derive the model's links and their sign eligibility, and dated land use (crop classes, class areas, high-demand categories), shapes validate them (12.6, 2026-10-25); export and constraints ⬜ (12.7–12.8, Phase 4); the land-use test runs on Kaggle (kernel 6) |
 | SO4: explanations along the causal chain | Contributions → SPARQL chains → templates, with faithfulness tests | ⬜ (Phase 5) |
 | SO5: dashboard "semantic intelligence" queries | The competency-question queries plus one map page; one scenario query (CQ16) | ⬜ (12.7, Phase 5) |
 | Phase 1 of the subject: text extraction from articles | Small, measured version: 10–20 papers, local LLM, manual check, precision (thesis) | ⬜ (12.11) |
@@ -596,7 +596,7 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
     contacts, publication details, monthly drinking-water production.
   - The e-mails are ready in §4–5 there; Assil sends them.
 
-**State at 2026-10-25 11:30 CET: the first v4 results are in (interim report `docs/results_baselines_v4.md`, step 12b note, last section); Kaggle kernel version 5 runs the last EA-LSTM regimes (pushed 10:04 UTC, about 6 h); Colab session 2 (Chronos-2 ×3, the rest of the Taccari regimes) waits for Assil; task 12.5 and the third review (both passes) done; the explainer is current.**
+**State at 2026-10-25 19:00 CET: Kaggle kernel 5 ended (16:46 UTC) and was pulled and rescored: every EA-LSTM regime is in `results/v4`. Kaggle kernel 6 (pushed 17:25 UTC) runs the land-use test LU-4: 10 runs (LightGBM and LSTM × on, none, placebo, wide, frozen), LightGBM minutes, the LSTMs some hours; nothing runs on the laptop. Task 12.6 done for the links and for land use (commits `6e58885`, this evening's). Colab session 2 (Chronos-2 ×3, the rest of the Taccari regimes) still waits for Assil. The interim v4 reports were not regenerated after kernel 5 (do it with Colab session 2).**
 - **Assil's go (2026-10-24):** "u can use kaggle and colab to train", and no
   model is trained on the laptop any more. This lifts the hold of 2026-10-23
   evening ("keep only v3 running").
@@ -706,20 +706,22 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
 
 **Next for Claude, while the models run or after:**
 0. **Land-use thread first** (road: `docs/review_codex_2026-10-25_response.md` §4).
-   LU-1 and LU-3 (per well) done 2026-10-25. **LU-4 launch:** when kernel 5 has ended,
-   `scripts/kaggle_cpu.py pull` (it rescores); then `PFE_DATASET=v4 python -m
-   tests.test_land_use_inputs` must pass (the snapshot is complete and current); then
-   `scripts/kaggle_cpu.py push --steps "lu:lgbm lu:lstm"` (the bundle carries the four
-   land-use panels and their identity records; LightGBM minutes, LSTM some hours on
-   4 CPUs), pull when done, then `PFE_DATASET=v4 python -m src.analysis.land_use_test` and
-   report as pre-registered (main contrast, Holm over the two models; placebo, wide, frozen
-   and groups outside the family; claims as fixed in §14 item 13). Next: the land-use part of
-   12.6 (zone-year crop observations, crop classes, `HighIrrigationDemandZone`; needs the
-   land-use module of the ontology), LU-2's AGROVOC candidates with 12.9.
+   LU-1 and LU-3 (per well) done 2026-10-25. **LU-4 is running: Kaggle kernel 6**, pushed
+   17:25 UTC on 2026-10-25 after kernel 5 was pulled and `tests.test_land_use_inputs` passed.
+   It includes **same-machine control runs** (`--land-use none` → `<run>_lu_none`, added before
+   any result, commit `bf614c7`): the LSTM run without the feature was trained on a Colab GPU,
+   the land-use runs train on Kaggle CPUs. **Before scoring, ask Assil to choose the main
+   contrast:** on vs without (as pre-registered) or on vs none (same machine; Claude's
+   recommendation); record the decision in `docs/analysis_plan.md` §14 item 13 and, if
+   needed, in `src/analysis/land_use_test.py`. Only then: `scripts/kaggle_cpu.py status`,
+   `pull` (it rescores), `PFE_DATASET=v4 python -m src.analysis.land_use_test`, report as
+   pre-registered (Holm over the two models; placebo, wide, frozen, same-machine and groups
+   outside the family; claims as fixed in §14 item 13). If the kernel stops at its 11 h budget,
+   push the same steps again (finished seeds are kept). Next: LU-2's AGROVOC candidates with 12.9.
 1. ✅ Step 12a done (2026-10-23 evening). 🔄 The v4 re-runs: Kaggle kernel 4
    and Colab session 1 pulled on 2026-10-25, reference run, replay, ensemble and
-   the interim reports done (see State). Left: **pull Kaggle kernel 5** when it
-   ends (`scripts/kaggle_cpu.py status`, then `pull`); **Colab session 2** when
+   the interim reports done (see State). Kaggle kernel 5 pulled on 2026-10-25 (every EA-LSTM
+   regime in `results/v4`). Left: **Colab session 2** when
    Assil is there to mount Drive (upload the rebuilt `gpu_bundle.zip` first;
    `STEPS="chronos2 chronos2_xl chronos2_ft regimes:taccari"`); then
    `PFE_DATASET=v4` `src.analysis.baseline_report` and `src.analysis.hydro_errors`,
@@ -735,9 +737,11 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
    `build_kg`) runs `ontology/rules/lulcw-rules.ttl` and validates with
    `ontology/shapes/lulcw-shapes.ttl` → `lulcw_kg_v4_rules.ttl` (derived links, kept apart
    from the facts) and `lulcw_kg_v4_shacl.ttl`; `python -m tests.test_kg_rules`; ontology
-   0.2.0. Left in 12.6: the land-use rules (item 0). Then 12.7 (CQ queries + fixtures) and
-   12.8 (export + equivalence test against pandas; take each facility's volume once per
-   well, since an influence is stored per evidence path).
+   0.3.0; land use inside the graph done the same evening (step note §12.6, continued).
+   **First:** the validation of the larger graph takes 26 min (51 s before the land-use
+   facts): time each shape (as done for the links part) and fix the slow one. Then 12.7 (CQ
+   queries + fixtures) and 12.8 (export + equivalence test against pandas; take each
+   facility's volume once per well, since an influence is stored per evidence path).
 
 **Phase 3 (Step 12):** the task list is below. Freeze the ontology design after
 Assil's review of the competency questions.
@@ -758,7 +762,7 @@ Assil's review of the competency questions.
 | 11 Gate 2 summary | ✅ answered 2026-10-23: the choices are left to Assil (decisions in `docs/supervisor_questions.md`) | `docs/summary_gate2_results.md` |
 | **12a Fixes from the critical review** | **✅ 2026-10-23:** evaluation, analysis plan, dataset v3, all v3 baselines (EA-LSTM regimes on v4 only), final v3 report | `docs/feedback.md`, `docs/analysis_plan.md`, `docs/notes/step12a_fixes.md` |
 | **12b Fixes from the second review** | **✅ 2026-10-23** (code, dataset v4, analysis plan v2, tests); 🔄 the baseline re-runs on v4 started 2026-10-24 (Kaggle CPU + Colab T4); first results pulled 2026-10-25 (interim `docs/results_baselines_v4.md`); EA-LSTM regimes on Kaggle, Chronos-2 and Taccari regimes wait for Colab session 2; third review checked and done (two passes, 2026-10-24/25) | `docs/review_codex_2026-10-23.md`, `docs/review_codex_response.md`, `docs/notes/step12b_review_fixes.md` |
-| **12 Phase 3: ontology + KG** | **🔄 started 2026-10-23.** 12.1 drafted, 12.2 started, 12.3–12.5 done, 12.6 links part done (2026-10-25) | `docs/review_2026-10-23.md`, `docs/competency_questions.md`, `docs/ontology_design.md`, `docs/notes/step12_ontology.md` |
+| **12 Phase 3: ontology + KG** | **🔄 started 2026-10-23.** 12.1 drafted, 12.2 started, 12.3–12.5 done, 12.6 done for links and land use (2026-10-25) | `docs/review_2026-10-23.md`, `docs/competency_questions.md`, `docs/ontology_design.md`, `docs/notes/step12_ontology.md` |
 
 ### Step 12: Phase 3 tasks, in order
 
@@ -769,7 +773,7 @@ Assil's review of the competency questions.
 | 12.3 | **CQ2 data step:** attribute each groundwater abstraction point to a unit, with provenance and confidence | ✅ 2026-10-23: `src/kg/pump_attribution.py` → `data/interim/pump_unit_attribution.parquet`. Rules measured on 130 recorded boreholes (flag True → alluvium 95 %; flag False + Pliocene under the point → Pliocene 92 %; False alone 53/112). The record is depth-checked. "Probable" only for the uses that were measured. Plain volume 2012–24: confident 27 %, probable 45 %, possible 21 %, unknown 7 % |
 | 12.4 | Ontology module `lulcw:` + imports/alignments in `ontology/`; IRIs and metadata; the quality gates in `tests/` | ✅ 0.1.0 on 2026-10-24 for the 6 MUST CQs: 191 terms (FR/EN labels, definitions), local copies of the reused terms (`src/kg/build_imports.py`), alignments to GWML2/HyFO and SWEET, `python -m tests.test_ontology` (ELK + HermiT consistent, negative control, ROBOT report). SHOULD/COULD modules, the w3id redirect and OOPS! still to do |
 | 12.5 | KG instantiation from the parquet tables (rdflib → Turtle → pyoxigraph) | ✅ 2026-10-24: `src/kg/build_kg.py` (61 s) → `data/processed/kg/lulcw_kg_v4.ttl`, 205,650 triples: 65 piezometers (station, head series, groundwater body, polygon; 60 recorded monitoring units, 5 explicit unknowns), 47 units typed by the written rule, 201 BD LISA polygons with stacks, 2,187 groundwater facilities with the 12.3 attributions (resolution-aware: flag_true = alluvium group probable, exact entity possible), 12,951 annual declared volumes (SOSA, with acquisition mode), provenance and 3 export policies. Facts only: derived links come from the 12.6 rules. `tests/test_kg.py`: 8 checks against pandas oracles + 2 negative controls. Ontology 0.1.1 (`EnergyUse`, `geo:hasMetricArea`) |
-| 12.6 | SHACL shapes and SHACL-AF rules: Influence links, `ProbablyIrrigatedParcel`, `HighIrrigationDemandZone`, `ConfinedSetting` | 🔄 2026-10-25, links part done: `ontology/rules/lulcw-rules.ttl` (SHACL-AF, pySHACL) and `ontology/shapes/lulcw-shapes.ttl` (SHACL), run by `src/kg/apply_rules.py`: 95 direct contacts + 13 indirect orderings, each witnessed by its polygon (plain = Step 6b's 26 edges), 47 same-unit well links ≤ 5 km, 1,848 pump → well influences (1,830 exact-unit: non-increasing sign, eligible; 18 group-level: sign unknown, not eligible), policy selections (a path is selected only if both its attributions are); shapes: no violation (8 notes: wells without an investigation depth); rules 65 s, validation 51 s. `tests/test_kg_rules.py`: CQ3/CQ8/CQ11/CQ2 fixtures, 9 negative controls, pandas oracles. Ontology 0.2.0 (`admitsConfidence`, `searchRadiusM`). Left: the land-use rules (needs the land-use module); `ProbablyIrrigatedParcel` with 12.10; `ConfinedSetting` with CQ14 |
+| 12.6 | SHACL shapes and SHACL-AF rules: Influence links, `ProbablyIrrigatedParcel`, `HighIrrigationDemandZone`, `ConfinedSetting` | 🔄 2026-10-25, links part done: `ontology/rules/lulcw-rules.ttl` (SHACL-AF, pySHACL) and `ontology/shapes/lulcw-shapes.ttl` (SHACL), run by `src/kg/apply_rules.py`: 95 direct contacts + 13 indirect orderings, each witnessed by its polygon (plain = Step 6b's 26 edges), 47 same-unit well links ≤ 5 km, 1,848 pump → well influences (1,830 exact-unit: non-increasing sign, eligible; 18 group-level: sign unknown, not eligible), policy selections (a path is selected only if both its attributions are); shapes: no violation (8 notes: wells without an investigation depth); rules 65 s, validation 51 s. `tests/test_kg_rules.py`: CQ3/CQ8/CQ11/CQ2 fixtures, 9 negative controls, pandas oracles. Ontology 0.2.0 (`admitsConfidence`, `searchRadiusM`). Land-use part done the same evening: ontology 0.3.0 (land-use module, 39 terms), `src/kg/landuse.py` (198 crop codes, 14 classes + unmapped with FAO-56 parameters, 65 zones, 13,684 clipped areas, 1,430 calendar-year demand estimates; graph 356,377 triples), rules: crop class of every code (198 mapped, none unmapped), 5,465 class areas, 715 dated demand categories (248 high; threshold 597,028 m³ = upper tercile of 2015–2019); no violation, but validation now 26 min (to speed up); tests: CQ7 fixtures, 13 negative controls, pandas oracles pass. Left: `ProbablyIrrigatedParcel` with 12.10; `ConfinedSetting` with CQ14 |
 | 12.7 | CQ tests: one SPARQL query plus an oracle per CQ (`tests/cq/`) | ⬜ |
 | 12.8 | Export SPARQL → `HeteroData` (arms C, D, E, F use the same export) | ⬜ |
 | 12.9 | Alignment experiment: RPG → AGROVOC gold set + OntoAligner (P/R/F1) | ⬜ |
@@ -778,7 +782,7 @@ Assil's review of the competency questions.
 | LU-1 | Annual RPG 2015–2025 clipped to the département extent (`src.ingest.rpg --clip dept --drop-raw`; first clipped to the plain, which missed the 15 mountain wells, so redone on 2026-10-25 with Assil's approval); registration-coverage check | ✅ 2026-10-25: 11 editions (74–83 k parcels each), crop groups stable over 245 codes; `src/analysis/rpg_coverage.py`: orchards +876 ha 2015–25, only +86 by conversion; vines −2,134 ha by conversion (1,339 in 2024–25). About 10 GB transferred, more than announced: `--plan` now prints sizes first |
 | LU-2 | Crop table: RPG code → group → AGROVOC candidate → FAO-56 Kc calendar → irrigable class (feeds 12.9's gold set) | 🔄 2026-10-25: `configs/lu_crop_classes.csv` (14 classes, FAO-56 Kc and stages, 0 unmapped parcels); irrigation assumptions to check against the Agreste 2020 census; AGROVOC candidates with 12.9 |
 | LU-3 | Weekly potential-demand index per well and unit (clipped area); pumping reconstruction (3) | ✅ per well 2026-10-25: `src/dataset/crop_demand.py` (main = usually irrigated classes, wide sensitivity, placebo), `src/dataset/pumping_cropcal.py` (within-year r with the deficit 0.96 → 0.61), size check 0.4–0.6 of declared irrigation; tests pass. Per unit: with 12.6 |
-| LU-4 | Pre-registered land-use ablation on Kaggle CPU (§14 item 13) | 🔄 2026-10-25: code, the four land-use panels with identity records (`results/v4/_cache/panel_lu_{on,placebo,wide,frozen}.{parquet,json}`), the scoring script `src/analysis/land_use_test.py` and the snapshot check `tests/test_land_use_inputs.py` ready; push after Kaggle kernel 5 is pulled |
+| LU-4 | Pre-registered land-use ablation on Kaggle CPU (§14 item 13) | 🔄 2026-10-25: running on Kaggle kernel 6 (pushed 17:25 UTC; 10 runs incl. the same-machine controls `_lu_none`); before scoring, Assil chooses the main contrast (on vs without, or on vs none); scoring script `src/analysis/land_use_test.py`, snapshot check `tests/test_land_use_inputs.py` |
 | LU-5 | = 12.10, validated against Agreste irrigated areas, else a heuristic | ⬜ |
 | LU-6 | End-to-end example (alluvium + Pliocene well): RPG parcels → KG path → Gate 3 | ⬜ |
 | Gate 3 | Ontology review with the supervisor | ⬜ |

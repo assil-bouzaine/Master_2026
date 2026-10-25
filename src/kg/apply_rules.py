@@ -15,9 +15,11 @@ and exits with an error when the shapes find a violation (warnings and infos are
 The derived links are the ones the model's graph is made of (docs/ontology_design.md §4):
 stratigraphic relations with their witness polygons and the `overlies` shortcut (CQ3), the
 selections of each export policy and the main policy's monitors/pumpsFrom view (CQ1, CQ2),
-same-unit well links within 5 km (CQ11) and pumping influences (CQ8). They are derived by
-SPARQL inside the graph, so that the equivalence test of task 12.8 compares two independent
-derivations (pandas on the source tables is the other).
+same-unit well links within 5 km (CQ11) and pumping influences (CQ8); for land use (CQ7), the
+crop class of each RPG code, class areas per zone and RPG year, and a dated high-irrigation-
+demand category per zone and year. They are derived by SPARQL inside the graph, so that the
+equivalence test of task 12.8 compares two independent derivations (pandas on the source tables
+is the other).
 
 Choices
 - Facts and derived links stay in separate files: a query states whether it reads asserted
@@ -29,8 +31,10 @@ Choices
 - Speed (`fast_sparql`, results unchanged): pySHACL hands rdflib the text of a SPARQL
   constraint again for every focus node, and rdflib parses it each time, so each distinct text
   is parsed once; and rdflib orders a query's triple patterns before it knows that $this is
-  pre-bound, so it could start from every rank-1 attribution on both sides of a self-join
-  (87 s for one facility), so the patterns that mention $this are evaluated first (0.05 s).
+  pre-bound, and puts unrelated patterns side by side, so it could start from every rank-1
+  attribution on both sides of a self-join (87 s for one facility). The patterns are ordered
+  greedily instead: next, the pattern with the fewest unknown variables, preferring one joined
+  to what is already bound, $this bound from the start (0.05 s).
 """
 import json
 import math
@@ -40,22 +44,27 @@ import xml.etree.ElementTree as ET
 from contextlib import contextmanager
 from datetime import date
 
+import numpy as np
 import pyoxigraph
 import rdflib
 from pyshacl import shacl_rules, validate
-from rdflib import Literal, URIRef, Variable
+from rdflib import BNode, Literal, URIRef, Variable
 from rdflib.namespace import OWL, RDF, RDFS, SH, XSD
 from rdflib.plugins.sparql import algebra as sparql_algebra
 from rdflib.plugins.sparql import processor as sparql_processor
 from rdflib.plugins.sparql.operators import register_custom_function
 
 from src.config import DATASET, ROOT
+from src.dataset.crop_demand import FROZEN_EDITION as LAST_TRAINING_YEAR   # 2019
 from src.kg.build_kg import D, DCT, L, OUT, PROV, git_version
 
 RULES = ROOT / "ontology" / "rules" / "lulcw-rules.ttl"
 SHAPES = ROOT / "ontology" / "shapes" / "lulcw-shapes.ttl"
 MATH_SQRT = URIRef("http://www.w3.org/2005/xpath-functions/math#sqrt")
 EXECUTION = URIRef(D + "execution/kg-rules")
+HIGH_DEMAND = URIRef(D + "rule/high-irrigation-demand")
+PRE = ("PREFIX lulcw: <https://w3id.org/lulcw#> PREFIX prov: <http://www.w3.org/ns/prov#> "
+       "PREFIX sosa: <http://www.w3.org/ns/sosa/> BASE <https://w3id.org/lulcw/data/> ")
 T0 = time.time()
 
 
@@ -87,8 +96,17 @@ def fast_sparql():
         return original_query(self, q, initBindings, initNs, base, DEBUG)
 
     def order(triples):
-        out = original_order(triples)
-        return [t for t in out if this in t] + [t for t in out if this not in t]
+        rest, known, out = list(triples), {this}, []
+        while rest:
+            def cost(t):
+                free = [x for x in t if isinstance(x, (Variable, BNode)) and x not in known]
+                joined = any(isinstance(x, (Variable, BNode)) and x in known for x in t)
+                return len(free), not joined
+            best = min(rest, key=cost)
+            rest.remove(best)
+            out.append(best)
+            known |= {x for x in best if isinstance(x, (Variable, BNode))}
+        return out
 
     sparql_processor.SPARQLProcessor.query, sparql_algebra.reorderTriples = query, order
     try:
@@ -108,14 +126,28 @@ def ontology_network():
     return g
 
 
-def rule_records(rules, version):
-    """The rules' data nodes (descriptions, parameters), versioned, and the execution record."""
+def demand_threshold(facts):
+    """Upper tercile (numpy, linear interpolation) of the main potential-demand estimates of the
+    training years 2015 to LAST_TRAINING_YEAR; None when the graph has no estimate."""
+    q = (PRE + "SELECT ?v WHERE { ?e a lulcw:CropDemandEstimate ; sosa:observedProperty "
+         "lulcw:PotentialIrrigationDemandMain ; lulcw:rpgEdition ?y ; sosa:hasSimpleResult ?v . "
+         f"FILTER (?y <= {LAST_TRAINING_YEAR}) }}")
+    v = [float(r[0]) for r in facts.query(q)]
+    return float(np.quantile(v, 2 / 3)) if v else None
+
+
+def rule_records(rules, version, facts=None):
+    """The rules' data nodes (descriptions, parameters), versioned, the parameters computed from
+    the facts (the high-demand threshold), and the execution record."""
     g = rdflib.Graph()
     for t in rules:
         if str(t[0]).startswith(D):
             g.add(t)
     for r in set(g.subjects(RDF.type, L.DerivationRule)):
         g.add((r, L.ruleVersion, Literal(version)))
+    threshold = demand_threshold(facts) if facts is not None else None
+    if threshold is not None:
+        g.add((HIGH_DEMAND, L.demandThresholdM3, Literal(round(threshold, 1), datatype=XSD.double)))
     g.add((EXECUTION, RDF.type, L.RuleExecution))
     g.add((EXECUTION, RDFS.label, Literal(f"knowledge-graph rules, dataset {DATASET} (task 12.6)",
                                           lang="en")))
@@ -170,8 +202,7 @@ def check(graph, shapes, onto):
 def counts(facts, added):
     """What the rules derived, by kind (SPARQL on facts + rule outputs)."""
     g = facts + added
-    pre = "PREFIX lulcw: <https://w3id.org/lulcw#> PREFIX prov: <http://www.w3.org/ns/prov#> " \
-          "BASE <https://w3id.org/lulcw/data/> "
+    pre = PRE
 
     def one(q):
         return {str(r[0]).split("#")[-1].split("/")[-1]: int(r[1]) for r in g.query(pre + q)}
@@ -211,6 +242,16 @@ def counts(facts, added):
     out["influence_facility_well_pairs_by_policy"] = {
         str(r[0]).split("/")[-1]: {"pairs": int(r[1]), "facilities": int(r[2]), "wells": int(r[3])}
         for r in pairs}
+    out["crop_codes_by_class"] = one(
+        "SELECT ?c (COUNT(?k) AS ?n) WHERE { ?k a lulcw:CropCode ; lulcw:cropClass ?c } GROUP BY ?c")
+    out["crop_codes_without_class"] = int(list(g.query(pre + "SELECT (COUNT(?k) AS ?n) WHERE { "
+        "?k a lulcw:CropCode FILTER NOT EXISTS { ?k lulcw:cropClass ?c } }"))[0][0])
+    out["crop_class_areas"] = len(list(added.subjects(RDF.type, L.CropClassArea)))
+    out["demand_assessments_by_category"] = one(
+        "SELECT ?c (COUNT(?a) AS ?n) WHERE { ?a a lulcw:IrrigationDemandAssessment ; "
+        "lulcw:demandCategory ?c } GROUP BY ?c")
+    thr = list(g.objects(HIGH_DEMAND, L.demandThresholdM3))
+    out["high_demand_threshold_m3"] = float(thr[0]) if thr else None
     return out
 
 
@@ -223,7 +264,7 @@ def main():
     onto = ontology_network()
     version = git_version(("src/kg", "ontology"))
 
-    records = rule_records(rules, version)
+    records = rule_records(rules, version, facts)
     log(f"facts loaded ({len(facts)} triples); applying the rules")
     added = run_rules(facts, rules, records)
     t_rules = time.time() - t0
@@ -263,7 +304,7 @@ def main():
     summary = {
         "dataset": DATASET, "run": date.today().isoformat(), "code_version": version,
         "facts_triples": len(facts), "rule_triples": len(added), "rules_file_triples": len(out),
-        "derived": counts(facts, added),
+        "derived": counts(facts, out),   # out = the rule outputs + the rules' parameters
         "shacl_conforms_no_violation": bool(conforms),
         "shacl_results": results,
         "seconds_rules": round(t_rules), "seconds_total": round(t_all),

@@ -684,7 +684,8 @@
       <li>The detective: <code>src/kg/pump_attribution.py</code>; its results: <code>data/interim/pump_unit_attribution_eval.json</code>; explained in <code>docs/notes/step12b_review_fixes.md</code>.</li>
       <li>The filled map: <code>src/kg/build_kg.py</code> writes <code>data/processed/kg/lulcw_kg_v4.ttl</code>; <code>tests/test_kg.py</code> checks it against the tables; explained in <code>docs/notes/step12_ontology.md</code> (12.5).</li>
       <li>The rules and checks: <code>ontology/rules/lulcw-rules.ttl</code> (SHACL-AF) and <code>ontology/shapes/lulcw-shapes.ttl</code> (SHACL), run by <code>src/kg/apply_rules.py</code>; <code>tests/test_kg_rules.py</code> checks them on test cases and against the tables; explained in <code>docs/notes/step12_ontology.md</code> (12.6).</li>
-      <li>Coming next in this phase: the crop rules inside the map (crops around each well, their water needs, dated "high irrigation demand" zones), query tests including missing and conflicting evidence, export of the links for the model, the crop-name matching experiment (RPG to AGROVOC) and the dated satellite rule for probably irrigated fields.</li>
+      <li>The crops inside the map: <code>src/kg/landuse.py</code> (crop codes, classes with their FAO-56 water needs, clipped areas per year, yearly demand estimates) and the crop rules in the same rule file.</li>
+      <li>Coming next in this phase: query tests including missing and conflicting evidence, export of the links for the model, the crop-name matching experiment (RPG to AGROVOC) and the dated satellite rule for probably irrigated fields.</li>
     </ul>
   </details>
   <p class="nextlink"><a href="#model">Next: the smart model and its tests</a></p>
@@ -797,7 +798,7 @@
     <li><strong>The rivals are being re-run on version 4</strong> since your go of 24 October, never on your laptop. Done: the simple rivals, LightGBM, Pastas and its stability check, the EA-LSTM (Kaggle, processors only), the LSTM and the two graph networks (first Colab session, with a graphics card). The first version-4 results are in chapter 5. Kaggle is running the EA-LSTM's last extra tests (until late afternoon on 25 October). Chronos-2 and the rest of the Taccari tests wait for the next Colab session, which needs you to click "allow" for Google Drive. Then the version-4 report becomes final.</li>
     <li>The third check-up is done; you took its four decisions on 24 October (chapter 11).</li>
     <li><strong>Crops come in (25 October).</strong> The yearly crop maps are being downloaded, the crops are sorted into 14 groups with their water needs, and the weekly <button class="term" data-term="thirst">crop thirst</button> around each well is computed and tested. The fair test with and without it is ready, and goes to Kaggle when the running job ends.</li>
-    <li>The knowledge map is filled, and its rules now draw the links between layers, wells and pumps, with a checker that catches deliberate mistakes (25 October). Next: the crop rules inside the map, the query tests, and the export of the links for the model.</li>
+    <li>The knowledge map is filled, and its rules now draw the links between layers, wells and pumps, and hold the crops of every year around each well with their water needs and a dated "high irrigation demand" mark; a checker catches deliberate mistakes (25 October). The crop test (does the crop index help the models?) is running on Kaggle; before its results are read, Assil chooses its main comparison. Next: the query tests and the export of the links for the model.</li>
   </ul>
   <p class="nextlink"><a href="#decisions">Next: the decisions board</a></p>
 </section>

@@ -350,3 +350,90 @@ did everything that needs no model training (status per point in
   `src.analysis.pastas_stability`, which writes the reference run
   `pastas_seasonal_canal_trainobs_beststart`; then the v4 report
   (`docs/results_baselines_v4.md`), `hydro_errors` on v4, and 12.6.
+
+## 2026-10-25 morning: the first v4 results (Kaggle kernel 4 and Colab session 1 pulled)
+
+**What was done.**
+- **Kaggle kernel version 4** ran 21:11–08:11 UTC and stopped cleanly at its 11 h budget:
+  the Pastas multistart (2 × 10 starts, 38 min), EA-LSTM's final (5 seeds, 2 h 33 min;
+  torch 2.11.0+cpu, `tests/test_ealstm.py` passed), and EA-LSTM's left-out-well folds 0–3
+  (20 of 25 seed-runs). Pulled and rescored with the mask (`scripts/kaggle_cpu.py pull`; the
+  previous output is kept in `results/_kaggle_cpu/output_kernel_v2_backup`).
+- **Kernel version 5**, pushed 10:04 UTC with `--steps "regimes:ealstm"`, finishes fold 4,
+  R3 50 %, R3 25 % and the refit (about 6 h). It resumes from the pulled output: the folds
+  done before run fingerprints existed pass the folder check because the current code gives
+  them the same 22 inputs (checked on the laptop, without training).
+- **Colab session 1 pulled** from Drive (`pfe_colab/results_gpu/v4` → Download →
+  `scripts/colab_pull.py`): finals and regimes of the LSTM and the distance ST-GNN, Taccari's
+  final. Taccari's left-out wells (fold 0, fold 1 seeds 0–2) stay on Drive until every fold
+  exists. The `*_tuning/best.json` on Drive are identical to the laptop's.
+- `src.analysis.pastas_stability` wrote the reference run
+  `pastas_seasonal_canal_trainobs_beststart`; `tests/test_replay.py` rebuilds it from its
+  parameters to 5e-12 m on three core wells.
+- **Ensemble** (rule of 2026-10-20, validation only): Pastas reference + LSTM + distance
+  ST-GNN (validation median NSE 0.692; 11 subsets of 4 family winners).
+- **Interim v4 report** `docs/results_baselines_v4.md` and `docs/results_hydro_v4.md`
+  (Chronos-2 ×3, EA-LSTM's and Taccari's regimes still missing). `baseline_report` now says
+  which rows v4 does not re-run by design (the untuned defaults and the tuned LightGBM with its
+  own climatology, analysis plan §5), which regimes are still running, and reports the
+  reference's spread over its starts with the test of record repeated against each start
+  (analysis plan §14.12, added after these results). The v3 report is unchanged (checked:
+  only the v4 column of its cross-version table would move, so it was not regenerated).
+- **GPU bundle rebuilt** from the current code (`gpu_bundle.zip`, 38.3 MB, md5 97b2cf45…):
+  new Colab runs save their weights. Not on Drive yet; it goes up at the start of session 2.
+
+**Results worth remembering** (33 core wells, drought phase; interim and exploratory, §11).
+- **The Pastas reference depends on its starting values.** On the same machine, start 0
+  reproduces the run of record exactly; over 10 starts, the median drought NSE spans −1.24 to
+  −0.51 (full series) and −1.26 to −0.60 (training heads only). Per core well the drought NSE
+  moves by a median 1.4 (full) / 1.2 (training heads) between starts, for 31–32 of 33 wells by
+  more than 0.1. No well fell back to simplified responses or failed. The frozen rule gives
+  −0.80 (full) and **−0.75 (training heads only: the v4 reference)**, worse than the default
+  start (−0.51): the best training fit is not the best drought simulation. The v3 → v4 move of
+  the full-series fit (−0.73 → −0.51) lies inside this spread, so it says nothing about the
+  data change. The solver's objective was not stored by these runs (pushed before it was
+  added), so its agreement with the chosen start is not known.
+- **Scores (drought NSE / skill):** ensemble 0.14 / 0.51, LSTM 0.12 / 0.57, distance ST-GNN
+  0.06 / 0.55, Taccari −0.05 / 0.49, LightGBM −0.08 / 0.49, EA-LSTM −0.16 / 0.37, Pastas
+  reference −0.75 / 0.22, climatology −1.49 / 0.
+- **Cluster test against the reference (p_holm, drought NSE / skill):** ensemble 0.020 / 0.005;
+  distance ST-GNN 0.079 / 0.009; LightGBM 0.079 / 0.070; LSTM 0.164 / 0.295; Taccari 0.164 /
+  0.359; EA-LSTM 1 / 0.232. Taccari's v3 pass (drought skill, p_holm 0.013) is not repeated on
+  v4.
+- **Against each of the 10 training-heads-only starts:** every tuned learning model beats Pastas by
+  a large median margin whatever the start (+0.30 to +1.60 NSE), but a single model passes
+  the cluster test for only 2–4 starts of 10; the ensemble passes for all 10 (p_holm
+  0.010–0.039).
+- **Drought classes:** the ensemble detects 75 % of the low months with 18 % false alarms,
+  the LSTM 71 / 16 %, the distance ST-GNN 71 / 19 %, the Pastas reference 62 / 27 %, the
+  full-series Pastas 50 / 27 %, climatology 1 %. The reference has the lower NSE but the
+  better drought classes of the two Pastas fits: NSE and class scores can disagree.
+- **Left-out wells (v4 folds keep wells < 2 km apart together):** LightGBM −0.58 (−0.91
+  without the mask: PD5 moves from below the median to above it, where two neighbouring
+  wells are 0.33 apart), LSTM −0.94, distance ST-GNN −0.98. On v3 the
+  graph models lost least (−0.42 / −0.40 against LightGBM −0.75); on the v4 folds they do
+  not, so the v3 advantage came from twin wells split across folds. **Less data** costs
+  little: 25 % of the training years gives LSTM 0.13, ST-GNN 0.21, LightGBM −0.34.
+
+**Why.**
+- The reference is what every significance test is measured against. If its own drought
+  score moves by 0.7 with the starting point, a single model "beating Pastas" is partly a
+  statement about where Pastas started. Showing the test against every start is the honest
+  answer; changing the reference now that we know which start would help would not be.
+- The rule was frozen before the multistart ran, and it happens to give a weaker reference
+  (−0.75) than the default start (−0.51). That is exactly why it was frozen first: the
+  reference must not look chosen, in either direction.
+- The interim report is written now so that the numbers exist in a generated file, not only
+  in a log; it is regenerated when the last runs arrive.
+
+**What to consider.**
+- **Pastas's drought behaviour is not identified by the 2005–2019 heads**: many parameter
+  sets fit the training years about equally well and extrapolate differently into the
+  drought. For the paper, describe the reference as "the hydrological model, with its
+  spread", and lean on the ensemble result and the effect sizes, not on single-model p-values.
+- The mask moves LightGBM's left-out-well median by 0.33: amendment §14.1 quoted its effect
+  on the main runs only (+0.01 to +0.10). Both versions stay in the report.
+- **Still to run:** EA-LSTM's regimes (Kaggle, kernel 5), then Colab session 2 (Chronos-2 ×3
+  and Taccari's regimes, about 3.5 T4-hours: Assil clicks the Drive permission). Then pull,
+  rebuild the ensemble only if its candidates changed (they are final now), regenerate both
+  reports, and update the explainer's scores to v4.

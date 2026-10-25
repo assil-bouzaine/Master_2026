@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from src.analysis.pastas_stability import BASE, core_drought, start_runs, well_drought
 from src.analysis.stats import SENS_KM, SENS_SHIFTS, cluster_sensitivity, holm, paired
 from src.config import DATASET, FIGURES, ROOT
 from src.models.evaluate import DS, RESULTS, score
@@ -54,6 +55,10 @@ if DATASET >= "v4":
     SIM[2] = ("pastas_seasonal_canal", "Pastas (seasonal + canal), full series at construction "
                                        "(historical)")
     SIM[3] = ("pastas_wellmodel", "Pastas WellModel, full series at construction (historical)")
+# rows of earlier versions that a version does not re-run: v4 re-runs only the configurations
+# selected on v3 (docs/analysis_plan.md §5), not the untuned defaults or the tuned LightGBM
+# with its own-climatology input
+NOT_RERUN = {"lgbm_tuned", "lstm", "stgnn_distance", "taccari"} if DATASET >= "v4" else set()
 # RQ1 regimes (docs/analysis_plan.md section 4) of the tuned models: run-name suffixes
 REGIME_MODELS = [("lgbm_noclim", "LightGBM"), ("lstm", "LSTM"),
                  ("ealstm", "EA-LSTM"),
@@ -65,6 +70,7 @@ REGIMES = [("", "R1 all wells, full training"), ("_lwo", "R2 left-out monitored 
 REGIME_NOTES = {("v3", "ealstm"): "EA-LSTM: R1 only on v3. Its other regimes were stopped on "
                 "2026-10-23 and run on v4 only: the v3 leave-wells-out folds split twin wells "
                 "20 m apart (`docs/notes/step12a_fixes.md`)."}
+REGIME_SHORT = {"": "R1", "_lwo": "R2", "_f50": "R3 50 %", "_f25": "R3 25 %", "_refit": "refit"}
 GROUPS = ["Pliocene multilayer", "recent alluvium", "ancient alluvium", "Corbières karst", "other"]
 # validated categorical palette (dataviz skill), fixed order
 SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"]
@@ -164,6 +170,17 @@ def regimes_table():
     return pd.DataFrame(rows)
 
 
+def regimes_missing():
+    """From v4: the planned regime runs without results yet (LightGBM has no refit)."""
+    out = []
+    for m, label in REGIME_MODELS:
+        gone = [REGIME_SHORT[s] for s, _ in REGIMES
+                if not (m == "lgbm_noclim" and s == "_refit") and summary(f"{m}_tuned{s}") is None]
+        if gone:
+            out.append(f"{label} {', '.join(gone)}")
+    return out
+
+
 def significance_table():
     """Each simulation model vs the hydrology reference, per-well paired, Holm across models."""
     ref = RESULTS / REFERENCE / "metrics_per_well.csv"
@@ -211,6 +228,56 @@ def sensitivity_table():
                      "median_diff LOCO min": loco["median_diff"].min(),
                      "median_diff LOCO max": loco["median_diff"].max()})
     return pd.DataFrame(rows)
+
+
+def reference_spread():
+    """From v4: the Pastas reference over its 10 starting values (src.analysis.pastas_stability;
+    analysis plan §5: "its spread over the starts is reported with it"), drought NSE, core wells."""
+    core = pd.read_parquet(DS / "wells.parquet").query("core")["code_bss"]
+    rows = []
+    for prefix, label in ((BASE, "full series at construction"),
+                          (f"{BASE}_trainobs", "training heads only")):
+        runs = start_runs(prefix)
+        if not runs:
+            continue
+        per_well = pd.concat({d.name: well_drought(d.name) for d in runs}, axis=1)
+        rng = (per_well.max(axis=1) - per_well.min(axis=1)).reindex(core).dropna()
+        best = f"{prefix}_beststart"
+        rows.append({"construction": label}
+                    | {f"start {d.name.rsplit('start', 1)[1]}": core_drought(d.name) for d in runs}
+                    | {"best start (frozen rule)": core_drought(best) if summary(best) is not None
+                       else np.nan,
+                       "per-well range, median": rng.median(),
+                       "wells with range > 0.1": f"{int((rng > 0.1).sum())} of {len(rng)}"})
+    return pd.DataFrame(rows)
+
+
+def reference_robustness():
+    """From v4: the drought-NSE test of record repeated with each training-heads-only start as
+    the reference instead of the best start (same models, Holm across them per start)."""
+    starts = start_runs(f"{BASE}_trainobs")
+    if not starts:
+        return pd.DataFrame()
+    wells = pd.read_parquet(DS / "wells.parquet")
+    per = []
+    for d in starts:
+        mb = pd.read_csv(d / "metrics_per_well.csv")
+        t = []
+        for run, label in SIM:
+            f = RESULTS / run / "metrics_per_well.csv"
+            if run == REFERENCE or not f.exists():
+                continue
+            r = paired(pd.read_csv(f), mb, wells, split="test_drought", metric="NSE")
+            t.append({"model": label, "median_diff": r["median_diff"], "p_cluster": r["p_cluster"]})
+        t = pd.DataFrame(t)
+        t["p_holm"] = holm(t["p_cluster"].to_numpy())
+        per.append(t)
+    g = pd.concat(per).groupby("model", sort=False)
+    return pd.DataFrame({"median_diff min": g["median_diff"].min(),
+                         "median_diff max": g["median_diff"].max(),
+                         "p_holm min": g["p_holm"].min(), "p_holm max": g["p_holm"].max(),
+                         "starts with p_holm < 0.05": g["p_holm"].apply(
+                             lambda p: f"{int((p < 0.05).sum())} of {len(p)}")}).reset_index()
 
 
 def mask_table():
@@ -344,13 +411,16 @@ def main():
     cmp_ = compare_versions()
     mask_t = mask_table() if DATASET >= "v4" else pd.DataFrame()
     sens = sensitivity_table() if DATASET >= "v4" else pd.DataFrame()
-    sig_cols = ["model", "period", "metric", "n_wells", "median_a", "median_b", "median_diff",
+    spread = reference_spread() if DATASET >= "v4" else pd.DataFrame()
+    robust = reference_robustness() if len(spread) else pd.DataFrame()
+    sig_cols =["model", "period", "metric", "n_wells", "median_a", "median_b", "median_diff",
                 "ci_lo", "ci_hi", "share_a_better", "n_clusters", "p_cluster", "p_holm",
                 "p_wilcoxon"]
     # v3 keeps docs/results_baselines.md (the report of record of Step 12a)
     md = ROOT / "docs" / ("results_baselines.md" if DATASET < "v4" else f"results_baselines_{DATASET}.md")
     missing = [label for run, label in SIM + FC
-               if not (RESULTS / run / "predictions.parquet").exists()]
+               if not (RESULTS / run / "predictions.parquet").exists() and run not in NOT_RERUN]
+    not_rerun = [label for run, label in SIM + FC if run in NOT_RERUN]
     parts = [
         "# Baseline results\n",
         "Generated by `python -m src.analysis.baseline_report`; do not edit by hand. "
@@ -362,6 +432,8 @@ def main():
         "KGE'' = Tang et al. 2021 (datum-free). See `docs/analysis_plan.md`.\n",
         "## Main table\n", fmt(t).to_markdown(index=False), "",
         ("**Not run yet** (rows missing above): " + "; ".join(missing) + ".\n") if missing else "",
+        *([f"**Not re-run on {DATASET}** (only the configurations selected on v3 are re-run, "
+           "`docs/analysis_plan.md` §5): " + "; ".join(not_rerun) + ".\n"] if not_rerun else []),
         "## Drought-phase NSE by aquifer group (number of core wells)\n",
         fmt(g).to_markdown(index=False), "",
         f"## Significance against the hydrology reference ({REFERENCE})\n",
@@ -383,12 +455,27 @@ def main():
            "origin 0 stays the test of record.\n",
            fmt(sens, signed=("median_diff", "median_diff LOCO min", "median_diff LOCO max"))
            .to_markdown(index=False), ""] if len(sens) else []),
+        *(["## Spread of the reference over its starting values\n",
+           "Every well refitted from 10 starting values (start 0 = Pastas' defaults; "
+           "`src/analysis/pastas_stability.py`). Drought-phase median NSE over the core wells "
+           "per start; per-well range = largest minus smallest drought NSE of a core well over "
+           "the 10 starts. The reference of record takes, per well, the start with the lowest "
+           "training-period simulation RMSE (rule frozen before these runs), whatever its test "
+           "score (analysis plan §5).\n",
+           fmt(spread).to_markdown(index=False), "",
+           "**Does the test of record depend on the start?** The drought-NSE test above, "
+           "repeated with each of the 10 training-heads-only starts as the reference (Holm "
+           "across the same models, per start):\n",
+           fmt(robust, signed=("median_diff min", "median_diff max")).to_markdown(index=False),
+           ""] if len(spread) else []),
         "## RQ1 regimes of the tuned models\n",
         "R2 scores held-out wells in the \"dynamics\" convention (each well's own training "
         "mean and sd convert z to metres); R3 shortens the training period, validation and "
         "test unchanged; refit = secondary rows (`docs/analysis_plan.md` sections 4–5).\n",
         (fmt(reg).to_markdown(index=False) if len(reg) else "(no regime runs yet)"), "",
         " ".join(note for (v, _), note in REGIME_NOTES.items() if v == DATASET), "",
+        *([f"**Regimes not run yet:** {'; '.join(regimes_missing())}.\n"]
+          if DATASET >= "v4" and regimes_missing() else []),
         "## Across dataset versions (drought phase)\n",
         fmt(cmp_).to_markdown(index=False), "",
         *(["## Amendment of 2026-10-24: suspect placeholder values masked\n",

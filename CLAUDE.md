@@ -576,7 +576,7 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
     contacts, publication details, monthly drinking-water production.
   - The e-mails are ready in §4–5 there; Assil sends them.
 
-**State at 2026-10-25 00:30 CET: the v4 re-runs (Step 12b) are under way, off the laptop (Kaggle kernel version 4 running, checked 23:20 UTC); task 12.5 and the third review (both passes) done; the explainer is current (chapters 2, 5, 7–11).**
+**State at 2026-10-25 11:30 CET: the first v4 results are in (interim report `docs/results_baselines_v4.md`, step 12b note, last section); Kaggle kernel version 5 runs the last EA-LSTM regimes (pushed 10:04 UTC, about 6 h); Colab session 2 (Chronos-2 ×3, the rest of the Taccari regimes) waits for Assil; task 12.5 and the third review (both passes) done; the explainer is current.**
 - **Assil's go (2026-10-24):** "u can use kaggle and colab to train", and no
   model is trained on the laptop any more. This lifts the hold of 2026-10-23
   evening ("keep only v3 running").
@@ -584,10 +584,8 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
   UTC, 36 min on 4 CPUs; pulled and rescored 2026-10-24): naive, LightGBM
   (`lgbm_sim`, `lgbm_fc`, `lgbm_noclim_tuned` + `_lwo/_f25/_f50`), Pastas,
   `pastas_seasonal_canal`, `pastas_wellmodel` in `results/v4`. The naive rows
-  equal the laptop's v4 rows of 2026-10-23 (environment check passed). First
-  look (core-well medians, drought NSE v3 → v4): Pastas −1.00 → −0.93,
-  LightGBM −0.12 → −0.10; left-out wells −0.75 → −0.91 and 25 % data
-  −0.26 → −0.35 (harder, as intended by the v4 fixes).
+  equal the laptop's v4 rows of 2026-10-23 (environment check passed). Scores:
+  the v4 report.
 - **Colab T4, session 1 ended at 17:13 UTC** (started 15:10 UTC in
   `pfe_v3_gpu.ipynb`). There was no error and no closing log line. At 18:40 UTC
   Colab refused a new GPU "due to usage limits", so the stop was either the
@@ -597,12 +595,10 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
   - the regimes of LSTM and ST-GNN
   - Taccari left-out wells: fold 0, and fold 1 seeds 0–2
 
-  Left: `final:ealstm` and `regimes:ealstm` (now on Kaggle), the rest of
-  `regimes:taccari` (32 seed-runs, ≈ 3 h) and Chronos-2 ×3 (Colab). First look (unscored
-  medians from the log, 33 core wells, drought NSE v3 → v4):
-  - finals: LSTM 0.01 → 0.04, ST-GNN −0.09 → 0.04, Taccari −0.11 → −0.06
-  - left-out wells: LSTM −1.56 → −0.94, but ST-GNN −0.42 → −0.98. On the v4
-    folds the distance graph no longer loses least (LightGBM −0.91).
+  Pulled to the laptop and scored on 2026-10-25 (Drive `pfe_colab/results_gpu/v4`
+  → Download → `scripts/colab_pull.py`); Taccari's partial folds stay on Drive
+  until every fold exists. Left: `regimes:ealstm` (Kaggle), the rest of
+  `regimes:taccari` (32 seed-runs, ≈ 3 h) and Chronos-2 ×3 (Colab).
 
   The v4 bundle is on Drive as `pfe_colab/gpu_bundle.zip`; the v3 one is kept as
   `gpu_bundle_v3.zip`. Run line:
@@ -613,9 +609,11 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
   GPU because it took gradients in eval mode, which cuDNN refuses ("cudnn RNN
   backward can only be called in training mode"); a test bug, not a model
   bug (training runs in train mode). Fixed 2026-10-24 (train mode, dropout 0;
-  CPU half passes). **Session 2 is prepared:** Drive `pfe_colab/gpu_bundle.zip`
-  is already the fixed bundle (md5 18c1256e…, copied 15:41 UTC through the
-  Colab Terminal while session 1 ran; parts that hang in the Files panel are
+  CPU half passes). **Session 2:** Drive `pfe_colab/gpu_bundle.zip` (md5
+  18c1256e…, copied 15:41 UTC on 2026-10-24 through the Colab Terminal) is older
+  code; the laptop's `gpu_bundle.zip` was rebuilt on 2026-10-25 (md5 97b2cf45…,
+  38.3 MB; new runs save their weights): upload it first (Files panel in 7 MB
+  parts, then `cat` + `cp` to Drive in the Terminal; parts that hang are
   re-sent, and a `change` event on `#file-tree-upload-input` starts a stalled
   one). In a new runtime: mount Drive (Assil), then the same run line;
   finished runs are restored from Drive and skipped. **Session 2, when Colab
@@ -623,36 +621,38 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
   `STEPS="chronos2 chronos2_xl chronos2_ft regimes:taccari"` before `python` in
   the run line (≈ 3.5 T4-hours). Touch the tab at least hourly. Pull with
   `scripts/colab_pull.py` (Drive folder `pfe_colab/results_gpu` → Download).
-- **Kaggle CPU, kernel version 4** (pushed 21:11 UTC, budget 11 h, so it ends
-  by about 08:15 UTC on 2026-10-25; still RUNNING at 23:20 UTC, after the laptop
-  crashed at about 23:11 UTC, which does not affect it; step note 12b, last section). Version 3
-  (18:52 UTC) never started: ERROR, empty log, no output, 16 s after a new
-  bundle version. Version 4 is the same kernel and bundle, pushed again with
-  `scripts/kaggle_cpu.py kernel`; `push` now waits after a new bundle version
-  and re-pushes once a kernel that dies silently at start (`docs/gpu_howto.md`).
-  - `pastas_starts`, `pastas_trainobs`: the Pastas stability check
-  - `final:ealstm`, `regimes:ealstm`: they run only if the image has torch and
-    `tests/test_ealstm.py` passes there; about 2 h + 17 h on 4 CPUs
-  - Then `scripts/kaggle_cpu.py pull`, `PFE_DATASET=v4 python -m
-    src.analysis.pastas_stability`, and push again with
-    `--steps "regimes:ealstm"` to finish (it resumes from the pulled output).
-- **After both:** `PFE_DATASET=v4` ensemble and `baseline_report` → the v4
-  report of record (the v3 report stays as Step 12a's record). To re-check on
-  v4: the Taccari drought-skill result (p_holm 0.013 on v3) and "the graph
-  models lose least on left-out wells" (the v3 folds split twin wells).
-  **Check first (found 2026-10-24): the Pastas reference is not stable.**
-  - Its drought NSE moved from −0.73 (v3, laptop) to −0.51 (v4, Kaggle).
-  - 6 of its 55 fitted wells have changed heads between v3 and v4 (73 weeks,
-    all before 2010, 71 of them **inside** its 2005–2019 calibration; corrected
-    2026-10-25, the earlier "outside its 2012–2019 calibration" was the v1
-    window).
-  - Yet 13 of the 43 drought-scored wells with identical heads changed by
-    more than 0.05; one of them is the median well (PZSTGL, −0.73 → −0.51).
-    The cause is not established (solver, environment or starting values).
-  - It is the reference of the significance tests: refit it several times
-    (or from perturbed starts) on Kaggle and report the spread first. The best
-    start is chosen by the training-period simulation RMSE (rule frozen
-    2026-10-25, before any multistart result; `src/analysis/pastas_stability.py`).
+- **Kaggle CPU, kernel version 4 ✅** (21:11–08:11 UTC, stopped cleanly at its
+  11 h budget; pulled and rescored 2026-10-25): the Pastas multistart (2 × 10
+  starts), EA-LSTM's final (torch 2.11.0+cpu, `tests/test_ealstm.py` passed) and
+  its left-out-well folds 0–3. (Version 3 never started: ERROR, empty log, 16 s
+  after a new bundle version; `push` now waits and re-pushes once,
+  `docs/gpu_howto.md`.) **Kernel version 5** (pushed 10:04 UTC on 2026-10-25,
+  `--steps "regimes:ealstm"`, resumes from the pulled output): fold 4, R3 50 %,
+  R3 25 % and the refit, about 6 h. Then `scripts/kaggle_cpu.py pull` (it
+  rescores) and the two reports again.
+- **v4 results so far** (interim, `docs/results_baselines_v4.md`,
+  `docs/results_hydro_v4.md`; step 12b note, last section). The v3 report stays
+  as Step 12a's record.
+  - **The Pastas reference depends on its starting values** (measured
+    2026-10-25): over 10 starts its drought median NSE spans −1.26 to −0.60
+    (training heads only) and −1.24 to −0.51 (full series); a core well's
+    drought NSE moves by a median 1.2–1.4 between starts. The frozen rule gives
+    **−0.75, the reference of record**. The v3 → v4 move of the old reference
+    (−0.73 → −0.51) lies inside this spread.
+  - Drought NSE / skill: ensemble (Pastas reference + LSTM + distance ST-GNN)
+    0.14 / 0.51, LSTM 0.12 / 0.57, distance ST-GNN 0.06 / 0.55, Taccari −0.05 /
+    0.49, LightGBM −0.08 / 0.49, EA-LSTM −0.16 / 0.37.
+  - Cluster test against the reference: ensemble p_holm 0.020 (NSE) / 0.005
+    (skill), distance ST-GNN skill 0.009; the others 0.07–1. Taccari's v3 pass
+    (0.013) is not repeated. Repeated against each of the 10 starts: every
+    tuned model keeps a large median gain (+0.30 to +1.60 NSE), but only the
+    ensemble passes against all 10 (single models 2–4 of 10).
+  - Left-out wells (v4 folds keep twin wells together): LightGBM −0.58, LSTM
+    −0.94, distance ST-GNN −0.98: the v3 "graph models lose least" came from
+    split twins.
+  - When the last runs arrive: pull, regenerate `baseline_report` and
+    `hydro_errors` (the ensemble's candidates are final), then switch the
+    explainer's scores chart to v4.
 - **Third review (Codex, 2026-10-24 night):** `docs/review_codex_2026-10-24.md`;
   every factual claim checked, verdicts and status in
   `docs/review_codex_2026-10-24_response.md`. Quick fixes done 2026-10-24;
@@ -685,17 +685,14 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
    `docs/supervisor_questions.md` §6 (French text ready).
 
 **Next for Claude, while the models run or after:**
-1. ✅ Step 12a done (2026-10-23 evening). 🔄 The v4 re-runs started on
-   2026-10-24: Kaggle CPU done; Colab session 1 ended at 17:13 UTC (see State).
-   Then Colab session 2 (Chronos-2, the rest of the Taccari regimes), then the
-   v4 report. **After the Kaggle kernel v4 ends:** `scripts/kaggle_cpu.py pull`
-   (it rescores with the placeholder mask), `PFE_DATASET=v4 python -m
-   src.analysis.pastas_stability` (writes the reference run
-   `pastas_seasonal_canal_trainobs_beststart`), `tests/test_replay.py
-   pastas_seasonal_canal_trainobs_beststart`, then `src.models.ensemble`,
-   `src.analysis.baseline_report` (→ `docs/results_baselines_v4.md`) and
-   `src.analysis.hydro_errors` on v4. Rebuild the GPU bundle before the next
-   Colab session so new runs save weights (the bundle on Drive is older code).
+1. ✅ Step 12a done (2026-10-23 evening). 🔄 The v4 re-runs: Kaggle kernel 4
+   and Colab session 1 pulled on 2026-10-25, reference run, replay, ensemble and
+   the interim reports done (see State). Left: **pull Kaggle kernel 5** when it
+   ends (`scripts/kaggle_cpu.py status`, then `pull`); **Colab session 2** when
+   Assil is there to mount Drive (upload the rebuilt `gpu_bundle.zip` first;
+   `STEPS="chronos2 chronos2_xl chronos2_ft regimes:taccari"`); then
+   `PFE_DATASET=v4` `src.analysis.baseline_report` and `src.analysis.hydro_errors`,
+   and the explainer's scores chart on v4.
 2. Literature, from the second review:
    - the positioning matrix in `docs/literature/comparison_table.md`: past heads
      as input? forcings? split? knowledge supplied? explanation validated?
@@ -726,7 +723,7 @@ Assil's review of the competency questions.
 | 10 Baselines on dataset v2 | ✅ done | `docs/notes/step10_baselines_v2.md` |
 | 11 Gate 2 summary | ✅ answered 2026-10-23: the choices are left to Assil (decisions in `docs/supervisor_questions.md`) | `docs/summary_gate2_results.md` |
 | **12a Fixes from the critical review** | **✅ 2026-10-23:** evaluation, analysis plan, dataset v3, all v3 baselines (EA-LSTM regimes on v4 only), final v3 report | `docs/feedback.md`, `docs/analysis_plan.md`, `docs/notes/step12a_fixes.md` |
-| **12b Fixes from the second review** | **✅ 2026-10-23** (code, dataset v4, analysis plan v2, tests); 🔄 the baseline re-runs on v4 started 2026-10-24 (Kaggle CPU + Colab T4); third review checked and done (two passes, 2026-10-24/25) | `docs/review_codex_2026-10-23.md`, `docs/review_codex_response.md`, `docs/notes/step12b_review_fixes.md` |
+| **12b Fixes from the second review** | **✅ 2026-10-23** (code, dataset v4, analysis plan v2, tests); 🔄 the baseline re-runs on v4 started 2026-10-24 (Kaggle CPU + Colab T4); first results pulled 2026-10-25 (interim `docs/results_baselines_v4.md`); EA-LSTM regimes on Kaggle, Chronos-2 and Taccari regimes wait for Colab session 2; third review checked and done (two passes, 2026-10-24/25) | `docs/review_codex_2026-10-23.md`, `docs/review_codex_response.md`, `docs/notes/step12b_review_fixes.md` |
 | **12 Phase 3: ontology + KG** | **🔄 started 2026-10-23.** 12.1 drafted, 12.2 started, 12.3–12.5 done | `docs/review_2026-10-23.md`, `docs/competency_questions.md`, `docs/ontology_design.md`, `docs/notes/step12_ontology.md` |
 
 ### Step 12: Phase 3 tasks, in order
@@ -777,14 +774,16 @@ Then Phase 4: the main-model decision, the twin, the arms (`docs/roadmap.md`).
     effect (median ΔNSE +0.4 to +1.0, most cluster-bootstrap intervals
     exclude 0), but **not significantly with the cluster-level test** (p_holm
     0.07–0.33; the per-well Wilcoxon gives ≤ 0.03). One exception: the tuned
-    Taccari ST-GNN on drought skill (p_holm 0.013), to check on v4. The
+    Taccari ST-GNN on drought skill (p_holm 0.013), not repeated on v4 (0.359).
+    The
     remaining error is mostly a level offset in 2024–25. These results are
     exploratory: the test period informed the diagnosis
   - the last two v3 baselines (2026-10-23) beat neither the tuned LSTM nor
     the tuned distance graph: EA-LSTM drought skill 0.34, Taccari tuned 0.55
     (LSTM tuned 0.56). On left-out wells the graph models lose the least
     (drought NSE −0.40/−0.42 against LightGBM −0.75 and LSTM −1.56); the v3
-    folds split twin wells, so recheck on v4
+    folds split twin wells, and on the v4 folds it does not hold (distance
+    ST-GNN −0.98, LightGBM −0.58)
   - same unit within 5 km and a small depth difference carry co-variation
     beyond distance
 

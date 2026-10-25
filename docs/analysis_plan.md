@@ -559,3 +559,8 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
     generator draws and a truth graph separate from the learner's graph.
 11. §11 result labels; §12 wording (attributed contributions, explanation fields,
     case studies, positioning).
+12. §5 reporting, added 2026-10-25 **after** the multistart results were seen: besides
+    the spread of the reference over its 10 starts, the v4 report repeats the drought-NSE
+    test of record with each training-heads-only start as the reference (same models,
+    Holm per start). A sensitivity table only: the reference and the test of record are
+    unchanged.

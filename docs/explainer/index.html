@@ -440,9 +440,20 @@
   <p>Our 33 wells are not 33 independent witnesses. Wells close to each other share the same rain, the same pumps and the same layer, so they tend to agree. On the map they fall in only 14 <button class="term" data-term="cluster">neighbourhoods</button> of 10 km. A fair test therefore counts 14 voices, not 33.</p>
   <p>With that fair test, the advantage of the computer models over Pastas is <strong>big but not proven</strong> at the usual 5 % level. So we report <button class="term" data-term="effectsize">how big the difference is</button> first, and say plainly that 14 neighbourhoods are not enough to prove it. One exception: the tuned Taccari graph's drought skill passes the fair test, because it does better than Pastas in almost every neighbourhood. One pass among dozens of tests is a hint, not proof; version 4 will check it. We do not change the test until it says what we would like: that would be cheating with statistics.</p>
 
+  <h3>First version-4 results (25 October, not final yet)</h3>
+  <p>The re-runs on version 4 came back on 25 October; Chronos-2 and some extra tests are still running, so the chart above stays on version 3 for now.</p>
+  <ul>
+    <li><strong>Pastas, our yardstick, wobbles.</strong> Fitting a Pastas model is like rolling a ball into the lowest point of a hilly landscape: where you let it go decides which valley it ends in. We fitted every well from 10 different starting points. On the same data, its drought score (NSE) goes from −1.26 to −0.60 depending on the start, and for a single well it moves by about 1.2. Many settings fit 2005–2019 equally well but behave differently in the drought.</li>
+    <li><strong>We kept the rule we wrote before looking.</strong> The yardstick is, for each well, the start that best matches the study years: −0.75. Another start would have flattered Pastas (−0.60), one would have sunk it (−1.26). Picking one now, knowing the results, would be cheating in either direction.</li>
+    <li><strong>The team of models wins, whatever the start.</strong> Against the yardstick, the team (Pastas + LSTM + distance graph, chosen on the 2020–2022 years) passes the fair neighbourhood test in the drought, and it still passes when the test is redone against each of the 10 Pastas starts. Single models also beat Pastas every time (by 0.3 to 1.5 in NSE), but they pass the strict test only for some starts. The Taccari graph's pass on version 3 does not come back.</li>
+    <li><strong>Hidden wells:</strong> with the fairer version-4 split (wells under 2 km apart stay together), the distance graph no longer loses least when a well is hidden. On version 3 it could peek at a twin well 20 m away.</li>
+    <li><strong>Drought months:</strong> the team spots 3 in 4 of the low-level months with about 1 false alarm in 6; Pastas spots 6 in 10.</li>
+  </ul>
+
   <details class="deeper">
     <summary>Go deeper</summary>
     <ul>
+      <li>Version 4 (interim): <code>docs/results_baselines_v4.md</code> (with the spread of the Pastas yardstick over its 10 starts) and <code>docs/results_hydro_v4.md</code>; how they were made: <code>docs/notes/step12b_review_fixes.md</code>, last section.</li>
       <li>Full table: <code>docs/results_baselines.md</code>, made by <code>src/analysis/baseline_report.py</code>. Picture of all models on four wells: <a href="../../reports/figures/baselines_hydrographs_v3.png">reports/figures/baselines_hydrographs_v3.png</a>.</li>
       <li>Other scores: <button class="term" data-term="nse">NSE</button> (drought: LSTM 0.01, ensemble 0.02, Pastas −0.73) and KGE'' (a version of KGE that does not depend on the height of sea level).</li>
       <li>The fair test is a cluster sign-flip permutation test on 10 km cells; the old per-well Wilcoxon test said "proven" (p ≤ 0.03), the fair one does not (p_holm 0.07–0.33), except the tuned Taccari graph on drought skill (p_holm 0.013). See <code>docs/analysis_plan.md</code> §6 and <code>src/analysis/stats.py</code>. From version 4 it is also shown on 5 and 20 km cells, shifted cells, and with each neighbourhood left out in turn; the 10 km cells stay the test of record.</li>
@@ -754,7 +765,7 @@
   <h3>Right now</h3>
   <ul>
     <li>All the rivals of version 3 have finished and are in the scores chart. We stopped the EA-LSTM's extra tests (wells left out, less data) on 23 October, because version 4 redoes them with a fairer split. The results go into the monthly report for the supervisor.</li>
-    <li><strong>The rivals are being re-run on version 4</strong> since your go of 24 October, never on your laptop. Kaggle (processors only, no graphics card) has done the simple rivals, LightGBM and Pastas; the first Colab session (with a graphics card) did the LSTM and the two graph networks. Kaggle is now running the Pastas stability check and the EA-LSTM, until about 9 a.m. on Sunday 25 October; the EA-LSTM's extra tests need one more Kaggle run. Chronos-2 and the rest of the Taccari tests wait for the next Colab session. Then comes the version 4 report.</li>
+    <li><strong>The rivals are being re-run on version 4</strong> since your go of 24 October, never on your laptop. Done: the simple rivals, LightGBM, Pastas and its stability check, the EA-LSTM (Kaggle, processors only), the LSTM and the two graph networks (first Colab session, with a graphics card). The first version-4 results are in chapter 5. Kaggle is running the EA-LSTM's last extra tests (until late afternoon on 25 October). Chronos-2 and the rest of the Taccari tests wait for the next Colab session, which needs you to click "allow" for Google Drive. Then the version-4 report becomes final.</li>
     <li>The third check-up is done; you took its four decisions on 24 October (chapter 11).</li>
     <li>The knowledge map is filled. Next: the rules inside the map that derive the links (task 12.6), the query tests, and the export of the links for the model.</li>
   </ul>

@@ -19,9 +19,9 @@
 # M2 = square metre, M3 = cubic metre) and are stated in each definition.
 
 <https://w3id.org/lulcw> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/0.1.1> ;
-    owl:versionInfo "0.1.1" ;
-    owl:priorVersion <https://w3id.org/lulcw/0.1.0> ;
+    owl:versionIRI <https://w3id.org/lulcw/0.2.0> ;
+    owl:versionInfo "0.2.0" ;
+    owl:priorVersion <https://w3id.org/lulcw/0.1.1> ;
     dcterms:title "LULC-Water bridging module"@en , "Module de liaison LULC-Water"@fr ;
     dcterms:description "Bridging module of the LULC-Water network of ontologies (SAVE Water, PRIMA): wells, abstraction facilities, hydrogeological units and the qualified, evidence-carrying assertions (unit attributions, stratigraphic relations, well links, influences, annual abstraction accounting) that structure, constrain and explain a groundwater-level model of the Roussillon multilayer aquifer."@en ,
         "Module de liaison du réseau d'ontologies LULC-Water (SAVE Water, PRIMA) : piézomètres, ouvrages de prélèvement, entités hydrogéologiques et assertions qualifiées, porteuses de preuves (attributions à une entité, relations stratigraphiques, liens entre piézomètres, influences, bilans annuels des prélèvements), qui structurent, contraignent et expliquent un modèle des niveaux piézométriques de l'aquifère multicouche du Roussillon."@fr ;
@@ -31,7 +31,8 @@
     vann:preferredNamespacePrefix "lulcw" ;
     vann:preferredNamespaceUri "https://w3id.org/lulcw#" ;
     rdfs:comment "Namespace provisional until the w3id.org redirect is accepted (docs/ontology_design.md §6)."@en ,
-        "0.1.1 (2026-10-24, task 12.5): water use EnergyUse (BNPE code ENE); GeoSPARQL hasMetricArea added to the reused terms for polygon areas."@en ;
+        "0.1.1 (2026-10-24, task 12.5): water use EnergyUse (BNPE code ENE); GeoSPARQL hasMetricArea added to the reused terms for polygon areas."@en ,
+        "0.2.0 (2026-10-25, task 12.6): admitsConfidence and searchRadiusM, so that export policies and spatial rules carry their parameters as data; constraint eligibility defined from the evidence of the pathway, applied only under a policy that selects every segment. The SHACL shapes and SHACL-AF rules are in ontology/shapes/ and ontology/rules/."@en ;
     owl:imports <https://w3id.org/lulcw/imports/sosa> , <https://w3id.org/lulcw/imports/prov> ,
         <https://w3id.org/lulcw/imports/time> , <https://w3id.org/lulcw/imports/skos> ,
         <https://w3id.org/lulcw/imports/geo> .
@@ -442,11 +443,11 @@ lulcw:ConstraintEligibilityScheme a skos:ConceptScheme ;
 lulcw:EligibleConstraint a lulcw:ConstraintEligibility ; skos:inScheme lulcw:ConstraintEligibilityScheme ; skos:topConceptOf lulcw:ConstraintEligibilityScheme ;
     skos:prefLabel "eligible"@en , "éligible"@fr ;
     rdfs:label "eligible"@en , "éligible"@fr ;
-    skos:definition "Every segment of the pathway is accepted and the sign, variable and conditions are supported."@en .
+    skos:definition "Every segment of the pathway is resolved at the resolution its mechanism requires (for pumping drawdown: the exact unit on both sides), and the sign, variable and conditions are supported. The constraint is applied only under a policy that selects every segment."@en .
 lulcw:IneligibleConstraint a lulcw:ConstraintEligibility ; skos:inScheme lulcw:ConstraintEligibilityScheme ; skos:topConceptOf lulcw:ConstraintEligibilityScheme ;
     skos:prefLabel "not eligible"@en , "non éligible"@fr ;
     rdfs:label "not eligible"@en , "non éligible"@fr ;
-    skos:definition "A segment is missing or not accepted, or the sign is unknown; the influence may still be an unsigned graph edge."@en .
+    skos:definition "A segment is missing or resolved more coarsely than its mechanism requires, or the sign is unknown or conditional; the influence may still be an unsigned graph edge."@en .
 
 lulcw:StratigraphicRelationKind a owl:Class ; rdfs:subClassOf skos:Concept ;
     rdfs:label "stratigraphic relation kind"@en , "type de relation stratigraphique"@fr ;
@@ -645,6 +646,11 @@ lulcw:selectedUnder a owl:ObjectProperty ;
     rdfs:label "selected under"@en , "retenue par"@fr ;
     skos:definition "An export policy that selects this qualified assertion as a model input or graph edge."@en .
 
+lulcw:admitsConfidence a owl:ObjectProperty ;
+    rdfs:domain lulcw:ExportPolicy ; rdfs:range lulcw:ConfidenceLevel ;
+    rdfs:label "admits confidence level"@en , "admet le niveau de confiance"@fr ;
+    skos:definition "A confidence level whose unit attributions the export policy selects, at the resolution they were assessed. Selection does not raise their confidence."@en .
+
 lulcw:monitors a owl:ObjectProperty ;
     rdfs:domain lulcw:Piezometer ; rdfs:range lulcw:HydrogeologicalUnit ;
     rdfs:label "monitors"@en , "surveille"@fr ;
@@ -703,7 +709,7 @@ lulcw:driverGroup a owl:ObjectProperty ;
 lulcw:constraintEligibility a owl:ObjectProperty ;
     rdfs:domain lulcw:Influence ; rdfs:range lulcw:ConstraintEligibility ;
     rdfs:label "has constraint eligibility"@en , "a pour éligibilité à la contrainte"@fr ;
-    skos:definition "Whether an influence may fix the sign of a model response, under the policy it is selected by."@en .
+    skos:definition "Whether the evidence of an influence allows its response sign to constrain a model. An eligible influence is constrained only under a policy that selects it, i.e. one that selects every segment of its pathway."@en .
 
 lulcw:allocatesRecord a owl:ObjectProperty , owl:FunctionalProperty ;
     rdfs:domain lulcw:VolumeAllocation ; rdfs:range lulcw:AnnualAbstractionRecord ;
@@ -825,6 +831,9 @@ lulcw:precision a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd
 lulcw:sampleSize a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:integer ;
     rdfs:label "sample size"@en , "effectif"@fr ;
     skos:definition "Number of reference cases a rule evaluation used."@en .
+lulcw:searchRadiusM a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:DerivationRule ; rdfs:range xsd:double ;
+    rdfs:label "search radius (m)"@en , "rayon de recherche (m)"@fr ;
+    skos:definition "Horizontal search radius in metres (Lambert-93, inclusive) that a spatial derivation rule applies: a named, reproducible reference query, not a hydraulic limit. A tighter threshold may be applied at export."@en .
 lulcw:horizontalDistanceM a owl:DatatypeProperty ; rdfs:range xsd:double ;
     rdfs:label "horizontal distance (m)"@en , "distance horizontale (m)"@fr ;
     skos:definition "Projected horizontal distance in metres (Lambert-93) between the two entities of a well link or an influence; a selection descriptor, not hydraulic evidence."@en .

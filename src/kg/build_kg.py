@@ -632,6 +632,8 @@ def annual_records(kg, rel, d):
 
 
 def policies(kg):
+    admits = {"main": (L.Confident, L.Probable), "confident-only": (L.Confident,),
+              "all-links": (L.Confident, L.Probable, L.Possible)}
     for key, label, text in (
             ("main", "main runs: confident and probable links",
              "Selects the qualified attributions whose confidence is confident or probable, at the "
@@ -646,6 +648,8 @@ def policies(kg):
         p = kg.node(iri("policy", key), L.ExportPolicy, label, "en")
         kg.add(p, RDFS.comment, Literal(text, lang="en"))
         kg.add(p, L.ruleVersion, Literal("2026-10-24"))
+        for c in admits[key]:   # read by the selection rule of task 12.6 (ontology/rules/)
+            kg.add(p, L.admitsConfidence, c)
 
 
 # --------------------------------------------------------------------------------- main

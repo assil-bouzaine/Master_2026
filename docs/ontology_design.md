@@ -323,6 +323,19 @@ OOPS! scan.
 Version 0.1.1 (2026-10-24, task 12.5): water use `EnergyUse` (BNPE code ENE); GeoSPARQL
 `hasMetricArea` added to `ontology/imports/geo_terms.ttl` (polygon areas in m²).
 
+Version 0.2.0 (2026-10-25, task 12.6): `admitsConfidence` (an export policy states the
+confidence levels it selects) and `searchRadiusM` (a spatial rule states its radius), so that
+policies and rules carry their parameters as data; constraint eligibility is defined from the
+evidence of the pathway (resolution, sign, conditions) and applied only under a policy that
+selects every segment. New files:
+
+| File | Content |
+|---|---|
+| `ontology/rules/lulcw-rules.ttl` | SHACL-AF SPARQL rules (pySHACL, advanced mode): stratigraphic relations and `overlies`, policy selections and the main policy's `monitors`/`pumpsFrom`, same-unit well links, pumping influences, path selection; the rules' descriptions and radii as data nodes |
+| `ontology/shapes/lulcw-shapes.ttl` | SHACL shapes for gate 4 of §5: attributions (resolved xor explicit unknown), one main candidate per role and resolution, witnessed stratigraphic relations, well links, influences (eligibility, no unknown in a path), policy selections and views, polygons, annual records |
+| `src/kg/apply_rules.py` | runs the rules on the facts, writes the derived links to their own file, validates facts + links (ontology mixed in) |
+| `tests/test_kg_rules.py` | synthetic fixtures for the CQ3, CQ8, CQ11 and CQ2 acceptance cases, 9 negative controls, pandas oracles on the real graph |
+
 ## 8. Instances: the knowledge graph (task 12.5, 2026-10-24)
 
 `src/kg/build_kg.py` writes `data/processed/kg/lulcw_kg_<dataset>.ttl` from the source
@@ -352,3 +365,16 @@ polygons. In SPARQL, a prefixed name cannot contain "/": queries use `BASE` and 
 A candidate stated at two resolutions (`…/<rank>` exact, `…/<rank>/group`) keeps one rank:
 the 12.6 shape "one main candidate per entity and role" counts rank-1 attributions per
 resolution, and volume accounting never adds the two statements of one candidate.
+
+Derived by the rules of task 12.6 (`lulcw_kg_<dataset>_rules.ttl`, kept apart from the facts so
+that a query states whether it reads facts or rule outputs):
+
+| Pattern | Entity |
+|---|---|
+| `stratigraphic-relation/<codepoly>/<upper code>/<lower code>` | a local stratigraphic relation, witnessed by that one polygon |
+| `well-link/<well key A>/<well key B>` | a same-unit well link (A = the BSS code that sorts first) |
+| `influence/pumping/<facility code>/<rank>[/group]/to/<well key>/<rank>` | a pumping influence, one per evidence path (the two attributions it joins) |
+| `rule/<name>`, `execution/kg-rules` | the 12.6 rules (with their radius) and their run |
+
+Plain triples (`overlies`, `selectedUnder`, `monitors`, `pumpsFrom`) are projections of these
+qualified nodes; `monitors` and `pumpsFrom` are the main policy's view (exact units only).

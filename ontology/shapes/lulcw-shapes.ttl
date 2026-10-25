@@ -1,0 +1,462 @@
+@prefix lulcw:   <https://w3id.org/lulcw#> .
+@prefix lulcwsh: <https://w3id.org/lulcw/shapes#> .
+@prefix sh:      <http://www.w3.org/ns/shacl#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+@prefix geo:     <http://www.opengis.net/ont/geosparql#> .
+@prefix sosa:    <http://www.w3.org/ns/sosa/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# SHACL shapes of the LULC-Water knowledge graph (task 12.6; docs/ontology_design.md §5, gate 4).
+# Validated by src/kg/apply_rules.py on the facts (src/kg/build_kg.py) plus the outputs of the
+# SHACL-AF rules (ontology/rules/lulcw-rules.ttl), with the ontology network mixed in so that
+# sh:class follows rdfs:subClassOf. Violations fail the gate; warnings and infos are reported.
+# Incomplete evidence stays incomplete: several candidates are allowed, an explicit unknown is
+# allowed, a missing depth is reported (sh:Info), never forced to one answer.
+# The "French and English labels and a definition for every term" gate is checked on the TBox
+# by tests/test_ontology.py (gate 3).
+
+<https://w3id.org/lulcw/shapes> a owl:Ontology ;
+    dcterms:title "LULC-Water SHACL shapes"@en , "Formes SHACL LULC-Water"@fr ;
+    dcterms:description "SHACL shapes that validate the facts and the derived links of the LULC-Water knowledge graph: qualified unit attributions, stratigraphic relations with their witnesses, well links, influences, policy selections and annual abstraction records."@en ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    dcterms:created "2026-10-25"^^xsd:date ;
+    sh:declare
+        [ sh:prefix "lulcw" ; sh:namespace "https://w3id.org/lulcw#"^^xsd:anyURI ] ,
+        [ sh:prefix "prov" ; sh:namespace "http://www.w3.org/ns/prov#"^^xsd:anyURI ] ,
+        [ sh:prefix "rdfs" ; sh:namespace "http://www.w3.org/2000/01/rdf-schema#"^^xsd:anyURI ] .
+
+#################################################################
+# Wells and facilities: identity, and at least one attribution (CQ1, CQ2)
+#################################################################
+
+lulcwsh:PiezometerShape a sh:NodeShape ;
+    sh:targetClass lulcw:Piezometer ;
+    sh:property [ sh:path lulcw:bssCode ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ,
+        [ sh:path geo:hasGeometry ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path prov:wasDerivedFrom ; sh:minCount 1 ] ,
+        [ sh:path [ sh:inversePath lulcw:hostedBy ] ; sh:minCount 1 ;
+          sh:message "a piezometer hosts its monitoring station" ] ,
+        [ sh:path lulcw:investigationDepthM ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minInclusive 0 ] ,
+        [ sh:path [ sh:inversePath lulcw:attributedEntity ] ;
+          sh:qualifiedValueShape [ sh:path lulcw:role ; sh:hasValue lulcw:MonitoringRole ] ;
+          sh:qualifiedMinCount 1 ;
+          sh:message "every piezometer has at least one monitoring attribution (an explicit unknown is allowed)" ] .
+
+lulcwsh:MissingDepthShape a sh:NodeShape ;
+    sh:targetClass lulcw:Piezometer ;
+    sh:property [ sh:path lulcw:investigationDepthM ; sh:minCount 1 ; sh:severity sh:Info ;
+        sh:message "investigation depth missing: reported; the well stays in the graph and in distance-only policies" ] .
+
+lulcwsh:FacilityShape a sh:NodeShape ;
+    sh:targetClass lulcw:AbstractionFacility ;
+    sh:property [ sh:path lulcw:bnpeCode ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:waterSource ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path geo:hasGeometry ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:hasIntake ; sh:minCount 1 ] ,
+        [ sh:path prov:wasDerivedFrom ; sh:minCount 1 ] ,
+        [ sh:path [ sh:inversePath lulcw:attributedEntity ] ;
+          sh:qualifiedValueShape [ sh:path lulcw:role ; sh:hasValue lulcw:AbstractionRole ] ;
+          sh:qualifiedMinCount 1 ;
+          sh:message "every groundwater facility has at least one abstraction attribution (an explicit unknown is allowed)" ] .
+
+#################################################################
+# Unit attributions (docs/ontology_design.md §4.3)
+#################################################################
+
+lulcwsh:UnitAttributionShape a sh:NodeShape ;
+    sh:targetClass lulcw:UnitAttribution ;
+    sh:property [ sh:path lulcw:attributedEntity ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:role ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:in ( lulcw:MonitoringRole lulcw:AbstractionRole ) ] ,
+        [ sh:path lulcw:assessmentStatus ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:class lulcw:AssessmentStatus ] ,
+        [ sh:path lulcw:evidenceKind ; sh:minCount 1 ; sh:class lulcw:EvidenceKind ] ,
+        [ sh:path lulcw:derivationRule ; sh:minCount 1 ; sh:class lulcw:DerivationRule ] ,
+        [ sh:path prov:wasDerivedFrom ; sh:minCount 1 ] ,
+        [ sh:path prov:wasGeneratedBy ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:rank ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ;
+          sh:minInclusive 1 ] ;
+    sh:xone ( lulcwsh:ResolvedAttribution lulcwsh:UnknownAttribution ) ;
+    sh:sparql [
+        sh:message "the target and the resolution disagree: a unit target is resolved at the exact unit, a group target at the unit group" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    { $this lulcw:candidateUnit ?t . FILTER NOT EXISTS { $this lulcw:resolution lulcw:ExactUnitResolution } }
+    UNION
+    { $this lulcw:candidateGroup ?t . FILTER NOT EXISTS { $this lulcw:resolution lulcw:UnitGroupResolution } }
+}""" ] , [
+        sh:message "the role and the entity disagree: monitoring attributions are about piezometers, abstraction attributions about facilities" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:attributedEntity ?value .
+    { $this lulcw:role lulcw:MonitoringRole . FILTER NOT EXISTS { ?value a lulcw:Piezometer } }
+    UNION
+    { $this lulcw:role lulcw:AbstractionRole . FILTER NOT EXISTS { ?value a lulcw:AbstractionFacility } }
+}""" ] , [
+        sh:message "selected by a policy that does not admit its confidence level" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:selectedUnder ?value .
+    FILTER NOT EXISTS { $this lulcw:confidence ?c . ?value lulcw:admitsConfidence ?c . }
+}""" ] .
+
+lulcwsh:ResolvedAttribution a sh:NodeShape ;
+    rdfs:comment "A candidate with a target: exactly one unit or one group, a confidence level and a resolution, and no reason for unknown."@en ;
+    sh:xone ( [ sh:path lulcw:candidateUnit ; sh:minCount 1 ]
+              [ sh:path lulcw:candidateGroup ; sh:minCount 1 ] ) ;
+    sh:property [ sh:path lulcw:candidateUnit ; sh:maxCount 1 ; sh:class lulcw:HydrogeologicalUnit ] ,
+        [ sh:path lulcw:candidateGroup ; sh:maxCount 1 ; sh:class lulcw:HydrogeologicalUnitGroup ] ,
+        [ sh:path lulcw:confidence ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:ConfidenceLevel ] ,
+        [ sh:path lulcw:resolution ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:Resolution ] ,
+        [ sh:path lulcw:unknownReason ; sh:maxCount 0 ] .
+
+lulcwsh:UnknownAttribution a sh:NodeShape ;
+    rdfs:comment "An explicit unknown: a stated reason, and no target, confidence or resolution (no fictional unit)."@en ;
+    sh:property [ sh:path lulcw:unknownReason ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:candidateUnit ; sh:maxCount 0 ] ,
+        [ sh:path lulcw:candidateGroup ; sh:maxCount 0 ] ,
+        [ sh:path lulcw:confidence ; sh:maxCount 0 ] ,
+        [ sh:path lulcw:resolution ; sh:maxCount 0 ] .
+
+# One main candidate per entity, role and resolution (a candidate stated at two resolutions
+# keeps one rank: docs/ontology_design.md §8); an explicit unknown main candidate excludes a
+# resolved one for the same role.
+lulcwsh:MainCandidateShape a sh:NodeShape ;
+    sh:targetClass lulcw:Piezometer , lulcw:AbstractionFacility ;
+    sh:sparql [
+        sh:message "more than one rank-1 attribution for the same role and resolution" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?role ?res WHERE {
+    ?a lulcw:attributedEntity $this ; lulcw:rank 1 ; lulcw:role ?role ; lulcw:resolution ?res .
+    ?b lulcw:attributedEntity $this ; lulcw:rank 1 ; lulcw:role ?role ; lulcw:resolution ?res .
+    FILTER (?a != ?b)
+}""" ] , [
+        sh:message "an explicit unknown rank-1 attribution next to another rank-1 attribution for the same role" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?role WHERE {
+    ?u lulcw:attributedEntity $this ; lulcw:rank 1 ; lulcw:role ?role ; lulcw:unknownReason ?why .
+    ?a lulcw:attributedEntity $this ; lulcw:rank 1 ; lulcw:role ?role .
+    FILTER (?a != ?u)
+}""" ] .
+
+#################################################################
+# Stratigraphic relations and `overlies` (CQ3)
+#################################################################
+
+lulcwsh:StratigraphicRelationShape a sh:NodeShape ;
+    sh:targetClass lulcw:StratigraphicRelation ;
+    sh:property [ sh:path lulcw:upperUnit ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:class lulcw:HydrogeologicalUnit ; sh:disjoint lulcw:lowerUnit ] ,
+        [ sh:path lulcw:lowerUnit ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:HydrogeologicalUnit ] ,
+        [ sh:path lulcw:relationKind ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:in ( lulcw:DirectContact lulcw:IndirectOrdering ) ] ,
+        [ sh:path lulcw:witnessedBy ; sh:minCount 1 ; sh:class lulcw:ElementaryPolygon ] ,
+        [ sh:path lulcw:interveningUnit ; sh:class lulcw:HydrogeologicalUnit ] ,
+        [ sh:path lulcw:derivationRule ; sh:minCount 1 ] ,
+        [ sh:path prov:wasDerivedFrom ; sh:minCount 2 ] ,
+        [ sh:path prov:wasGeneratedBy ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:sparql [
+        sh:message "a witness polygon's stack does not show the upper unit above the lower one: an ordering is never chained across polygons" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:witnessedBy ?value ; lulcw:upperUnit ?u1 ; lulcw:lowerUnit ?u2 .
+    FILTER NOT EXISTS {
+        ?value lulcw:hasStackLayer ?l1 , ?l2 .
+        ?l1 lulcw:layerUnit ?u1 ; lulcw:layerOrder ?o1 .
+        ?l2 lulcw:layerUnit ?u2 ; lulcw:layerOrder ?o2 .
+        FILTER (?o1 < ?o2)
+    }
+}""" ] , [
+        sh:message "an intervening unit is not between the two units in a witness stack" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:interveningUnit ?value ; lulcw:witnessedBy ?p ;
+          lulcw:upperUnit ?u1 ; lulcw:lowerUnit ?u2 .
+    FILTER NOT EXISTS {
+        ?p lulcw:hasStackLayer ?l1 , ?l2 , ?lm .
+        ?l1 lulcw:layerUnit ?u1 ; lulcw:layerOrder ?o1 .
+        ?l2 lulcw:layerUnit ?u2 ; lulcw:layerOrder ?o2 .
+        ?lm lulcw:layerUnit ?value ; lulcw:layerOrder ?om .
+        FILTER (?o1 < ?om && ?om < ?o2)
+    }
+}""" ] , [
+        sh:message "a unit mapped between the two units in a witness stack is missing from the relation" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:witnessedBy ?p ; lulcw:upperUnit ?u1 ; lulcw:lowerUnit ?u2 .
+    ?p lulcw:hasStackLayer ?l1 , ?l2 , ?lm .
+    ?l1 lulcw:layerUnit ?u1 ; lulcw:layerOrder ?o1 .
+    ?l2 lulcw:layerUnit ?u2 ; lulcw:layerOrder ?o2 .
+    ?lm lulcw:layerUnit ?value ; lulcw:layerOrder ?om .
+    FILTER (?o1 < ?om && ?om < ?o2)
+    FILTER NOT EXISTS { $this lulcw:interveningUnit ?value }
+}""" ] , [
+        sh:message "the relation kind disagrees with its intervening units (direct contact: none; indirect ordering: at least one)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    { $this lulcw:relationKind lulcw:DirectContact ; lulcw:interveningUnit ?x }
+    UNION
+    { $this lulcw:relationKind lulcw:IndirectOrdering . FILTER NOT EXISTS { $this lulcw:interveningUnit ?y } }
+}""" ] .
+
+lulcwsh:ReversedOrderShape a sh:NodeShape ;
+    sh:targetClass lulcw:StratigraphicRelation ;
+    sh:severity sh:Warning ;
+    sh:sparql [
+        sh:message "the two units are stacked in the opposite order in another polygon (folding or a mapping inconsistency); both relations are kept" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:upperUnit ?a ; lulcw:lowerUnit ?b .
+    ?value lulcw:upperUnit ?b ; lulcw:lowerUnit ?a .
+}""" ] .
+
+lulcwsh:OverliesShape a sh:NodeShape ;
+    sh:targetSubjectsOf lulcw:overlies ;
+    sh:sparql [
+        sh:message "lulcw:overlies without a direct-contact stratigraphic relation that witnesses it" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:overlies ?value .
+    FILTER NOT EXISTS {
+        ?r lulcw:upperUnit $this ; lulcw:lowerUnit ?value ; lulcw:relationKind lulcw:DirectContact .
+    }
+}""" ] .
+
+#################################################################
+# Policy views (CQ1, CQ2)
+#################################################################
+
+lulcwsh:MonitorsShape a sh:NodeShape ;
+    sh:targetSubjectsOf lulcw:monitors ;
+    sh:sparql [
+        sh:message "lulcw:monitors without an exact-unit monitoring attribution selected by the main policy" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:monitors ?value .
+    FILTER NOT EXISTS {
+        ?a lulcw:attributedEntity $this ; lulcw:role lulcw:MonitoringRole ; lulcw:candidateUnit ?value ;
+           lulcw:selectedUnder <https://w3id.org/lulcw/data/policy/main> .
+    }
+}""" ] .
+
+lulcwsh:PumpsFromShape a sh:NodeShape ;
+    sh:targetSubjectsOf lulcw:pumpsFrom ;
+    sh:sparql [
+        sh:message "lulcw:pumpsFrom without an exact-unit abstraction attribution selected by the main policy (group-level evidence never becomes an exact unit)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:pumpsFrom ?value .
+    FILTER NOT EXISTS {
+        ?a lulcw:attributedEntity $this ; lulcw:role lulcw:AbstractionRole ; lulcw:candidateUnit ?value ;
+           lulcw:selectedUnder <https://w3id.org/lulcw/data/policy/main> .
+    }
+}""" ] .
+
+lulcwsh:ExportPolicyShape a sh:NodeShape ;
+    sh:targetClass lulcw:ExportPolicy ;
+    sh:property [ sh:path lulcw:admitsConfidence ; sh:minCount 1 ; sh:class lulcw:ConfidenceLevel ] ,
+        [ sh:path lulcw:ruleVersion ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path rdfs:comment ; sh:minCount 1 ] .
+
+lulcwsh:DerivationRuleShape a sh:NodeShape ;
+    sh:targetClass lulcw:DerivationRule ;
+    sh:property [ sh:path rdfs:comment ; sh:minCount 1 ] ,
+        [ sh:path lulcw:ruleVersion ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:searchRadiusM ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minExclusive 0 ] .
+
+#################################################################
+# Well links (CQ11)
+#################################################################
+
+lulcwsh:WellLinkShape a sh:NodeShape ;
+    sh:targetClass lulcw:WellLink ;
+    sh:property [ sh:path lulcw:wellA ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:Piezometer ;
+          sh:disjoint lulcw:wellB ; sh:message "a well link joins two different piezometers" ] ,
+        [ sh:path lulcw:wellB ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:Piezometer ] ,
+        [ sh:path lulcw:sharedUnit ; sh:minCount 1 ; sh:class lulcw:HydrogeologicalUnit ] ,
+        [ sh:path lulcw:horizontalDistanceM ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minInclusive 0 ] ,
+        [ sh:path lulcw:investigationDepthDifferenceM ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minInclusive 0 ] ,
+        [ sh:path lulcw:confidence ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:ConfidenceLevel ] ,
+        [ sh:path lulcw:derivationRule ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path prov:wasDerivedFrom ; sh:minCount 2 ] ,
+        [ sh:path prov:wasGeneratedBy ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:sparql [
+        sh:message "wellA must be the well whose BSS code sorts first (an unordered pair is stored once)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:wellA ?a ; lulcw:wellB ?b . ?a lulcw:bssCode ?ca . ?b lulcw:bssCode ?cb .
+    FILTER (?ca >= ?cb)
+}""" ] , [
+        sh:message "another well link joins the same two wells" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:wellA ?a ; lulcw:wellB ?b .
+    ?value a lulcw:WellLink ; lulcw:wellA ?a ; lulcw:wellB ?b .
+    FILTER (?value != $this)
+}""" ] , [
+        sh:message "the depth difference is stated iff both investigation depths are known, and equals their absolute difference (a missing depth is never 0)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:wellA ?a ; lulcw:wellB ?b .
+    OPTIONAL { ?a lulcw:investigationDepthM ?za }
+    OPTIONAL { ?b lulcw:investigationDepthM ?zb }
+    OPTIONAL { $this lulcw:investigationDepthDifferenceM ?dz }
+    FILTER ((BOUND(?za) && BOUND(?zb)) != BOUND(?dz)
+            || (BOUND(?dz) && ABS(?dz - ABS(?za - ?zb)) > 1e-6))
+}""" ] , [
+        sh:message "a shared unit is not the candidate unit of a monitoring attribution of both wells" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:sharedUnit ?value ; lulcw:wellA ?a ; lulcw:wellB ?b .
+    FILTER (NOT EXISTS { ?x lulcw:attributedEntity ?a ; lulcw:role lulcw:MonitoringRole ; lulcw:candidateUnit ?value }
+            || NOT EXISTS { ?y lulcw:attributedEntity ?b ; lulcw:role lulcw:MonitoringRole ; lulcw:candidateUnit ?value })
+}""" ] , [
+        sh:message "the distance exceeds the search radius of the rule that derived the link" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:horizontalDistanceM ?value ; lulcw:derivationRule ?r .
+    ?r lulcw:searchRadiusM ?radius .
+    FILTER (?value > ?radius)
+}""" ] .
+
+#################################################################
+# Influences (CQ8)
+#################################################################
+
+lulcwsh:InfluenceShape a sh:NodeShape ;
+    sh:targetClass lulcw:Influence ;
+    sh:property [ sh:path lulcw:driverEntity ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:targetEntity ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:Piezometer ] ,
+        [ sh:path lulcw:driverVariable ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:mechanism ; sh:minCount 1 ; sh:class lulcw:Mechanism ] ,
+        [ sh:path lulcw:responseSign ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:ResponseSign ] ,
+        [ sh:path lulcw:constraintEligibility ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:in ( lulcw:EligibleConstraint lulcw:IneligibleConstraint ) ] ,
+        [ sh:path lulcw:eligibilityReason ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:conditions ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:resolution ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:Resolution ] ,
+        [ sh:path lulcw:confidence ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:ConfidenceLevel ] ,
+        [ sh:path lulcw:horizontalDistanceM ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minInclusive 0 ] ,
+        [ sh:path lulcw:derivationRule ; sh:minCount 1 ] ,
+        [ sh:path prov:wasDerivedFrom ; sh:minCount 1 ;
+          sh:message "an influence cites its evidence path" ] ,
+        [ sh:path prov:wasGeneratedBy ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:sparql [
+        sh:message "an eligible influence needs a supported sign (not unknown or conditional)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:constraintEligibility lulcw:EligibleConstraint ; lulcw:responseSign lulcw:UnknownResponse .
+}""" ] , [
+        sh:message "an eligible pumping-drawdown influence rests on exact-unit attributions only" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:constraintEligibility lulcw:EligibleConstraint ; lulcw:mechanism lulcw:PumpingDrawdown ;
+          prov:wasDerivedFrom ?value .
+    ?value a lulcw:UnitAttribution .
+    FILTER NOT EXISTS { ?value lulcw:resolution lulcw:ExactUnitResolution }
+}""" ] , [
+        sh:message "an attribution without a target (an explicit unknown) supports an influence: missing targets never become model edges" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this prov:wasDerivedFrom ?value .
+    ?value a lulcw:UnitAttribution .
+    FILTER NOT EXISTS { { ?value lulcw:candidateUnit ?t } UNION { ?value lulcw:candidateGroup ?t } }
+}""" ] , [
+        sh:message "the evidence path does not join the driver facility to the target well" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:targetEntity ?w ; lulcw:driverEntity ?f .
+    FILTER (NOT EXISTS { $this prov:wasDerivedFrom ?a . ?a lulcw:attributedEntity ?w ; lulcw:role lulcw:MonitoringRole . }
+            || NOT EXISTS { $this prov:wasDerivedFrom ?b . ?b lulcw:attributedEntity ?f ; lulcw:role lulcw:AbstractionRole . })
+}""" ] , [
+        sh:message "the distance exceeds the search radius of the rule that derived the influence" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:horizontalDistanceM ?value ; lulcw:derivationRule ?r .
+    ?r lulcw:searchRadiusM ?radius .
+    FILTER (?value > ?radius)
+}""" ] .
+
+# A path is selected by a policy only if each of its segments is (CQ8: an unaccepted segment
+# blocks the path).
+lulcwsh:PathSelectionShape a sh:NodeShape ;
+    sh:targetClass lulcw:WellLink , lulcw:Influence ;
+    sh:sparql [
+        sh:message "selected by a policy that does not select every attribution of its evidence path" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:selectedUnder ?value ; prov:wasDerivedFrom ?a .
+    ?a a lulcw:UnitAttribution .
+    FILTER NOT EXISTS { ?a lulcw:selectedUnder ?value }
+}""" ] .
+
+#################################################################
+# Geology facts and annual records
+#################################################################
+
+lulcwsh:ElementaryPolygonShape a sh:NodeShape ;
+    sh:targetClass lulcw:ElementaryPolygon ;
+    sh:property [ sh:path lulcw:polygonCode ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ] ,
+        [ sh:path geo:hasMetricArea ; sh:minCount 1 ; sh:maxCount 1 ; sh:minExclusive 0 ] ,
+        [ sh:path geo:hasGeometry ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:hasStackLayer ; sh:minCount 1 ; sh:class lulcw:StackLayer ] ,
+        [ sh:path lulcw:inRelease ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:sparql [
+        sh:message "two layers of one stack have the same order" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:hasStackLayer ?l1 , ?l2 .
+    ?l1 lulcw:layerOrder ?value . ?l2 lulcw:layerOrder ?value .
+    FILTER (?l1 != ?l2)
+}""" ] .
+
+lulcwsh:StackLayerShape a sh:NodeShape ;
+    sh:targetClass lulcw:StackLayer ;
+    sh:property [ sh:path lulcw:layerUnit ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:HydrogeologicalUnit ] ,
+        [ sh:path lulcw:layerOrder ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ;
+          sh:minInclusive 1 ] .
+
+lulcwsh:AnnualAbstractionRecordShape a sh:NodeShape ;
+    sh:targetClass lulcw:AnnualAbstractionRecord ;
+    sh:property [ sh:path sosa:hasFeatureOfInterest ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:class lulcw:AbstractionFacility ] ,
+        [ sh:path sosa:observedProperty ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path sosa:hasSimpleResult ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minInclusive 0 ] ,
+        [ sh:path sosa:phenomenonTime ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:recordKind ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:waterSource ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:inRelease ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:waterUse ; sh:maxCount 1 ] ,
+        [ sh:path sosa:usedProcedure ; sh:maxCount 1 ] .

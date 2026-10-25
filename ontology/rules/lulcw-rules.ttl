@@ -1,0 +1,398 @@
+@prefix lulcw:   <https://w3id.org/lulcw#> .
+@prefix lulcwr:  <https://w3id.org/lulcw/rules#> .
+@prefix sh:      <http://www.w3.org/ns/shacl#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# SHACL-AF rules of the LULC-Water knowledge graph (task 12.6; pySHACL in advanced mode,
+# run by src/kg/apply_rules.py). They derive, inside the graph, the links the model's graph is
+# made of, from the facts of src/kg/build_kg.py:
+#   order 10  stratigraphic relations per elementary polygon, and the `overlies` shortcut (CQ3)
+#   order 20  selection of unit attributions by each export policy (CQ1, CQ2)
+#   order 21  `monitors` and `pumpsFrom`, the main policy's view of the selected attributions
+#   order 30  same-unit well links within the reference radius (CQ11)
+#   order 31  pumping influences, facility -> piezometer, through a shared unit or group (CQ8)
+#   order 40  a well link or an influence is selected by a policy only if every unit
+#             attribution it derives from is (an unaccepted segment blocks the path)
+# Distances are horizontal, in Lambert-93 metres, parsed from the GeoSPARQL WKT points;
+# math:sqrt is the XPath 3.1 function (W3C), registered in rdflib by the runner.
+# The rules' descriptions and parameters are the data nodes at the end of this file
+# (namespace https://w3id.org/lulcw/data/); the runner copies them into the graph first.
+# The graph-wide rules take their own rule node as focus ($this): they read their parameters
+# from it, cite it, and run once. (Run once per well instead, rdflib re-joined the pumping
+# rule's candidates in a nested loop for every well: 34 s for one well.)
+
+<https://w3id.org/lulcw/rules> a owl:Ontology ;
+    dcterms:title "LULC-Water SHACL-AF rules"@en , "Règles SHACL-AF LULC-Water"@fr ;
+    dcterms:description "SHACL-AF SPARQL rules that derive stratigraphic relations, policy selections, same-unit well links and pumping influences from the facts of the LULC-Water knowledge graph."@en ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    dcterms:created "2026-10-25"^^xsd:date ;
+    sh:declare
+        [ sh:prefix "lulcw" ; sh:namespace "https://w3id.org/lulcw#"^^xsd:anyURI ] ,
+        [ sh:prefix "prov" ; sh:namespace "http://www.w3.org/ns/prov#"^^xsd:anyURI ] ,
+        [ sh:prefix "geo" ; sh:namespace "http://www.opengis.net/ont/geosparql#"^^xsd:anyURI ] ,
+        [ sh:prefix "rdfs" ; sh:namespace "http://www.w3.org/2000/01/rdf-schema#"^^xsd:anyURI ] ,
+        [ sh:prefix "xsd" ; sh:namespace "http://www.w3.org/2001/XMLSchema#"^^xsd:anyURI ] ,
+        [ sh:prefix "math" ; sh:namespace "http://www.w3.org/2005/xpath-functions/math#"^^xsd:anyURI ] .
+
+#################################################################
+# CQ3: stratigraphic relations, spatially qualified
+#################################################################
+
+lulcwr:StratigraphyShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/stratigraphic-relation> ;
+    sh:order 10 ;
+    sh:rule lulcwr:stratigraphicRelation , lulcwr:overlies .
+
+# Every pair of units of one polygon's stack, the upper above the lower: a direct contact when
+# no layer lies between them, else an indirect ordering with its intervening units. Pairs are
+# formed inside one stack only, so an ordering is never chained across polygons.
+lulcwr:stratigraphicRelation a sh:SPARQLRule ;
+    sh:order 1 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?rel a lulcw:StratigraphicRelation ;
+        lulcw:upperUnit ?u1 ; lulcw:lowerUnit ?u2 ; lulcw:relationKind ?kind ;
+        lulcw:witnessedBy ?p ; lulcw:interveningUnit ?um ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasDerivedFrom ?l1 , ?l2 ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    ?p a lulcw:ElementaryPolygon ; lulcw:hasStackLayer ?l1 , ?l2 .
+    ?l1 lulcw:layerOrder ?o1 ; lulcw:layerUnit ?u1 .
+    ?l2 lulcw:layerOrder ?o2 ; lulcw:layerUnit ?u2 .
+    FILTER (?o1 < ?o2)
+    OPTIONAL {
+        ?p lulcw:hasStackLayer ?lm .
+        ?lm lulcw:layerOrder ?om ; lulcw:layerUnit ?um .
+        FILTER (?o1 < ?om && ?om < ?o2)
+    }
+    BIND (IF(BOUND(?um), lulcw:IndirectOrdering, lulcw:DirectContact) AS ?kind)
+    ?u1 lulcw:bdlisaCode ?c1 .
+    ?u2 lulcw:bdlisaCode ?c2 .
+    BIND (IRI(CONCAT("https://w3id.org/lulcw/data/stratigraphic-relation/",
+                     STRAFTER(STR(?p), "/polygon/"), "/", ENCODE_FOR_URI(?c1), "/",
+                     ENCODE_FOR_URI(?c2))) AS ?rel)
+}
+""" .
+
+# The shortcut: a unit overlies another where a polygon shows them in direct contact.
+# Deliberately not transitive.
+lulcwr:overlies a sh:SPARQLRule ;
+    sh:order 2 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+CONSTRUCT { ?u1 lulcw:overlies ?u2 . }
+WHERE {
+    ?rel lulcw:derivationRule $this ; lulcw:relationKind lulcw:DirectContact ;
+         lulcw:upperUnit ?u1 ; lulcw:lowerUnit ?u2 .
+}
+""" .
+
+#################################################################
+# CQ1, CQ2: selection of unit attributions by the export policies
+#################################################################
+
+lulcwr:PolicySelectionShape a sh:NodeShape ;
+    sh:targetClass lulcw:ExportPolicy ;
+    sh:order 20 ;
+    sh:rule lulcwr:selectAttributions .
+
+# A policy selects the attributions whose confidence it admits, at the resolution they were
+# assessed (a group-level attribution stays a group-level selection). Unknowns have no
+# confidence and are never selected.
+lulcwr:selectAttributions a sh:SPARQLRule ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+CONSTRUCT { ?a lulcw:selectedUnder $this . }
+WHERE {
+    $this lulcw:admitsConfidence ?c .
+    ?a a lulcw:UnitAttribution ; lulcw:confidence ?c .
+    { ?a lulcw:candidateUnit ?t } UNION { ?a lulcw:candidateGroup ?t }
+}
+""" .
+
+lulcwr:MainProjectionShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/policy/main> ;
+    sh:order 21 ;
+    sh:rule lulcwr:monitors , lulcwr:pumpsFrom .
+
+# The main policy's view: exact-unit attributions only (lulcw:monitors and lulcw:pumpsFrom
+# point to a unit, never to a group). Other policies are read through lulcw:selectedUnder.
+lulcwr:monitors a sh:SPARQLRule ;
+    sh:order 1 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+CONSTRUCT { ?e lulcw:monitors ?u . }
+WHERE {
+    ?a lulcw:selectedUnder $this ; lulcw:role lulcw:MonitoringRole ;
+       lulcw:attributedEntity ?e ; lulcw:candidateUnit ?u .
+}
+""" .
+
+lulcwr:pumpsFrom a sh:SPARQLRule ;
+    sh:order 2 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+CONSTRUCT { ?e lulcw:pumpsFrom ?u . }
+WHERE {
+    ?a lulcw:selectedUnder $this ; lulcw:role lulcw:AbstractionRole ;
+       lulcw:attributedEntity ?e ; lulcw:candidateUnit ?u .
+}
+""" .
+
+#################################################################
+# CQ11: same-unit well links; CQ8: pumping influences
+#################################################################
+
+lulcwr:WellLinkShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/well-link> ;
+    sh:order 30 ;
+    sh:rule lulcwr:wellLink .
+
+# Two piezometers attributed to the same exact unit (any confidence; policies select later),
+# within the rule's search radius (inclusive). Stored once per unordered pair, the well whose
+# BSS code sorts first as wellA. The depth difference is stated only when both investigation
+# depths are known: a missing depth stays missing, never 0. Confidence = the lower of the two.
+lulcwr:wellLink a sh:SPARQLRule ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?link a lulcw:WellLink ;
+        lulcw:wellA ?w1 ; lulcw:wellB ?w2 ; lulcw:sharedUnit ?u ;
+        lulcw:horizontalDistanceM ?d ; lulcw:investigationDepthDifferenceM ?dz ;
+        lulcw:confidence ?conf ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasDerivedFrom ?a1 , ?a2 ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    $this lulcw:searchRadiusM ?r .
+    ?a1 lulcw:role lulcw:MonitoringRole ; lulcw:attributedEntity ?w1 ;
+        lulcw:candidateUnit ?u ; lulcw:confidence ?c1 .
+    ?a2 lulcw:role lulcw:MonitoringRole ; lulcw:attributedEntity ?w2 ;
+        lulcw:candidateUnit ?u ; lulcw:confidence ?c2 .
+    ?w1 lulcw:bssCode ?b1 .
+    ?w2 lulcw:bssCode ?b2 .
+    FILTER (?b1 < ?b2)
+    ?w1 geo:hasGeometry/geo:asWKT ?g1 .
+    ?w2 geo:hasGeometry/geo:asWKT ?g2 .
+    BIND (STRAFTER(STR(?g1), "POINT(") AS ?p1)
+    BIND (STRAFTER(STR(?g2), "POINT(") AS ?p2)
+    BIND (xsd:double(STRBEFORE(?p1, " ")) - xsd:double(STRBEFORE(?p2, " ")) AS ?dx)
+    BIND (xsd:double(STRBEFORE(STRAFTER(?p1, " "), ")"))
+          - xsd:double(STRBEFORE(STRAFTER(?p2, " "), ")")) AS ?dy)
+    FILTER (?dx * ?dx + ?dy * ?dy <= ?r * ?r)
+    BIND (math:sqrt(?dx * ?dx + ?dy * ?dy) AS ?d)
+    OPTIONAL {
+        ?w1 lulcw:investigationDepthM ?z1 .
+        ?w2 lulcw:investigationDepthM ?z2 .
+        BIND (ABS(?z1 - ?z2) AS ?dz)
+    }
+    BIND (IF(?c1 = lulcw:Possible || ?c2 = lulcw:Possible, lulcw:Possible,
+             IF(?c1 = lulcw:Probable || ?c2 = lulcw:Probable, lulcw:Probable, lulcw:Confident))
+          AS ?conf)
+    BIND (IRI(CONCAT("https://w3id.org/lulcw/data/well-link/",
+                     STRAFTER(STR(?w1), "/piezometer/"), "/",
+                     STRAFTER(STR(?w2), "/piezometer/"))) AS ?link)
+}
+""" .
+
+lulcwr:PumpingInfluenceShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/pumping-influence> ;
+    sh:order 31 ;
+    sh:rule lulcwr:pumpingInfluenceExact , lulcwr:pumpingInfluenceGroup .
+
+# One influence per evidence path: a facility attribution (abstraction role) and a well
+# attribution (monitoring role) meeting at the exact unit the well monitors (first rule), or at
+# a unit group that contains it (second rule), within the rule's search radius. Exact-unit
+# paths carry the non-increasing sign of pumping drawdown and are eligible to constrain a
+# model; group-level paths keep an unknown (conditional) sign and are not eligible: the
+# facility may pump a different member of the group, so the connection condition is not
+# established. Unknown attributions have no target and never produce an influence.
+lulcwr:pumpingInfluenceExact a sh:SPARQLRule ;
+    sh:order 1 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?inf a lulcw:Influence ;
+        lulcw:driverEntity ?f ; lulcw:targetEntity ?w ;
+        lulcw:driverVariable lulcw:ReconstructedWeeklyVolume ;
+        lulcw:mechanism lulcw:PumpingDrawdown ;
+        lulcw:responseSign lulcw:NegativeResponse ;
+        lulcw:driverGroup lulcw:SummerDemand ;
+        lulcw:horizontalDistanceM ?d ;
+        lulcw:resolution lulcw:ExactUnitResolution ;
+        lulcw:confidence ?conf ;
+        lulcw:constraintEligibility lulcw:EligibleConstraint ;
+        lulcw:eligibilityReason "The facility and the well are attributed to the same exact unit: the non-increasing response of pumping drawdown applies. The constraint is applied only under a policy that selects both attributions." ;
+        lulcw:conditions ?cond ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasDerivedFrom ?af , ?aw ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    {   # the candidate pairs within the radius (filtered before the texts are built)
+        $this lulcw:searchRadiusM ?r .
+        ?aw lulcw:role lulcw:MonitoringRole ; lulcw:attributedEntity ?w ;
+            lulcw:candidateUnit ?u ; lulcw:confidence ?cw .
+        ?af lulcw:candidateUnit ?u .
+        ?af lulcw:role lulcw:AbstractionRole ; lulcw:attributedEntity ?f ; lulcw:confidence ?cf .
+        ?w geo:hasGeometry/geo:asWKT ?g1 .
+        ?f geo:hasGeometry/geo:asWKT ?g2 .
+        BIND (STRAFTER(STR(?g1), "POINT(") AS ?p1)
+        BIND (STRAFTER(STR(?g2), "POINT(") AS ?p2)
+        BIND (xsd:double(STRBEFORE(?p1, " ")) - xsd:double(STRBEFORE(?p2, " ")) AS ?dx)
+        BIND (xsd:double(STRBEFORE(STRAFTER(?p1, " "), ")"))
+              - xsd:double(STRBEFORE(STRAFTER(?p2, " "), ")")) AS ?dy)
+        FILTER (?dx * ?dx + ?dy * ?dy <= ?r * ?r)
+    }
+    ?u lulcw:bdlisaCode ?code .
+    BIND (math:sqrt(?dx * ?dx + ?dy * ?dy) AS ?d)
+    BIND (CONCAT("The facility pumps from ", CONCAT("unit ", ?code), ", which the well monitors; horizontal distance ",
+                 STR(xsd:integer(ROUND(?d))), " m, within the reference search radius of ",
+                 STR(xsd:integer(ROUND(?r))), " m (the export may apply a threshold frozen on the training period); ",
+                 "the sign refers to an increase of the facility's weekly abstraction with the other drivers held fixed.")
+          AS ?cond)
+    BIND (IF(?cw = lulcw:Possible || ?cf = lulcw:Possible, lulcw:Possible,
+             IF(?cw = lulcw:Probable || ?cf = lulcw:Probable, lulcw:Probable, lulcw:Confident))
+          AS ?conf)
+    BIND (IRI(CONCAT("https://w3id.org/lulcw/data/influence/pumping/",
+                     STRAFTER(STR(?af), "/attribution/facility/"), "/to/",
+                     STRAFTER(STR(?aw), "/attribution/piezometer/"))) AS ?inf)
+}
+""" .
+
+lulcwr:pumpingInfluenceGroup a sh:SPARQLRule ;
+    sh:order 2 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?inf a lulcw:Influence ;
+        lulcw:driverEntity ?f ; lulcw:targetEntity ?w ;
+        lulcw:driverVariable lulcw:ReconstructedWeeklyVolume ;
+        lulcw:mechanism lulcw:PumpingDrawdown ;
+        lulcw:responseSign lulcw:UnknownResponse ;
+        lulcw:driverGroup lulcw:SummerDemand ;
+        lulcw:horizontalDistanceM ?d ;
+        lulcw:resolution lulcw:UnitGroupResolution ;
+        lulcw:confidence ?conf ;
+        lulcw:constraintEligibility lulcw:IneligibleConstraint ;
+        lulcw:eligibilityReason "The facility is attributed only to a unit group that contains the well's unit: it may pump another member of the group, so the connection condition of pumping drawdown is not established; an unsigned graph edge at most." ;
+        lulcw:conditions ?cond ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasDerivedFrom ?af , ?aw ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    {   # the candidate pairs within the radius (filtered before the texts are built)
+        $this lulcw:searchRadiusM ?r .
+        ?aw lulcw:role lulcw:MonitoringRole ; lulcw:attributedEntity ?w ;
+            lulcw:candidateUnit ?u ; lulcw:confidence ?cw .
+        ?g lulcw:hasMemberUnit ?u ; rdfs:label ?gl .
+        FILTER (LANGMATCHES(LANG(?gl), "en"))
+        ?af lulcw:candidateGroup ?g .
+        ?af lulcw:role lulcw:AbstractionRole ; lulcw:attributedEntity ?f ; lulcw:confidence ?cf .
+        ?w geo:hasGeometry/geo:asWKT ?g1 .
+        ?f geo:hasGeometry/geo:asWKT ?g2 .
+        BIND (STRAFTER(STR(?g1), "POINT(") AS ?p1)
+        BIND (STRAFTER(STR(?g2), "POINT(") AS ?p2)
+        BIND (xsd:double(STRBEFORE(?p1, " ")) - xsd:double(STRBEFORE(?p2, " ")) AS ?dx)
+        BIND (xsd:double(STRBEFORE(STRAFTER(?p1, " "), ")"))
+              - xsd:double(STRBEFORE(STRAFTER(?p2, " "), ")")) AS ?dy)
+        FILTER (?dx * ?dx + ?dy * ?dy <= ?r * ?r)
+    }
+    ?u lulcw:bdlisaCode ?code .
+    BIND (math:sqrt(?dx * ?dx + ?dy * ?dy) AS ?d)
+    BIND (CONCAT("The facility pumps from ", CONCAT("unit group '", STR(?gl), "', which contains unit ", ?code), ", which the well monitors; horizontal distance ",
+                 STR(xsd:integer(ROUND(?d))), " m, within the reference search radius of ",
+                 STR(xsd:integer(ROUND(?r))), " m (the export may apply a threshold frozen on the training period); ",
+                 "the sign refers to an increase of the facility's weekly abstraction with the other drivers held fixed.")
+          AS ?cond)
+    BIND (IF(?cw = lulcw:Possible || ?cf = lulcw:Possible, lulcw:Possible,
+             IF(?cw = lulcw:Probable || ?cf = lulcw:Probable, lulcw:Probable, lulcw:Confident))
+          AS ?conf)
+    BIND (IRI(CONCAT("https://w3id.org/lulcw/data/influence/pumping/",
+                     STRAFTER(STR(?af), "/attribution/facility/"), "/to/",
+                     STRAFTER(STR(?aw), "/attribution/piezometer/"))) AS ?inf)
+}
+""" .
+
+#################################################################
+# Path selection: every segment selected, or the path is not
+#################################################################
+
+lulcwr:PathSelectionShape a sh:NodeShape ;
+    sh:targetClass lulcw:ExportPolicy ;
+    sh:order 40 ;
+    sh:rule lulcwr:selectPaths .
+
+# Counted rather than tested with nested NOT EXISTS: a path is selected when the number of
+# its attributions selected by the policy equals the number of its attributions (rdflib took
+# over a minute per policy with the nested form).
+lulcwr:selectPaths a sh:SPARQLRule ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+CONSTRUCT { ?x lulcw:selectedUnder $this . }
+WHERE {
+    {
+        SELECT $this ?x WHERE {
+            ?x prov:wasDerivedFrom ?a ; a ?kind .
+            FILTER (?kind = lulcw:WellLink || ?kind = lulcw:Influence)
+            ?a a lulcw:UnitAttribution .
+            OPTIONAL { ?a lulcw:selectedUnder $this . BIND (?a AS ?selected) }
+        }
+        GROUP BY $this ?x
+        HAVING (COUNT(DISTINCT ?a) = COUNT(DISTINCT ?selected))
+    }
+}
+""" .
+
+#################################################################
+# The rules as data: descriptions and parameters (copied into the graph by the runner, which
+# adds lulcw:ruleVersion and the execution record)
+#################################################################
+
+<https://w3id.org/lulcw/data/rule/stratigraphic-relation> a lulcw:DerivationRule ;
+    rdfs:label "stratigraphic relation"@en ;
+    rdfs:seeAlso lulcwr:stratigraphicRelation ;
+    rdfs:comment "For every BD LISA elementary polygon, each pair of units of its stack, the upper above the lower: a direct contact when no layer lies between them, else an indirect ordering with its intervening units. The polygon is the witness; orderings are never chained across polygons (CQ3)."@en .
+
+<https://w3id.org/lulcw/data/rule/overlies> a lulcw:DerivationRule ;
+    rdfs:label "overlies"@en ;
+    rdfs:seeAlso lulcwr:overlies ;
+    rdfs:comment "Shortcut lulcw:overlies between two units in direct contact in at least one witnessing polygon; not transitive, not a hydraulic relation."@en .
+
+<https://w3id.org/lulcw/data/rule/policy-selection> a lulcw:DerivationRule ;
+    rdfs:label "policy selection"@en ;
+    rdfs:seeAlso lulcwr:selectAttributions , lulcwr:monitors , lulcwr:pumpsFrom ;
+    rdfs:comment "Each export policy selects the unit attributions whose confidence it admits (lulcw:admitsConfidence), at the resolution they were assessed; lulcw:monitors and lulcw:pumpsFrom are the main policy's view of its exact-unit selections."@en .
+
+<https://w3id.org/lulcw/data/rule/well-link> a lulcw:DerivationRule ;
+    rdfs:label "same-unit well link"@en ;
+    rdfs:seeAlso lulcwr:wellLink ;
+    lulcw:searchRadiusM "5000.0"^^xsd:double ;
+    rdfs:comment "Two piezometers attributed to the same exact unit within the search radius (5000 m, inclusive: the reference query of CQ11), stored once per unordered pair with their horizontal distance and, when both are known, their investigation-depth difference. A modelling descriptor, not evidence of a shared screened horizon or of hydraulic connection; a depth threshold is applied at export."@en .
+
+<https://w3id.org/lulcw/data/rule/pumping-influence> a lulcw:DerivationRule ;
+    rdfs:label "pumping influence"@en ;
+    rdfs:seeAlso lulcwr:pumpingInfluenceExact , lulcwr:pumpingInfluenceGroup ;
+    lulcw:searchRadiusM "5000.0"^^xsd:double ;
+    rdfs:comment "A candidate pumping-drawdown influence of an abstraction facility on a piezometer, one per evidence path: the facility's attribution meets the well's at the exact unit the well monitors (non-increasing sign, eligible) or at a unit group containing it (sign unknown, not eligible), within the search radius (5000 m, inclusive; the baselines' pumping features use 3 km, and the export may apply a threshold frozen on the training period). Distance is a selection assumption, not hydraulic evidence (CQ8)."@en .
+
+<https://w3id.org/lulcw/data/rule/path-selection> a lulcw:DerivationRule ;
+    rdfs:label "path selection"@en ;
+    rdfs:seeAlso lulcwr:selectPaths ;
+    rdfs:comment "A well link or an influence is selected by an export policy only if every unit attribution it derives from is selected by that policy: a segment the policy does not accept blocks the path."@en .

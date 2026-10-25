@@ -303,3 +303,119 @@ depth check of the records and the coverage by volume and use are in
 - **Next (12.6):** the SHACL shapes of `docs/ontology_design.md` §5, and the SHACL-AF rules
   for stratigraphic relations and `overlies` (with their witness polygons), same-unit well
   links (CQ11), pump → well influences (CQ8) and the policy selections.
+
+## 12.6 Rules and shape checks inside the graph (2026-10-25)
+
+### Recurring check (CLAUDE.md §7, review of 2026-10-25), answered before starting
+1. *Chain link advanced:* water → model. The links the model's graph will be made of (layer
+   above layer, well with well, pump to well) and which of them may carry a sign constraint.
+2. *Where dated land use enters:* not in this part. The land-use rules (zone-year crop
+   observations, crop classes, `HighIrrigationDemandZone`) come next, with the land-use module
+   of the ontology; the crop-demand index exists outside the graph (step 12d).
+3. *Observed / inferred / assumed / unknown:* stacks are observed (BD LISA); stratigraphic
+   relations are inferred by a rule (geology, not hydraulics); well links and influences are
+   inferred from candidate attributions plus an assumed reference radius; an explicit unknown
+   attribution never becomes a link.
+4. *Evidence vs plan:* rules and shapes implemented and tested here; the export to the model
+   (12.8) and the use of the signs (Phase 4) remain plans.
+5. *Next model experiment:* none directly; 12.8 turns these links into the graphs of arms C–F.
+6. *Still missing from the subject:* land use in the graph (next), satellite semantics (12.10),
+   explanations of real outputs (CQ10), the scenario (CQ16), the CQ query tests (12.7), the
+   export (12.8).
+
+### What was done
+- **Rules (`ontology/rules/lulcw-rules.ttl`, SHACL-AF, run by pySHACL in advanced mode through
+  `src/kg/apply_rules.py`).** They read the facts of 12.5 and write the links into a separate
+  file, `lulcw_kg_v4_rules.ttl` (40,225 derived triples; 65 s including loading the graph):
+  - **Layer order (CQ3).** For each of the 201 map polygons, every pair of units of its stack:
+    95 direct contacts and 13 orderings with a unit in between, each witnessed
+    by its polygon, plus the `overlies` shortcut (28 unit pairs). Pairs are formed
+    inside one stack only, so "A on B here, B on C elsewhere" never gives "A above C". The
+    direct contacts of the plain's polygons are exactly Step 6b's 26 `overlies` edges, with the
+    same polygon counts.
+  - **Policy selections (CQ1, CQ2).** Each export policy now states which confidence levels it
+    admits (`lulcw:admitsConfidence`), and a rule selects the matching attributions: main
+    375, confident only 233, all links 1,763. `lulcw:monitors` (60)
+    and `lulcw:pumpsFrom` (294) are the main policy's view, exact units only: the
+    group-level clue of 12.5 never becomes a `pumpsFrom` to one unit.
+  - **Neighbouring wells (CQ11).** 47 pairs of wells recorded in the same unit within
+    5 km (inclusive), each with its distance and, for 42 of them, the difference of
+    investigation depths (a missing depth stays missing). Stored once per pair.
+  - **Pump → well influences (CQ8).** 1,848 candidate paths (one per pair of attributions)
+    from a facility to a well within 5 km through a shared unit: 1,830 at the exact unit,
+    with the non-increasing sign of pumping drawdown and "eligible" to constrain a model;
+    18 through a unit group only ("the alluvium", from the river flag), with the sign
+    left unknown and not eligible. Selected by the main policy: 434 paths (416 of them
+    eligible), joining 178 facilities to 43 wells; by the confident-only policy 134; by the
+    all-links policy all 1,848, on 1,839 facility–well pairs (1,040 facilities, 54 wells).
+  - **A path is selected only if both its ends are**, by every policy.
+- **Shapes (`ontology/shapes/lulcw-shapes.ttl`, gate 4 of `docs/ontology_design.md` §5):**
+  attributions are either resolved (one target, a confidence, a resolution) or an explicit
+  unknown (a reason, nothing else); one main candidate per entity, role and resolution;
+  every piezometer and facility has an attribution; every stratigraphic relation is shown by
+  its witness polygon's stack, intervening units included; `overlies`, `monitors`, `pumpsFrom`
+  are backed by their qualified nodes; well links are unordered pairs without duplicates, with
+  depth differences only where both depths exist; an eligible influence has a known sign and
+  rests on exact-unit attributions; an unknown attribution never supports a link; a path is
+  selected only if its segments are. Result on the real graph (51 s): no violation, no warning,
+  and 8 notes for the wells without an investigation depth.
+- **Ontology 0.2.0:** `admitsConfidence`, `searchRadiusM`; constraint eligibility reworded
+  (below). All quality gates pass (194 terms; ELK and HermiT consistent).
+- **`tests/test_kg_rules.py`:** the acceptance cases of the CQ document on a small synthetic
+  graph (a 4,999 m pair is linked, a 5,001 m pair is not; a stack A > B > C; two disjoint
+  polygons; an exact, a group-level, an unknown and an out-of-range pump), 9 deliberate
+  errors that the shapes must report, and pandas oracles on the real graph (relations from the
+  BD LISA stack table, well pairs from `wells.parquet`, exact influences from the attribution
+  table and the BNPE coordinates, Step 6b's edges, policy counts).
+
+### Why
+- **Links derived inside the graph, from facts written by another program.** Task 12.8 will
+  compare these links with the same links computed by pandas. Because the two derivations
+  share nothing but the source tables, their agreement is a real check (the equivalence test
+  of the analysis plan, §10).
+- **"Eligible" is decided from the evidence; the policy decides whether it is used.** A sign
+  constraint says "more pumping from this facility cannot raise this well's level". It is
+  safe where the facility pumps the very unit the well monitors. If the facility is known only
+  to pump from "the alluvium", it may pump a neighbouring member of that group, and irrigation
+  pumping can even raise a shallow head through return flow; so those paths stay unsigned
+  edges. Whether a path is used at all is the policy's choice (main runs: confident and
+  probable, Assil's decision of 2026-10-24): a path counts as accepted by a policy only when
+  both its attributions are.
+- **One influence per evidence path.** A facility with two candidate units (or one candidate
+  stated at two resolutions) gives two paths to the same well, each with its own confidence
+  (9 facility–well pairs under the all-links policy). Nothing is merged or summed in the
+  graph; the export (12.8) must take each facility's volume once per well.
+- **Facts and derived links in separate files**, so every query and test states whether it
+  reads facts or rule outputs (CQ document §6).
+- **Parameters as data.** The 5 km radii and the admitted confidence levels are triples of the
+  rule and policy nodes, so an answer can cite them and a sensitivity run changes data, not code.
+
+### What to consider
+- **rdflib is slow, so the heavy rules run once over the whole graph.** pySHACL runs a rule
+  once per focus node. Run once per well, the pumping rule took 34 s for one well: rdflib
+  joined its candidate list with a quadratic loop each time. Run once, with its own rule node
+  as focus (which also holds the radius), the whole rule run takes 65 s, loading included. The nested
+  NOT EXISTS of the path selection was replaced by a count (over a minute per policy before).
+  The validation had two more traps: pySHACL gives rdflib the text of each SPARQL check again
+  for every item, and rdflib parses it every time; and rdflib orders a query's patterns before
+  it knows the item ($this), so the "one main candidate" check started from all rank-1
+  attributions on both sides (87 s for one facility). During the runs, each check text is now
+  parsed once and the patterns that mention the item go first (0.05 s); only the work changes,
+  and the fixture test gives the same results (52 s → 13 s for the whole test).
+  pySHACL also needed two workarounds: the ontology is added to the validated graph by hand
+  (its `ont_graph` option copies only the class tree, not the concepts that `sh:class`
+  checks), and XPath's `math:sqrt` is registered as an rdflib function.
+- **To settle at Gate 3:** may a group-level path of a *drinking-water* facility carry the
+  sign? Drinking-water pumping cannot raise a head, connected or not (zero is
+  "non-increasing"), so a ≤ 0 constraint is harmless there; for irrigation it is not.
+  The current rule keeps every group-level path unsigned.
+- **The 5 km radius** is the reference query of the CQ document, not a hydraulic limit. The
+  baselines' pumping features use 3 km; the export applies a threshold frozen on the training
+  period, which must stay ≤ 5 km unless the rule is re-run with a larger radius.
+- **What the shapes found:** nothing to fix. The 8 notes are wells without an investigation
+  depth (they stay in the graph and in distance-only policies), and no two units are stacked
+  in opposite orders anywhere (the warning shape found none).
+- **Next:** the land-use rules (zone-year crop observations from the clipped areas, the crop
+  classes with their FAO-56 parameters, a dated `HighIrrigationDemandZone` assessment with a
+  threshold frozen on the training years), which need the land-use module of the ontology;
+  then 12.7 (CQ queries and fixtures) and 12.8 (export and equivalence test).

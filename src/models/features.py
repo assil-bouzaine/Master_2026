@@ -90,13 +90,15 @@ def nearest_gauge(wells):
     return dict(zip(wells["code_bss"], np.array(NEAR_CANDIDATES)[d.argmin(axis=1)]))
 
 
-LAND_USE = {"on": "demand_irrigable_m3", "placebo": "demand_irrigable_placebo_m3"}
+LAND_USE = {"on": "demand_main_m3", "placebo": "demand_main_placebo_m3", "wide": "demand_wide_m3"}
 
 
 def with_land_use(P, land_use, cache, base_cache):
     """P plus the crop-demand index of src.dataset.crop_demand (analysis plan §14 item 13):
-    `crop_demand` (thousand m3/week, like pump_gw) and its 4/13/52-week means; "placebo"
-    puts the index computed with another well's crop areas under the same names. The cache
+    `crop_demand` (thousand m3/week, like pump_gw) and its 4/13/52-week means. "on" is the
+    main index (classes usually irrigated), "placebo" the main index computed with another
+    well's crop areas, "wide" the sensitivity that adds the partly irrigated classes; all
+    under the same column names. The cache
     is rebuilt when the index or the base panel is newer; where the index file is absent
     (the Kaggle bundle ships the caches only), the cache is used as it is."""
     src = INTERIM / f"crop_demand_weekly_{DATASET}.parquet"
@@ -120,9 +122,9 @@ def with_land_use(P, land_use, cache, base_cache):
 
 def build_panel(refresh=False, train_start=None, land_use=None):
     """The panel; with train_start (regime R3, dataset v4 on) the per-well statistics come
-    from [train_start, end of training] only. Ignored before v4. land_use ("on" or
-    "placebo", dataset v4 on) adds the crop-demand inputs, with its own cache file; the
-    default panel is unchanged."""
+    from [train_start, end of training] only. Ignored before v4. land_use ("on",
+    "placebo" or "wide", dataset v4 on) adds the crop-demand inputs, with its own cache
+    file; the default panel is unchanged."""
     if land_use:
         if land_use not in LAND_USE or DATASET < "v4":
             raise ValueError(f"land_use must be one of {list(LAND_USE)} on dataset v4 or later")

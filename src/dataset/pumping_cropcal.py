@@ -16,7 +16,8 @@ Steps
      (checked); this also recovers the current, unfinished year
   2. crop mix by cell and RPG edition: parcels of the département clips assigned whole to
      their nearest SAFRAN cell (parcels are about 1 ha, cells 64 km2)
-  3. profile(cell, week) = sum over the classes assumed usually or partly irrigated of
+  3. profile(cell, week) = sum over the main classes (assumed usually irrigated, as the
+     main crop-thirst index; the census irrigates few vines) of
      area x max(0, Kc(class, week) x ETP_clim - rain_clim), the climate being the cell's
      mean for that week of the year; weights = profile / its sum over all the weeks of the
      calendar year, so an unfinished year keeps the share of the weeks it has. A cell
@@ -33,7 +34,7 @@ import pandas as pd
 
 from src.config import CRS_L93, DATASET, DATASET_DIR, INTERIM
 from src.dataset.build import nearest_cell, spread_weights
-from src.dataset.crop_demand import IRRIGABLE, code_to_class, kc_weekly, load_classes, rpg_years, year_map
+from src.dataset.crop_demand import MAIN, code_to_class, kc_weekly, load_classes, rpg_years, year_map
 
 SEASONAL = ("irrigation", "canals")  # the uses spread by w_irr in reconstruction (1)
 RESPREAD = ("irrigation",)           # the uses re-spread here (analysis plan §8)
@@ -81,7 +82,7 @@ def climatology(forcing):
 
 def cropcal_weights(cells, years, mix, clim, classes):
     """Weights by cell x week for every week (W-SUN) of the given calendar years."""
-    irrigable = [c for c in classes.index if classes.loc[c, "irrigation_assumption"] in IRRIGABLE]
+    irrigable = [c for c in classes.index if classes.loc[c, "irrigation_assumption"] in MAIN]
     weeks = pd.date_range(f"{min(years)}-01-01", f"{max(years)}-12-31", freq="W-SUN")
     kc = kc_weekly(weeks, classes)[irrigable]
     woy = week_of_year(weeks)

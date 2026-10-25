@@ -28,9 +28,11 @@ for s in $STEPS; do
     pastas_trainobs) $PY -m src.models.pastas_baseline --variant pastas_seasonal_canal \
                        --starts 0 1 2 3 4 5 6 7 8 9 --train-obs --workers $JOBS ;;
     lu:lgbm)      $PY -m src.models.lgbm --no-clim --final-only --land-use on &&   # land-use test
-                  $PY -m src.models.lgbm --no-clim --final-only --land-use placebo ;;  # (plan §14.13)
+                  $PY -m src.models.lgbm --no-clim --final-only --land-use placebo &&  # (plan §14.13)
+                  $PY -m src.models.lgbm --no-clim --final-only --land-use wide ;;
     lu:lstm)      $PY -m src.models.tune --model lstm --final-only --land-use on &&
-                  $PY -m src.models.tune --model lstm --final-only --land-use placebo ;;
+                  $PY -m src.models.tune --model lstm --final-only --land-use placebo &&
+                  $PY -m src.models.tune --model lstm --final-only --land-use wide ;;
     final:*)      $PY -m src.models.tune --model "${s#final:}" --final-only ;;   # v3 choice
     regimes:*)    $PY -m src.models.regimes --model "${s#regimes:}" ;;
     *)            echo "unknown step $s" ;;

@@ -4,6 +4,7 @@
     python -m src.ingest.rpg --region R76 --years 2016 2023
     python -m src.ingest.rpg --years 2016 2023 --clip dept            # raw files kept
     python -m src.ingest.rpg --years 2015 2017 2018 2019 2020 2021 2022 2024 2025 --clip dept --drop-raw
+    python -m src.ingest.rpg --years 2024 2025 --plan     # sizes only, nothing downloaded
 
 The Géoplateforme listing (/resource/RPG) is Atom XML, paginated and
 rate-limited; names are found by regex in the raw text. Each edition's own feed
@@ -253,6 +254,15 @@ def get_docs(session):
         print(f"  docs/{f} ({dest.stat().st_size / 1e3:.0f} KB)")
 
 
+def planned_size(session, name):
+    """Bytes of the edition's archive file(s), from the server (HEAD), without downloading."""
+    files = resource_files(session, name)
+    parts = [f for f in files if re.fullmatch(rf"{re.escape(name)}\.7z(?:\.\d{{3}})?", f)]
+    url = f"{BASE}/download/RPG/{name}"
+    return sum(int(session.head(f"{url}/{p}", timeout=TIMEOUT, allow_redirects=True)
+                   .headers["content-length"]) for p in parts)
+
+
 def run_year(session, names, args, year):
     name = find_name(names, args.region, year)
     print(f"{year}: {name}")
@@ -280,6 +290,9 @@ def main():
     ap.add_argument("--clip", nargs="+", default=[], choices=["plain", "dept"],
                     help="write interim/rpg_<extent>_<year>.parquet")
     ap.add_argument("--drop-raw", action="store_true", help="delete archive + extraction after the clips")
+    ap.add_argument("--plan", action="store_true",
+                    help="print the size of each edition's archive and the total, download nothing "
+                         "(CLAUDE.md rule 7: ask before more than 2 GB)")
     args = ap.parse_args()
     if args.drop_raw and not args.clip:
         ap.error("--drop-raw needs --clip: the raw files would be lost unclipped")
@@ -289,6 +302,16 @@ def main():
     get_docs(session)
     names = list_names(session)
     print(f"{len(names)} RPG resources listed")
+
+    if args.plan:
+        total = 0
+        for year in args.years:
+            name = find_name(names, args.region, year)
+            n = planned_size(session, name)
+            total += n
+            print(f"{year}: {name}  {n / 1e6:,.0f} MB")
+        print(f"total {total / 1e9:.2f} GB (before any cached file is skipped)")
+        return
 
     failed = []
     for year in args.years:

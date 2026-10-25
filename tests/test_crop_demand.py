@@ -9,7 +9,8 @@
    season, annual crops drop to 0, a winter crop sown in November is growing on
    1 January; years before the first RPG edition use the first one.
 2. Foreign land, if built: a zone around Figueres (Spain) is entirely foreign, no well
-   zone reaches Spain or Andorra at 3 km.
+   zone reaches Spain or Andorra at 3 km. Every crop code keeps its RPG group in every
+   clipped edition (classes are assigned by group).
 3. The built output, if present (data are not in git): no negative demand, no unmapped
    area, summer demand far above winter demand, every well on the same weeks, no zone
    outside the RPG extent (checked when the areas are built).
@@ -22,7 +23,7 @@ from shapely.geometry import box
 from src.config import CRS_L93, CRS_WGS84, DATASET, DATASET_DIR, INTERIM
 from src.dataset.crop_demand import (AREA_OUT, FOREIGN, clipped_area, code_to_class,
                                      derangement, foreign_share, kc_on_dates, kc_weekly,
-                                     load_classes, well_buffers, year_map)
+                                     load_classes, rpg_years, well_buffers, year_map)
 
 
 def check_clipped_area(classes):
@@ -88,6 +89,22 @@ def check_foreign():
     assert (foreign_share(well_buffers(wells)) == 0).all(), "a well zone reaches Spain or Andorra"
 
 
+def check_group_stability():
+    """Classes are assigned by RPG crop group, so a code must keep its group in every
+    edition (checked 2015-2025 on 2026-10-25: no change, no parcel without a group)."""
+    years = rpg_years()
+    if len(years) < 2:
+        print("  fewer than two RPG editions: group-stability check skipped")
+        return
+    seen = {}
+    for y in years:
+        d = pd.read_parquet(INTERIM / f"rpg_dept_{y}.parquet", columns=["CODE_CULTU", "CODE_GROUP"])
+        assert d["CODE_GROUP"].notna().all(), f"{y}: parcels without a crop group"
+        for code, grp in d.groupby("CODE_CULTU")["CODE_GROUP"].agg(lambda s: frozenset(s.astype(int))).items():
+            assert seen.setdefault(code, grp) == grp, f"{code}: group {set(grp)} in {y}, {set(seen[code])} before"
+    print(f"  crop groups stable over {len(years)} editions ({len(seen)} codes)")
+
+
 def check_built(classes):
     out = INTERIM / f"crop_demand_weekly_{DATASET}.parquet"
     if not out.exists():
@@ -99,7 +116,7 @@ def check_built(classes):
     a = pd.read_parquet(AREA_OUT)
     cls = code_to_class(a["CODE_CULTU"].to_numpy(), a["CODE_GROUP"].to_numpy(), classes)
     assert a.loc[(cls == "unmapped").to_numpy(), "ha"].sum() == 0, "unmapped crop codes"
-    m = d.assign(mo=d["week"].dt.month).groupby("mo")["demand_irrigable_m3"].mean()
+    m = d.assign(mo=d["week"].dt.month).groupby("mo")["demand_main_m3"].mean()
     assert m.loc[[6, 7, 8]].mean() > 10 * m.loc[[12, 1, 2]].mean(), m
     assert d.groupby("code_bss")["week"].nunique().nunique() == 1, "wells with different weeks"
     # placebo: a well sharing its donor's SAFRAN cell gets exactly the donor's index
@@ -108,12 +125,12 @@ def check_built(classes):
     same = [w for w, dn in donors.items() if cell[w] == cell[dn]]
     by = d.set_index(["code_bss", "week"])
     for w in same:
-        assert np.allclose(by.loc[w, "demand_irrigable_placebo_m3"].to_numpy(),
-                           by.loc[donors[w], "demand_irrigable_m3"].to_numpy())
-    # placebo recomputed independently for three wells: own weather x donor's areas
+        assert np.allclose(by.loc[w, "demand_main_placebo_m3"].to_numpy(),
+                           by.loc[donors[w], "demand_main_m3"].to_numpy())
+    # placebo recomputed independently for three wells: own weather x donor's main areas
     forcing = pd.read_parquet(DATASET_DIR / "forcing_weekly.parquet").set_index(["cell_id", "week"])
     a["crop_class"] = cls.to_numpy()
-    irr = [c for c in classes.index if classes.loc[c, "irrigation_assumption"] in ("usually", "partly")]
+    irr = [c for c in classes.index if classes.loc[c, "irrigation_assumption"] == "usually"]
     for w in list(donors.index[:3]):
         rows = by.loc[w]
         weeks = rows.index
@@ -126,7 +143,7 @@ def check_built(classes):
         ha = ha.reindex(sorted(a["rpg_year"].unique()), fill_value=0.0)
         a_t = ha.reindex(rows["rpg_year_used"].to_numpy()).set_axis(weeks)
         expect = (need * a_t * 10.0).sum(axis=1).to_numpy()
-        assert np.allclose(rows["demand_irrigable_placebo_m3"].to_numpy(), expect), w
+        assert np.allclose(rows["demand_main_placebo_m3"].to_numpy(), expect), w
     print(f"  built: {d['code_bss'].nunique()} wells x {d['week'].nunique()} weeks; "
           f"summer/winter mean demand {m.loc[[6, 7, 8]].mean():.0f} / {m.loc[[12, 1, 2]].mean():.0f} m3/week")
 
@@ -140,6 +157,7 @@ def main():
     check_year_map()
     print("synthetic checks passed")
     check_foreign()
+    check_group_stability()
     check_built(classes)
     print("test_crop_demand: OK")
 

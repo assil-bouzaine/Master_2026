@@ -74,14 +74,15 @@ def main():
         ha_by = area.groupby(classes["irrigation_assumption"].reindex(area.index.get_level_values("crop_class")).to_numpy()).sum()
         rows.append({
             "year": year, "weeks": len(wk),
-            "irrigable_ha": round(ha_by.get("usually", 0) + ha_by.get("partly", 0)),
+            "main_ha": round(ha_by.get("usually", 0)),
+            "wide_ha": round(ha_by.get("usually", 0) + ha_by.get("partly", 0)),
             "demand_usually_Mm3": round(by_assumption.get("usually", 0.0), 1),
             "demand_partly_Mm3": round(by_assumption.get("partly", 0.0), 1),
             "declared_irrigation_Mm3": round(bnpe.loc[year, "irrigation"] / 1e6, 1) if year in bnpe.index else np.nan,
             "declared_canals_Mm3": round(bnpe.loc[year, "canals"] / 1e6, 1) if year in bnpe.index else np.nan,
         })
     t = pd.DataFrame(rows).set_index("year")
-    t["demand_irrigable_Mm3"] = t["demand_usually_Mm3"] + t["demand_partly_Mm3"]
+    t["demand_wide_Mm3"] = t["demand_usually_Mm3"] + t["demand_partly_Mm3"]
     t.to_csv(OUT)
     print(t.to_string())
     print(f"-> {OUT}")

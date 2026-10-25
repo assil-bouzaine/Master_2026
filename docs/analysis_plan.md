@@ -571,7 +571,8 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
     written before any land-use run).** The subject's land-use pathway is tested, not
     assumed.
     - *Feature:* weekly potential irrigation demand per well, the sum over the crop
-      classes assumed usually or partly irrigated (`configs/lu_crop_classes.csv`) of
+      classes assumed usually irrigated (`configs/lu_crop_classes.csv`: orchards,
+      vegetables, artichokes, maize, citrus) of
       (clipped area within 3 km in RPG year y) × max(0, Kc(class, date) × ETP − rain),
       weekly sums on the well's SAFRAN cell, Kc on calendar dates from the FAO-56 stage
       tables (`src/dataset/crop_demand.py`). It is a potential requirement, never
@@ -580,13 +581,23 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       2026-10-25, before any land-use run: "Kc(crop, month)" and "effective rain" became
       Kc on calendar dates and rain, as implemented; SIM2's effective rain is a water
       surplus, not the rain available to a crop.*
+    - *Main index and sensitivity (decided by Assil on 2026-10-25, before any land-use
+      run):* the classes assumed partly irrigated (vines, olives, nuts, fodder) are left
+      out of the main index and added in a sensitivity row ("wide"). Reason: in the 2020
+      agricultural census of dept 66, farms irrigating mainly vines irrigate 839 ha and
+      fruit-and-vine farms 502 ha, against 19,840 ha of vines (about 4–7 %), while the
+      specialised fruit and vegetable farms irrigate 78 % and 84 % of their land
+      (`data/raw/agreste/`, DRAAF Occitanie, Agreste Essentiel, January 2024). Counting
+      every vineyard would let mostly unirrigated vines dominate the index. The wide row
+      is reported next to the main one, with the same seeds and settings.
     - *Test (RQ1, exploratory on the v4 baselines):* the tuned LightGBM without its
       own climatology and the tuned LSTM, each with and without the feature, v3
       settings, 5 seeds for the LSTM; a placebo with the crop areas permuted across
       wells (static features as identifiers, Heudorfer et al. 2024,
       doi:10.5194/hess-28-525-2024). Endpoint: drought-phase median NSE and skill on
       the core wells, cluster sign-flip, Holm over the two models; per aquifer group
-      as secondary. A null or negative result is reported as is.
+      as secondary; the wide row and the placebo are reported with the same endpoint,
+      not counted in the Holm family. A null or negative result is reported as is.
     - *Phase 4:* crop demand and canal return are `lulcw:Influence` types of the
       hybrid; arm B reports with and without them.
     - *Reconstruction (3) of §8* uses the same Kc calendar and crop mix.

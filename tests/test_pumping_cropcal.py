@@ -8,8 +8,10 @@
 2. The built output, if present (data are not in git): the weights of reconstruction (1)
    (src.dataset.build.spread_weights, moved out of build_pumping_v3 on 2026-10-25)
    reproduce the dataset's weekly table, i.e. the annual volume recovered from each week
-   is the same within a year; every annual irrigation volume is kept; other uses are
-   unchanged; within a year, irrigation follows the climatic deficit less than in (1).
+   is the same within a year; every annual irrigation volume of a complete year is kept
+   (the unfinished year differs: each method gives the weeks so far its own share of the
+   year); other uses are unchanged; within a year, irrigation follows the climatic deficit
+   less than in (1).
 """
 import numpy as np
 import pandas as pd
@@ -45,8 +47,9 @@ def check_synthetic(classes):
     assert np.allclose(s, 1.0), s
     assert w.loc[w["cell_id"] == "B", "cropcal_fallback"].all()
     assert not w.loc[w["cell_id"] == "A", "cropcal_fallback"].any()
-    summer = w["week"].dt.month.isin([6, 7, 8])
-    assert w.loc[summer, "w_crop"].mean() > 5 * w.loc[~summer, "w_crop"].mean()
+    # the crop calendar: almost nothing in winter, most of the year's water in summer
+    month = w.loc[w["cell_id"] == "A"].groupby(w["week"].dt.month)["w_crop"].sum() / w.loc[w["cell_id"] == "A", "year"].nunique()
+    assert month.loc[[12, 1, 2]].sum() < 0.01 and month.loc[[6, 7, 8]].sum() > 0.5, month.round(3).to_dict()
 
 
 def check_built():

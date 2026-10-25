@@ -14,12 +14,12 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from src.config import DATASET, FIGURES, INTERIM
-from src.dataset.crop_demand import AREA_OUT, IRRIGABLE, code_to_class, load_classes
+from src.dataset.crop_demand import AREA_OUT, WIDE, code_to_class, load_classes
 
 
 def main():
     classes = load_classes()
-    irrigable = [c for c in classes.index if classes.loc[c, "irrigation_assumption"] in IRRIGABLE]
+    irrigable = [c for c in classes.index if classes.loc[c, "irrigation_assumption"] in WIDE]
     a = pd.read_parquet(AREA_OUT)
     a["crop_class"] = code_to_class(a["CODE_CULTU"].to_numpy(), a["CODE_GROUP"].to_numpy(),
                                     classes).to_numpy()
@@ -38,15 +38,16 @@ def main():
     area.plot.bar(stacked=True, ax=ax0, width=0.7, colormap="tab20")
     ax0.set_ylabel("clipped area within 3 km (ha)")
     ax0.set_xlabel("RPG edition")
-    ax0.set_title("Irrigable crop classes around the 65 wells (assumption 'usually' or 'partly')")
+    ax0.set_title("Crop classes around the 65 wells (main index: orchards, vegetables, artichoke, "
+                  "maize, citrus;\nvines, olives, nuts and fodder only in the sensitivity)", fontsize=10)
     ax0.set_ylim(0, area.sum(axis=1).max() * 1.35)
     ax0.legend(ncol=5, fontsize=8, loc="upper left")
     ax0.tick_params(axis="x", rotation=0)
 
     x = yr.index
-    ax1.bar(x, yr["usually"] / 1e6, color="#2f6690", label="usually irrigated classes")
+    ax1.bar(x, yr["usually"] / 1e6, color="#2f6690", label="main index: usually irrigated classes")
     ax1.bar(x, yr["partly"] / 1e6, bottom=yr["usually"] / 1e6, color="#9db4c0",
-            label="partly irrigated classes")
+            label="sensitivity adds the partly irrigated classes (vines, olives, nuts, fodder)")
     bf = yr[yr["backfill"]]
     ax1.bar(bf.index, (bf["usually"] + bf["partly"]) / 1e6, fill=False, hatch="//",
             edgecolor="0.4", linewidth=0, label="crop mix backfilled from the first edition")

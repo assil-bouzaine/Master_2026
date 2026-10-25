@@ -571,6 +571,9 @@ the step note before choosing a substantial task.** Decided by Assil the same da
 (2) CQ7, CQ10, CQ15 → MUST (9 MUST); (3) a pre-registered land-use test in RQ1
 (potential crop demand, FAO-56 Kc; LightGBM and LSTM ± feature + shuffled placebo;
 `docs/analysis_plan.md` §14 item 13), which also defines pumping reconstruction (3).
+Then (4), before any run: the main index counts only the classes usually irrigated
+(orchards, vegetables, artichokes, maize, citrus); vines, olives, nuts and fodder only in
+the "wide" sensitivity row, because the 2020 census irrigates about 4–7 % of the vines.
 The agricultural path the data can carry: crop demand → farm-pumping timing, and canal
 irrigation → alluvium return flow; farm-borehole links stay a sensitivity.
 
@@ -697,9 +700,15 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
    `docs/supervisor_questions.md` §6 (French text ready).
 
 **Next for Claude, while the models run or after:**
-0. **Land-use thread first** (road: `docs/review_codex_2026-10-25_response.md` §4):
-   LU-1 → LU-2 this week, alongside closing the v4 re-runs; then 12.6 with the
-   land-use rules, LU-3, LU-4.
+0. **Land-use thread first** (road: `docs/review_codex_2026-10-25_response.md` §4).
+   LU-1 and LU-3 (per well) done 2026-10-25. **LU-4 launch:** when kernel 5 has ended,
+   `scripts/kaggle_cpu.py pull` (it rescores), then `scripts/kaggle_cpu.py push --steps
+   "lu:lgbm lu:lstm"` (the bundle carries the land-use panels; LightGBM minutes, LSTM some
+   hours on 4 CPUs), pull when done, then `PFE_DATASET=v4 python -m
+   src.analysis.land_use_test` and report as pre-registered (main contrast, Holm over the
+   two models; placebo, wide and groups outside the family). Next: 12.6 with the land-use
+   rules (parcel-year observations, crop classes, `HighIrrigationDemandZone`), LU-2's
+   AGROVOC candidates with 12.9.
 1. ✅ Step 12a done (2026-10-23 evening). 🔄 The v4 re-runs: Kaggle kernel 4
    and Colab session 1 pulled on 2026-10-25, reference run, replay, ensemble and
    the interim reports done (see State). Left: **pull Kaggle kernel 5** when it
@@ -756,10 +765,10 @@ Assil's review of the competency questions.
 | 12.9 | Alignment experiment: RPG → AGROVOC gold set + OntoAligner (P/R/F1) | ⬜ |
 | 12.10 | Satellite rule: Sentinel-2 summer NDVI per parcel on Earth Engine (needs Assil's Earth Engine login) | ⬜ |
 | 12.11 | Text extraction, small and measured (thesis) | ⬜ |
-| LU-1 | Annual RPG 2015–2025 clipped to the département extent (`src.ingest.rpg --clip dept --drop-raw`; first clipped to the plain, which missed the 15 mountain wells, so redone on 2026-10-25 with Assil's approval); registration-coverage check | 🔄 2026-10-25 download running |
+| LU-1 | Annual RPG 2015–2025 clipped to the département extent (`src.ingest.rpg --clip dept --drop-raw`; first clipped to the plain, which missed the 15 mountain wells, so redone on 2026-10-25 with Assil's approval); registration-coverage check | ✅ 2026-10-25: 11 editions (74–83 k parcels each), crop groups stable over 245 codes; `src/analysis/rpg_coverage.py`: orchards +876 ha 2015–25, only +86 by conversion; vines −2,134 ha by conversion (1,339 in 2024–25). About 10 GB transferred, more than announced: `--plan` now prints sizes first |
 | LU-2 | Crop table: RPG code → group → AGROVOC candidate → FAO-56 Kc calendar → irrigable class (feeds 12.9's gold set) | 🔄 2026-10-25: `configs/lu_crop_classes.csv` (14 classes, FAO-56 Kc and stages, 0 unmapped parcels); irrigation assumptions to check against the Agreste 2020 census; AGROVOC candidates with 12.9 |
-| LU-3 | Weekly potential-demand index per well and unit (clipped area); pumping reconstruction (3) | 🔄 2026-10-25: `src/dataset/crop_demand.py` (+ placebo), `src/dataset/pumping_cropcal.py`, size check against BNPE, registration check; tests pass; final rebuild when all editions are in. Per unit: with 12.6 |
-| LU-4 | Pre-registered land-use ablation on Kaggle CPU (§14 item 13) | 🔄 2026-10-25: code ready (`build_panel(land_use=…)`, `--land-use`, steps `lu:lgbm lu:lstm`; default panel unchanged, checked); push after Kaggle kernel 5 is pulled |
+| LU-3 | Weekly potential-demand index per well and unit (clipped area); pumping reconstruction (3) | ✅ per well 2026-10-25: `src/dataset/crop_demand.py` (main = usually irrigated classes, wide sensitivity, placebo), `src/dataset/pumping_cropcal.py` (within-year r with the deficit 0.96 → 0.61), size check 0.4–0.6 of declared irrigation; tests pass. Per unit: with 12.6 |
+| LU-4 | Pre-registered land-use ablation on Kaggle CPU (§14 item 13) | 🔄 2026-10-25: code, the three land-use panels (`results/v4/_cache/panel_lu_{on,placebo,wide}.parquet`) and the scoring script `src/analysis/land_use_test.py` ready; push after Kaggle kernel 5 is pulled |
 | LU-5 | = 12.10, validated against Agreste irrigated areas, else a heuristic | ⬜ |
 | LU-6 | End-to-end example (alluvium + Pliocene well): RPG parcels → KG path → Gate 3 | ⬜ |
 | Gate 3 | Ontology review with the supervisor | ⬜ |

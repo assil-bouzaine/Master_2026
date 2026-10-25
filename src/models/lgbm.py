@@ -254,9 +254,9 @@ def main():
     ap.add_argument("--final-only", action="store_true",
                     help="5 seeds of the configuration in <tuned>/best.json, no search "
                          "(dataset v4 re-runs reuse the v3 selection, scripts/v4_from_v3.py)")
-    ap.add_argument("--land-use", choices=["on", "placebo"],
-                    help="with --final-only --no-clim: add the crop-demand inputs, real or placebo "
-                         "(analysis plan §14 item 13) -> lgbm_noclim_tuned_lu_<on|placebo>, with "
+    ap.add_argument("--land-use", choices=["on", "placebo", "wide"],
+                    help="with --final-only --no-clim: add the crop-demand inputs, main, placebo or "
+                         "wide (analysis plan §14 item 13) -> lgbm_noclim_tuned_lu_<variant>, with "
                          "the settings and seeds of lgbm_noclim_tuned, its run without them")
     args = ap.parse_args()
     if args.land_use and not (args.final_only and args.no_clim and not args.regimes):

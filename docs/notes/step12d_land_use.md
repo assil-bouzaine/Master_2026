@@ -19,11 +19,13 @@
 - **LU-3** `src/dataset/crop_demand.py` (the crop-thirst index), its check against declared
   irrigation `src/analysis/crop_demand_check.py`, pumping reconstruction (3)
   `src/dataset/pumping_cropcal.py`, the figure `src/analysis/crop_demand_figure.py`.
-- **LU-4, code only** (no model trained on the laptop): `build_panel(land_use="on" |
-  "placebo")` in `src/models/features.py` (own cache files; the default panel rebuilt from
-  scratch is identical to the cached v4 panel, 90,740 × 69); `--land-use` in `lgbm.py`,
-  `lstm.py`, `tune.py`; steps `lu:lgbm` and `lu:lstm` in `scripts/run_v4_cpu.sh`. The runs
-  go to Kaggle once kernel 5 is pulled.
+- **LU-4, code and inputs only** (no model trained on the laptop): `build_panel(land_use=
+  "on" | "placebo" | "wide")` in `src/models/features.py` (own cache files, each adding
+  `crop_demand` and its 4/13/52-week means, the other 69 columns unchanged; the default
+  panel rebuilt from scratch is identical to the cached v4 panel, 90,740 × 69); `--land-use`
+  in `lgbm.py`, `lstm.py`, `tune.py`; steps `lu:lgbm` and `lu:lstm` in
+  `scripts/run_v4_cpu.sh`; scoring as pre-registered in `src/analysis/land_use_test.py`
+  (written before any run). The runs go to Kaggle once kernel 5 is pulled.
 - Foreign land: `src/ingest/borders.py` (Natural Earth 1:10m, Spain + Andorra). No well's
   3 km zone reaches it (nearest: Valcebollère, 3.9 km); kept as a guard.
 
@@ -40,8 +42,10 @@ the farm-borehole links stay "possible". So the agricultural signal enters as cr
 - Kc on calendar dates: each season starts on day 1 of its planting month every year;
   perennials keep Kc_ini off season, annual crops have Kc = 0. Weekly Kc = mean of the 7
   days of the week (Monday–Sunday, labelled by the Sunday, as the forcing).
-- Main feature `demand_irrigable_m3` = classes assumed usually or partly irrigated; the
-  three parts are stored separately so the assumption can be varied.
+- Main index `demand_main_m3` = classes assumed usually irrigated (orchards, vegetables,
+  artichokes, maize, citrus); `demand_wide_m3` adds the partly irrigated classes (vines,
+  olives, nuts, fodder) as a sensitivity. Decided by Assil on 2026-10-25, before any run,
+  from the 2020 census (next section). The parts are stored separately.
 - **Why rain and not SIM2's PE:** PE is the water surplus after the soil fills (drainage +
   runoff), near zero all summer. Soil storage is ignored: an index of the timing and size
   of demand, not a field water balance.
@@ -53,25 +57,50 @@ the farm-borehole links stay "possible". So the agricultural signal enters as cr
 - `tests/test_crop_demand.py`: CQ7 acceptance (10 ha parcel, 4 ha inside → 4 ha), unknown
   codes kept as "unmapped", Kc at the FAO-56 stage days on the same dates in leap and
   common years, the last day of a season, winter crops across the new year, a zone in Spain
-  is foreign, reproducible derangement; on the real output: no negative value, no unmapped
-  area, summer ≫ winter, and the placebo recomputed independently for three wells.
+  is foreign, reproducible derangement; on the real output: every crop code keeps its RPG
+  group in all 11 editions (245 codes, so classes by group are valid every year), no
+  negative value, no unmapped area, summer ≫ winter, and the placebo recomputed
+  independently for three wells.
 - `tests/test_pumping_cropcal.py`: the climatology ignores post-training weather, weights
   sum to 1 per year, fallback flagged; on the real tables: the moved weights of
   reconstruction (1) reproduce the v4 weekly table (largest relative spread 4e-16), annual
-  volumes kept, other uses unchanged, weaker within-year link with the deficit.
-  `tests/test_pumping_conservation.py` still passes.
-- **Size check** (plain box, as BNPE): irrigable classes about 20,000 ha; the thirst of the
-  "usually irrigated" classes (orchards, vegetables) is about half the declared irrigation;
-  with every vineyard fully watered the thirst would exceed the declared irrigation. The
+  volumes of complete years kept (only the unfinished 2026 differs, +2.64 Mm³: each method
+  gives the weeks so far its own share of the year), other uses unchanged.
+  `tests/test_pumping_conservation.py` still passes. One synthetic check (summer weights
+  ≥ 5 × the other months) failed once the main classes became orchards and vegetables only:
+  the monthly shape was inspected first (0 % December–February, peak June–July, 62 % in
+  summer; ratio 4.8, because orchards also need water in spring and September), then the
+  arbitrary threshold was replaced by "winter < 1 %, summer > 50 %".
+- **Reconstruction (3) on the real tables:** mean within-year correlation between the
+  plain's weekly irrigation and the climatic deficit (April–October) 0.96 under (1), 0.61
+  under (3); both keep the normal seasonal cycle, (3) drops the year's own weather. 33 of
+  75 SAFRAN cells have no main-class crop and take the département mix: 2.3 % of the
+  irrigation volume, 28 of 1,877 facilities, none in the plain.
+- **Size check** (plain box, as BNPE; 2015–2025): the main classes cover 4,500–5,500 ha and
+  their thirst is 29–41 Mm³ a year, against 66–82 Mm³ of declared irrigation (2015–2023),
+  a ratio of 0.4–0.6 every year; the wide classes cover about 20,000 ha, and with every
+  vineyard fully watered the thirst (92–126 Mm³) would exceed the declared irrigation. The
   declared surface irrigation is almost the same every year (flat-rate declarations), so
   only the size can be compared, not the year-to-year changes.
-- **Registration vs real change** (plain, 2015 → 2023 on the editions available at the
-  time): orchards +861 ha, of which +120 ha by conversion on land declared both years and
-  +1,242 ha on newly declared land; grassland +3,499 ha, of which +4,792 ha newly declared;
-  vines −70 ha net but −938 ha by conversion (uprooting) hidden by newly declared vineyard.
-  So part of any trend in the index comes from declarations.
+- **Registration vs real change** (plain, 2015 → 2025): the declared area grows from
+  33,820 to 39,848 ha, and every year 1,400–3,300 ha appear and 1,400–2,700 ha disappear.
+  Orchards +876 ha net, of which +86 ha by conversion on land declared both years and
+  +1,419 ha on newly declared land; grassland +4,674 ha, of which +5,956 ha newly declared;
+  vines −2,038 ha net, −2,134 ha by conversion, 1,339 ha of it from 2024 to 2025, when
+  1,637 ha of 2024 vineyard (stable footprint) became fallow (644 ha) or temporarily
+  non-eligible land (909 ha), consistent with uprooting, not with a new vine code. So part
+  of any area trend in the index comes from declarations. (The 2015 → 2023 figures of the
+  morning, on fewer editions, are superseded.)
 - Mountain wells: their zones are mostly summer pasture (rainfed), Collioure and the
   Tirounère spring have 210 and 343 ha of vines.
+- **Census check of the irrigation assumptions** (RA2020, dept 66; `data/README.md`,
+  "Land-use thread"). Farms specialised in fruit irrigate 78 % of their land (5,268 ha),
+  in vegetables 84 % (932 ha); farms irrigating mainly vines irrigate 839 ha, fruit-and-vine
+  farms 502 ha, against 19,840 ha of vines: about 4–7 % of the vines. So "usually" holds
+  for orchards and vegetables, and vines are far below what counting all their area
+  implies. The census also confirms the real changes: vines −5,770 ha and orchards
+  +1,150 ha (+16 %) between 2010 and 2020, so part of the orchard area on newly declared
+  land is real planting, which the RPG alone cannot separate from registration.
 
 ## Corrections made on 2026-10-25 (afternoon), after re-checking the morning's work
 - **15 wells outside the clip.** The first clip (plain bbox + 3 km) did not hold the 3 km
@@ -91,11 +120,15 @@ the farm-borehole links stay "possible". So the agricultural signal enters as cr
   Python layer runs them through pySHACL, which we already use.
 - **2022 and the download loop.** 2022 is published as a `.7z.001` part, which the first
   script could not find, and one failed year stopped the later ones.
+- **Download volume.** About 10 GB were transferred in all, against the ~4–5 GB and then
+  ~3 GB announced when Assil approved: the sizes had not been checked, and the 2024–25
+  GeoPackages weigh 1.7 GB each. `--plan` now prints the sizes before any download.
 
 ## What to consider
 - Potential demand is not irrigation: whether a parcel is irrigated, and from which
-  source, are separate facts (CQ7, CQ15). The irrigation assumptions must be checked
-  against the Agreste 2020 census (irrigated area by crop, dept 66).
+  source, are separate facts (CQ7, CQ15). The census numbers are by farm type, not by
+  crop; a crop-level table (irrigated area by crop, dept 66) would sharpen them if Agreste
+  publishes one.
 - Because part of the area trend is registration, a sensitivity with one fixed crop mix
   for all years would separate dated land use from declaration coverage. It is not in the
   pre-registered test; adding it is Assil's decision.

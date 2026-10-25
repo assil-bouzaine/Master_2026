@@ -349,8 +349,8 @@ def main():
     ap.add_argument("--fold", type=int, default=None, help="leave-wells-out fold (0-4)")
     ap.add_argument("--train-start", default=None, help="shorter training period (regime R3)")
     ap.add_argument("--refit-from", default=None, help="refit on train+validation (epochs of run)")
-    ap.add_argument("--land-use", choices=["on", "placebo"], default=None,
-                    help="add the crop-demand input, real or placebo (analysis plan §14 item 13)")
+    ap.add_argument("--land-use", choices=["on", "placebo", "wide"], default=None,
+                    help="add the crop-demand input: main, placebo or wide (analysis plan §14 item 13)")
     args = ap.parse_args()
     set_lookback(args.lookback)
     P = build_panel(train_start=args.train_start, land_use=args.land_use)  # R3 window statistics from v4

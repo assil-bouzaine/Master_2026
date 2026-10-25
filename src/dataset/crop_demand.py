@@ -25,9 +25,13 @@ have no crop (Kc = 0). Weekly Kc = mean over the 7 days of the week (Monday-Sund
 labelled by the Sunday, as the forcing). Parameters: configs/lu_crop_classes.csv.
 
 This is a *potential requirement*: crop identity is observed; whether a parcel is
-irrigated, and from which source, are not (CQ7, CQ15). The main feature sums the
-classes whose irrigation assumption is "usually" or "partly" (analysis plan §14 item
-13); the assumption is to be checked against the Agreste 2020 census.
+irrigated, and from which source, are not (CQ7, CQ15). The main index `demand_main_m3`
+sums the classes whose irrigation assumption is "usually" (orchards, vegetables,
+artichokes, maize, citrus); `demand_wide_m3` adds the "partly" classes (vines, olives,
+nuts, fodder) as a sensitivity. Decided by Assil on 2026-10-25 before any land-use run
+(analysis plan §14 item 13): in the 2020 census of dept 66 about 4-7 % of the vines are
+irrigated, against most orchards and vegetables, so counting every vineyard would let
+mostly unirrigated vines dominate the index.
 
 RPG editions: each calendar year uses its own edition; a missing year uses the nearest
 earlier edition, years before the first edition use the first one (`rpg_backfill`),
@@ -36,9 +40,9 @@ earlier edition, years before the first edition use the first one (`rpg_backfill
 France only: `zone_partly_foreign` flags wells whose zone reaches Spain or Andorra
 (src/ingest/borders.py), whose demand then covers the French part only (none at 3 km).
 
-Placebo (analysis plan §14 item 13): `demand_irrigable_placebo_m3` gives each well its
-own weather with the crop areas of another well (`placebo_donor`, a seeded derangement:
-no well keeps its own areas). A model that gains from the real index but not from the
+Placebo (analysis plan §14 item 13): `demand_main_placebo_m3` gives each well its own
+weather with the main classes' areas of another well (`placebo_donor`, a seeded
+derangement: no well keeps its own areas). A model that gains from the real index but not from the
 placebo uses the crop information, not just a per-well signature.
 
 Outputs: data/interim/crop_area_3km.parquet        clipped ha by well x edition x crop code
@@ -57,7 +61,8 @@ from src.config import CRS_L93, CRS_WGS84, DATASET, DATASET_DIR, INTERIM, ROOT
 
 CLASSES = ROOT / "configs" / "lu_crop_classes.csv"
 BUFFER_M = 3000
-IRRIGABLE = ("usually", "partly")
+MAIN = ("usually",)            # irrigation assumptions in the main index
+WIDE = ("usually", "partly")    # the sensitivity row
 AREA_OUT = INTERIM / "crop_area_3km.parquet"
 AREA_META = INTERIM / "crop_area_3km_meta.json"
 FOREIGN = INTERIM / "foreign_land_66.parquet"
@@ -194,8 +199,8 @@ def derangement(codes, seed=PLACEBO_SEED):
 
 def demand(wells, forcing, areas, classes, foreign):
     """Well x week demand (m3/week), per irrigation assumption, with the edition used.
-    `demand_irrigable_placebo_m3`: the well's own weather with the crop areas of another
-    well (derangement), the placebo of the analysis plan §14 item 13."""
+    `demand_main_placebo_m3`: the well's own weather with the main classes' areas of
+    another well (derangement), the placebo of the analysis plan §14 item 13."""
     weeks = pd.DatetimeIndex(sorted(forcing["week"].unique()))
     kc = kc_weekly(weeks, classes)
     f = forcing.set_index(["cell_id", "week"])[["ETP", "rain"]]
@@ -228,19 +233,21 @@ def demand(wells, forcing, areas, classes, foreign):
         def part(kind, m=m3):
             return m[[c for c in cols if assumption[c] == kind]].sum(axis=1).to_numpy()
 
-        irr = [c for c in cols if assumption[c] in IRRIGABLE]
-        placebo = (need[irr] * areas_by_week(donor[w["code_bss"]])[irr] * 10.0).sum(axis=1).to_numpy()
+        main = [c for c in cols if assumption[c] in MAIN]
+        wide_cls = [c for c in cols if assumption[c] in WIDE]
+        placebo = (need[main] * areas_by_week(donor[w["code_bss"]])[main] * 10.0).sum(axis=1).to_numpy()
         rows.append(pd.DataFrame({
             "code_bss": w["code_bss"], "week": weeks,
             "demand_usually_m3": part("usually"), "demand_partly_m3": part("partly"),
             "demand_rainfed_m3": part("rainfed"),
-            "demand_irrigable_placebo_m3": placebo, "placebo_donor": donor[w["code_bss"]],
-            "irrigable_ha": a_t[irr].sum(axis=1).to_numpy(),
+            "demand_main_placebo_m3": placebo, "placebo_donor": donor[w["code_bss"]],
+            "main_ha": a_t[main].sum(axis=1).to_numpy(), "wide_ha": a_t[wide_cls].sum(axis=1).to_numpy(),
             "rpg_year_used": used.to_numpy(),
             "zone_partly_foreign": bool(foreign[w["code_bss"]] > 0),
         }))
     d = pd.concat(rows, ignore_index=True)
-    d["demand_irrigable_m3"] = d["demand_usually_m3"] + d["demand_partly_m3"]
+    d["demand_main_m3"] = d["demand_usually_m3"]
+    d["demand_wide_m3"] = d["demand_usually_m3"] + d["demand_partly_m3"]
     d["rpg_backfill"] = d["week"].dt.year < min(avail)
     d["rpg_lag_years"] = d["week"].dt.year - d["rpg_year_used"]
     return d

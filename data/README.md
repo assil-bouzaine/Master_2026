@@ -381,3 +381,54 @@ Inputs: dataset v4 (`wells`, `heads_weekly`), `data/interim/piezo_stations.parqu
 `raw/hubeau/stations_66.parquet`, the BNPE snapshot of 2026-10-20 (points and annual
 volumes, groundwater only), the BD LISA V3 GeoPackage, and the task 12.3 tables. No
 download. Rebuild it after any of them changes (`tests/test_kg.py` then fails).
+
+### Land-use thread (Step 12d, 2026-10-25)
+
+| Date | Source | Endpoint / URL | Parameters | Output | Rows | Size |
+|---|---|---|---|---|---|---|
+| 2026-10-25 | Natural Earth admin-0 countries 1:10m (public domain) | `https://naciscdn.org/naturalearth/10m/cultural/ne_10m_admin_0_countries.zip` | `python -m src.ingest.borders`; Spain + Andorra (`ADM0_A3`; `ISO_A3` is -99 for France) intersecting `DEPT_BBOX` | `raw/naturalearth/ne_10m_admin_0_countries.zip` (md5 0bc33f3e…) → `interim/foreign_land_66.parquet` | 2 countries | 4.9 MB |
+| 2026-10-25 | DRAAF Occitanie, Agreste Essentiel (RA2020), irrigating-farm typology, dept 66, January 2024 | `https://draaf.occitanie.agriculture.gouv.fr/IMG/pdf/essentiel_typoirri_0124_dep66-pyrenees-orientales_v24c.pdf` | manual read (pdftotext) | `raw/agreste/essentiel_typoirri_0124_dep66-pyrenees-orientales_v24c.pdf` (md5 e23db3cb…) | 10 pages | 0.65 MB |
+| 2026-10-25 | DRAAF Occitanie, Agreste Études no 9 (RA2020, Pyrénées-Orientales), July 2022 | `https://draaf.occitanie.agriculture.gouv.fr/IMG/pdf/agreste_etudes_ra20_po_19072022.pdf` | manual read (pdftotext) | `raw/agreste/agreste_etudes_ra20_po_19072022.pdf` (md5 792aae4c…) | 6 pages | 0.74 MB |
+
+Census figures used (dept 66, RA2020): SAU 68,020 ha; vines 19,840 ha (−5,770 ha since
+2010), orchards 8,100 ha (+1,150 ha, +16 %), market gardening 1,760 ha. Irrigating farms
+by type (typology covering 73 % of the irrigated SAU): specialised fruit 403 farms,
+5,268 ha irrigated of 6,715 ha; vegetables 227, 932 of 1,113 ha; vines 91, 839 of
+3,107 ha; vegetables + fruit 102, 1,639 of 1,926 ha; fruit + vines 38, 502 of 1,236 ha.
+Used to set the main crop-thirst index to the classes usually irrigated (analysis plan
+§14 item 13).
+
+RPG editions 2015–2025, clipped to the département extent (`python -m src.ingest.rpg
+--years ... --clip dept [--drop-raw]`; `DEPT_BBOX` of `src/ingest/safran.py`, which holds the
+3 km zone of every well). Columns are upper-cased (the 2024–25 GeoPackages use lower case
+and add `cat_cult_p`, `precision`, `gcp`, `pp`, `bio`, `iae`); `CODE_GROUP` is Int64. Every
+crop code keeps its group across the 11 editions (245 codes; `tests/test_crop_demand.py`).
+
+| Date | Source | Endpoint / URL | Parameters | Output | Rows | Size |
+|---|---|---|---|---|---|---|
+| 2026-10-25 | IGN Géoplateforme | `.../download/RPG/RPG_2-0__SHP_LAMB93_R76-2015_2015-01-01/` (RPG_2-0__SHP_LAMB93_R76-2015_2015-01-01.7z) | R76, edition 2015; no .md5 published (size check); clipped to `DEPT_BBOX` | `interim/rpg_dept_2015.parquet` (raw deleted after the clip) | 74,466 parcels | 448 MB raw / 29.0 MB clip |
+| 2026-10-25 | IGN Géoplateforme | `.../download/RPG/RPG_2-0__SHP_LAMB93_R76-2016_2016-01-01/` (RPG_2-0__SHP_LAMB93_R76-2016_2016-01-01.7z) | R76, edition 2016; no .md5 published (size check); clipped to `DEPT_BBOX` | `interim/rpg_dept_2016.parquet` | 74,582 parcels | kept from Step 5 raw / 29.5 MB clip |
+| 2026-10-25 | IGN Géoplateforme | `.../download/RPG/RPG_2-0__SHP_LAMB93_R76-2017_2017-01-01/` (RPG_2-0__SHP_LAMB93_R76-2017_2017-01-01.7z) | R76, edition 2017; no .md5 published (size check); clipped to `DEPT_BBOX` | `interim/rpg_dept_2017.parquet` (raw deleted after the clip) | 75,310 parcels | 458 MB raw / 29.6 MB clip |
+| 2026-10-25 | IGN Géoplateforme | `.../download/RPG/RPG_2-0__SHP_LAMB93_R76-2018_2018-01-15/` (RPG_2-0__SHP_LAMB93_R76-2018_2018-01-15.7z) | R76, edition 2018; no .md5 published (size check); clipped to `DEPT_BBOX` | `interim/rpg_dept_2018.parquet` (raw deleted after the clip) | 76,527 parcels | 556 MB raw / 32.7 MB clip |
+| 2026-10-25 | IGN Géoplateforme | `.../download/RPG/RPG_2-0_SHP_LAMB93_R76-2019/` (RPG_2-0_SHP_LAMB93_R76-2019.7z) | R76, edition 2019; no .md5 published (size check); clipped to `DEPT_BBOX` | `interim/rpg_dept_2019.parquet` (raw deleted after the clip) | 77,502 parcels | 484 MB raw / 31.0 MB clip |
+| 2026-10-25 | IGN Géoplateforme | `.../download/RPG/RPG_2-0__SHP_LAMB93_R76_2020-01-01/` (RPG_2-0__SHP_LAMB93_R76_2020-01-01.7z) | R76, edition 2020; no .md5 published (size check); clipped to `DEPT_BBOX` | `interim/rpg_dept_2020.parquet` (raw deleted after the clip) | 79,730 parcels | 497 MB raw / 32.1 MB clip |
+| 2026-10-25 | IGN Géoplateforme | `.../download/RPG/RPG_2-0__SHP_LAMB93_R76_2021-01-01/` (RPG_2-0__SHP_LAMB93_R76_2021-01-01.7z) | R76, edition 2021; no .md5 published (size check); clipped to `DEPT_BBOX` | `interim/rpg_dept_2021.parquet` (raw deleted after the clip) | 80,548 parcels | 618 MB raw / 33.1 MB clip |
+| 2026-10-25 | IGN Géoplateforme | `.../download/RPG/RPG_2-0__SHP_LAMB93_R76_2022-01-01/` (RPG_2-0__SHP_LAMB93_R76_2022-01-01.7z.001) | R76, edition 2022; MD5 verified; clipped to `DEPT_BBOX` | `interim/rpg_dept_2022.parquet` (raw deleted after the clip) | 81,178 parcels | 394 MB raw / 35.7 MB clip |
+| 2026-10-25 | IGN Géoplateforme | `.../download/RPG/RPG_2-2__SHP_LAMB93_R76_2023-01-01/` (RPG_2-2__SHP_LAMB93_R76_2023-01-01.7z) | R76, edition 2023; MD5 verified; clipped to `DEPT_BBOX` | `interim/rpg_dept_2023.parquet` | 83,367 parcels | kept from Step 5 raw / 35.6 MB clip |
+| 2026-10-25 | IGN Géoplateforme | `.../download/RPG/RPG_4-0__GPKG_LAMB93_R76_2024-01-01/` (RPG_4-0__GPKG_LAMB93_R76_2024-01-01.7z) | R76, edition 2024; no .md5 published (size check); clipped to `DEPT_BBOX` | `interim/rpg_dept_2024.parquet` (raw deleted after the clip) | 80,136 parcels | 1766 MB raw / 32.9 MB clip |
+| 2026-10-25 | IGN Géoplateforme | `.../download/RPG/RPG_4-0__GPKG_LAMB93_R76_2025-01-01/` (RPG_4-0__GPKG_LAMB93_R76_2025-01-01.7z) | R76, edition 2025; no .md5 published (size check); clipped to `DEPT_BBOX` | `interim/rpg_dept_2025.parquet` (raw deleted after the clip) | 80,905 parcels | 1699 MB raw / 32.3 MB clip |
+
+Notes:
+- **Volume transferred.** About 10 GB in all on 2026-10-25: a first pass clipped 2015 and
+  2017–2021 to the plain only (3.1 GB), which missed the zones of the 15 mountain wells; the
+  second pass re-downloaded them for the département extent, and the 2024–25 GeoPackages
+  weigh 1.7 GB each, about four times the shapefile editions. Assil had approved about 4–5 GB
+  and then about 3 GB on estimates that did not check the sizes; `--plan` now prints them
+  before any download. The superseded plain clips of 2015 and 2017–2021
+  (`interim/rpg_plain_<year>.parquet`, written that morning) are no longer read.
+- **2018** timed out twice (3 MB/s from the server in the afternoon) and was resumed from its
+  partial file; **2022** is published as a single part `.7z.001` with an MD5 for that part.
+- Derived: `interim/crop_area_3km.parquet` (clipped ha by well × edition × code; 0 ha
+  unmapped), `interim/crop_demand_weekly_v4.parquet` (90,805 well-weeks),
+  `interim/pumping_weekly_cropcal_v4.parquet` (reconstruction 3, 2,308,950 rows),
+  `interim/crop_demand_plain_check.csv`, `interim/rpg_coverage_plain.csv`.

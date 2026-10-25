@@ -353,12 +353,15 @@ def main():
     ap.add_argument("--fold", type=int, default=None, help="leave-wells-out fold (0-4)")
     ap.add_argument("--train-start", default=None, help="shorter training period (regime R3)")
     ap.add_argument("--refit-from", default=None, help="refit on train+validation (epochs of run)")
-    ap.add_argument("--land-use", choices=["on", "placebo", "wide", "frozen"], default=None,
-                    help="add the crop-demand input: main, placebo, wide or frozen (analysis plan §14 item 13)")
+    ap.add_argument("--land-use", choices=["on", "placebo", "wide", "frozen", "none"], default=None,
+                    help="add the crop-demand input: main, placebo, wide or frozen (analysis plan §14 item 13); "
+                         "none: the inputs of the run without it, re-trained in the land-use job (a "
+                         "control for the machine it ran on)")
     args = ap.parse_args()
     set_lookback(args.lookback)
-    P = build_panel(train_start=args.train_start, land_use=args.land_use)  # R3 window statistics from v4
-    lu = land_use_identity(args.land_use, args.train_start) if args.land_use else None
+    with_lu = args.land_use if args.land_use != "none" else None
+    P = build_panel(train_start=args.train_start, land_use=with_lu)  # R3 window statistics from v4
+    lu = land_use_identity(with_lu, args.train_start) if with_lu else None
     extra = {"land_use_sha256_16": lu["content_sha256_16"]} if lu else None
     P = P[P["mu"].notna()]
     codes, weeks, X, Z, split, core, mu, sd, head = arrays(P)

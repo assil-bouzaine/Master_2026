@@ -18,9 +18,14 @@ seeds), well by well on the core wells, in the drought phase:
                   change of crop areas over the years adds information (added by Assil on
                   2026-10-25 before any run, after the second Codex review of that day)
   aquifer groups  the main contrast per group (secondary)
+  same machine    none (the run without the feature, re-trained in the land-use job) vs
+                  without, and on vs none: the LSTM run without the feature was trained on a
+                  Colab GPU and the land-use runs on Kaggle CPUs (added on 2026-10-25, before
+                  any land-use run returned; whether on vs none replaces on vs without as the
+                  main contrast is Assil's decision, taken before these results are scored)
 
-Placebo, wide, frozen and group rows are reported with the same endpoint, outside the Holm
-family. The claim a positive main contrast supports is "incremental predictive information
+Placebo, wide, frozen, same-machine and group rows are reported with the same endpoint,
+outside the Holm family. The claim a positive main contrast supports is "incremental predictive information
 from the demand index", not an effect of land-use change.
 Runs not yet available are listed as missing; nothing is computed for them.
 
@@ -47,12 +52,13 @@ def contrasts():
     rows, missing = [], []
     for label, base in MODELS.items():
         variants = (("without", ""), ("on", "_lu_on"), ("placebo", "_lu_placebo"),
-                    ("wide", "_lu_wide"), ("frozen", "_lu_frozen"))
+                    ("wide", "_lu_wide"), ("frozen", "_lu_frozen"), ("none", "_lu_none"))
         runs = {v: metrics(base + s) for v, s in variants}
         missing += [base + s for v, s in variants if runs[v] is None]
         pairs = [("main", "on", "without"), ("placebo", "placebo", "without"),
                  ("placebo", "on", "placebo"), ("wide", "wide", "without"),
-                 ("frozen", "frozen", "without"), ("frozen", "on", "frozen")]
+                 ("frozen", "frozen", "without"), ("frozen", "on", "frozen"),
+                 ("same machine", "none", "without"), ("same machine", "on", "none")]
         for kind, a, b in pairs:
             if runs[a] is None or runs[b] is None:
                 continue

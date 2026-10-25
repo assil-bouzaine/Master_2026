@@ -256,14 +256,16 @@ def main():
     ap.add_argument("--final-only", action="store_true",
                     help="5 seeds of the configuration in <tuned>/best.json, no search "
                          "(dataset v4 re-runs reuse the v3 selection, scripts/v4_from_v3.py)")
-    ap.add_argument("--land-use", choices=["on", "placebo", "wide", "frozen"],
+    ap.add_argument("--land-use", choices=["on", "placebo", "wide", "frozen", "none"],
                     help="with --final-only --no-clim: add the crop-demand inputs, main, placebo, "
                          "wide or frozen (analysis plan §14 item 13) -> lgbm_noclim_tuned_lu_<variant>, with "
-                         "the settings and seeds of lgbm_noclim_tuned, its run without them")
+                         "the settings and seeds of lgbm_noclim_tuned, its run without them; none: "
+                         "that run's inputs again, in the land-use job (a control for the machine)")
     args = ap.parse_args()
     if args.land_use and not (args.final_only and args.no_clim and not args.regimes):
         ap.error("--land-use is the pre-registered test: use it with --final-only --no-clim")
-    P = build_panel(refresh=args.refresh_panel, land_use=args.land_use)
+    with_lu = args.land_use if args.land_use != "none" else None
+    P = build_panel(refresh=args.refresh_panel, land_use=with_lu)
     P = P[P["mu"].notna()].reset_index(drop=True)  # wells with training data
     P["resid"] = np.nan
     cols = [c for c in input_columns(P) if c != "resid" and not (args.no_clim and c == "clim_z")]
@@ -282,7 +284,8 @@ def main():
             if args.land_use:  # the tuned run's settings, a separate output folder
                 out = RESULTS / f"{tuned}_lu_{args.land_use}"
                 out.mkdir(parents=True, exist_ok=True)
-                extra = {"land_use": land_use_identity(args.land_use)}
+                extra = {"land_use": land_use_identity(with_lu) if with_lu else
+                         "none: the inputs of the run without land use, re-run in the land-use job"}
             pred = final_seeds(P, cols, best, save_dir=out, extra=extra)
         else:
             pred = tune(P, cols, args.tune, out, ("z",) if args.no_clim else SIM_TARGETS)

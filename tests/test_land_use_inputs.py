@@ -53,6 +53,8 @@ def check_fingerprints():
     fa = lstm.run_fingerprint(lu, inputs, {"land_use_sha256_16": "a" * 16})
     fb = lstm.run_fingerprint(lu, inputs, {"land_use_sha256_16": "b" * 16})
     assert fa != fb, "other land-use content must give another fingerprint"
+    none = lstm.run_fingerprint(argparse.Namespace(**base, land_use="none"), inputs)
+    assert none != before, "the same-machine control must not share the run without land use"
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
         lstm.write_config(out, lu, inputs, {"land_use_sha256_16": "a" * 16})

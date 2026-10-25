@@ -112,9 +112,10 @@ def main():
     ap.add_argument("--epochs", type=int, default=40)
     ap.add_argument("--final-only", action="store_true")
     ap.add_argument("--no-final", action="store_true", help="search only (smoke tests)")
-    ap.add_argument("--land-use", choices=["on", "placebo", "wide", "frozen"], default=None,
+    ap.add_argument("--land-use", choices=["on", "placebo", "wide", "frozen", "none"], default=None,
                     help="with --final-only: the tuned configuration with the crop-demand input, "
-                         "main, placebo, wide or frozen -> <model>_tuned_lu_<variant> (analysis plan §14 item 13)")
+                         "main, placebo, wide or frozen -> <model>_tuned_lu_<variant> (analysis plan §14 item 13); "
+                         "none: without it, re-trained in the land-use job (a control for the machine)")
     args = ap.parse_args()
     if args.land_use and not args.final_only:
         ap.error("--land-use reuses the tuned configuration: use it with --final-only")

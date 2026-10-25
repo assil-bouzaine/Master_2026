@@ -613,6 +613,15 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       change. Only a gain of the dated index over the frozen one supports a statement
       about the change of crop areas over the years, and even then registration changes
       remain part of it (`src/analysis/rpg_coverage.py`).
+    - *Same-machine control (added by Claude on 2026-10-25, before any land-use run
+      returned; which contrast is primary is Assil's decision, to be taken before the
+      land-use results are scored):* the LSTM run without the feature (`lstm_tuned`) was
+      trained on a Colab GPU, the land-use runs on Kaggle CPUs, so "on vs without" also
+      compares two machines, whose arithmetic sends training along different paths. The
+      land-use job therefore also re-trains each model without the feature
+      (`<run>_lu_none`, same inputs, settings and seeds as `<run>`). Reported: none vs
+      without (the machine effect; for LightGBM, whose run without the feature also ran on
+      Kaggle, a reproducibility check) and on vs none (the same-machine contrast).
     - *Run identity.* Land-use runs record the variant and a content hash of their
       land-use inputs (with the index file, the crop-class table and the RPG editions);
       the LSTM puts the hash into its fingerprint, so cached seeds made from other

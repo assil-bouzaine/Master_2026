@@ -304,9 +304,11 @@ claim would need causal versions of the pumping and river inputs.
   annual declarations. The main contrasts of §10 are repeated under three
   reconstructions: (1) the current one (irrigation and canals follow the
   year's April–October deficit; drinking water 50 % flat + 50 % seasonal);
-  (2) flat drinking water; (3) irrigation following a fixed crop calendar (the
-  mean weekly profile of the training years), independent of the year's
-  weather. A conclusion is stated only if it holds under all three; otherwise
+  (2) flat drinking water; (3) irrigation following a fixed crop calendar,
+  independent of the year's weather: each facility's annual volume is spread by
+  the FAO-56 Kc calendar of the dated RPG crop mix around it, with the
+  training-years' mean climate (§14 item 13; before 2026-10-25 this read "the
+  mean weekly profile of the training years"). A conclusion is stated only if it holds under all three; otherwise
   the text reports which reconstruction it depends on.
 - Pump → unit links carry a confidence measured on the recorded boreholes
   (`src/kg/pump_attribution.py`); conclusions that use them are checked with
@@ -564,3 +566,21 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
     test of record with each training-heads-only start as the reference (same models,
     Holm per start). A sensitivity table only: the reference and the test of record are
     unchanged.
+13. **Land use (decided by Assil on 2026-10-25, after `docs/review_codex_2026-10-25.md`;
+    written before any land-use run).** The subject's land-use pathway is tested, not
+    assumed.
+    - *Feature:* weekly potential irrigation demand per well, the sum over irrigable
+      crop groups of (clipped area within 3 km in RPG year y) × max(0, Kc(crop, month) ×
+      ETP − effective rain), with FAO-56 Kc calendars. It is a potential requirement,
+      never presented as metered irrigation (CQ7). Years before 2015 (no parcel-level
+      RPG) carry the 2015 crop mix, flagged as a static backfill (§7b).
+    - *Test (RQ1, exploratory on the v4 baselines):* the tuned LightGBM without its
+      own climatology and the tuned LSTM, each with and without the feature, v3
+      settings, 5 seeds for the LSTM; a placebo with the crop areas permuted across
+      wells (static features as identifiers, Heudorfer et al. 2024,
+      doi:10.5194/hess-28-525-2024). Endpoint: drought-phase median NSE and skill on
+      the core wells, cluster sign-flip, Holm over the two models; per aquifer group
+      as secondary. A null or negative result is reported as is.
+    - *Phase 4:* crop demand and canal return are `lulcw:Influence` types of the
+      hybrid; arm B reports with and without them.
+    - *Reconstruction (3) of §8* uses the same Kc calendar and crop mix.

@@ -562,6 +562,18 @@ the data (all confirmed). Assil decided the same day:
   pump links (72 % of the plain's declared volume) instead of confident only
   (27 %); confident only and all links are sensitivity runs (§3).
 
+**2026-10-25: subject-alignment review (Codex) adopted.** `docs/review_codex_2026-10-25.md`;
+verdicts and the working road in `docs/review_codex_2026-10-25_response.md`. Checked:
+no dated land use entered the dataset, the baselines or the KG. **Read both files at
+the start of every session, and answer the review's six "recurring check" questions in
+the step note before choosing a substantial task.** Decided by Assil the same day:
+(1) annual RPG 2015–2025, clipped to the plain, raw archives deleted after clipping;
+(2) CQ7, CQ10, CQ15 → MUST (9 MUST); (3) a pre-registered land-use test in RQ1
+(potential crop demand, FAO-56 Kc; LightGBM and LSTM ± feature + shuffled placebo;
+`docs/analysis_plan.md` §14 item 13), which also defines pumping reconstruction (3).
+The agricultural path the data can carry: crop demand → farm-pumping timing, and canal
+irrigation → alluvium return flow; farm-borehole links stay a sensitivity.
+
 **Plain-words guide for Assil (2026-10-23):** `docs/explainer/index.html` (open it in a
 browser; offline). It covers every step, the four data versions, the decisions and the next
 phases, with charts from our data (`src/analysis/explainer_data.py` → `data.js`). **Keep it
@@ -685,6 +697,9 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
    `docs/supervisor_questions.md` §6 (French text ready).
 
 **Next for Claude, while the models run or after:**
+0. **Land-use thread first** (road: `docs/review_codex_2026-10-25_response.md` §4):
+   LU-1 → LU-2 this week, alongside closing the v4 re-runs; then 12.6 with the
+   land-use rules, LU-3, LU-4.
 1. ✅ Step 12a done (2026-10-23 evening). 🔄 The v4 re-runs: Kaggle kernel 4
    and Colab session 1 pulled on 2026-10-25, reference run, replay, ensemble and
    the interim reports done (see State). Left: **pull Kaggle kernel 5** when it
@@ -730,7 +745,7 @@ Assil's review of the competency questions.
 
 | # | Task | Status |
 |---|---|---|
-| 12.1 | Competency questions (16) with example answers | ✅ drafted; the 6 MUST (CQ1, 2, 3, 8, 11, 12) approved by Assil on 2026-10-24, so 12.4 starts with them; the 10 SHOULD/COULD are still under his review |
+| 12.1 | Competency questions (16) with example answers | ✅ drafted; the 6 MUST (CQ1, 2, 3, 8, 11, 12) approved by Assil on 2026-10-24, so 12.4 starts with them; CQ7, CQ10, CQ15 promoted to MUST on 2026-10-25; the 4 SHOULD / 3 COULD are still under his review |
 | 12.2 | Reuse table, term by term, and the modelling patterns (`docs/ontology_design.md`) | 🔄 started |
 | 12.3 | **CQ2 data step:** attribute each groundwater abstraction point to a unit, with provenance and confidence | ✅ 2026-10-23: `src/kg/pump_attribution.py` → `data/interim/pump_unit_attribution.parquet`. Rules measured on 130 recorded boreholes (flag True → alluvium 95 %; flag False + Pliocene under the point → Pliocene 92 %; False alone 53/112). The record is depth-checked. "Probable" only for the uses that were measured. Plain volume 2012–24: confident 27 %, probable 45 %, possible 21 %, unknown 7 % |
 | 12.4 | Ontology module `lulcw:` + imports/alignments in `ontology/`; IRIs and metadata; the quality gates in `tests/` | ✅ 0.1.0 on 2026-10-24 for the 6 MUST CQs: 191 terms (FR/EN labels, definitions), local copies of the reused terms (`src/kg/build_imports.py`), alignments to GWML2/HyFO and SWEET, `python -m tests.test_ontology` (ELK + HermiT consistent, negative control, ROBOT report). SHOULD/COULD modules, the w3id redirect and OOPS! still to do |
@@ -741,6 +756,12 @@ Assil's review of the competency questions.
 | 12.9 | Alignment experiment: RPG → AGROVOC gold set + OntoAligner (P/R/F1) | ⬜ |
 | 12.10 | Satellite rule: Sentinel-2 summer NDVI per parcel on Earth Engine (needs Assil's Earth Engine login) | ⬜ |
 | 12.11 | Text extraction, small and measured (thesis) | ⬜ |
+| LU-1 | Annual RPG 2015–2025 clipped to the plain (`src.ingest.rpg --clip-plain --drop-raw`); registration-coverage check | 🔄 2026-10-25 download started |
+| LU-2 | Crop table: RPG code → group → AGROVOC candidate → FAO-56 Kc calendar → irrigable class (feeds 12.9's gold set) | ⬜ |
+| LU-3 | Weekly potential-demand index per well and unit (clipped area); pumping reconstruction (3) | ⬜ |
+| LU-4 | Pre-registered land-use ablation on Kaggle CPU (§14 item 13) | ⬜ |
+| LU-5 | = 12.10, validated against Agreste irrigated areas, else a heuristic | ⬜ |
+| LU-6 | End-to-end example (alluvium + Pliocene well): RPG parcels → KG path → Gate 3 | ⬜ |
 | Gate 3 | Ontology review with the supervisor | ⬜ |
 
 Then Phase 4: the main-model decision, the twin, the arms (`docs/roadmap.md`).

@@ -9,6 +9,9 @@ already exist**. Reasons for the changes: [review note](notes/step12c_competency
 Approval history: the project brief records approval of the six MUST questions
 (CQ1, CQ2, CQ3, CQ8, CQ11, CQ12) on 2026-10-24. This revision refines their
 requirements and the seven SHOULD/three COULD questions without changing priorities.
+**Priority change (Assil, 2026-10-25, after `docs/review_codex_2026-10-25.md`):**
+CQ7, CQ10 and CQ15 become MUST, so the MUST set covers the subject's land-use →
+water → model → explanation chain (9 MUST, 4 SHOULD, 3 COULD).
 
 ## 1. Purpose and scope
 
@@ -123,15 +126,15 @@ the data contract; historical v3 findings remain in the linked step notes.
 | CQ4 | Which mapped outcrop areas of U can support recharge-related inputs, and how are they covered by weather cells? | F E | SHOULD | Geometry/grid available; weighted intersections to build |
 | CQ5 | Which river reaches are associated with U, and what is known about exchange and gauge relevance? | G F C | SHOULD | River/gauge metadata available; hydraulic evidence incomplete |
 | CQ6 | Which canal supply areas overlap U, and which intake-to-recharge pathways are supported? | G F C R S | COULD | Intakes available; supply-area and pathway evidence missing |
-| CQ7 | What crops/land uses occupy S in year y, and what irrigation-demand estimates are justified? | F E R S | SHOULD | RPG 2016/2023 available; demand method/mappings to validate |
+| CQ7 | What crops/land uses occupy S in year y, and what irrigation-demand estimates are justified? | F E R S | MUST | RPG 2016/2023 available; demand method/mappings to validate |
 | CQ8 | Which driver-to-head pathways are admissible for W, and under what conditions may their signs constrain the model? | C G E V | MUST | Inputs partly available; rule/constraint catalogue to build |
 | CQ9 | Which restriction events applied to the relevant location, resource and use during T? | E V | COULD | Level histories available; authoritative spatial applicability missing |
-| CQ10 | Which evidence and model results support an explanation of W at time t? | E V S | SHOULD | KG, model-result links and explanation checks to build |
+| CQ10 | Which evidence and model results support an explanation of W at time t? | E V S | MUST | KG, model-result links and explanation checks to build |
 | CQ11 | Which wells are same-unit neighbours of W under a declared distance/depth policy? | G V | MUST | Well metadata available |
 | CQ12 | What declared abstraction can be attributed to U in year y by use, and what remains unresolved? | R E F V | MUST | Annual records/attributions available; audited aggregation to build |
 | CQ13 | Which well pairs permit meaningful head comparisons, and what do comparable observations show? | E V G | SHOULD | Pair list available; v4/window-specific summaries to compute |
 | CQ14 | What is known separately about cover, confinement and pressure conditions at W? | F C E V | SHOULD | Stack/level data available; local confinement evidence incomplete |
-| CQ15 | Which parcel-seasons satisfy a documented probable-irrigation rule, with what validation and water-source evidence? | F E S V | SHOULD | Satellite observations/rule/evaluation to build |
+| CQ15 | Which parcel-seasons satisfy a documented probable-irrigation rule, with what validation and water-source evidence? | F E S V | MUST | Satellite observations/rule/evaluation to build |
 | CQ16 | Under an explicit crop-change scenario, where are modelled effects on U greatest and most robust? | E S V | COULD | Scenario assumptions, supply links and trained model missing |
 
 ## 4. Detailed requirements

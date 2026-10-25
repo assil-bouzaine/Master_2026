@@ -2,6 +2,7 @@
 
     python -m src.ingest.rpg                         # R76 (Occitanie), 2016 and 2023
     python -m src.ingest.rpg --region R76 --years 2016 2023
+    python -m src.ingest.rpg --years 2015 2017 2018 2019 2020 2021 2022 2024 2025 --clip-plain --drop-raw
 
 The Géoplateforme listing (/resource/RPG) is Atom XML, paginated and
 rate-limited; names are found by regex in the raw text. Archives are
@@ -9,15 +10,22 @@ downloaded with HTTP Range resume, checked against Content-Length (and the
 .md5 file when IGN publishes one), then extracted with py7zr.
 
 Outputs: data/raw/rpg/<name>.7z and data/raw/rpg/<name>/ (extracted)
+         --clip-plain: data/interim/rpg_plain_<year>.parquet (parcels in the plain
+         bbox + 3 km, all source columns, the same file rpg_profile writes)
+         --drop-raw (with --clip-plain): deletes the archive and the extracted
+         folder once the clip is written (approved by Assil, 2026-10-25)
 """
 import argparse
 import hashlib
 import re
 import time
 
+import shutil
+
+import pyogrio
 import py7zr
 
-from src.config import RAW
+from src.config import CRS_L93, INTERIM, RAW
 from src.web import TIMEOUT, make_session
 
 BASE = "https://data.geopf.fr/telechargement"
@@ -38,8 +46,10 @@ def list_names(session):
 
 
 def find_name(names, region, year):
-    # e.g. RPG_2-0__SHP_LAMB93_R76-2016_2016-01-01 or RPG_2-2__SHP_LAMB93_R76_2023-01-01
-    pat = re.compile(rf"^RPG_[0-9-]+_+SHP_LAMB93_{region}(?:-{year})?_{year}-\d\d-\d\d$")
+    # e.g. RPG_2-0__SHP_LAMB93_R76-2016_2016-01-01, RPG_2-2__SHP_LAMB93_R76_2023-01-01,
+    # RPG_2-0_SHP_LAMB93_R76-2019 (no date suffix), RPG_4-0__GPKG_LAMB93_R76_2024-01-01
+    pat = re.compile(rf"^RPG_[0-9-]+_+(?:SHP|GPKG)_LAMB93_{region}"
+                     rf"(?:-{year}(?:_{year}-\d\d-\d\d)?|_{year}-\d\d-\d\d)$")
     hits = [n for n in names if pat.match(n)]
     if len(hits) != 1:
         avail = [n for n in names if region in n]
@@ -104,6 +114,36 @@ def extract(archive, target):
     marker.write_text("ok\n")
 
 
+def parcel_layer(target):
+    """(path, layer) of the parcel layer: a shapefile up to 2023, a GeoPackage from 2024."""
+    shp = sorted(target.rglob("PARCELLES_GRAPHIQUES.shp"))
+    if shp:
+        return shp[0], None
+    for gpkg in sorted(target.rglob("*.gpkg")):
+        layers = [name for name, _ in pyogrio.list_layers(gpkg)]
+        print(f"    {gpkg.name}: layers {layers}")
+        hits = [name for name in layers if "PARCELLE" in name.upper()]
+        if len(hits) == 1:
+            return gpkg, hits[0]
+    raise SystemExit(f"no parcel layer found under {target}")
+
+
+def clip_plain(target, year):
+    """Parcels inside the plain bbox + 3 km, all source columns, as GeoParquet."""
+    from src.analysis.rpg_profile import plain_bbox_l93
+    out = INTERIM / f"rpg_plain_{year}.parquet"
+    if out.exists():
+        print(f"  cached {out.name}")
+        return out
+    path, layer = parcel_layer(target)
+    g = pyogrio.read_dataframe(path, layer=layer, bbox=plain_bbox_l93())
+    g = g.set_crs(CRS_L93, allow_override=True)  # IGNF:LAMB93 == EPSG:2154
+    print(f"  {year}: {len(g):,} parcels in the plain bbox; columns {list(g.columns)}")
+    print(f"    sample: {g.drop(columns='geometry').iloc[0].to_dict()}")
+    g.to_parquet(out, index=False)
+    return out
+
+
 DOCS = f"{BASE.rsplit('/', 1)[0]}/annexes/ressources/documentation"
 # Official reference tables (crop code -> crop group). IGN publishes no 2016
 # table; the 2023 one lists every code since 2014 with its validity period.
@@ -126,6 +166,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--region", default="R76")
     ap.add_argument("--years", nargs="+", default=["2016", "2023"])
+    ap.add_argument("--clip-plain", action="store_true", help="write interim/rpg_plain_<year>.parquet")
+    ap.add_argument("--drop-raw", action="store_true", help="delete archive + extraction after the clip")
     args = ap.parse_args()
 
     OUT.mkdir(parents=True, exist_ok=True)
@@ -137,6 +179,9 @@ def main():
     for year in args.years:
         name = find_name(names, args.region, year)
         print(f"{year}: {name}")
+        if args.clip_plain and args.drop_raw and (INTERIM / f"rpg_plain_{year}.parquet").exists():
+            print(f"  cached rpg_plain_{year}.parquet (raw already dropped)")
+            continue
         url = f"{BASE}/download/RPG/{name}/{name}"
         archive = download(session, url + ".7z", OUT / f"{name}.7z")
         check_md5(session, url + ".md5", archive)
@@ -145,6 +190,12 @@ def main():
         # archives sometimes extract flat, sometimes into sub-folders
         for shp in sorted(target.rglob("*.shp")):
             print(f"    {shp.relative_to(OUT)}  ({shp.stat().st_size / 1e6:.0f} MB)")
+        if args.clip_plain:
+            clip_plain(target, year)
+            if args.drop_raw:
+                archive.unlink()
+                shutil.rmtree(target)
+                print(f"  raw dropped: {archive.name} and {target.name}/")
 
 
 if __name__ == "__main__":

@@ -871,3 +871,66 @@ ontology terms, facts or rules, shapes, a CQ query with fixtures and source-tabl
   agreement figure; optional.
 - **Depth rule, small samples:** the 10 m variant may keep few pairs, and its median
   correlation is then noisy; the number of pairs per variant is reported beside the choice.
+
+## CQ4 design proposal (2026-10-26 evening, before any code; ❓ decided the same evening: (b), local 5 km)
+
+**Inputs checked.** SAFRAN grid points every 80 hm in both directions in Lambert II étendu
+(`grid_cells_66.parquet`, 141 points); the SIM2 documentation calls LAMBX/LAMBY "the grid
+point's coordinate", so each cell is taken as the 8 km square centred on its point (a stated
+assumption of the procedure); the 141 squares cover 9,003 km². BD LISA: a unit is mapped at
+outcrop where it is order 1 of an elementary polygon's stack; 638 polygons of 114 units touch
+the cells. The whole outcrop of every unit monitored by the wells lies inside the cells
+(Pliocene 671AA00 71 polygons, 291.9 km²; Têt alluvium 718BP02 116.5 km²; Corbières karst
+681AM00 252.8 km²; the other alluvial units 47–99 km²), so the cells clip none of them;
+760AE09 has no polygon (absent from the Occitanie extract).
+
+**What the graph will hold (independent of the choice below):** weather cells (geometry, grid
+point, the forcing series they key in `forcing_weekly.parquet`, including drainage below the
+root zone `DRAINC` and effective rain `PE`, the recharge-related variables); the outcrop
+polygons of the graph's units; one polygon × cell intersection area per pair (GeoPandas,
+EPSG:2154, a fact with its procedure); then rules for outcrop area, covered fraction and cell
+weights per unit and extent (weights renormalised over the covered area, labelled so), and the
+CQ4 query with the contract's fixtures (60/40 ha → 0.6/0.4; 80 of 100 ha covered → 0.8; a unit
+without outcrop in S → "no mapped outcrop in S", never zero recharge).
+
+**❓ The extent S of arm D's weather edges** (which outcrop feeds which well). Measured on the
+65 wells: 59 have a unit with mapped outcrop (5 have no recorded unit, 1 is in 760AE09).
+
+| | at the well | within 5 km | within 8 km | median distance | cells if unit-wide |
+|---|---|---|---|---|---|
+| Pliocene (31 wells) | 3 | 26 | 29 | 1.3 km | 23 |
+| Corbières karst (7) | 6 | 7 | 7 | 0 | 11 |
+| ancient alluvium (3) | 3 | 3 | 3 | 0 | 10 |
+| recent alluvium (5) | 3 | 5 | 5 | 0 | 8 |
+| other (19; 13 with outcrop) | 10 | 13 | 13 | 0 | 4 |
+
+- (a) *Unit-wide* (S = all cells): every well of a unit gets the same weighted cells (the
+  Pliocene's 23): the regional recharge of the unit, with no difference between its wells.
+- (b) *Local, 5 km* (S = a disc of 5 km around the well, the radius of the pumping
+  influences): the cells weighted by the unit's outcrop inside the disc. 54 of the 59 wells
+  get edges, each its own set; 5 Pliocene wells with no Pliocene outcrop within 5 km get none.
+- (c) *Local, 8 km* (one cell): 57 of 59.
+- Recommended: (b), with (a) as a sensitivity row. It keeps the local variation that C's
+  nearest-cell rule has, it takes its radius from a rule already in the graph, and the
+  difference from C is then the outcrop semantics, not a change of scale. Leakage from the
+  alluvium into the confined Pliocene (the cover of CQ14) is a different pathway and is not
+  counted here.
+
+**Decided by Assil (2026-10-26, before any CQ4 code): (b), the local 5 km disc**, with the
+unit-wide extent (a) as a sensitivity row. Analysis plan §14 item 14 updated.
+
+### CQ4, increment 1: where it stopped (2026-10-26, 21:10; uncommitted)
+- **Done:** ontology 0.4.0 (`WellZone` over the crop and outcrop zones, `WeatherCell`,
+  `OutcropSearchZone`, `PolygonCellIntersection`, `OutcropCoverage`, `CellWeight`,
+  `SoilDrainage`, `hasForcingSeries`; gates pass); `src/kg/forcing.py`: cells (8 km squares
+  densified every 250 m before reprojection, so that neighbours keep their shared edges), the
+  forcing extent, 65 search zones, 1,769 polygon-cell intersection areas (pieces under 1 m²
+  dropped); the builder adds the outcrop polygons of the graph's units to closure: 176 polygons
+  in 2 passes, because the added stacks hold 3 units not met before (657AH00, 681AO00, 699AG04),
+  whose own outcrops (8 polygons) needed the second pass. **Correction:** my exploratory check
+  had found "no new unit"; it compared integer polygon codes with the stack table's text codes,
+  so it matched nothing; the builder's closure and its assertion now settle it. Rules
+  (coverage, evidence, weights), shapes (native constraints, per-coverage sums, whole-graph
+  keys) and the four CQ4 queries are written; the CQ7 queries now name their zone class.
+- **Not done:** the rule run on the new facts (stopped), the CQ4 tests, the commit. The rules
+  output on disk predates the CQ4 facts. Resume order: CLAUDE.md §7, "Resume here".

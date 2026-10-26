@@ -596,7 +596,52 @@ Read `docs/review_2026-10-23.md` for why the plan changed earlier today.
     contacts, publication details, monthly drinking-water production.
   - The e-mails are ready in §4–5 there; Assil sends them.
 
-**State at 2026-10-26 21:30 CET: Colab session 2 ended at 17:14 UTC; on Drive (`pfe_colab/results_gpu/v4`): `chronos2`, `chronos2_xl` and every Taccari regime (`taccari_tuned_lwo` 5 folds, `_f25`, `_f50`, `_refit`). `chronos2_ft` did not run (failed at 15:10 UTC, Colab's `datasets` against the pyarrow pin) and Colab gave no GPU tonight (quota). **Next GPU session:** new T4 runtime, Assil mounts Drive, a cell `!pip uninstall -y -q datasets` (the bundle on Drive predates the automatic fix), `%env PFE_DATASET=v4` and `%env STEPS=chronos2_ft`, then the run cell (≈ 20 min). **Pull:** Assil approved downloading the six new folders (≈ 125 MB); Drive zipped them but the file did not reach `~/Downloads` on 2026-10-26 (a Chrome prompt?). Then `scripts/colab_pull.py <drive zip> --version v4` (new option: a Drive download of selected run folders has no `v4/` folder), the v4 reports. **12.8 decided** (analysis plan §14 item 14): CQ4–CQ6 are built first (arm D's weather, river and canal edges come from the KG), one node per facility, depth threshold by training correlation. **12.9 steps 1–3 done:** AGROVOC snapshot 2026-10-26, `configs/lu_agrovoc_candidates.csv`, the gold template `configs/lu_agrovoc_gold.csv` for Assil (`python -m src.kg.agrovoc_gold search|check`). Crop-code labels fixed (cp1252; graph rebuilt, `test_kg` check 9).**
+**State at 2026-10-26 21:10 CET (session ended by Assil; nothing running).** Done this session
+(commits `d959e09`, `075701f`, `5ea557c`): crop-code labels fixed (the 2023 RPG table is cp1252;
+`test_kg` check 9); **12.9 steps 1–3** (AGROVOC Core snapshot of 2026-10-26, candidate table,
+gold template and tools); **12.8 decided** (analysis plan §14 item 14: CQ4–CQ6 built first so
+that arm D's weather, river and canal edges come from the KG; one node per facility; depth
+threshold by training correlation); **CQ4 extent decided** (Assil: the 5 km disc around the
+well; unit-wide as a sensitivity). Colab session 2 ended at 17:14 UTC: Taccari regimes and
+Chronos-2 zero-shot + cross-learning are on Drive (`pfe_colab/results_gpu/v4`: `chronos2`,
+`chronos2_xl`, `taccari_tuned_lwo/_f25/_f50/_refit`), **not yet pulled**: Drive zipped the six
+folders twice but the file never reached `~/Downloads` (Chrome prompt?). `chronos2_ft` not run
+(Colab gave no GPU tonight).
+
+**CQ4 increment 1 is IN PROGRESS and UNCOMMITTED in the working tree** (the ontology gates pass;
+rules, shapes and CQ tests not yet run, so not committed: working rule 12):
+- `ontology/lulcw.ttl` 0.4.0: `WellZone` (generalises the crop zone: `zoneOf`, `zoneRadiusM`),
+  `WeatherCell`, `OutcropSearchZone`, `PolygonCellIntersection`, `OutcropCoverage`,
+  `CellWeight`, `SoilDrainage`, `hasForcingSeries` and their properties
+  (`python -m tests.test_ontology` passes: 253 terms, ELK and HermiT consistent);
+- `src/kg/forcing.py` (new) and `src/kg/build_kg.py`: 141 SAFRAN cells (8 km squares centred
+  on the grid points, an assumption stated in the procedure) with their weekly PE and DRAINC
+  series, the forcing extent, 65 outcrop search zones (5 km), 1,769 polygon-cell intersection
+  areas; outcrop polygons of the graph's units added to closure (377 polygons, +176, 2 passes,
+  3 units first met in added stacks). Graph rebuilt at 21:04 from this uncommitted code
+  (373,259 triples);
+- rules (order 60: coverage, evidence, cell weights) in `ontology/rules/lulcw-rules.ttl`,
+  counts in `src/kg/apply_rules.py`; CQ4 shapes and the `geo` prefix in
+  `ontology/shapes/lulcw-shapes.ttl`; `tests/cq/cq04_{coverage,outcrop,cells,status}.rq`
+  (new); the four CQ7 queries now type their zone (`?zone a lulcw:CropDemandZone`), since a
+  well now has two zones;
+- `data/processed/kg/lulcw_kg_v4_rules.ttl` is **stale** (20:52, before the CQ4 facts): the
+  `apply_rules` run was stopped at the end of the session.
+
+**Resume here:** (1) `PFE_DATASET=v4 python -m src.kg.apply_rules` (≈ 5 min): no violation,
+check the coverage and weight counts; (2) write the CQ4 tests: fixtures and deliberate errors in
+`tests/test_kg_rules.py` (60/40 ha → weights 0.6/0.4; 80 of 100 ha in cells → covered fraction
+0.8, weights renormalised; a unit without outcrop in S → no coverage; a weight sum ≠ 1 and a
+piece larger than its polygon are caught) and a GeoPandas oracle from BD LISA and the raw grid
+(681AF00 is partly outside the cells: partial), then CQ4 fixtures and data in `tests/test_cq.py`;
+(3) run `test_ontology`, `test_kg`, `test_kg_rules`, `test_cq`; commit; rebuild to stamp the
+code version; (4) CQ4 increment 2: recharge influences (weather cell → well through its
+monitored unit and its 5 km zone, mechanism `DiffuseRecharge`; CQ8 then no longer "pumping
+only"); (5) CQ5 and CQ6 (search for river reaches and canal command areas), then 12.8.
+**Assil:** retry the Drive download of the six folders (look at Chrome's download bubble), then
+`scripts/colab_pull.py <zip> --version v4` and the v4 reports; `chronos2_ft` at the next GPU
+session (new T4 runtime, mount Drive, `!pip uninstall -y -q datasets`, `%env PFE_DATASET=v4`,
+`%env STEPS=chronos2_ft`, the run cell); the AGROVOC gold set (decide plant vs product first).
 - **Assil's go (2026-10-24):** "u can use kaggle and colab to train", and no
   model is trained on the laptop any more. This lifts the hold of 2026-10-23
   evening ("keep only v3 running").
@@ -777,7 +822,7 @@ Assil's review of the competency questions.
 | 12.5 | KG instantiation from the parquet tables (rdflib → Turtle → pyoxigraph) | ✅ 2026-10-24: `src/kg/build_kg.py` (61 s) → `data/processed/kg/lulcw_kg_v4.ttl`, 205,650 triples: 65 piezometers (station, head series, groundwater body, polygon; 60 recorded monitoring units, 5 explicit unknowns), 47 units typed by the written rule, 201 BD LISA polygons with stacks, 2,187 groundwater facilities with the 12.3 attributions (resolution-aware: flag_true = alluvium group probable, exact entity possible), 12,951 annual declared volumes (SOSA, with acquisition mode), provenance and 3 export policies. Facts only: derived links come from the 12.6 rules. `tests/test_kg.py`: 8 checks against pandas oracles + 2 negative controls. Ontology 0.1.1 (`EnergyUse`, `geo:hasMetricArea`) |
 | 12.6 | SHACL shapes and SHACL-AF rules: Influence links, `ProbablyIrrigatedParcel`, `HighIrrigationDemandZone`, `ConfinedSetting` | 🔄 2026-10-25, links part done: `ontology/rules/lulcw-rules.ttl` (SHACL-AF, pySHACL) and `ontology/shapes/lulcw-shapes.ttl` (SHACL), run by `src/kg/apply_rules.py`: 95 direct contacts + 13 indirect orderings, each witnessed by its polygon (plain = Step 6b's 26 edges), 47 same-unit well links ≤ 5 km, 1,848 pump → well influences (1,830 exact-unit: non-increasing sign, eligible; 18 group-level: sign unknown, not eligible), policy selections (a path is selected only if both its attributions are); shapes: no violation (8 notes: wells without an investigation depth); rules 65 s, validation 51 s. `tests/test_kg_rules.py`: CQ3/CQ8/CQ11/CQ2 fixtures, 9 negative controls, pandas oracles. Ontology 0.2.0 (`admitsConfidence`, `searchRadiusM`). Land-use part done the same evening: ontology 0.3.0 (land-use module, 39 terms), `src/kg/landuse.py` (198 crop codes, 14 classes + unmapped with FAO-56 parameters, 65 zones, 13,684 clipped areas, 1,430 calendar-year demand estimates; graph 356,377 triples), rules: crop class of every code (198 mapped, none unmapped), 5,465 class areas, 715 dated demand categories (248 high; threshold 597,028 m³ = upper tercile of 2015–2019); no violation; tests: CQ7 fixtures, 13 negative controls, pandas oracles pass. 2026-10-26: validation 26 min → 134 s (rules 121 s), doubles stored exactly, 16 negative controls, stored-file sum check. Left: `ProbablyIrrigatedParcel` with 12.10; `ConfinedSetting` with CQ14 |
 | 12.7 | CQ tests: one SPARQL query plus an oracle per CQ (`tests/cq/`) | 🔄 2026-10-26: 7 of the 9 MUST CQs done: CQ1, 2, 3, 7, 8, 11, 12 (`tests/cq/*.rq` with a status query each, `tests/test_cq.py`: fixtures incl. conflicting/unknown/missing cases and the 100 m³ facility never counted twice; data against the source tables; main policy 2012–24 = 61.8 % exact / 72.3 % with groups, as `docs/pump_coverage.md`; CQ8's 1,848 influences = CQ2's candidates; ≈ 3 min). Left: CQ10 (needs model outputs), CQ15 (needs 12.10), fixture contracts of the 7 SHOULD/COULD |
-| 12.8 | Export SPARQL → `HeteroData` (arms C, D, E, F use the same export) | ⬜ design decided by Assil on 2026-10-26 (analysis plan §14 item 14): one node per facility; depth threshold by training correlation; D's weather, river and canal edges from the KG, so **CQ4, CQ5, CQ6 come first** (CQ6 may stay a documented gap: no supply-area polygons yet) |
+| 12.8 | Export SPARQL → `HeteroData` (arms C, D, E, F use the same export) | ⬜ design decided by Assil on 2026-10-26 (analysis plan §14 item 14): one node per facility; depth threshold by training correlation; D's weather, river and canal edges from the KG, so **CQ4, CQ5, CQ6 come first** (CQ6 may stay a documented gap: no supply-area polygons yet). CQ4 extent: 5 km disc (Assil, 2026-10-26); CQ4 increment 1 in progress, uncommitted (see State) |
 | 12.9 | Alignment experiment: RPG → AGROVOC gold set + OntoAligner (P/R/F1) | 🔄 2026-10-26: AGROVOC Core snapshot of 2026-10-26 (`src/ingest/agrovoc.py`, 74.4 MB, 42,082 concepts); candidates for the 198 codes (`src/kg/agrovoc_candidates.py` → `configs/lu_agrovoc_candidates.csv`: homonyms through AGROVOC's qualifiers and a crop/land tie-break; 64 exact, 131 overlap, 3 none); gold template and tools (`src/kg/agrovoc_gold.py`). Next: Assil's gold set, then OntoAligner on Colab, then the alignments into the graph (CQ7 turns supported) |
 | 12.10 | Satellite rule: Sentinel-2 summer NDVI per parcel on Earth Engine (needs Assil's Earth Engine login) | ⬜ |
 | 12.11 | Text extraction, small and measured (thesis) | ⬜ |

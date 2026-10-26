@@ -661,6 +661,13 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       inputs reach a well. If an input is missing (CQ6 has no supply-area polygons yet), the
       relation follows what the evidence supports, as the CQ contract states, and the gap is
       reported.
+    - *Weather edges of D (CQ4; decided by Assil on 2026-10-26, before any CQ4 code):* the
+      cells covering the outcrop of the well's unit inside a 5 km disc around the well (the
+      radius of the pumping influences), weighted by intersection area and renormalised over
+      the covered area; a well whose unit has no mapped outcrop within 5 km has no weather
+      edge in D. Sensitivity: the unit-wide extent (all of the unit's outcrop in the forcing
+      cells, the same weights for every well of a unit). Measured before the decision: 54 of
+      the 59 wells with a mapped unit outcrop get edges; 5 Pliocene wells do not.
     - *Depth rule of the well links:* the |Δ depth| threshold is the one, among {10 m, 20 m,
       50 m, none}, that maximises the median training-period (to 2019) correlation of weekly
       head anomalies (head minus the well's training mean for that week of the year) of the

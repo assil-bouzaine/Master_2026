@@ -1,0 +1,23 @@
+# CQ1 · The head observations of a well: the series reference
+# (docs/competency_questions.md §4, CQ1; task 12.7)
+#
+# Parameters  ?W   a lulcw:Piezometer
+# Reads       asserted facts (lulcw_kg_<dataset>.ttl); the weekly values themselves stay in parquet
+# Returns     one row per observation series of the stations hosted by ?W: variable, vertical
+#             datum, temporal resolution (ISO 8601 duration), first and last observed week,
+#             where the values are stored, the quality policy and the data release.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+SELECT ?W ?station ?series ?variable ?verticalDatum ?temporalResolution ?coverageStart
+       ?coverageEnd ?storedIn ?qualityPolicy ?release
+WHERE {
+    ?station lulcw:hostedBy ?W ; lulcw:hasObservationSeries ?series .
+    ?series lulcw:seriesVariable ?variable .
+    OPTIONAL { ?series lulcw:verticalDatum ?verticalDatum . }
+    OPTIONAL { ?series lulcw:temporalResolution ?temporalResolution . }
+    OPTIONAL { ?series lulcw:coverageStart ?coverageStart . }
+    OPTIONAL { ?series lulcw:coverageEnd ?coverageEnd . }
+    OPTIONAL { ?series lulcw:storedIn ?storedIn . }
+    OPTIONAL { ?series lulcw:qualityPolicy ?qualityPolicy . }
+    OPTIONAL { ?series lulcw:inRelease ?release . }
+}
+ORDER BY ?series

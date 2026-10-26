@@ -1,0 +1,42 @@
+# CQ1 · Answer status for the context of a well (common answer contract,
+# docs/competency_questions.md §2)
+#
+# Parameters  ?W   any IRI
+# Reads       asserted facts (lulcw_kg_<dataset>.ttl)
+# Returns     one row: ?status, one of
+#               not_applicable  ?W is not a piezometer of the graph
+#               unknown         no unit is attributed (only explicit unknowns, with their reason)
+#               conflicting     several candidate units are recorded (all are returned by
+#                               cq01_assignments.rq, with their sources)
+#               partial         one candidate unit, but no investigation depth or no mapped stack
+#               supported       one candidate unit, an investigation depth and a mapped stack
+#             and ?reason in words. "Supported" means supported by the cited records, not a
+#             proof of what the borehole monitors.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+SELECT ?W (SAMPLE(?st) AS ?status) (SAMPLE(?why) AS ?reason)
+WHERE {
+    OPTIONAL { ?k lulcw:attributedEntity ?W ; lulcw:role lulcw:MonitoringRole ;
+                  lulcw:unknownReason ?unknownReason . }
+    BIND (EXISTS { ?W a lulcw:Piezometer } AS ?isWell)
+    BIND (EXISTS { ?a lulcw:attributedEntity ?W ; lulcw:role lulcw:MonitoringRole ;
+                      lulcw:candidateUnit ?u . } AS ?hasUnit)
+    BIND (EXISTS { ?a1 lulcw:attributedEntity ?W ; lulcw:role lulcw:MonitoringRole ;
+                       lulcw:candidateUnit ?u1 .
+                   ?a2 lulcw:attributedEntity ?W ; lulcw:role lulcw:MonitoringRole ;
+                       lulcw:candidateUnit ?u2 .
+                   FILTER (?u1 != ?u2) } AS ?several)
+    BIND (EXISTS { ?W lulcw:investigationDepthM ?depth . } AS ?hasDepth)
+    BIND (EXISTS { ?W lulcw:locatedInPolygon ?p . } AS ?hasStack)
+    BIND (IF(!?isWell, "not_applicable",
+          IF(!?hasUnit, "unknown",
+          IF(?several, "conflicting",
+          IF(!?hasDepth || !?hasStack, "partial", "supported")))) AS ?st)
+    BIND (IF(!?isWell, "not a piezometer of the graph",
+          IF(!?hasUnit, COALESCE(?unknownReason, "no monitoring attribution"),
+          IF(?several, "several candidate units are recorded; all are returned with their sources",
+          IF(!?hasDepth && !?hasStack, "investigation depth not recorded; no BD LISA polygon under the well",
+          IF(!?hasDepth, "investigation depth not recorded; the well stays in the answer",
+          IF(!?hasStack, "no BD LISA polygon under the well in the regional extract",
+             "one recorded unit, an investigation depth and the mapped stack")))))) AS ?why)
+}
+GROUP BY ?W

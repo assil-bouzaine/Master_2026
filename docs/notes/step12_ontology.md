@@ -566,3 +566,48 @@ depth check of the records and the coverage by volume and use are in
   thousands of parcels × seasons) will need the native or whole-graph form from the start.
 - The alternative to exact doubles, `xsd:decimal`, would also be exact, but changes the
   datatypes the shapes and queries expect; not needed.
+
+## 12.7 CQ queries, first group: CQ1, CQ3, CQ11 (2026-10-26)
+
+### What was done
+- **`tests/cq/`**: one SPARQL file per question or part of one, each with a header (parameters,
+  what it reads: asserted facts or rule outputs, no OWL reasoning; the columns and their units):
+  CQ1 `cq01_assignments` (unit candidates or unknowns with their sources, investigation depth,
+  a screen only from a construction record), `cq01_bodies`, `cq01_stack`, `cq01_series`; CQ3
+  `cq03_relations` (one row per relation and witness polygon); CQ11 `cq11_neighbours`. Each
+  question has a **status query** (`*_status.rq`): supported, partial, unknown, conflicting or
+  not_applicable, with a reason (the common answer contract, CQ document §2), so that an empty
+  answer is "none found" only when the search covered the case.
+- **`tests/test_cq.py`**, run with pyoxigraph (the store a dashboard would use):
+  - fixtures (the graph of `test_kg_rules` plus a well with two recorded candidates, a body and
+    a series, a well with an explicit unknown, a local stack), through the same rules and shapes:
+    CQ1 supported / partial (missing depth kept) / conflicting (both candidates with sources) /
+    unknown (with its reason) / not applicable, no screen from an investigation depth; CQ3 direct
+    and indirect relations inside one stack, none across polygons, unknown for a unit in no
+    stack; CQ11 4,999 m in, 5,001 m out, a missing depth difference stays missing, policy
+    selection, an empty but supported answer, partial beyond the rule's radius;
+  - data (v4), against the source tables: CQ1 anchors (NYLS-1 97 m in 671AA00; C2-1 stack
+    718BP02 > 671AA00); for all 65 wells the unit, depth, polygon (GeoPandas point in polygon)
+    and stack (TABLE_PILE) equal the sources, statuses 53 supported, 7 partial (no depth),
+    5 unknown (no recorded unit); CQ3 all 47 units, 216 relation-polygon rows = the stacks,
+    4 units in no stack are unknown; CQ11 the 47 pairs and their distances = `wells.parquet`.
+  11 s in all.
+
+### Why
+- **Parameters through substitution, not string formatting.** pyoxigraph pre-binds variables
+  (SEP-0007) but only those of the SELECT list, and a sub-SELECT sees a parameter only if it
+  projects it. So every query returns its parameters on each row, which also records them in
+  the answer, as the CQ contract asks.
+- **A status per question.** "No neighbour" from a well whose unit is unknown, or from a radius
+  beyond the one the rule searched, is not an answer: the status query says which case it is.
+- **Oracles from the source tables** (dataset, BD LISA GeoPackage), never from the exporter.
+
+### What to consider
+- "Conflicting" for a well with two recorded units: the KG cannot tell alternatives from a
+  borehole screened in two units; both stay in the answer with their ranks and sources.
+- The CQ3 intervening units are returned unordered; their order is in the witness polygon's
+  stack (`cq01_stack` for a well, or the polygon's layers).
+- **Next:** CQ2 and CQ12 (pump evidence and accounting: resolution-aware candidates, the 100 m³
+  facility with two candidates never counted as 200 m³), CQ7 (land use from the graph), CQ8
+  (influences and constraint eligibility); then the SHOULD/COULD fixtures (missing-evidence
+  behaviour) and CQ10/CQ15 once their inputs exist.

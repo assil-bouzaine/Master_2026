@@ -1,0 +1,28 @@
+# CQ1 · Monitoring well and hydrogeological context: the unit assignments of a well
+# (docs/competency_questions.md §4, CQ1; task 12.7)
+#
+# Parameters  ?W   a lulcw:Piezometer
+# Reads       asserted facts (lulcw_kg_<dataset>.ttl); no SHACL-AF rule output, no OWL reasoning
+# Returns     one row per monitoring attribution of ?W, in rank order: the candidate unit and its
+#             BD LISA code, or the reason it is unknown; resolution, confidence, evidence kind and
+#             assessment status; the source it rests on and that source's release. Well-level
+#             columns, repeated on each row: the investigation depth (m below ground, unbound when
+#             not recorded) and a screened interval only when a construction record documents one.
+#             An investigation depth is never turned into a screen.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+SELECT ?W ?bssCode ?rank ?unit ?unitCode ?resolution ?confidence ?evidenceKind ?assessment
+       ?unknownReason ?source ?release ?investigationDepthM ?screenTopM ?screenBottomM
+WHERE {
+    ?W a lulcw:Piezometer ; lulcw:bssCode ?bssCode .
+    ?a a lulcw:UnitAttribution ; lulcw:attributedEntity ?W ; lulcw:role lulcw:MonitoringRole ;
+       lulcw:rank ?rank ; lulcw:evidenceKind ?evidenceKind ; lulcw:assessmentStatus ?assessment .
+    OPTIONAL { ?a lulcw:candidateUnit ?unit . ?unit lulcw:bdlisaCode ?unitCode . }
+    OPTIONAL { ?a lulcw:resolution ?resolution . }
+    OPTIONAL { ?a lulcw:confidence ?confidence . }
+    OPTIONAL { ?a lulcw:unknownReason ?unknownReason . }
+    OPTIONAL { ?a prov:wasDerivedFrom ?source . OPTIONAL { ?source lulcw:inRelease ?release . } }
+    OPTIONAL { ?W lulcw:investigationDepthM ?investigationDepthM . }
+    OPTIONAL { ?W lulcw:screenTopDepthM ?screenTopM ; lulcw:screenBottomDepthM ?screenBottomM . }
+}
+ORDER BY ?rank ?unitCode

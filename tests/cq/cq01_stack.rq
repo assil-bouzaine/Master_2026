@@ -1,0 +1,19 @@
+# CQ1 · The mapped geological stack under a well
+# (docs/competency_questions.md §4, CQ1; task 12.7)
+#
+# Parameters  ?W   a lulcw:Piezometer
+# Reads       asserted facts (lulcw_kg_<dataset>.ttl): BD LISA elementary polygons and their stacks
+# Returns     one row per layer of the stack of the polygon under ?W, from the top (order 1):
+#             polygon code, layer order, unit code and the unit's lulcw class (typed by the
+#             written rule, docs/ontology_design.md §4.4). The stack is what the map shows at the
+#             point; what the borehole monitors is in cq01_assignments.rq.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+SELECT ?W ?polygonCode ?layerOrder ?unitCode ?unitClass
+WHERE {
+    ?W lulcw:locatedInPolygon ?p .
+    ?p lulcw:polygonCode ?polygonCode ; lulcw:hasStackLayer ?l .
+    ?l lulcw:layerOrder ?layerOrder ; lulcw:layerUnit ?u .
+    ?u lulcw:bdlisaCode ?unitCode .
+    OPTIONAL { ?u a ?unitClass . FILTER (STRSTARTS(STR(?unitClass), "https://w3id.org/lulcw#")) }
+}
+ORDER BY ?polygonCode ?layerOrder

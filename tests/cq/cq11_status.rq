@@ -1,0 +1,25 @@
+# CQ11 · Answer status for the same-unit neighbours of a well (common answer contract,
+# docs/competency_questions.md §2)
+#
+# Parameters  ?W  any IRI;  ?r  search radius, m (xsd:double)
+# Reads       asserted facts and the well-link rule's parameter (lulcw:searchRadiusM)
+# Returns     one row: ?status not_applicable (?W is not a piezometer), unknown (no unit is
+#             attributed to ?W, so no same-unit neighbour can be established), partial (?r exceeds
+#             the radius within which the rule derived links), supported (every well attributed
+#             to a unit of ?W was searched within ?r: an empty answer then means none); ?reason in
+#             words, with the rule radius.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+SELECT ?W ?r ?ruleRadiusM ?status ?reason
+WHERE {
+    <https://w3id.org/lulcw/data/rule/well-link> lulcw:searchRadiusM ?ruleRadiusM .
+    BIND (EXISTS { ?W a lulcw:Piezometer } AS ?isWell)
+    BIND (EXISTS { ?a lulcw:attributedEntity ?W ; lulcw:role lulcw:MonitoringRole ;
+                      lulcw:candidateUnit ?u . } AS ?hasUnit)
+    BIND (IF(!?isWell, "not_applicable",
+          IF(!?hasUnit, "unknown",
+          IF(?r > ?ruleRadiusM, "partial", "supported"))) AS ?status)
+    BIND (IF(!?isWell, "not a piezometer of the graph",
+          IF(!?hasUnit, "no unit is attributed to the well, so no same-unit neighbour can be established",
+          IF(?r > ?ruleRadiusM, CONCAT("well links were derived within ", STR(?ruleRadiusM), " m only"),
+             "every well attributed to a unit of the well was searched within the radius"))) AS ?reason)
+}

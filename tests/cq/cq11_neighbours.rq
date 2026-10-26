@@ -1,0 +1,31 @@
+# CQ11 · Same-unit neighbouring wells
+# (docs/competency_questions.md §4, CQ11; task 12.7)
+#
+# Parameters  ?W       a lulcw:Piezometer
+#             ?r       search radius, m (xsd:double); the reference query is 5000, and the rule
+#                      derived links up to its own lulcw:searchRadiusM (cq11_status.rq)
+#             ?policy  a lulcw:ExportPolicy
+# Reads       SHACL-AF rule outputs (lulcw:WellLink, lulcw:selectedUnder;
+#             lulcw_kg_<dataset>_rules.ttl) and asserted facts (codes); no OWL reasoning
+# Returns     one row per well that shares a candidate unit with ?W within ?r: its code, the
+#             shared unit, the horizontal distance (m, Lambert-93), the investigation-depth
+#             difference (m; unbound when a depth is missing, never 0), the link's confidence
+#             (that of its weaker attribution) and whether ?policy selects the link (both
+#             attributions admitted). Sharing a unit does not show the same screened horizon or a
+#             direct hydraulic connection.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+SELECT ?W ?r ?policy ?neighbour ?neighbourCode ?unitCode ?distanceM ?depthDifferenceM
+       ?confidence ?selected
+WHERE {
+    { ?link lulcw:wellA ?W ; lulcw:wellB ?neighbour . }
+    UNION
+    { ?link lulcw:wellB ?W ; lulcw:wellA ?neighbour . }
+    ?link a lulcw:WellLink ; lulcw:sharedUnit ?unit ; lulcw:horizontalDistanceM ?distanceM ;
+          lulcw:confidence ?confidence .
+    FILTER (?distanceM <= ?r)
+    ?neighbour lulcw:bssCode ?neighbourCode .
+    ?unit lulcw:bdlisaCode ?unitCode .
+    OPTIONAL { ?link lulcw:investigationDepthDifferenceM ?depthDifferenceM . }
+    BIND (EXISTS { ?link lulcw:selectedUnder ?policy . } AS ?selected)
+}
+ORDER BY ?distanceM ?neighbourCode

@@ -1,0 +1,17 @@
+# CQ1 · The WFD groundwater bodies of a well
+# (docs/competency_questions.md §4, CQ1; task 12.7)
+#
+# Parameters  ?W   a lulcw:Piezometer
+# Reads       asserted facts (lulcw_kg_<dataset>.ttl)
+# Returns     one row per groundwater body recorded for the well's station: code and name. A WFD
+#             body is a management unit, not a BD LISA unit (those are in cq01_assignments.rq);
+#             no row when the station records none.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?W ?body ?bodyCode ?bodyName
+WHERE {
+    ?W lulcw:inGroundwaterBody ?body .
+    ?body lulcw:groundwaterBodyCode ?bodyCode .
+    OPTIONAL { ?body rdfs:label ?bodyName . }
+}
+ORDER BY ?bodyCode

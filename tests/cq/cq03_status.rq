@@ -1,0 +1,22 @@
+# CQ3 · Answer status for the vertical structure around a unit (common answer contract,
+# docs/competency_questions.md §2)
+#
+# Parameters  ?U   any IRI
+# Reads       asserted facts (lulcw_kg_<dataset>.ttl)
+# Returns     one row: ?status not_applicable (?U has no BD LISA code in the graph), unknown (the
+#             unit is in no stack of the graph's polygons: not mapped in the regional extract, so
+#             nothing can be said), supported (every stack of the graph that holds the unit was
+#             searched; ?polygons counts them, and the answer may be empty when the unit is alone
+#             in its stacks); ?reason in words.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+SELECT ?U (COUNT(DISTINCT ?p) AS ?polygons) (SAMPLE(?st) AS ?status) (SAMPLE(?why) AS ?reason)
+WHERE {
+    OPTIONAL { ?p lulcw:hasStackLayer/lulcw:layerUnit ?U . }
+    BIND (EXISTS { ?U lulcw:bdlisaCode ?code . } AS ?isUnit)
+    BIND (EXISTS { ?q lulcw:hasStackLayer/lulcw:layerUnit ?U . } AS ?mapped)
+    BIND (IF(!?isUnit, "not_applicable", IF(!?mapped, "unknown", "supported")) AS ?st)
+    BIND (IF(!?isUnit, "not a hydrogeological unit of the graph",
+          IF(!?mapped, "the unit is in no stack of the graph's BD LISA polygons",
+             "every stack of the graph that holds the unit was searched")) AS ?why)
+}
+GROUP BY ?U

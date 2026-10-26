@@ -1,0 +1,30 @@
+# CQ3 · Spatially qualified vertical structure around a unit
+# (docs/competency_questions.md §4, CQ3; task 12.7)
+#
+# Parameters  ?U   a hydrogeological unit (an IRI with a lulcw:bdlisaCode)
+# Reads       SHACL-AF rule outputs (lulcw:StratigraphicRelation, lulcw_kg_<dataset>_rules.ttl)
+#             and asserted facts (codes, polygons); no OWL reasoning
+# Returns     one row per relation of ?U and its witness polygon: upper and lower unit codes,
+#             direct contact or ordering with mapped units in between (their codes,
+#             space-separated, unordered), the polygon code and its area (m², Lambert-93).
+#             An ordering holds inside one polygon's stack only, so "A on B here, B on C
+#             elsewhere" never gives A above C. Geological arrangement, not hydraulic connection,
+#             flow direction or a head inequality; a direct contact does not prove that no
+#             confining bed exists below the map's resolution.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+SELECT ?U ?upperCode ?lowerCode ?kind ?polygonCode ?polygonAreaM2 ?intervening
+WHERE {
+    ?rel a lulcw:StratigraphicRelation ; lulcw:upperUnit ?up ; lulcw:lowerUnit ?low ;
+         lulcw:relationKind ?kind ; lulcw:witnessedBy ?p .
+    FILTER (?up = ?U || ?low = ?U)
+    ?up lulcw:bdlisaCode ?upperCode .
+    ?low lulcw:bdlisaCode ?lowerCode .
+    ?p lulcw:polygonCode ?polygonCode .
+    OPTIONAL { ?p geo:hasMetricArea ?polygonAreaM2 . }
+    OPTIONAL {
+        { SELECT ?rel (GROUP_CONCAT(?mc; separator=" ") AS ?intervening) WHERE {
+              ?rel lulcw:interveningUnit/lulcw:bdlisaCode ?mc . } GROUP BY ?rel }
+    }
+}
+ORDER BY ?kind ?upperCode ?lowerCode ?polygonCode

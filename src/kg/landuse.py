@@ -28,7 +28,8 @@ from src.dataset.crop_demand import AREA_OUT, BUFFER_M, CLASSES, load_classes
 
 EDITIONS = range(2015, 2026)
 DEMAND = INTERIM / f"crop_demand_weekly_{DATASET}.parquet"
-NOMENCLATURE = {2023: ("REF_CULTURES_GROUPES_CULTURES_2023.csv", "latin-1"),
+# the 2023 table is Windows-1252: read as latin-1, its ’ and … (0x92, 0x85) become C1 controls
+NOMENCLATURE = {2023: ("REF_CULTURES_GROUPES_CULTURES_2023.csv", "cp1252"),
                 2024: ("REF_CULTURES_GROUPES_CULTURES_2024.csv", "utf-8")}
 ARCHIVES = {   # RPG editions of region R76 (IGN Géoplateforme), as logged in data/README.md
     2015: "RPG_2-0__SHP_LAMB93_R76-2015_2015-01-01", 2016: "RPG_2-0__SHP_LAMB93_R76-2016_2016-01-01",

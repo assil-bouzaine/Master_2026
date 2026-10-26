@@ -22,8 +22,11 @@ from the source tables with pandas, not taken from the builder (docs/competency_
 7. The typing rule never gives a unit two disjoint types; the BD LISA stacks are kept whole.
 8. Negative controls: an undeclared property and an exact-unit link upgraded to probable,
    inserted on purpose, make checks 1 and 5 fail.
+9. Text: no literal holds a control character (an encoding error; a deliberate U+0085 is
+   caught), and the two RPG code tables give every code they share the same label.
 """
 import json
+import re
 import xml.etree.ElementTree as ET
 
 import numpy as np
@@ -204,6 +207,34 @@ def test_negative_controls(store, net):
           "probable are both caught")
 
 
+CONTROL = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
+
+
+def control_literals(store):
+    return [(q.subject.value, q.object.value) for q in store.quads_for_pattern(None, None, None)
+            if isinstance(q.object, ox.Literal) and CONTROL.search(q.object.value)]
+
+
+def test_text(store):
+    """No literal holds a C0/C1 control character, and the RPG code tables agree."""
+    from src.kg.landuse import NOMENCLATURE
+    bad = control_literals(store)
+    assert not bad, f"{len(bad)} literals with control characters, e.g. {bad[:3]}"
+    probe = ox.Quad(ox.NamedNode("https://w3id.org/lulcw/data/x"), ox.NamedNode(str(RDFS.label)),
+                    ox.Literal("légumineuses, \x85)", language="fr"), ox.DefaultGraph())
+    store.add(probe)
+    caught = len(control_literals(store)) == 1
+    store.remove(probe)
+    assert caught, "a label with U+0085 was not caught"
+    t = {y: pd.read_csv(RAW / "rpg" / "docs" / f, sep=None, engine="python", encoding=enc)
+         .set_index("CODE_CULTURE")["LIBELLE_CULTURE"] for y, (f, enc) in NOMENCLATURE.items()}
+    common = t[2023].index.intersection(t[2024].index)
+    differ = common[t[2023][common] != t[2024][common]]
+    assert len(common) > 100 and differ.empty, f"labels differ between the RPG tables: {list(differ)}"
+    print(f"  9. text: no control character in any literal (a U+0085 probe is caught); the 2023 and "
+          f"2024 RPG tables agree on all {len(common)} shared codes")
+
+
 def test_records(store):
     d = pd.read_parquet(RAW / "hubeau_bnpe" / "2026-10-20" / "chroniques_66.parquet")
     pts = pd.read_parquet(RAW / "hubeau_bnpe" / "2026-10-20" / "points_prelevement_66.parquet")
@@ -271,6 +302,7 @@ def main():
     test_records(store)
     test_units(store)
     test_negative_controls(store, net)
+    test_text(store)
     summary = json.loads((KG_FILE.parent / f"lulcw_kg_{DATASET}_summary.json").read_text())
     print(f"test_kg: all checks passed ({summary['triples']} triples, built {summary['built']}, "
           f"code {summary['code_version']})")

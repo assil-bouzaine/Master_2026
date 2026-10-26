@@ -578,6 +578,10 @@
   </ul>
   <p>It also said the fake-crops test cannot tell <em>where</em> the crops are from <em>how they change</em>. You added a fourth version: the 2019 crops kept frozen for every year. If the real, changing crops do no better than the frozen ones, the model is using crop geography, not change. While fixing this, we found and fixed a small mistake of ours that would have stopped some unfinished runs on Kaggle.</p>
 
+  <h3>The crop test said no (26 October)</h3>
+  <p>The test ran on Kaggle overnight. Before reading any result, you chose which comparison counts: the models with and without the <button class="term" data-term="thirst">crop thirst</button>, both trained in the same Kaggle job. The answer is <strong>no detectable help</strong>. On the drought, the score moves by +0.02 for LightGBM and +0.00 for the LSTM, well within what chance gives. The fake crops, the version with all the vines and the frozen 2019 crops change nothing either. So, for the wells we score, the crops add nothing that the weather and pumping numbers did not already carry. Most of these wells are deep, in layers that follow tap-water pumping, and most farm water in the plain comes from the canals. A clear "no" is a real result, and it goes into the paper as it is.</p>
+  <p>One surprise made your choice the right one: the same LSTM trained on two kinds of computers (Colab's graphics card and Kaggle's processors) scored differently by about as much as the effect we were testing. Comparing against the Colab run would have shown a gain of +0.06 that came from the computer, not from the crops. LightGBM, trained twice on Kaggle, gave identical numbers.</p>
+
   <details class="deeper">
     <summary>Go deeper</summary>
     <ul>
@@ -781,8 +785,8 @@
         <text class="cat-label" x="726" y="200">Phase 6: the paper</text>
         <rect x="723" y="220" width="217" height="26" rx="5" fill="var(--other)"/>
         <text class="cat-label" x="730" y="238" fill="var(--paper)">Phase 7: thesis, defence</text>
-        <line x1="117" y1="20" x2="117" y2="250" stroke="var(--critical)" stroke-width="2"/>
-        <text class="art-label" x="76" y="16">today, 25 Oct</text>
+        <line x1="120" y1="20" x2="120" y2="250" stroke="var(--critical)" stroke-width="2"/>
+        <text class="art-label" x="79" y="16">today, 26 Oct</text>
         <polygon points="256,96 262,102 256,108 250,102" fill="var(--ink)"/>
         <polygon points="440,134 446,140 440,146 434,140" fill="var(--ink)"/>
         <text class="art-sub" x="180" y="148">Gate 3</text>
@@ -795,10 +799,11 @@
   <h3>Right now</h3>
   <ul>
     <li>All the rivals of version 3 have finished and are in the scores chart. We stopped the EA-LSTM's extra tests (wells left out, less data) on 23 October, because version 4 redoes them with a fairer split. The results go into the monthly report for the supervisor.</li>
-    <li><strong>The rivals are being re-run on version 4</strong> since your go of 24 October, never on your laptop. Done: the simple rivals, LightGBM, Pastas and its stability check, the EA-LSTM (Kaggle, processors only), the LSTM and the two graph networks (first Colab session, with a graphics card). The first version-4 results are in chapter 5. Kaggle is running the EA-LSTM's last extra tests (until late afternoon on 25 October). Chronos-2 and the rest of the Taccari tests wait for the next Colab session, which needs you to click "allow" for Google Drive. Then the version-4 report becomes final.</li>
+    <li><strong>The rivals are being re-run on version 4</strong> since your go of 24 October, never on your laptop. Done: the simple rivals, LightGBM, Pastas and its stability check, the EA-LSTM (Kaggle, processors only), the LSTM and the two graph networks (first Colab session, with a graphics card). The first version-4 results are in chapter 5. The EA-LSTM's last extra tests finished on Kaggle on 25 October. Chronos-2 and the rest of the Taccari tests run in the second Colab session (26 October, after your "allow" for Google Drive). Then the version-4 report becomes final.</li>
     <li>The third check-up is done; you took its four decisions on 24 October (chapter 11).</li>
-    <li><strong>Crops come in (25 October).</strong> The yearly crop maps are being downloaded, the crops are sorted into 14 groups with their water needs, and the weekly <button class="term" data-term="thirst">crop thirst</button> around each well is computed and tested. The fair test with and without it is ready, and goes to Kaggle when the running job ends.</li>
-    <li>The knowledge map is filled, and its rules now draw the links between layers, wells and pumps, and hold the crops of every year around each well with their water needs and a dated "high irrigation demand" mark; a checker catches deliberate mistakes (25 October). The crop test (does the crop index help the models?) is running on Kaggle; before its results are read, Assil chooses its main comparison. Next: the query tests and the export of the links for the model.</li>
+    <li><strong>Crops come in (25 October).</strong> The yearly crop maps are downloaded, the crops are sorted into 14 groups with their water needs, and the weekly <button class="term" data-term="thirst">crop thirst</button> around each well is computed and tested.</li>
+    <li><strong>The crop test is done (26 October): no detectable help</strong> for the wells we score (chapter 7). The second Colab session runs since 26 October afternoon: Chronos-2 and the rest of the Taccari tests; then the version-4 report becomes final.</li>
+    <li>The knowledge map is filled, and its rules now draw the links between layers, wells and pumps, and hold the crops of every year around each well with their water needs and a dated "high irrigation demand" mark; a checker catches deliberate mistakes (25 October). Next: a faster checker, the query tests and the export of the links for the model.</li>
   </ul>
   <p class="nextlink"><a href="#decisions">Next: the decisions board</a></p>
 </section>

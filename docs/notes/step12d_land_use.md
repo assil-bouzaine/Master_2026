@@ -156,6 +156,89 @@ then and were resolved by the full rebuild. Three findings held and were fixed:
 - Before 2015 there is no parcel-level RPG (RPG v1 2007–2014 has group-level shares per
   anonymous block, an option if the backfill matters).
 
+## LU-4 results (2026-10-26): no detectable information from the crop-thirst index
+
+### What was done
+- Kaggle kernel 6 (pushed 17:25 UTC on 2026-10-25, ended 22:31 UTC, exit 0, about 5 h): the
+  10 runs (LightGBM and LSTM × on, placebo, wide, frozen, none), pulled and rescored on the
+  laptop on 2026-10-26 (`scripts/kaggle_cpu.py pull`).
+- **Before the pull**, Assil chose the main contrast: on vs none, the control re-trained in the
+  same job (commit `1840070`, analysis plan §14 item 13, `src/analysis/land_use_test.py`).
+  Placebo, wide and frozen are compared with none for the same reason. Disclosed in the plan:
+  one log line had been seen before the decision (the LSTM frozen summary).
+- **Checks before scoring:** each land-use run records the content hash of its panel (on
+  `bd74f90d…`, placebo `b966f9d3…`, wide `002a84e4…`, frozen `75aeab21…`, equal to the panel
+  records); the LSTM land-use runs have 23 inputs with `crop_demand`, the none run the 22 of
+  `lstm_tuned`; the LightGBM none run reproduces `lgbm_noclim_tuned` of kernel version 2
+  (largest prediction difference 4.4e-16).
+- Scored as pre-registered: `PFE_DATASET=v4 python -m src.analysis.land_use_test` →
+  `results/v4/land_use_test.csv`.
+
+### Results (drought phase, 33 core wells)
+Median of the per-well differences, cluster-bootstrap 95 % interval, cluster sign-flip p over
+the 14 clusters; Holm over the two models for the main rows only. Positive = the first run is
+better.
+
+| Model | Contrast | ΔNSE [95 % CI] | p | Δskill [95 % CI] | p |
+|---|---|---|---|---|---|
+| LightGBM | **on vs none (main)** | +0.016 [−0.042, 0.051] | 0.71 (Holm 1.0) | +0.003 [−0.023, 0.024] | 1.0 (Holm 1.0) |
+| LSTM | **on vs none (main)** | +0.001 [−0.046, 0.163] | 1.0 (Holm 1.0) | +0.001 [−0.021, 0.030] | 1.0 (Holm 1.0) |
+| LightGBM | placebo vs none | −0.011 [−0.063, 0.019] | 0.69 | −0.004 [−0.017, 0.010] | 0.84 |
+| LightGBM | on vs placebo | −0.014 [−0.059, 0.028] | 0.84 | −0.008 [−0.030, 0.033] | 0.51 |
+| LightGBM | wide vs none | +0.009 [−0.062, 0.067] | 1.0 | +0.002 [−0.030, 0.027] | 1.0 |
+| LightGBM | frozen vs none | +0.015 [−0.034, 0.058] | 0.38 | +0.010 [−0.011, 0.017] | 0.34 |
+| LightGBM | on vs frozen | −0.030 [−0.080, 0.000] | 0.094 | −0.012 [−0.040, 0.000] | 0.031 |
+| LSTM | placebo vs none | +0.043 [−0.092, 0.122] | 0.63 | +0.022 [−0.032, 0.070] | 0.63 |
+| LSTM | on vs placebo | +0.023 [−0.106, 0.105] | 0.72 | +0.026 [−0.064, 0.036] | 0.76 |
+| LSTM | wide vs none | +0.034 [−0.023, 0.159] | 0.062 | +0.014 [−0.006, 0.042] | 0.092 |
+| LSTM | frozen vs none | +0.025 [−0.070, 0.073] | 0.74 | +0.004 [−0.019, 0.045] | 0.87 |
+| LSTM | on vs frozen | +0.046 [−0.030, 0.191] | 0.29 | +0.016 [−0.016, 0.051] | 0.31 |
+| LightGBM | none vs without (reproducibility) | 0.000 | 1.0 | 0.000 | 1.0 |
+| LSTM | none vs without (machine effect) | −0.032 [−0.097, 0.006] | 0.22 | −0.018 [−0.041, 0.003] | 0.36 |
+| LSTM | on vs without (first wording) | +0.064 [−0.046, 0.112] | 0.15 | +0.019 [−0.037, 0.024] | 0.62 |
+
+- Medians of the per-well drought NSE, for reading: LSTM none 0.090, on 0.017, without (Colab)
+  0.124; LightGBM none = without −0.083, on −0.093. A difference of medians is not the median of
+  the paired differences: for the LSTM the wells near the median move both ways (on is better
+  on 17 of 33 wells).
+- **Robustness** (`stats.cluster_sensitivity`, main rows): p 0.63–1.0 under the other cluster
+  grids; leaving out any one cluster moves the median difference by at most 0.02.
+- Per aquifer group (secondary): Pliocene (20 wells) LightGBM −0.013, LSTM −0.026; karst (6
+  wells) LSTM +0.159 [0.021, 0.239], p 0.25, too few clusters to mean anything; the alluvium
+  groups (4 and 2 core wells) are too small for the test.
+
+### Reading, as pre-registered
+- **No evidence that the crop-thirst index adds predictive information** to the drought-phase
+  simulation of the core wells, in either model, and nothing from the placebo, wide or frozen
+  rows. The dated index does no better than the 2019 areas frozen (LightGBM slightly worse,
+  outside the family), so nothing here supports a statement about crop-area change.
+- **How large a gain is excluded:** the intervals exclude median gains above about 0.05 NSE for
+  LightGBM; for the LSTM the upper bound is 0.16, so a moderate LSTM gain is not excluded.
+- **The machine effect is as large as the effects tested.** The same LSTM configuration trained
+  on a Kaggle CPU scores a median 0.032 NSE below its Colab GPU run. Had on vs without stayed the
+  main contrast, the LSTM would have shown +0.064, mostly a machine difference. The same-machine
+  control (added before any result) prevented that misreading.
+- **Hypotheses for the null, not tested:** the index is the climatic deficit, already an input,
+  scaled by crop areas that change little within a well; 20 of the 33 core wells are in the
+  Pliocene, where heads follow drinking-water pumping, and 84 % of the plain's declared
+  irrigation water is surface water (mostly the Têt and Agly canals, Step 6a); the reconstructed
+  irrigation pumping already follows the deficit (within-year r = 0.96).
+- **For the subject's chain:** land use → model is now tested. As a direct feature on the core
+  wells it adds nothing detectable. The agricultural pathway stays open where the data can carry
+  it: canal return flow to the alluvium (framing B, CQ6) and the crop-calendar pumping
+  reconstruction (3) of the sensitivity runs. The thesis and the paper report this null as a
+  result.
+
+### What to consider
+- **Phase 4: one machine type per contrast.** Arms that are compared are trained on the same
+  machine type, or the contrast carries a same-machine control. To be written into the plan's
+  §10 contract at Gate 3 (Assil's decision).
+- The alluvium wells, where crops and canals should matter most, are too few among the core
+  wells for a group test; the 26 plain wells (secondary report) or a model trained for the
+  alluvium could say more, but either would be a new, exploratory analysis.
+- Crop demand as a `lulcw:Influence` type of the hybrid still needs its pathway settled at Gate 3
+  (§14 item 13); this result is no reason to give it a sign constraint.
+
 ## Recurring check (review §"Recurring check"), 2026-10-25
 1. *Chain link advanced:* land use → water (LU-1 to LU-3) and the model input (LU-4 code).
 2. *Where dated land use enters:* the weekly crop-thirst index per well, pumping

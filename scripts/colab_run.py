@@ -16,7 +16,8 @@ It:
 3. installs the pinned packages (scripts/run_gpu.sh with PIN_TARGET: Colab keeps its CUDA
    torch) and runs tests/test_taccari.py as an import and equality check; when STEPS has
    EA-LSTM steps, also tests/test_ealstm.py (the fused cuDNN path against the explicit loop;
-   the EA-LSTM steps are dropped if it fails);
+   the EA-LSTM steps are dropped if it fails); when STEPS has chronos2_ft, removes Colab's
+   `datasets` package if it does not import with the pinned pyarrow (drop_broken_datasets);
 4. runs STEPS through scripts/run_gpu.sh and copies the results to Drive every SYNC_S seconds
    and at the end. The runs work on local disk because SQLite (the Optuna studies) is not
    safe on the Drive mount; databases are copied with SQLite's backup API, so a copy is
@@ -120,6 +121,19 @@ def sync_loop(stop):
             print(f"   [copy to Drive failed: {e}]", flush=True)
 
 
+def drop_broken_datasets(env):
+    """Colab ships Hugging Face `datasets`, which the transformers Trainer (Chronos-2 fine-tuning)
+    imports whenever it is installed. datasets 4.8 needs a newer pyarrow than our pin (18.1.0):
+    "module 'pyarrow' has no attribute 'json_'" ended chronos2_ft on 2026-10-26. The
+    fine-tuning feeds torch datasets, so a `datasets` that does not import with the pins is
+    removed from the session (the pins stay as they are)."""
+    r = subprocess.run(["python3", "-c", "import datasets"], cwd=CODE, env=env, capture_output=True)
+    if r.returncode != 0:
+        subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "-q", "datasets"], check=True)
+        log("Colab's datasets package does not import with the pinned pyarrow: uninstalled "
+            "for this session")
+
+
 def gpu():
     if not shutil.which("nvidia-smi"):
         return ""
@@ -159,6 +173,8 @@ def main():
     if run(["python3", "-m", "tests.test_taccari"], test_env) != 0:
         sys.exit("tests/test_taccari.py failed in this session (output above): stopping")
     steps = STEPS
+    if "chronos2_ft" in steps:
+        drop_broken_datasets(test_env)
     if "ealstm" in steps and run(["python3", "-m", "tests.test_ealstm"], test_env) != 0:
         # "none", not "": an empty STEPS would make run_gpu.sh run its default sweep
         steps = " ".join(s for s in steps.split() if "ealstm" not in s) or "none"

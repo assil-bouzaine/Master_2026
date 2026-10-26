@@ -524,7 +524,14 @@ lulcwsh:CropAreaObservationShape a sh:NodeShape ;
         [ sh:path sosa:phenomenonTime ; sh:minCount 1 ; sh:maxCount 1 ] ,
         [ sh:path sosa:usedProcedure ; sh:minCount 1 ; sh:maxCount 1 ] ,
         [ sh:path lulcw:cropCode ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:CropCode ] ,
-        [ sh:path lulcw:rpgEdition ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ] ;
+        [ sh:path lulcw:rpgEdition ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ] ,
+        # With the class-area checks below (each cited code area matches its class area's zone,
+        # year and class; one class area per zone, year and class), every code area is counted
+        # once, by the class area of its own zone, year and class.
+        [ sh:path [ sh:inversePath prov:wasDerivedFrom ] ;
+          sh:qualifiedValueShape [ sh:class lulcw:CropClassArea ] ;
+          sh:qualifiedMinCount 1 ; sh:qualifiedMaxCount 1 ;
+          sh:message "a code area is counted by exactly one class area" ] ;
     sh:sparql [
         sh:message "an RPG edition states the crops of its own year only (a 2023 observation never answers 2020)" ;
         sh:prefixes <https://w3id.org/lulcw/shapes> ;
@@ -564,18 +571,23 @@ SELECT $this ?value WHERE {
     OPTIONAL { ?code lulcw:cropClass ?c . }
     FILTER (NOT EXISTS { ?value sosa:hasFeatureOfInterest ?z ; lulcw:rpgEdition ?ed . }
             || COALESCE(?c, <https://w3id.org/lulcw/data/crop-class/unmapped>) != ?cls)
-}""" ] , [
-        sh:message "a code area of the class in this zone and year is not counted" ;
+}""" ] .
+
+# One query over the whole graph, run once (its focus is the class-area rule): a search for the
+# class areas of the same zone, year and class, run from each class area, took 0.4 s per class
+# area in rdflib (36 min for the 5,465 of dataset v4).
+lulcwsh:CropClassAreaKeyShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/crop-class-area> ;
+    sh:sparql [
+        sh:message "two class areas share a zone, an RPG year and a class" ;
         sh:prefixes <https://w3id.org/lulcw/shapes> ;
         sh:select """
-SELECT $this ?value WHERE {
-    $this sosa:hasFeatureOfInterest ?z ; lulcw:rpgEdition ?ed ; lulcw:cropClass ?cls .
-    ?value sosa:hasFeatureOfInterest ?z ; lulcw:rpgEdition ?ed ; lulcw:cropCode ?code ;
-           a lulcw:CropAreaObservation .
-    OPTIONAL { ?code lulcw:cropClass ?c . }
-    FILTER (COALESCE(?c, <https://w3id.org/lulcw/data/crop-class/unmapped>) = ?cls)
-    FILTER NOT EXISTS { $this prov:wasDerivedFrom ?value }
-}""" ] .
+SELECT $this (SAMPLE(?ca) AS ?value) WHERE {
+    ?ca a lulcw:CropClassArea ; sosa:hasFeatureOfInterest ?z ; lulcw:rpgEdition ?ed ;
+        lulcw:cropClass ?cls .
+}
+GROUP BY $this ?z ?ed ?cls
+HAVING (COUNT(DISTINCT ?ca) > 1)""" ] .
 
 lulcwsh:CropDemandEstimateShape a sh:NodeShape ;
     sh:targetClass lulcw:CropDemandEstimate ;

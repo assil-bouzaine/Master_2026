@@ -56,7 +56,7 @@ from rdflib.plugins.sparql.operators import register_custom_function
 
 from src.config import DATASET, ROOT
 from src.dataset.crop_demand import FROZEN_EDITION as LAST_TRAINING_YEAR   # 2019
-from src.kg.build_kg import D, DCT, L, OUT, PROV, git_version
+from src.kg.build_kg import D, DCT, L, OUT, PROV, git_version, write_turtle
 
 RULES = ROOT / "ontology" / "rules" / "lulcw-rules.ttl"
 SHAPES = ROOT / "ontology" / "shapes" / "lulcw-shapes.ttl"
@@ -294,7 +294,7 @@ def main():
     log("validation done; writing")
 
     rules_file = OUT / f"lulcw_kg_{DATASET}_rules.ttl"
-    out.serialize(rules_file, format="turtle")
+    write_turtle(out, rules_file)
     report.serialize(OUT / f"lulcw_kg_{DATASET}_shacl.ttl", format="turtle")
     store = pyoxigraph.Store()
     for f in (facts_file, rules_file):

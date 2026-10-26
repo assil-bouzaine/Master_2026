@@ -489,3 +489,80 @@ depth check of the records and the coverage by volume and use are in
 - **Next:** speed up the validation of the larger graph (time each land-use shape, as for the
   links part), then 12.7, the CQ queries with their fixtures (CQ7 can now be answered from the
   graph), and 12.8, the export and the equivalence test.
+
+## 12.6 (fix) and 12.7 (2026-10-26)
+
+### Recurring check (CLAUDE.md §7, review of 2026-10-25), answered before starting
+1. *Chain link advanced:* land use → water inside the graph (the crop facts must pass their own
+   shapes when read back from the files), and the CQ queries that will answer CQ7 and the
+   groundwater questions from the graph (12.7), the step before the model export (12.8).
+2. *Where dated land use enters:* the weekly crop-thirst index (dataset side), now tested by
+   LU-4: no detectable information on the core wells (step 12d note). In the graph: clipped crop
+   areas per zone and RPG edition, class areas, demand estimates and dated categories (12.6). Not
+   yet in a model graph (12.8) or an explanation (CQ10).
+3. *Observed / inferred / assumed / unknown:* crop codes and clipped areas are observed (RPG);
+   classes are inferred by a written mapping; Kc values and irrigation status are assumed (FAO-56,
+   2020 census); the parcel → water source link is unknown; the index's predictive contribution
+   is now measured (null on the core wells).
+4. *Evidence vs plan:* LU-4 done; rules and shapes implemented and tested; the CQ query tests
+   (12.7), the export (12.8), the AGROVOC alignment (12.9) and the satellite rule (12.10) remain
+   plans.
+5. *Next model experiment:* none now. Colab session 2 completes the v4 baselines (no new
+   question); the next experiment that answers an open question is Phase 4 (arms A–F), after 12.8.
+6. *Still missing from the subject:* satellite semantics (12.10, needs the Earth Engine login),
+   the RPG → AGROVOC alignment (12.9), explanations of real outputs (CQ10), the scenario (CQ16),
+   the end-to-end land-use example (LU-6).
+
+### 12.6 fix: the 26-minute validation, and numbers that changed on the way to disk
+- **Timing first.** Each node shape on the real v4 graph (`use_shapes`, facts + saved rule
+  outputs + ontology), then each SPARQL check of the slow one on 10 class areas, as pySHACL runs
+  it ($this pre-bound, `fast_sparql`): "a code area of the class in this zone and year is not
+  counted" took **0.39 s per class area**, about 36 min for the 5,465 class areas (CPU shared with
+  the browser; 26 min alone): the whole cost. The other two class-area checks take 0.006 and
+  0.009 s per class area, the crop-area observation shape 30 s in all. The check searched, from
+  each class area, every observation of its zone (about 330 of all kinds) and tested each one.
+- **The replacement** (`ontology/shapes/lulcw-shapes.ttl`):
+  - on each code-area observation, a SHACL Core qualified-value constraint: it is cited
+    (`prov:wasDerivedFrom`, inverse path) by exactly one class area. No SPARQL; pySHACL follows
+    one inverse link per observation;
+  - one query over the whole graph, run once (`CropClassAreaKeyShape`, its focus is the
+    class-area rule): no two class areas share a zone, an RPG year and a class;
+  - unchanged: each cited code area matches its class area's zone, year and class; the class
+    area equals the sum of what it cites.
+  Together they say what the old check said, and more: every code area is counted once, by the
+  class area of its own zone, year and class, also when that class area is missing (the old
+  check could not see a missing class area, nor two copies of one that both counted everything).
+- **The numbers were not stored exactly.** Timing on the saved files showed one sampled class
+  area failing "differs from the sum of the code areas it cites". rdflib's Turtle writer prints
+  an `xsd:double` as `f"{x:e}"`, 7 significant digits, so **2,068 of the 5,465 stored class
+  areas** differed from the sum of their stored code areas by more than the shape's 1e-6 ha
+  (relative error at most 5e-7). The validation passed only because it ran on the graph in memory:
+  the files, the product, would not have passed their own shapes. `build_kg.ExactTurtle` now
+  writes each double as the shortest decimal that reads back as the same number, with an exponent
+  so that it stays a double (`2786.8495e0`); used by `build_kg` and `apply_rules`. Checked on 2,012
+  values, edge cases included (−0.0, infinity, NaN, a subnormal): all read back exactly in rdflib
+  and pyoxigraph.
+- **Result:** facts rebuilt (356,377 triples, unchanged), rules 121 s (115,192 derived triples),
+  **validation 134 s instead of 26 min**, no violation, the same 8 notes; every derived count
+  unchanged (5,465 class areas, 248 high-demand zone-years, threshold 597,027.6 m³).
+- **Tests** (`tests/test_kg_rules.py`): 3 more deliberate errors (16 in all): a code area that no
+  class area counts, one counted by two class areas, two class areas for one zone, year and
+  class. On the stored files: each class area equals the sum of the stored code areas it cites
+  (1e-6 ha); the data tolerances lose their "7 digits" term (class areas 1e-4 ha, the rounding of
+  the code areas; estimates 0.05 m³).
+
+### Why
+- **Validate what is published.** A shape that the graph passes in memory but its files fail
+  is a check on the wrong object. Exact storage removes the gap; the stored-file sum check keeps
+  it closed.
+- **Native constraints before SPARQL.** rdflib evaluates SPARQL in Python, with a fixed cost of
+  milliseconds per focus node; a SHACL Core path constraint costs a dictionary lookup. A rule
+  that ties many nodes together (a key, a completeness check) is cheaper as one query over the
+  graph than as one query per node.
+
+### What to consider
+- The other per-node SPARQL checks cost 5–10 ms per focus node: about 80 s for the class
+  areas, 30 s for the crop-area observations. The parcel-season observations of CQ15 (tens of
+  thousands of parcels × seasons) will need the native or whole-graph form from the start.
+- The alternative to exact doubles, `xsd:decimal`, would also be exact, but changes the
+  datatypes the shapes and queries expect; not needed.

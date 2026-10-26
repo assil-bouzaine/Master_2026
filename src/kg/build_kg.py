@@ -45,6 +45,7 @@ Choices
   sosa:usedProcedure (direct measurement, indirect measurement, flat-rate volume).
 """
 import json
+import math
 import subprocess
 from datetime import date, datetime
 from urllib.parse import quote
@@ -56,6 +57,7 @@ import pyogrio
 import rdflib
 from rdflib import Literal, Namespace, URIRef
 from rdflib.namespace import OWL, RDF, RDFS, SKOS, XSD
+from rdflib.plugins.serializers.turtle import TurtleSerializer
 from shapely import to_wkt
 from shapely.geometry import box
 
@@ -113,6 +115,30 @@ def iri(*parts):
 
 def dbl(x, nd=None):
     return Literal(float(round(x, nd) if nd is not None else x), datatype=XSD.double)
+
+
+class ExactTurtle(TurtleSerializer):
+    """Turtle that writes every xsd:double exactly. rdflib writes a double as f"{x:e}", 7
+    significant digits (2786.8495 ha becomes 2786.850), so a stored class area no longer equals
+    the sum of the stored code areas it cites, and the files fail shapes that the graph in memory
+    passes (2,068 of 5,465 class areas on 2026-10-26). Here a double is the shortest decimal that
+    reads back as the same number (Python's repr), with an exponent so that it stays a double."""
+
+    def label(self, node, position):
+        if isinstance(node, Literal) and node.datatype == XSD.double:
+            try:
+                v = float(node)
+            except ValueError:
+                v = math.nan
+            if math.isfinite(v):
+                s = repr(v)
+                return s if "e" in s or "E" in s else s + "e0"
+        return super().label(node, position)
+
+
+def write_turtle(graph, path):
+    with open(path, "wb") as f:
+        ExactTurtle(graph).serialize(f, encoding="utf-8")
 
 
 class KG:
@@ -731,7 +757,7 @@ def main():
 
     OUT.mkdir(parents=True, exist_ok=True)
     ttl = OUT / f"lulcw_kg_{DATASET}.ttl"
-    kg.g.serialize(ttl, format="turtle")
+    write_turtle(kg.g, ttl)
     import pyoxigraph
     store = pyoxigraph.Store()
     store.bulk_load(path=str(ttl), format=pyoxigraph.RdfFormat.TURTLE)

@@ -317,6 +317,14 @@ folder `pfe_colab/results_gpu` (Drive > Download) works too. Then re-run the swe
   the idle timeout (about 90 min); we cannot tell which. During a long run, check the tab
   at least hourly. A stop costs only the seed in progress (the others reach Drive within
   5 min).
+- **Colab's `datasets` against our pyarrow pin** (2026-10-26, session 2). `chronos2_ft` ended
+  at once with "module 'pyarrow' has no attribute 'json_'": the transformers Trainer imports
+  Colab's `datasets` (4.8.5) whenever it is installed, and that version needs a newer pyarrow
+  than the pin in `/content/pins` (18.1.0). The fine-tuning feeds torch datasets, so
+  `pip uninstall -y datasets` in the Terminal fixed it for the session (Trainer and Chronos-2
+  then import with the pins); `colab_run.py` now does this itself when STEPS has `chronos2_ft`
+  (from the next bundle). `run_gpu.sh` logs a failed step and goes on ("!! step ... failed,
+  continuing"), so check the log for that line after each session.
 
 ## Dataset v4 re-runs (from 2026-10-24; analysis plan v2, §5)
 

@@ -28,7 +28,9 @@
    for unknown, `overlies` without a witness, a piezometer without an attribution, a selection
    of a confidence level the policy does not admit, a path selected without its segments, a
    class area that is not the sum of its codes, a category that disagrees with the threshold,
-   an RPG edition used for another year, a crop code with two classes.
+   an RPG edition used for another year, a crop code with two classes, a code area that no class
+   area counts, a code area counted by two class areas, two class areas for one zone, year and
+   class.
 4. Data-backed regression (when the graph and the rule outputs exist), against pandas on the
    source tables: the stratigraphic relations equal the pairs of the BD LISA stack table for
    the graph's polygons, and the direct contacts of the plain's polygons equal the overlies
@@ -37,7 +39,9 @@
    exact-unit influences equal the facility-well pairs of the attribution table of task 12.3
    and the BNPE coordinates; the policy selections equal the attribution counts; the crop class
    of every code equals src.dataset.crop_demand.code_to_class, the class areas equal the clipped
-   areas summed with pandas, the demand estimates equal the weekly index spread over its days and
+   areas summed with pandas, and in the stored files each class area equals the sum of the stored
+   code areas it cites (doubles are written exactly), the demand estimates equal the weekly index
+   spread over its days and
    summed by calendar year, and the threshold and categories follow; the validation report of
    src.kg.apply_rules is the one of the current files and has no violation.
 """
@@ -444,6 +448,18 @@ def test_negative_controls(g, shapes, net):
         "a crop code with two classes": (
             [(d("crop-code/AGR"), L.cropClass, d("crop-class/orchard"))], (),
             "CropCodeShape", "at most one crop class"),
+        "a code area that no class area counts": (
+            [], [(d("crop-class-area/W1/2023/orchard"), PROV.wasDerivedFrom, d("crop-area/W1/2023/PEC"))],
+            "CropAreaObservationShape", "exactly one class area"),
+        "a code area counted by two class areas": (
+            [(d("crop-class-area/W1/2023/citrus"), PROV.wasDerivedFrom, d("crop-area/W1/2023/PEC"))], (),
+            "CropAreaObservationShape", "exactly one class area"),
+        "two class areas for one zone, year and class": (
+            [(d("crop-class-area/W1/2023/orchard-bis"), RDF.type, L.CropClassArea),
+             (d("crop-class-area/W1/2023/orchard-bis"), SOSA.hasFeatureOfInterest, d("zone/W1")),
+             (d("crop-class-area/W1/2023/orchard-bis"), L.rpgEdition, Literal(2023, datatype=XSD.integer)),
+             (d("crop-class-area/W1/2023/orchard-bis"), L.cropClass, d("crop-class/orchard"))], (),
+            "CropClassAreaKeyShape", "share a zone"),
     }
 
     for name, (add, remove, shape, text) in cases.items():
@@ -583,8 +599,14 @@ def test_data(store):
             ?x a lulcw:CropClassArea ; sosa:hasFeatureOfInterest/lulcw:zoneOf/lulcw:bssCode ?b ;
                lulcw:rpgEdition ?ed ; lulcw:cropClass ?c ; sosa:hasSimpleResult ?ha }""")}
     assert set(got_area) == set(want_area.index), "class areas: other zone-year-class keys"
-    close = lambda a, b: abs(a - b) <= 2e-6 * max(1.0, abs(b)) + 1e-4  # noqa: E731  Turtle doubles: 7 digits
+    close = lambda a, b: abs(a - b) <= 1e-4  # noqa: E731  code areas are stored to 1e-6 ha
     assert all(close(got_area[k], v) for k, v in want_area.items()), "class areas differ"
+    # the files keep every double exactly (build_kg.ExactTurtle): each stored class area equals the
+    # sum of the stored code areas it cites, within the shape's own 1e-6 ha
+    sums = rows(store, """SELECT ?ca ?v (SUM(?a) AS ?s) WHERE { ?ca a lulcw:CropClassArea ;
+            sosa:hasSimpleResult ?v ; prov:wasDerivedFrom ?o . ?o sosa:hasSimpleResult ?a } GROUP BY ?ca ?v""")
+    off = [r[0] for r in sums if abs(r[1] - r[2]) > 1e-6]
+    assert len(sums) == len(want_area) and not off, f"stored class areas differ from their codes: {off[:3]}"
     dem = pd.read_parquet(INTERIM / f"crop_demand_weekly_{DATASET}.parquet",
                           columns=["code_bss", "week", "demand_main_m3", "demand_wide_m3"])
     days = dem.loc[dem.index.repeat(7)].reset_index(drop=True)   # each week spread over its 7 days
@@ -597,7 +619,7 @@ def test_data(store):
     assert len(est) == 2 * len(tot), (len(est), len(tot))
 
     def close_m3(a, b, atol=0.051):   # estimates are stored to 0.1 m³ (the threshold too)
-        return abs(a - b) <= 2e-6 * max(1.0, abs(b)) + atol
+        return abs(a - b) <= atol
     for (b, y), r in tot.iterrows():
         assert close_m3(est[(b, y, "PotentialIrrigationDemandMain")], r["demand_main_m3"]), (b, y)
         assert close_m3(est[(b, y, "PotentialIrrigationDemandWide")], r["demand_wide_m3"]), (b, y)

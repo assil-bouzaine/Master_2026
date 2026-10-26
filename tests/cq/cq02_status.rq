@@ -1,0 +1,22 @@
+# CQ2 · Answer status for the abstraction candidates of a well (common answer contract,
+# docs/competency_questions.md §2)
+#
+# Parameters  ?W  any IRI;  ?r  search radius, m (xsd:double)
+# Reads       asserted facts
+# Returns     one row: ?status not_applicable (?W is not a piezometer), unknown (no unit is
+#             attributed to ?W, so no facility can be matched to its unit), supported (every
+#             groundwater facility of the graph within ?r was examined); ?reason in words, with
+#             the scope of the search: the groundwater facilities of the BNPE snapshot in the graph
+#             (département 66). "Confident" qualifies the evidence policy, not certainty that the
+#             pumping influences the well.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+SELECT ?W ?r ?status ?reason
+WHERE {
+    BIND (EXISTS { ?W a lulcw:Piezometer } AS ?isWell)
+    BIND (EXISTS { ?m lulcw:attributedEntity ?W ; lulcw:role lulcw:MonitoringRole ;
+                      lulcw:candidateUnit ?u . } AS ?hasUnit)
+    BIND (IF(!?isWell, "not_applicable", IF(!?hasUnit, "unknown", "supported")) AS ?status)
+    BIND (IF(!?isWell, "not a piezometer of the graph",
+          IF(!?hasUnit, "no unit is attributed to the well, so no facility can be matched to its unit",
+             "every groundwater facility of the graph (BNPE snapshot, département 66) within the radius was examined; candidates are competing assignments, and a shared unit does not prove influence")) AS ?reason)
+}

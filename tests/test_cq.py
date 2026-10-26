@@ -35,6 +35,8 @@ is never read as "none".
          distances and depth differences; a link is selected exactly when the policy admits its
          confidence
 """
+import json
+import math
 from pathlib import Path
 
 import geopandas as gpd
@@ -47,10 +49,14 @@ from rdflib import Literal
 from rdflib.namespace import RDF, RDFS, XSD
 
 from src.analysis.bdlisa_profile import GPKG
-from src.config import CRS_L93, DATASET, DATASET_DIR
+from src.analysis.bnpe_profile import load as load_bnpe
+from src.analysis.piezo_profile import PLAIN_BBOX
+from src.config import CRS_L93, DATASET, DATASET_DIR, INTERIM
+from src.kg import pump_attribution as pa
 from src.kg.apply_rules import RULES, SHAPES, check, ontology_network, rule_records, run_rules
-from tests.test_kg_rules import (KG, L, RADIUS, build_fixture, d, l93, oracle_relations, store_of,
-                                 violations)
+from src.kg.build_kg import BNPE_SNAPSHOT, PLAIN_MARGIN_DEG
+from tests.test_kg_rules import (GEO, KG, L, RADIUS, SOSA, TIME, build_fixture, d, l93,
+                                 oracle_relations, store_of, violations)
 
 CQ = Path(__file__).resolve().parent / "cq"
 XSD_DOUBLE = ox.NamedNode(str(XSD.double))
@@ -86,9 +92,16 @@ def py(v):
     return v.value
 
 
+def sqrt(x):
+    return ox.Literal(repr(math.sqrt(float(x.value))), datatype=XSD_DOUBLE)
+
+
+FUNCTIONS = {ox.NamedNode("http://www.w3.org/2005/xpath-functions/math#sqrt"): sqrt}   # XPath 3.1
+
+
 def ask(store, name, **params):
     """Run tests/cq/<name>.rq with the parameters pre-bound; rows as dicts of Python values."""
-    res = store.query((CQ / f"{name}.rq").read_text(),
+    res = store.query((CQ / f"{name}.rq").read_text(), custom_functions=FUNCTIONS,
                       substitutions={ox.Variable(k): term(v) for k, v in params.items()})
     cols = [v.value for v in res.variables]
     return [{c: py(r[c]) for c in cols} for r in res]
@@ -134,7 +147,35 @@ def cq_fixture():
                  (L.inRelease, fx.rel)):
         a((se, p, v))
     fx.well("W6", 60000, 60000, None, None)                          # an explicit unknown
+    # CQ2 / CQ12: F6, a deep borehole whose record says V (rank 2, possible) and whose depth says U
+    # (rank 1, probable); annual declarations of 2020 for F1-F6 in a reporting extent
+    f6 = fx.facility("F6", 500, 0, u["U"], L.Probable)
+    fx.attribution("facility/F6", f6, L.AbstractionRole, u["V"], conf=L.Possible, rank=2)
+    extent, year = d("extent/test"), d("interval/year/2020")
+    a((extent, RDF.type, GEO.Feature))
+    a((year, RDF.type, TIME.ProperInterval))
+    a((year, TIME.hasBeginning, d("instant/2020-01-01")))
+    a((d("instant/2020-01-01"), TIME.inXSDDate, Literal("2020-01-01", datatype=XSD.date)))
+    for code, use, m3 in FIXTURE_DECLARATIONS:
+        f, o = d(f"facility/{code}"), d(f"abstraction/{code}/2020/{use or 'none'}")
+        a((f, GEO.sfWithin, extent))
+        for p, v in ((RDF.type, L.AnnualAbstractionRecord), (SOSA.hasFeatureOfInterest, f),
+                     (SOSA.observedProperty, L.DeclaredAnnualVolume),
+                     (SOSA.hasSimpleResult, Literal(m3, datatype=XSD.double)),
+                     (SOSA.phenomenonTime, year), (L.waterSource, L.GroundwaterSource),
+                     (L.recordKind, L.DeclaredRecord), (L.inRelease, fx.rel)):
+            a((o, p, v))
+        if use:
+            a((o, L.waterUse, L[use]))
     return fx, u
+
+
+# facility, use, declared m³ in 2020: F1 exact U probable, F2 group G probable, F3 unknown,
+# F4 exact U possible, F5 exact U confident, F6 two alternatives (U rank 1, V rank 2)
+FIXTURE_DECLARATIONS = (("F1", "DrinkingWaterUse", 100.0), ("F1", None, 5.0),
+                        ("F2", "IrrigationUse", 20.0), ("F3", "IrrigationUse", 50.0),
+                        ("F4", "DrinkingWaterUse", 30.0), ("F5", "DrinkingWaterUse", 10.0),
+                        ("F6", "DrinkingWaterUse", 100.0))
 
 
 def fixture_store():
@@ -222,6 +263,64 @@ def test_cq11_fixture(s):
           "selection, empty but supported, partial beyond the rule radius, unknown without a unit")
 
 
+def test_cq2_fixture(s):
+    w1 = d("piezometer/W1")
+
+    def cand(policy):
+        return [(r["bnpeCode"], round(r["distanceM"], 6), r["rank"], local(r["resolution"]),
+                 r["candidateCode"], local(r["confidence"]), r["selected"], r["alternatives"])
+                for r in ask(s, "cq02_candidates", W=w1, r=5000.0, policy=policy)]
+    main = cand(MAIN)
+    assert main == [("F1", 100.0, 1, "ExactUnitResolution", "U", "Probable", True, None),
+                    ("F2", 200.0, 1, "UnitGroupResolution", "group g", "Probable", True, None),
+                    ("F4", 400.0, 1, "ExactUnitResolution", "U", "Possible", False, None),
+                    ("F6", 500.0, 1, "ExactUnitResolution", "U", "Probable", True,
+                     "rank 2: V (Possible)")], main                    # F5 is 20 km away
+    allp, conf = cand(d("policy/all-links")), cand(CONF_ONLY)
+    assert [r[6] for r in allp] == [True] * 4 and [r[6] for r in conf] == [False] * 4
+    assert [r[:6] + r[7:] for r in allp] == [r[:6] + r[7:] for r in main] == [r[:6] + r[7:] for r in conf], \
+        "a policy changed the evidence, not only the selection"
+    rows = ask(s, "cq02_candidates", W=w1, r=5000.0, policy=MAIN)
+    assert set(rows[0]["uses"].split()) == {"DrinkingWaterUse", "UseNotRecorded"}
+    assert (rows[0]["firstYear"], rows[0]["lastYear"]) == (2020, 2020)
+    un = ask(s, "cq02_unresolved", W=w1, r=5000.0)
+    assert [(r["bnpeCode"], round(r["distanceM"], 6)) for r in un] == [("F3", 300.0)] and un[0]["unknownReason"]
+    assert one(s, "cq02_status", W=w1, r=5000.0)["status"] == "supported"
+    assert one(s, "cq02_status", W=d("piezometer/W6"), r=5000.0)["status"] == "unknown"
+    assert one(s, "cq02_status", W=d("facility/F1"), r=5000.0)["status"] == "not_applicable"
+    print("  4. CQ2 fixtures: exact and group-level candidates with their resolution, the alternative "
+          "of a two-candidate borehole kept, the unknown reported apart; policies change the "
+          "selection only")
+
+
+def test_cq12_fixture(s):
+    ext = d("extent/test")
+    declared = {}
+    for r in ask(s, "cq12_declared", year=2020, extent=ext):
+        declared[r["use"]] = declared.get(r["use"], 0.0) + r["volumeM3"]
+    assert declared == {"DrinkingWaterUse": 240.0, "IrrigationUse": 70.0, "UseNotRecorded": 5.0}, declared
+    want = {
+        MAIN: {("DrinkingWaterUse", "unit", "U"): 210.0, ("DrinkingWaterUse", "unresolved", None): 30.0,
+               ("IrrigationUse", "unit group", "group g"): 20.0, ("IrrigationUse", "unresolved", None): 50.0,
+               ("UseNotRecorded", "unit", "U"): 5.0},
+        CONF_ONLY: {("DrinkingWaterUse", "unit", "U"): 10.0, ("DrinkingWaterUse", "unresolved", None): 230.0,
+                    ("IrrigationUse", "unresolved", None): 70.0, ("UseNotRecorded", "unresolved", None): 5.0},
+        d("policy/all-links"): {("DrinkingWaterUse", "unit", "U"): 240.0,
+                                ("IrrigationUse", "unit group", "group g"): 20.0,
+                                ("IrrigationUse", "unresolved", None): 50.0, ("UseNotRecorded", "unit", "U"): 5.0},
+    }
+    for policy, w in want.items():
+        rows = ask(s, "cq12_accounting", year=2020, extent=ext, policy=policy)
+        got = {(r["use"], r["allocation"], r["targetCode"]): r["volumeM3"] for r in rows}
+        assert got == w, (local(str(policy)), got)
+        for use, total in declared.items():   # the parts add up to the declared total, never more
+            assert abs(sum(v for (u, _, _), v in got.items() if u == use) - total) < 1e-9, (policy, use)
+        assert not any(t == "V" for _, _, t in got), "F6's alternative received volume"
+    assert ask(s, "cq12_accounting", year=2019, extent=ext, policy=MAIN) == []   # no declaration: no row
+    print("  5. CQ12 fixtures: the two-candidate borehole counted once (100 m³, never 200), unresolved "
+          "and group-level volume kept apart, the parts add up to the declared total under every policy")
+
+
 # ----------------------------------------------------------------------------------- 2. data
 def iris(store, q):
     """{literal value: IRI term} from a two-column query."""
@@ -307,10 +406,132 @@ def test_data(store):
         n_links += len(pairs.get(code, {}))
         st = one(store, "cq11_status", W=iri, r=RADIUS)["status"]
         assert st == ("supported" if code in set(w["code_bss"]) else "unknown"), (code, st)
-    print(f"  4. data: CQ1 anchors hold; {len(pz)} wells (statuses {n}) = the dataset, the BD LISA "
+    print(f"  6. data: CQ1 anchors hold; {len(pz)} wells (statuses {n}) = the dataset, the BD LISA "
           f"polygons and stacks, no screen; CQ3 {len(units)} units, {n_rel} relation-polygon rows = the "
           f"stacks ({len(units) - len(in_stack)} units in no stack: unknown); CQ11 {n_links // 2} "
           f"neighbour pairs = the dataset, selections follow the policies")
+    test_data_pumps(store, wells, pz, x, y)
+
+
+BNPE_USE = {"AEP": "DrinkingWaterUse", "IRR": "IrrigationUse", "IND": "IndustryUse",
+            "CAN": "CanalSupplyUse", "ENE": "EnergyUse"}   # BNPE code_usage -> lulcw water use
+ADMITS = {"main": {"confident", "probable"}, "confident-only": {"confident"},
+          "all-links": {"confident", "probable", "possible"}}
+
+
+def pump_oracle():
+    """Facilities (BNPE snapshot, groundwater) with Lambert-93 points, and each facility's rank-1
+    candidate with its confidence at the two resolutions, restated from the attribution table of
+    task 12.3 and its rule evaluation: a measured rule (flag_true, flag_false) is probable at a
+    resolution only if it fired on enough recorded boreholes, at enough precision, for the
+    facility's main use; where the exact unit is less certain than its group, the group keeps the
+    table's confidence."""
+    bnpe = load_bnpe(BNPE_SNAPSHOT)
+    gw = bnpe[bnpe["source"] == "groundwater"].copy()
+    fac = gw.groupby("code_ouvrage")[["longitude", "latitude"]].first()
+    fac["x93"], fac["y93"] = l93(fac["longitude"], fac["latitude"])
+    attr = pd.read_parquet(INTERIM / "pump_unit_attribution.parquet")
+    use_main = pd.read_parquet(INTERIM / "pump_unit_evidence.parquet").set_index("code_ouvrage")["usage_main"]
+    ev = json.loads((INTERIM / "pump_unit_attribution_eval.json").read_text())["rules"]
+    rank = {"possible": 0, "probable": 1, "confident": 2}
+    best = attr.dropna(subset=["unit"]).sort_values("rank").groupby("code_ouvrage").first()
+    exact, group = {}, {}
+    for code, r in best.iterrows():
+        conf = r["confidence"]
+        exact[code] = conf
+        if r["rule"] in ("flag_true", "flag_false"):
+            e = ev[r["rule"]]
+            ok = (e["fires_on"] >= pa.MIN_EVAL and e["precision_entity"] >= pa.PRECISION_PROBABLE
+                  and use_main.get(code) in e["by_use"])
+            e_conf = "probable" if ok else "possible"
+            if rank[e_conf] < rank[conf]:
+                exact[code], group[code] = e_conf, conf
+    best = best.assign(exact_conf=pd.Series(exact), group_conf=pd.Series(group))
+    return gw, fac, attr, best
+
+
+def test_data_pumps(store, wells, pz, x, y):
+    gw, fac, attr, best = pump_oracle()
+    with_unit = attr.dropna(subset=["unit"])
+    with_unit = with_unit[with_unit["code_ouvrage"].isin(fac.index)].join(fac[["x93", "y93"]], on="code_ouvrage")
+    unresolved = fac[~fac.index.isin(set(with_unit["code_ouvrage"]))]
+    rule_of = attr.set_index(["code_ouvrage", "rank"])["rule"]
+
+    # CQ2: every well with a unit, against the attribution table and the BNPE points
+    w = wells.assign(x93=x, y93=y)
+    n_exact = n_group = n_unres = 0
+    for _, b in w.iterrows():
+        iri = pz[b["code_bss"]]
+        if not isinstance(b["code_bdlisa"], str):
+            assert one(store, "cq02_status", W=iri, r=RADIUS)["status"] == "unknown"
+            continue
+        rows = ask(store, "cq02_candidates", W=iri, r=RADIUS, policy=MAIN)
+        m = with_unit[with_unit["unit"] == b["code_bdlisa"]]
+        dist = np.hypot(m["x93"] - b["x93"], m["y93"] - b["y93"])
+        want = {(c, int(k)): float(dd) for c, k, dd in zip(m["code_ouvrage"], m["rank"], dist) if dd <= RADIUS}
+        got = {(r["bnpeCode"], r["rank"]): r["distanceM"] for r in rows if local(r["resolution"]) == "ExactUnitResolution"}
+        assert set(got) == set(want), (b["code_bss"], sorted(set(got) ^ set(want))[:5])
+        assert all(abs(got[k] - want[k]) < 0.15 for k in want), b["code_bss"]
+        for r in rows:
+            assert r["selected"] == (local(r["confidence"]).lower() in ADMITS["main"]), r
+            if local(r["resolution"]) == "UnitGroupResolution":   # the split of a measured rule
+                assert rule_of[(r["bnpeCode"], r["rank"])] in ("flag_true", "flag_false"), r
+                n_group += 1
+            if local(r["rule"]) in ("pump-flag-true", "pump-flag-false") and local(r["confidence"]) == "Probable":
+                assert r["applicableUse"], f"{r['bnpeCode']}: a probable measured rule without its use"
+        d2 = np.hypot(unresolved["x93"] - b["x93"], unresolved["y93"] - b["y93"])
+        want_u = set(unresolved.index[d2 <= RADIUS])
+        assert {r["bnpeCode"] for r in ask(store, "cq02_unresolved", W=iri, r=RADIUS)} == want_u, b["code_bss"]
+        assert one(store, "cq02_status", W=iri, r=RADIUS)["status"] == "supported"
+        n_exact += len(want)
+        n_unres += len(want_u)
+
+    # CQ12: every year, the plain's facility extent, the three policies
+    ext = iris(store, 'SELECT ?k ?e WHERE { ?e a <http://www.opengis.net/ont/geosparql#Feature> . '
+                      'BIND (STRAFTER(STR(?e), "/extent/") AS ?k) }')["plain-box-margin"]
+    lon0, lat0, lon1, lat1 = PLAIN_BBOX
+    mg = PLAIN_MARGIN_DEG
+    inside = fac[fac["longitude"].between(lon0 - mg, lon1 + mg) & fac["latitude"].between(lat0 - mg, lat1 + mg)].index
+    rec = gw[gw["code_ouvrage"].isin(inside)].assign(
+        use=lambda t: t["code_usage"].map(BNPE_USE).fillna("UseNotRecorded"), year=lambda t: t["annee"].astype(int))
+    rec = rec.join(best[["unit", "exact_conf", "group_conf"]], on="code_ouvrage")
+    totals = {"declared": 0.0, "main unit": 0.0, "main unit or group": 0.0}
+    for year in sorted(rec["year"].unique()):
+        ry = rec[rec["year"] == year]
+        declared = {}
+        for r in ask(store, "cq12_declared", year=int(year), extent=ext):
+            declared[r["use"]] = declared.get(r["use"], 0.0) + r["volumeM3"]
+        want_decl = ry.groupby("use")["volume"].sum().to_dict()
+        assert declared.keys() == want_decl.keys() and all(
+            abs(declared[k] - v) <= 1e-6 * max(1.0, v) for k, v in want_decl.items()), (year, declared, want_decl)
+        for policy, levels in ADMITS.items():
+            rows = ask(store, "cq12_accounting", year=int(year), extent=ext, policy=d(f"policy/{policy}"))
+            got = {}
+            for r in rows:
+                key = (r["use"], r["allocation"], r["targetCode"] if r["allocation"] == "unit" else None)
+                got[key] = got.get(key, 0.0) + r["volumeM3"]
+            kind = np.where(ry["exact_conf"].isin(levels), "unit",
+                            np.where(ry["group_conf"].isin(levels), "unit group", "unresolved"))
+            target = np.where(kind == "unit", ry["unit"], None)
+            want = ry.assign(kind=kind, target=target).groupby(["use", "kind", "target"], dropna=False)["volume"].sum()
+            want = {(u, k, t if isinstance(t, str) else None): v for (u, k, t), v in want.items()}
+            assert got.keys() == want.keys(), (year, policy, sorted(set(got) ^ set(want))[:4])
+            assert all(abs(got[k] - v) <= 1e-6 * max(1.0, v) for k, v in want.items()), (year, policy)
+            for use, total in declared.items():
+                assert abs(sum(v for (u, _, _), v in got.items() if u == use) - total) <= 1e-6 * max(1.0, total)
+            if policy == "main" and 2012 <= year <= 2024:
+                totals["main unit"] += sum(v for (_, k, _), v in got.items() if k == "unit")
+                totals["main unit or group"] += sum(v for (_, k, _), v in got.items() if k != "unresolved")
+        if 2012 <= year <= 2024:
+            totals["declared"] += sum(declared.values())
+    share = {k: 100 * v / totals["declared"] for k, v in totals.items() if k != "declared"}
+    print(f"  7. data: CQ2 {n_exact} exact and {n_group} group-level candidate rows within 5 km of the wells "
+          f"= the attribution table and the BNPE points, {n_unres} unresolved neighbours; CQ12 every year "
+          f"{rec['year'].min()}-{rec['year'].max()}: declared totals = the BNPE snapshot, allocations = the table "
+          f"under the three policies, parts add up to the totals; main policy 2012-2024: "
+          f"{share['main unit']:.1f} % at exact unit, {share['main unit or group']:.1f} % with the unit groups "
+          f"(of {totals['declared'] / 1e6:.1f} Mm³ declared; docs/pump_coverage.md, on the dataset's "
+          f"reconstruction: 61.8 % and 72.3 %)")
 
 
 def main():
@@ -318,11 +539,13 @@ def main():
     test_cq1_fixture(s)
     test_cq3_fixture(s, u)
     test_cq11_fixture(s)
+    test_cq2_fixture(s)
+    test_cq12_fixture(s)
     facts, derived = KG / f"lulcw_kg_{DATASET}.ttl", KG / f"lulcw_kg_{DATASET}_rules.ttl"
     if facts.exists() and derived.exists():
         test_data(store_of(facts, derived))
     else:
-        print("  4. skipped: run src.kg.build_kg and src.kg.apply_rules first")
+        print("  6. skipped: run src.kg.build_kg and src.kg.apply_rules first")
     print("test_cq: all checks passed")
 
 

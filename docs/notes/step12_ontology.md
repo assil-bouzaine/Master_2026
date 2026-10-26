@@ -611,3 +611,47 @@ depth check of the records and the coverage by volume and use are in
   facility with two candidates never counted as 200 m³), CQ7 (land use from the graph), CQ8
   (influences and constraint eligibility); then the SHOULD/COULD fixtures (missing-evidence
   behaviour) and CQ10/CQ15 once their inputs exist.
+
+## 12.7, second group: CQ2 and CQ12 (2026-10-26)
+
+### What was done
+- **CQ2** `cq02_candidates` (facilities within ?r whose candidate is the well's unit, or a unit
+  group containing it: distance, rank, resolution, confidence, evidence, rule, the use a measured
+  confidence applies to, the policy's selection, the facility's alternatives, its declared uses
+  and years), `cq02_unresolved` (nearby facilities with only explicit unknowns, with the reason),
+  `cq02_status`. Distances need XPath 3.1 `math:sqrt`, which the test registers in pyoxigraph (as
+  `apply_rules` does in rdflib).
+- **CQ12** `cq12_accounting` (per year, extent and policy: the declared volume of each facility
+  goes **once** to its best-ranked attribution that the policy selects, an exact unit before a
+  unit group at equal rank, else "unresolved"), `cq12_declared` (the declared total it partitions,
+  by use and acquisition mode). Records without a use code count as "UseNotRecorded".
+- **Fixtures:** a deep borehole F6 (rank 1 the unit by depth, probable; rank 2 the recorded unit,
+  possible) and 2020 declarations for F1–F6. CQ2: exact and group-level candidates keep their
+  resolution, F6's alternative is shown, the unknown F3 is reported apart, and the three policies
+  change only the selection column. CQ12: **F6's 100 m³ is counted once, never 200**, its
+  alternative unit gets nothing, group-level and unresolved volumes stay apart, and for every use
+  and policy the parts add up to the declared total; a year without declarations has no row.
+- **Data (v4):** CQ2 for every well: 1,830 exact and 18 group-level candidate rows within 5 km =
+  the attribution table and the BNPE points (the same numbers as the influences of 12.6, derived
+  here without the rules), 1,097 unresolved neighbours = the facilities without a unit. CQ12 for
+  every year 2012–2024 and the three policies: declared totals = the BNPE snapshot; allocations =
+  a pandas restatement of the attribution table and its rule evaluation (a measured rule is
+  probable at a resolution only with enough cases, precision and its use); the parts add up.
+  **Main policy, 2012–2024: 61.8 % of the 711.5 Mm³ declared at an exact unit, 72.3 % with the
+  unit groups**: the two figures of `docs/pump_coverage.md`, computed separately on the dataset's
+  reconstruction.
+- **33 s for the whole CQ test** (7 min 23 s before the rewrite below).
+
+### What to consider
+- **pyoxigraph join order.** A triple pattern written after a BIND or a UNION forms a separate
+  block that pyoxigraph 0.5 evaluates on its own and joins slowly: `cq02_candidates` took 8.3 s
+  per well, 0.25 s once written as one block of patterns, with the exact-or-group UNION replaced
+  by one property path (`candidateUnit|(candidateGroup/hasMemberUnit)`) and the alternatives and
+  uses as plain OPTIONALs aggregated by GROUP BY; `cq02_unresolved` 1.8 s → 0.04 s with a HAVING
+  count instead of FILTER NOT EXISTS. Rule for the next queries: all triple patterns first.
+- **Best-ranked selected, or rank 1?** In v4 they coincide: the 7 facilities with a second
+  candidate (the depth rule) have a probable rank 1. The accounting rule is stated for the case
+  where they would not.
+- **Scope of CQ12:** declared withdrawals of facilities in the extent, not all abstraction from a
+  unit, nor consumption; weighted allocations ("an explicit allocation with weights ≤ 1") are not
+  implemented, since no policy asks for one.

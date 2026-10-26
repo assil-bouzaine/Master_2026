@@ -1,0 +1,26 @@
+# CQ12 · The declared total that the accounting partitions, by use and acquisition mode
+# (docs/competency_questions.md §4, CQ12; task 12.7)
+#
+# Parameters  ?year  calendar year (xsd:integer);  ?extent  a reporting extent (geo:sfWithin)
+# Reads       asserted facts: annual records as declared in the BNPE snapshot (no imputation, no
+#             harmonisation: those are model inputs and stay in parquet)
+# Returns     one row per use and acquisition mode (direct or indirect measurement, flat rate):
+#             declared volume (m³), facility and record counts. A missing declaration is absent,
+#             never zero.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+PREFIX time: <http://www.w3.org/2006/time#>
+SELECT ?year ?extent ?use ?procedure (SUM(?v) AS ?volumeM3) (COUNT(DISTINCT ?f) AS ?facilities)
+       (COUNT(DISTINCT ?o) AS ?records)
+WHERE {
+    ?o a lulcw:AnnualAbstractionRecord ; sosa:hasFeatureOfInterest ?f ; sosa:hasSimpleResult ?v ;
+       sosa:phenomenonTime/time:hasBeginning/time:inXSDDate ?d .
+    FILTER (YEAR(?d) = ?year)
+    ?f geo:sfWithin ?extent .
+    OPTIONAL { ?o lulcw:waterUse ?u . }
+    OPTIONAL { ?o sosa:usedProcedure ?procedure . }
+    BIND (COALESCE(STRAFTER(STR(?u), "#"), "UseNotRecorded") AS ?use)
+}
+GROUP BY ?year ?extent ?use ?procedure
+ORDER BY ?use ?procedure

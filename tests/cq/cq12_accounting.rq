@@ -1,0 +1,56 @@
+# CQ12 · Annual abstraction accounting by unit and use
+# (docs/competency_questions.md §4, CQ12; task 12.7)
+#
+# Parameters  ?year    calendar year (xsd:integer)
+#             ?extent  a reporting extent (a geo:Feature; facilities are selected by geo:sfWithin)
+#             ?policy  a lulcw:ExportPolicy
+# Reads       asserted facts (annual records as declared, attributions) and the policy selections
+#             of the SHACL-AF rules; no OWL reasoning
+# Returns     one row per use and allocation: the declared volume (m³), facility and record counts.
+#             Each facility's volume goes once to its best-ranked attribution that ?policy selects
+#             (at equal rank, the exact unit before the unit group): ?allocation "unit" (?target a
+#             unit, ?targetCode its BD LISA code), "unit group" (?target a group: the evidence does
+#             not resolve the exact unit), or "unresolved" (no selected attribution: unknown, or
+#             below the policy). Alternatives are never summed, so for each use the rows add up to
+#             the declared total of cq12_declared.rq. Records without a use code count as
+#             "UseNotRecorded". These are declared withdrawals of facilities in the extent, not all
+#             actual abstraction from a unit, nor consumption or sustainable yield.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+PREFIX time: <http://www.w3.org/2006/time#>
+SELECT ?year ?extent ?policy ?use ?allocation ?target ?targetCode ?volumeM3 ?facilities ?records
+WHERE {
+    {
+        SELECT ?year ?extent ?policy ?use ?allocation ?target ?targetCode (SUM(?v) AS ?volumeM3)
+               (COUNT(DISTINCT ?f) AS ?facilities) (COUNT(DISTINCT ?o) AS ?records)
+        WHERE {
+            ?policy a lulcw:ExportPolicy .
+            ?o a lulcw:AnnualAbstractionRecord ; sosa:hasFeatureOfInterest ?f ;
+               sosa:hasSimpleResult ?v ; sosa:phenomenonTime/time:hasBeginning/time:inXSDDate ?d .
+            BIND (YEAR(?d) AS ?year)
+            ?f geo:sfWithin ?extent .
+            OPTIONAL { ?o lulcw:waterUse ?u . }
+            BIND (COALESCE(STRAFTER(STR(?u), "#"), "UseNotRecorded") AS ?use)
+            OPTIONAL {
+                { SELECT ?f ?policy (MIN(?key) AS ?best) WHERE {
+                      ?a lulcw:role lulcw:AbstractionRole ; lulcw:attributedEntity ?f ;
+                         lulcw:selectedUnder ?policy ; lulcw:rank ?rk ; lulcw:resolution ?res .
+                      BIND (2 * ?rk + IF(?res = lulcw:ExactUnitResolution, 0, 1) AS ?key)
+                  } GROUP BY ?f ?policy }
+                ?b lulcw:role lulcw:AbstractionRole ; lulcw:attributedEntity ?f ;
+                   lulcw:selectedUnder ?policy ; lulcw:rank ?rb ; lulcw:resolution ?resb .
+                FILTER (2 * ?rb + IF(?resb = lulcw:ExactUnitResolution, 0, 1) = ?best)
+                OPTIONAL { ?b lulcw:candidateUnit ?tu . ?tu lulcw:bdlisaCode ?unitCode . }
+                OPTIONAL { ?b lulcw:candidateGroup ?tg . ?tg rdfs:label ?groupLabel .
+                           FILTER (LANG(?groupLabel) = "en") }
+            }
+            BIND (IF(BOUND(?tu), "unit", IF(BOUND(?tg), "unit group", "unresolved")) AS ?allocation)
+            BIND (COALESCE(?tu, ?tg) AS ?target)
+            BIND (COALESCE(?unitCode, STR(?groupLabel)) AS ?targetCode)
+        }
+        GROUP BY ?year ?extent ?policy ?use ?allocation ?target ?targetCode
+    }
+}
+ORDER BY ?use ?allocation ?targetCode

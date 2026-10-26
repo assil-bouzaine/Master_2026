@@ -1,0 +1,30 @@
+# CQ2 · Nearby abstraction facilities with no candidate unit, reported separately
+# (docs/competency_questions.md §4, CQ2; task 12.7)
+#
+# Parameters  ?W  a lulcw:Piezometer;  ?r  search radius, m (xsd:double)
+# Reads       asserted facts; needs XPath 3.1 math:sqrt (see cq02_candidates.rq)
+# Returns     one row per facility within ?r of ?W whose abstraction attributions are all explicit
+#             unknowns: its code, distance (m) and the reason. Such a facility may or may not pump
+#             the well's unit; its volume is unresolved, never zero and never attributed.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX math: <http://www.w3.org/2005/xpath-functions/math#>
+SELECT ?W ?r ?facility ?bnpeCode ?distanceM (SAMPLE(?why) AS ?unknownReason)
+WHERE {
+    ?W a lulcw:Piezometer ; geo:hasGeometry/geo:asWKT ?gw .
+    ?k a lulcw:UnitAttribution ; lulcw:role lulcw:AbstractionRole ; lulcw:attributedEntity ?facility .
+    ?facility lulcw:bnpeCode ?bnpeCode ; geo:hasGeometry/geo:asWKT ?gf .
+    OPTIONAL { ?k lulcw:candidateUnit|lulcw:candidateGroup ?target . }
+    OPTIONAL { ?k lulcw:unknownReason ?why . }
+    BIND (STRAFTER(STR(?gf), "POINT(") AS ?pf)
+    BIND (STRAFTER(STR(?gw), "POINT(") AS ?pw)
+    BIND (xsd:double(STRBEFORE(?pf, " ")) - xsd:double(STRBEFORE(?pw, " ")) AS ?dx)
+    BIND (xsd:double(STRBEFORE(STRAFTER(?pf, " "), ")"))
+          - xsd:double(STRBEFORE(STRAFTER(?pw, " "), ")")) AS ?dy)
+    FILTER (?dx * ?dx + ?dy * ?dy <= ?r * ?r)
+    BIND (math:sqrt(?dx * ?dx + ?dy * ?dy) AS ?distanceM)
+}
+GROUP BY ?W ?r ?facility ?bnpeCode ?distanceM
+HAVING (COUNT(?target) = 0)
+ORDER BY ?distanceM ?bnpeCode

@@ -1,0 +1,75 @@
+# CQ2 · Abstraction-to-unit attribution: the facilities that may draw from a unit a well monitors
+# (docs/competency_questions.md §4, CQ2; task 12.7)
+#
+# Parameters  ?W       a lulcw:Piezometer
+#             ?r       search radius, m (xsd:double), around the well (Lambert-93)
+#             ?policy  a lulcw:ExportPolicy
+# Reads       asserted facts (attributions, facilities, annual records) and the policy selections
+#             of the SHACL-AF rules (lulcw:selectedUnder); no OWL reasoning. Needs XPath 3.1
+#             math:sqrt (W3C), registered by the caller when the engine lacks it.
+# Returns     one row per abstraction attribution of a facility within ?r whose candidate is a
+#             unit ?W is attributed to (exact unit) or a unit group containing it (group level):
+#             facility code, distance (m), rank, resolution, the candidate (unit code or group
+#             label), the well's unit, confidence, evidence kind, derivation rule, the use a
+#             measured confidence applies to, whether ?policy selects the attribution, the
+#             facility's other candidates (alternatives, never fractions of its water; unbound when
+#             there are none) and its declared uses with their first and last year. Nearby
+#             facilities with no candidate are in cq02_unresolved.rq. Proximity, or a shared unit,
+#             does not prove that pumping reaches the well.
+# Written as one block of triple patterns before any BIND: in pyoxigraph 0.5 a pattern placed
+# after a BIND or a UNION is evaluated apart and joined slowly (8 s instead of 0.05 s here).
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+PREFIX time: <http://www.w3.org/2006/time#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX math: <http://www.w3.org/2005/xpath-functions/math#>
+SELECT ?W ?r ?policy ?facility ?bnpeCode ?distanceM ?rank ?resolution ?candidate ?candidateCode
+       ?wellUnitCode ?confidence ?evidenceKind ?rule ?applicableUse ?selected
+       (GROUP_CONCAT(DISTINCT ?alt; separator="; ") AS ?alternatives)
+       (GROUP_CONCAT(DISTINCT ?useName; separator=" ") AS ?uses)
+       (MIN(?y) AS ?firstYear) (MAX(?y) AS ?lastYear)
+WHERE {
+    ?m lulcw:attributedEntity ?W ; lulcw:role lulcw:MonitoringRole ; lulcw:candidateUnit ?wu .
+    ?wu lulcw:bdlisaCode ?wellUnitCode .
+    ?a lulcw:candidateUnit|(lulcw:candidateGroup/lulcw:hasMemberUnit) ?wu .
+    ?a a lulcw:UnitAttribution ; lulcw:role lulcw:AbstractionRole ; lulcw:attributedEntity ?facility ;
+       lulcw:rank ?rank ; lulcw:resolution ?resolution ; lulcw:confidence ?confidence ;
+       lulcw:evidenceKind ?evidenceKind ; lulcw:derivationRule ?rule .
+    ?facility lulcw:bnpeCode ?bnpeCode ; geo:hasGeometry/geo:asWKT ?gf .
+    ?W geo:hasGeometry/geo:asWKT ?gw .
+    OPTIONAL { ?a lulcw:candidateGroup ?group . ?group rdfs:label ?groupLabel .
+               FILTER (LANG(?groupLabel) = "en") }
+    OPTIONAL { ?a lulcw:applicableUse ?applicableUse . }
+    OPTIONAL {
+        ?b lulcw:role lulcw:AbstractionRole ; lulcw:attributedEntity ?facility ; lulcw:rank ?rb .
+        FILTER (?b != ?a)
+        OPTIONAL { ?b lulcw:candidateUnit/lulcw:bdlisaCode ?bu . }
+        OPTIONAL { ?b lulcw:candidateGroup ?bg . }
+        OPTIONAL { ?b lulcw:confidence ?bc . }
+        BIND (CONCAT("rank ", STR(?rb), ": ",
+                     COALESCE(?bu, STRAFTER(STR(?bg), "/unit-group/"), "unknown"),
+                     COALESCE(CONCAT(" (", STRAFTER(STR(?bc), "#"), ")"), "")) AS ?alt)
+    }
+    OPTIONAL {
+        ?o a lulcw:AnnualAbstractionRecord ; sosa:hasFeatureOfInterest ?facility ;
+           sosa:phenomenonTime/time:hasBeginning/time:inXSDDate ?d .
+        OPTIONAL { ?o lulcw:waterUse ?u . }
+        BIND (COALESCE(STRAFTER(STR(?u), "#"), "UseNotRecorded") AS ?useName)
+        BIND (YEAR(?d) AS ?y)
+    }
+    BIND (COALESCE(?group, ?wu) AS ?candidate)
+    BIND (COALESCE(STR(?groupLabel), ?wellUnitCode) AS ?candidateCode)
+    BIND (STRAFTER(STR(?gf), "POINT(") AS ?pf)
+    BIND (STRAFTER(STR(?gw), "POINT(") AS ?pw)
+    BIND (xsd:double(STRBEFORE(?pf, " ")) - xsd:double(STRBEFORE(?pw, " ")) AS ?dx)
+    BIND (xsd:double(STRBEFORE(STRAFTER(?pf, " "), ")"))
+          - xsd:double(STRBEFORE(STRAFTER(?pw, " "), ")")) AS ?dy)
+    FILTER (?dx * ?dx + ?dy * ?dy <= ?r * ?r)
+    BIND (math:sqrt(?dx * ?dx + ?dy * ?dy) AS ?distanceM)
+    BIND (EXISTS { ?a lulcw:selectedUnder ?policy . } AS ?selected)
+}
+GROUP BY ?W ?r ?policy ?facility ?bnpeCode ?distanceM ?rank ?resolution ?candidate ?candidateCode
+         ?wellUnitCode ?confidence ?evidenceKind ?rule ?applicableUse ?selected
+ORDER BY ?distanceM ?bnpeCode ?rank ?resolution

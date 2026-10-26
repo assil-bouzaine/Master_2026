@@ -127,8 +127,9 @@ def drop_broken_datasets(env):
     "module 'pyarrow' has no attribute 'json_'" ended chronos2_ft on 2026-10-26. The
     fine-tuning feeds torch datasets, so a `datasets` that does not import with the pins is
     removed from the session (the pins stay as they are)."""
-    r = subprocess.run(["python3", "-c", "import datasets"], cwd=CODE, env=env, capture_output=True)
-    if r.returncode != 0:
+    r = subprocess.run(["python3", "-c", "import datasets"], cwd=CODE, env=env, capture_output=True,
+                       text=True)
+    if r.returncode != 0 and "No module named 'datasets'" not in r.stderr:   # absent: nothing to do
         subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "-q", "datasets"], check=True)
         log("Colab's datasets package does not import with the pinned pyarrow: uninstalled "
             "for this session")

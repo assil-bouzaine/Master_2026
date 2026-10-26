@@ -743,3 +743,25 @@ test compares node identity and order, relation directions, edge lists and weigh
 units, masks, time alignment and eligibility, then a forward pass with fixed weights (tolerance
 1e-6). Most of the pandas side exists already as the oracles of `tests/test_kg_rules.py` and
 `tests/test_cq.py`.
+
+## 12.9 plan (2026-10-26; nothing downloaded yet)
+
+RPG crop codes → AGROVOC, the main alignment experiment (subject SO1; roadmap 3.9; LU-2):
+1. **AGROVOC snapshot.** Recommended: the AGROVOC Core release in N-Triples, downloaded once
+   into `data/raw/agrovoc/<release>/` and logged in `data/README.md` (a dated release makes the
+   gold set and the matchers reproducible, and OntoAligner needs the target vocabulary as a
+   file on Colab). Its size was not yet checked (the FAO release page states none): check it
+   before the download and ask Assil. The alternative, the FAO SPARQL endpoint, needs no
+   download but answers from a moving release.
+2. **Candidates** for the 198 codes: French labels (RPG `LIBELLE_CULTURE`) against AGROVOC French
+   and English pref/alt labels, exact then fuzzy, top 5 per code, written to
+   `configs/lu_agrovoc_candidates.csv` (code, label, candidate IRI, candidate labels, score).
+   Every IRI comes from the snapshot, so none is written unseen (working rule 12).
+3. **Gold set:** Assil validates each code: SKOS relation to one concept (exact, close, broad,
+   narrow) or none, with a note → `configs/lu_agrovoc_gold.csv`; ambiguous codes ("Autre verger")
+   are expected to take broadMatch.
+4. **Experiment** on Colab (local open LLM, never a paid API): OntoAligner's fuzzy, retrieval and
+   LLM matchers against the gold set: precision, recall, F1 per matcher, with the candidates
+   tables kept.
+5. **Into the graph:** the validated alignments as `skos:*Match` on the crop-code concepts; CQ7
+   then turns from partial to supported where every code is aligned.

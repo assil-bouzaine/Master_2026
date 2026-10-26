@@ -270,6 +270,10 @@ and never overwrite observed facts (CQ10/CQ16).
    everywhere does not complete the core. Use one or more queries per CQ and
    declare the inference/rule regime. See the acceptance plan in
    [competency_questions.md](competency_questions.md#6-acceptance-and-implementation-plan).
+   Implemented (2026-10-26) in `tests/cq/*.rq` and `tests/test_cq.py` (runner
+   `src/kg/cq.py`) for CQ1, CQ2, CQ3, CQ7, CQ8, CQ11 and CQ12, each with a status
+   query; CQ10 and CQ15 wait for their inputs, the SHOULD/COULD contracts for their
+   modules.
 6. **Alignment:** P/R/F1 recorded for each run against the gold sets.
 7. **Equivalence test** (task 12.8): the edge list exported by SPARQL equals
    the one built by pandas rules from the same tables. The ontology is

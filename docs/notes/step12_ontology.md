@@ -697,3 +697,49 @@ depth check of the records and the coverage by volume and use are in
 - **SHOULD/COULD** (CQ4, 5, 6, 9, 13, 14, 16): fixture contracts for their missing-evidence
   behaviour (an answer "unknown" with its reason, never an empty "supported").
 - CQ7's alignment columns fill in with 12.9 (RPG → AGROVOC); the status then turns supported.
+
+## 12.8 design proposal (2026-10-26, before any code; decisions for Assil marked ❓)
+
+The export turns the graph into the PyG `HeteroData` that arms C–F share (analysis plan §10:
+one node inventory, one backbone, only the edge rule changes). Arm C's rules are those of
+`src/models/taccari.py`; arm D's come from SPARQL on the KG. What the KG knows today decides
+which relations D can take from it:
+
+| Relation (source → piezometer) | Arm C (distance rule, Taccari) | Arm D (knowledge graph) | In the KG today |
+|---|---|---|---|
+| piezometer ↔ piezometer | 3 nearest, weight exp(−d/σ) | same unit (CQ11 well links) within r, depth difference ≤ a threshold frozen on training | ✅ 47 links ≤ 5 km |
+| abstraction → piezometer | 5 km fields within 10 km, exp(−d/5 km) | influences selected by the policy (CQ8), sign-eligible ones flagged | ✅ 434 paths (main) |
+| weather cell → piezometer | nearest SAFRAN cell | the well's cell, or outcrop-weighted cells (CQ4) | ❌ CQ4 is SHOULD |
+| river gauge → piezometer | 2 nearest gauges | reaches associated with the unit (CQ5) | ❌ CQ5 is SHOULD, evidence incomplete |
+| canal → piezometer | plain node → plain wells | supply areas over the unit (CQ6) | ❌ CQ6 is COULD, evidence missing |
+
+**❓ 1. The three relations the KG does not hold yet.** Recommended: in D they keep C's
+distance rules, declared as shared non-semantic edges, so D vs C isolates the two relations the
+KG actually holds (well ↔ well, pump → well). The alternative, building CQ4–CQ6 first, would
+add weeks for links whose evidence is partly missing (CQ5, CQ6), and a D that loses its weather
+or river inputs would differ from C by more than edge semantics.
+
+**❓ 2. Abstraction nodes: facilities or 5 km fields.** The KG works per facility (178 in the
+main policy's paths, 1,040 in all links); Taccari groups facilities in 5 km cells. The inventory
+must be the same in C and D. Recommended: facility nodes in both (C keeps its distance rule on
+facilities), because a field mixes facilities that the KG attributes to different units, so D's
+semantics would be lost in the aggregation.
+
+**❓ 3. The depth threshold of the well links.** The design says "a |Δ depth| threshold chosen on
+the training period". Recommended rule, frozen before any arm runs: the threshold that maximises
+the median training-period correlation of weekly head anomalies of linked pairs, among
+{10, 20, 50 m, none}; a pair without a depth enters only the "none" variant (CQ11).
+
+**Fixed by the existing decisions (no question):** main runs use the main policy, sensitivities
+confident-only and all links (§3); an influence is stored per evidence path, so the export takes
+each facility once per well (the best-ranked path, as in CQ12); unattributed pumping enters every
+arm as its explicit input (§3); eligibility travels with each edge as a mask, used only by the
+constrained variants; the export records the KG release, the policy and the rule versions in the
+HeteroData metadata; PyG (`torch_geometric`) is installed and pinned when the export is written.
+
+**The equivalence test** (analysis plan §10, third review): pandas builds the same `HeteroData`
+from the source tables only (wells, BD LISA, attribution table, BNPE points, policies), and the
+test compares node identity and order, relation directions, edge lists and weights, features and
+units, masks, time alignment and eligibility, then a forward pass with fixed weights (tolerance
+1e-6). Most of the pandas side exists already as the oracles of `tests/test_kg_rules.py` and
+`tests/test_cq.py`.

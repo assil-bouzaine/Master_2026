@@ -38,8 +38,6 @@ is never read as "none".
          confidence
 """
 import json
-import math
-from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -58,74 +56,11 @@ from src.dataset.crop_demand import AREA_OUT, code_to_class, load_classes
 from src.kg import pump_attribution as pa
 from src.kg.apply_rules import RULES, SHAPES, check, ontology_network, rule_records, run_rules
 from src.kg.build_kg import BNPE_SNAPSHOT, PLAIN_MARGIN_DEG
+from src.kg.cq import ask, iris, local, one
 from tests.test_kg_rules import (GEO, KG, L, RADIUS, SOSA, TIME, build_fixture, d, l93,
                                  oracle_relations, store_of, violations)
 
-CQ = Path(__file__).resolve().parent / "cq"
-XSD_DOUBLE = ox.NamedNode(str(XSD.double))
-XSD_INTEGER = ox.NamedNode(str(XSD.integer))
 MAIN, CONF_ONLY = d("policy/main"), d("policy/confident-only")
-
-
-def term(v):
-    """A Python value as a pyoxigraph term: IRIs for rdflib URIRefs, xsd:double for floats."""
-    if isinstance(v, (ox.NamedNode, ox.Literal)):
-        return v
-    if isinstance(v, rdflib.URIRef):
-        return ox.NamedNode(str(v))
-    if isinstance(v, float):
-        return ox.Literal(repr(v), datatype=XSD_DOUBLE)
-    if isinstance(v, int):
-        return ox.Literal(str(v), datatype=XSD_INTEGER)
-    return ox.Literal(str(v))
-
-
-def py(v):
-    if v is None:
-        return None
-    if isinstance(v, ox.Literal):
-        dt = v.datatype.value
-        if dt.endswith(("#double", "#decimal", "#float")):
-            return float(v.value)
-        if dt.endswith(("#integer", "#int", "#long")):
-            return int(v.value)
-        if dt.endswith("#boolean"):
-            return v.value == "true"
-        return v.value
-    return v.value
-
-
-def sqrt(x):
-    return ox.Literal(repr(math.sqrt(float(x.value))), datatype=XSD_DOUBLE)
-
-
-FUNCTIONS = {ox.NamedNode("http://www.w3.org/2005/xpath-functions/math#sqrt"): sqrt}   # XPath 3.1
-
-
-def bind(query, params):
-    """The query with its parameters bound by a VALUES clause at the top of its WHERE block."""
-    if not params:
-        return query
-    i = query.index("WHERE {") + len("WHERE {")
-    row = " ".join(str(term(v)) for v in params.values())
-    return f"{query[:i]}\n    VALUES ({' '.join('?' + k for k in params)}) {{ ({row}) }}{query[i:]}"
-
-
-def ask(store, name, **params):
-    """Run tests/cq/<name>.rq with the parameters bound; rows as dicts of Python values."""
-    res = store.query(bind((CQ / f"{name}.rq").read_text(), params), custom_functions=FUNCTIONS)
-    cols = [v.value for v in res.variables]
-    return [{c: py(r[c]) for c in cols} for r in res]
-
-
-def one(store, name, **params):
-    rows = ask(store, name, **params)
-    assert len(rows) == 1, f"{name} {params}: {len(rows)} rows"
-    return rows[0]
-
-
-def local(iri):
-    return iri.rsplit("/", 1)[-1].rsplit("#", 1)[-1] if iri else iri
 
 
 def to_store(g):
@@ -383,11 +318,6 @@ def test_cq8_fixture(s):
 
 
 # ----------------------------------------------------------------------------------- 2. data
-def iris(store, q):
-    """{literal value: IRI term} from a two-column query."""
-    return {r[0].value: r[1] for r in store.query("PREFIX lulcw: <https://w3id.org/lulcw#> " + q)}
-
-
 def test_data(store):
     wells = pd.read_parquet(DATASET_DIR / "wells.parquet")
     pz = iris(store, "SELECT ?c ?w WHERE { ?w a lulcw:Piezometer ; lulcw:bssCode ?c }")

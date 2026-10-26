@@ -254,3 +254,25 @@ better.
 6. *Still missing from the subject:* land use in the KG (12.6), satellite semantics
    (12.10), explanations of real outputs (CQ10), the scenario (CQ16), forecasting (stated
    as out of scope).
+
+## LU-6, first version (2026-10-26): the chain answered from the graph
+- `src/analysis/lu6_example.py` → `docs/lu6_example.md` (generated): for an alluvium well (MILLAS
+  C2-1, 718BP02) and a Pliocene well (PONTEILLA NYLS-1, 671AA00), every statement is the answer of
+  a stored CQ query of 12.7, with its status: the well and its unit (CQ1, CQ3); the dated crops of
+  its 3 km zone 2015–2025 with their potential demand and category (CQ7); the facilities that may
+  draw from its unit, their attribution, the influences and how many the main policy accepts (CQ2,
+  CQ8); the 2024 accounting of the plain by unit and use (CQ12); the LU-4 result; and what the graph
+  cannot say yet.
+- What the two cases show: around C2-1, orchards (usually irrigated) dominate and the zone is
+  "high" demand every year, yet the main policy accepts only 7 of the 48 pumping paths (2 of them signed),
+  because most alluvium boreholes rest on the "possible" exact-entity evidence; around NYLS-1,
+  vines dominate (mostly partly irrigated or rainfed classes) and the main policy accepts 9 of the
+  103 paths, those of the 2 confident and 7 probable candidates, all with the sign.
+  In 2024 all 16.8 Mm³ of the plain's declared irrigation stays unresolved, against 23.1 Mm³ of
+  drinking water placed in the Pliocene: the agricultural pathway cannot be carried by the
+  borehole links, as stated in the review response §2.
+- Not yet in the example: the satellite irrigation rule (CQ15, LU-5), the canal return flow (CQ6),
+  an explanation of a model output (CQ10). The final LU-6 (Gate 3) adds them where they exist.
+- A bug caught while writing it: IRIs passed to the CQ runner as plain strings became literals and
+  matched nothing (zero accepted paths, an empty CQ12 table). `src.kg.cq.term` now refuses a plain
+  string.

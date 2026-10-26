@@ -1,9 +1,11 @@
 """Bring Colab results back to the laptop (docs/gpu_howto.md, Colab section).
 
     .venv/bin/python scripts/colab_pull.py ~/Downloads/results_colab.zip
+    .venv/bin/python scripts/colab_pull.py ~/Downloads/drive-download-....zip --version v4
 
 The zip is made in Colab (`python scripts/colab_run.py zip`, then files.download) or
-downloaded from Drive (folder pfe_colab/results_gpu > Download). It is unpacked into
+downloaded from Drive (folder pfe_colab/results_gpu > Download). A Drive download of run
+folders selected inside results_gpu/v4 has no version folder: --version names it. It is unpacked into
 results/_colab/output; for every dataset version in it (v3, v4), every finished run
 (predictions.parquet present) and every tuning folder (<model>_tuning with a study or a
 best.json) is copied to results/<v>/<run>, and the runs are rescored with
@@ -22,12 +24,19 @@ VERSIONS = ("v3", "v4")
 
 
 def main():
-    if len(sys.argv) != 2:
+    args = sys.argv[1:]
+    version = None
+    if len(args) == 3 and args[1] == "--version" and args[2] in VERSIONS:
+        args, version = args[:1], args[2]
+    if len(args) != 1:
         sys.exit(__doc__)
     shutil.rmtree(OUTPUT, ignore_errors=True)
-    OUTPUT.mkdir(parents=True)
-    with zipfile.ZipFile(sys.argv[1]) as z:
-        z.extractall(OUTPUT)
+    target = OUTPUT / version if version else OUTPUT
+    target.mkdir(parents=True)
+    with zipfile.ZipFile(args[0]) as z:
+        if version and any(n.split("/")[0] in VERSIONS for n in z.namelist()):
+            sys.exit(f"{args[0]} already holds a version folder: run without --version")
+        z.extractall(target)
     found = [d for v in VERSIONS for d in sorted(OUTPUT.rglob(v)) if d.is_dir()]
     if not found:
         sys.exit(f"no results folder of {VERSIONS} in {sys.argv[1]}")

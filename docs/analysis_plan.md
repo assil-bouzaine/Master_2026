@@ -541,7 +541,7 @@ Decided by Assil after the second external review; reasons and checks in
    harder twin.
 9. §11 freeze tag and confirmation check; §12 wording.
 
-## 14. Amendments before the tag (2026-10-24/25)
+## 14. Amendments before the tag (2026-10-24 to 26)
 
 After the third review (`docs/review_codex_2026-10-24.md`); verdicts and checks in
 `docs/review_codex_2026-10-24_response.md`. Items 1–4 and 9–11 were decided by Assil
@@ -643,3 +643,26 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       calendar) and again as an independent demand effect (second Codex review of
       2026-10-25). To be settled at Gate 3.
     - *Reconstruction (3) of §8* uses the same Kc calendar and crop mix.
+14. **The graph export of arms C–F (task 12.8; decided by Assil on 2026-10-26, before the
+    export or any arm exists; proposal in `docs/notes/step12_ontology.md`, 12.8).**
+    - *Abstraction nodes:* one node per facility, in every arm. C keeps its distance rule
+      (facilities within 10 km, weight exp(−d / 5 km)) applied to facilities instead of 5 km
+      fields: a field would mix facilities that the KG attributes to different units.
+    - *Node inventory:* the same in C–F. For weather cells, river gauges or reaches and canal
+      nodes it is the union of the nodes that the distance rule or the KG rule connects to a
+      well; only the edges differ (the contract above).
+    - *D's edges all come from the KG:* well ↔ well (same unit within 5 km, depth rule below),
+      pump → well (influences selected by the policy, §3), and weather cell, river and canal →
+      well from CQ4, CQ5 and CQ6, which are therefore built before the export (Assil preferred
+      this to the proposal of keeping C's distance rules for these three relations as shared,
+      non-semantic edges). Where the KG holds no documented link for a well, D has none:
+      never a distance fallback. The share of wells without each relation is reported
+      beside every D vs C result, since D then also differs from C in which exogenous
+      inputs reach a well. If an input is missing (CQ6 has no supply-area polygons yet), the
+      relation follows what the evidence supports, as the CQ contract states, and the gap is
+      reported.
+    - *Depth rule of the well links:* the |Δ depth| threshold is the one, among {10 m, 20 m,
+      50 m, none}, that maximises the median training-period (to 2019) correlation of weekly
+      head anomalies (head minus the well's training mean for that week of the year) of the
+      linked pairs; frozen before any arm runs. Pairs without an
+      investigation depth enter only the "none" variant (CQ11).

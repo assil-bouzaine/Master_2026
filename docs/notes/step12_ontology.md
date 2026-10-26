@@ -698,7 +698,7 @@ depth check of the records and the coverage by volume and use are in
   behaviour (an answer "unknown" with its reason, never an empty "supported").
 - CQ7's alignment columns fill in with 12.9 (RPG → AGROVOC); the status then turns supported.
 
-## 12.8 design proposal (2026-10-26, before any code; decisions for Assil marked ❓)
+## 12.8 design proposal (2026-10-26, before any code; decisions for Assil marked ❓, taken the same evening: see "12.8 decisions" below)
 
 The export turns the graph into the PyG `HeteroData` that arms C–F share (analysis plan §10:
 one node inventory, one backbone, only the edge rule changes). Arm C's rules are those of
@@ -765,3 +765,109 @@ RPG crop codes → AGROVOC, the main alignment experiment (subject SO1; roadmap 
    tables kept.
 5. **Into the graph:** the validated alignments as `skos:*Match` on the crop-code concepts; CQ7
    then turns from partial to supported where every code is aligned.
+
+## 2026-10-26 evening: Colab session 2 ends, the 12.8 decisions, 12.9 steps 1–3, a label fix
+
+### Recurring check (CLAUDE.md §7, review of 2026-10-25), answered before starting
+1. *Chain link advanced:* land use → shared vocabulary (12.9: RPG codes → AGROVOC, the
+   subject's alignment objective SO1), and the model's graph (the 12.8 decisions: which
+   semantic relations reach the model, and that CQ4–CQ6 come first).
+2. *Where dated land use enters:* the weekly crop-thirst index (dataset; LU-4: no detectable
+   information on the core wells) and the graph's dated crop areas, classes and demand
+   categories (12.6, CQ7). It enters no model graph yet (12.8) and no explanation (CQ10).
+3. *Observed / inferred / assumed / unknown:* crop codes and areas observed (RPG); classes
+   inferred by a written mapping; Kc and irrigation status assumed (FAO-56, census); the
+   code → AGROVOC relations will be **judged** (Assil's gold set), the matchers' relations
+   **inferred** and scored against it; parcel → water source unknown.
+4. *Evidence vs plan:* done tonight: the AGROVOC snapshot, the candidate table, the gold-set
+   template and its checks. Still plans: the gold set itself, the OntoAligner run (Colab),
+   the alignments in the graph, CQ4–CQ6, the export.
+5. *Next model experiment:* none. `chronos2_ft` completes the v4 baselines (no new
+   question). The next experiment that answers an open question is Phase 4, after CQ4–CQ6
+   and 12.8.
+6. *Still missing from the subject:* satellite semantics (12.10, Earth Engine login),
+   explanations of real outputs (CQ10), the scenario (CQ16); the alignment experiment is
+   under way.
+
+### Colab session 2 (ended 17:14 UTC)
+- Read on Drive (`pfe_colab/results_gpu`): Chronos-2 zero-shot and cross-learning done
+  (14:51–15:10 UTC); `chronos2_ft` failed at once (Colab's `datasets` 4.8.5 against the
+  pyarrow pin, step note of the afternoon); the Taccari regimes finished: left-out-well
+  folds 2–4 (fold 0 and fold 1's first seeds came from session 1), 25 %, 50 % and the refit,
+  the last seeds saved at 17:14 UTC, and the assembled left-out-well predictions written.
+  The run log on Drive (291 KB) cannot be read to its end in Drive's viewer, which stops at
+  256 KiB; the folder listing shows every run complete.
+- **No GPU tonight:** the notebook opened at 19:18 UTC on a new runtime without a GPU
+  (`nvidia-smi: command not found`, CPU backend), although the runtime type is T4: the free
+  GPU quota of the day is used up. The empty CPU runtime was deleted. `chronos2_ft` waits for
+  the next GPU session (about 20 min on a T4).
+- **Pull:** Assil approved downloading the six new run folders (about 125 MB). Drive zipped
+  them, but the file did not reach `~/Downloads` (Chrome may be waiting on a prompt the
+  extension cannot see). The local `results/v4` has none of them yet.
+
+### 12.8 decisions (Assil, 2026-10-26; analysis plan §14 item 14)
+1. **Weather, river and canal edges of arm D come from the KG: CQ4, CQ5 and CQ6 are built
+   before the export.** Not the recommendation (C's distance rules as shared edges); the
+   cost was stated (weeks of KG work, partial evidence for CQ5 and CQ6). It fits the D vs C
+   contract (same node inventory, only the edge rule changes) if the inventory of weather,
+   river and canal nodes is the union of what either rule connects. Consequences: where the
+   KG documents no link, D has no edge for that well, so D vs C also differs in which
+   exogenous inputs reach each well; the share of wells without each relation is reported
+   with every D vs C result. CQ6 has no supply-area polygons yet; its contract says to keep
+   it as a documented gap rather than invent coverage, so D's canal relation may stay
+   partial.
+2. **One node per facility** in every arm (C's 10 km rule applied to facilities).
+3. **Depth rule:** the threshold among {10, 20, 50 m, none} with the highest median
+   training-period correlation of weekly head anomalies of linked pairs, frozen first.
+
+**Work order that follows** (Phase 3 ends 6 Dec): CQ4 (BD LISA outcrops × SAFRAN cells, no
+new data) → CQ5 (river reaches: reach geometry, gauge-to-reach rule, documented exchange) →
+CQ6 (search for canal command areas; else the documented gap) → 12.8. Each one as before:
+ontology terms, facts or rules, shapes, a CQ query with fixtures and source-table oracles.
+
+### 12.9 steps 1–3 (snapshot, candidates, gold-set tools)
+- **Snapshot** (`src/ingest/agrovoc.py`): AGROVOC Core N-Triples of 2026-10-26, 74.4 MB
+  (size checked by a HEAD request first; download approved by Assil), md5 = ETag
+  `dfcebf9f…`. FAO serves only the newest release at its fixed URL, so the snapshot is kept
+  under its date with the VoID file and `release.json`, and never fetched again (`--check`
+  compares it with the online release). 42,082 concepts (1 deprecated); labels are SKOS-XL
+  only: 42,082 preferred labels in French and in English, 8,527 French and 13,006 English
+  alternatives; 42,530 broader links (data log).
+- **Candidates** (`src/kg/agrovoc_candidates.py` → `configs/lu_agrovoc_candidates.csv`,
+  1,615 rows): the 198 codes of the well zones, up to 8 candidates from the code's label
+  (full, head, tail) and 2 from its group label, with the preferred labels and the broader
+  concepts. 64 codes have an exact label match, 131 only word overlap, 3 none (CML Cameline,
+  PAQ Pâquerette, VER Véronique: AGROVOC names them by their Latin names, e.g. Camelina
+  sativa). Three traps found on the largest codes and handled: **homonyms** (RPG "Pêche" is
+  the fruit; AGROVOC's French "pêche" is fishing and the fruit is "pêche (fruits)", so a
+  qualified label also matches on its base, and equal scores are broken in favour of the
+  crop and land branches: concepts under "plants", "Plantae", "plant products", "land
+  resources" or "land cover", 6,246 concepts); **negations** ("non" is not a stop word:
+  "terre non arable" ≠ "terre arable"); **exclusions** (the tail of "Vigne (sauf vigne
+  rouge)" is not matched). PVT now has peaches first, JAC fallow before arable land.
+- **Gold set tools** (`src/kg/agrovoc_gold.py`): `template` wrote
+  `configs/lu_agrovoc_gold.csv` (198 codes, most area first; 13 codes cover 90 % of the zone
+  area, 57 cover 99 %), `search "<words>"` finds concepts by whole words in their French and
+  English labels (e.g. "pêcher" → Prunus persica), `check` validates relations, IRIs
+  against the snapshot, duplicates and missing codes.
+- **A label fix found on the way** (`src/kg/landuse.py`): the 2023 RPG code table is
+  Windows-1252, but was read as latin-1, so ’ and … (bytes 0x92, 0x85) became the control
+  characters U+0092 and U+0085 in 23 of the 198 crop-code labels of the graph ("Blé dur
+  d\u0092hiver"; U+0085 is a line break in Unicode). `src/analysis/rpg_profile.py` already
+  read it as cp1252. Now cp1252; graph rebuilt (356,377 triples, unchanged; rules and shapes:
+  no violation); `tests/test_kg.py` check 9: no literal of the graph holds a control
+  character (a U+0085 probe is caught), and the 2023 and 2024 tables give their 144 shared
+  codes the same labels (14 of them differed, as read before).
+
+### What to consider
+- **Plant or product?** AGROVOC often has both a crop or plant concept (grapevines;
+  Prunus persica, alt. "pêcher") and a product concept (peaches, in "plant products"). A
+  parcel code describes what grows on the land, so the plant or crop concept fits better as
+  an exact or close match, the product as a related one. Assil decides the rule before
+  filling the gold set, and applies it to every code.
+- **Gold-set bias.** Candidates come from word matching; a gold set limited to them would
+  favour word matchers in step 4. Hence the search command and the rule "search before none".
+  A second annotator (the supervisor, on the 57 codes covering 99 % of the area) would give an
+  agreement figure; optional.
+- **Depth rule, small samples:** the 10 m variant may keep few pairs, and its median
+  correlation is then noisy; the number of pairs per variant is reported beside the choice.

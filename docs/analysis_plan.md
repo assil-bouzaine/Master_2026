@@ -622,6 +622,14 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       (`<run>_lu_none`, same inputs, settings and seeds as `<run>`). Reported: none vs
       without (the machine effect; for LightGBM, whose run without the feature also ran on
       Kaggle, a reproducibility check) and on vs none (the same-machine contrast).
+      **Decided by Assil on 2026-10-26, before the land-use runs were pulled or scored:
+      the main contrast is on vs none** (strict paired support, Holm over the two models).
+      On vs without (the wording written first) and none vs without (the machine effect)
+      are reported outside the Holm family. The placebo, wide and frozen runs were also
+      trained in the land-use job, so they are compared with none for the same reason; the
+      per-group rows repeat on vs none. Disclosed: to check that the kernel had ended,
+      Claude read the end of its log, which printed one summary, the LSTM frozen run
+      (drought median NSE 0.006, skill 0.524); no on, none or without result had been seen.
     - *Run identity.* Land-use runs record the variant and a content hash of their
       land-use inputs (with the index file, the crop-class table and the RPG editions);
       the LSTM puts the hash into its fingerprint, so cached seeds made from other

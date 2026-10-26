@@ -4,26 +4,31 @@
 
 Written on 2026-10-25, before any land-use run. For each model, the tuned LightGBM without
 its own climatology and the tuned LSTM, the run with the main crop-demand input
-(`<run>_lu_on`) is compared with the same model without it (`<run>`, same settings and
-seeds), well by well on the core wells, in the drought phase:
+(`<run>_lu_on`) is compared with the same model re-trained without it in the same land-use
+job (`<run>_lu_none`, same inputs, settings and seeds), well by well on the core wells, in
+the drought phase:
 
-  main contrast   on vs without: median paired difference of NSE and of skill, cluster-
+  main contrast   on vs none: median paired difference of NSE and of skill, cluster-
                   bootstrap 95 % interval, cluster sign-flip p (src.analysis.stats.paired,
                   strict paired support), Holm over the two models, per metric
-  placebo         placebo vs without, and on vs placebo: a gain that the placebo also shows
+  placebo         placebo vs none, and on vs placebo: a gain that the placebo also shows
                   is not evidence that the crop information is used
-  wide            wide (vines, olives, nuts, fodder added) vs without
-  frozen          frozen (the 2019 crop areas in every year) vs without, and on vs frozen:
+  wide            wide (vines, olives, nuts, fodder added) vs none
+  frozen          frozen (the 2019 crop areas in every year) vs none, and on vs frozen:
                   only a gain of the dated index over the frozen one is evidence that the
                   change of crop areas over the years adds information (added by Assil on
                   2026-10-25 before any run, after the second Codex review of that day)
   aquifer groups  the main contrast per group (secondary)
-  same machine    none (the run without the feature, re-trained in the land-use job) vs
-                  without, and on vs none: the LSTM run without the feature was trained on a
-                  Colab GPU and the land-use runs on Kaggle CPUs (added on 2026-10-25, before
-                  any land-use run returned; whether on vs none replaces on vs without as the
-                  main contrast is Assil's decision, taken before these results are scored)
+  same machine    none vs without (`<run>`, the baseline of record): the LSTM run without
+                  the feature was trained on a Colab GPU and the land-use runs on Kaggle CPUs,
+                  so this row measures the machine effect (for LightGBM, whose run without the
+                  feature also ran on Kaggle, it is a reproducibility check); and on vs
+                  without, the main contrast as first written on 2026-10-25
 
+The main contrast was on vs without when this script was written; the same-machine runs were
+added on 2026-10-25 before any land-use run returned, and Assil chose on vs none as the main
+contrast on 2026-10-26, before the land-use runs were pulled or scored (analysis plan §14
+item 13). Placebo, wide and frozen ran in the same job, so they are compared with none too.
 Placebo, wide, frozen, same-machine and group rows are reported with the same endpoint,
 outside the Holm family. The claim a positive main contrast supports is "incremental predictive information
 from the demand index", not an effect of land-use change.
@@ -55,10 +60,10 @@ def contrasts():
                     ("wide", "_lu_wide"), ("frozen", "_lu_frozen"), ("none", "_lu_none"))
         runs = {v: metrics(base + s) for v, s in variants}
         missing += [base + s for v, s in variants if runs[v] is None]
-        pairs = [("main", "on", "without"), ("placebo", "placebo", "without"),
-                 ("placebo", "on", "placebo"), ("wide", "wide", "without"),
-                 ("frozen", "frozen", "without"), ("frozen", "on", "frozen"),
-                 ("same machine", "none", "without"), ("same machine", "on", "none")]
+        pairs = [("main", "on", "none"), ("placebo", "placebo", "none"),
+                 ("placebo", "on", "placebo"), ("wide", "wide", "none"),
+                 ("frozen", "frozen", "none"), ("frozen", "on", "frozen"),
+                 ("same machine", "none", "without"), ("same machine", "on", "without")]
         for kind, a, b in pairs:
             if runs[a] is None or runs[b] is None:
                 continue
@@ -66,12 +71,12 @@ def contrasts():
                 r = paired(runs[a], runs[b], wells, split=SPLIT, metric=metric, strict=kind == "main")
                 rows.append({"model": label, "kind": kind, "contrast": f"{a} vs {b}",
                              "group": "all core", "metric": metric} | r)
-        if runs["on"] is not None and runs["without"] is not None:
-            for grp in sorted(runs["without"]["group"].dropna().unique()):
-                sel = {k: m[m["group"] == grp] for k, m in (("on", runs["on"]), ("without", runs["without"]))}
+        if runs["on"] is not None and runs["none"] is not None:
+            for grp in sorted(runs["none"]["group"].dropna().unique()):
+                sel = {k: m[m["group"] == grp] for k, m in (("on", runs["on"]), ("none", runs["none"]))}
                 for metric in METRICS:
-                    r = paired(sel["on"], sel["without"], wells, split=SPLIT, metric=metric)
-                    rows.append({"model": label, "kind": "group", "contrast": "on vs without",
+                    r = paired(sel["on"], sel["none"], wells, split=SPLIT, metric=metric)
+                    rows.append({"model": label, "kind": "group", "contrast": "on vs none",
                                  "group": grp, "metric": metric} | r)
     t = pd.DataFrame(rows)
     if len(t):

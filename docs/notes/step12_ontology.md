@@ -594,10 +594,13 @@ depth check of the records and the coverage by volume and use are in
   11 s in all.
 
 ### Why
-- **Parameters through substitution, not string formatting.** pyoxigraph pre-binds variables
-  (SEP-0007) but only those of the SELECT list, and a sub-SELECT sees a parameter only if it
-  projects it. So every query returns its parameters on each row, which also records them in
-  the answer, as the CQ contract asks.
+- **Parameters through a VALUES clause** (corrected the same day, with CQ7): the test inserts
+  `VALUES (?W ?r …) { (…) }` at the top of the query's WHERE block, standard SPARQL that any
+  engine evaluates first. pyoxigraph's own substitutions (SEP-0007), used at first, accept only
+  variables of the SELECT list and act as a join after evaluation in 0.5: harmless for plain
+  patterns (0.04 s instead of 0.001 s), but a status query then evaluated every well and year,
+  and a well-year without data could not keep its "unknown" row. Every query still returns its
+  parameters on each row, which records them in the answer, as the CQ contract asks.
 - **A status per question.** "No neighbour" from a well whose unit is unknown, or from a radius
   beyond the one the rule searched, is not an answer: the status query says which case it is.
 - **Oracles from the source tables** (dataset, BD LISA GeoPackage), never from the exporter.
@@ -655,3 +658,42 @@ depth check of the records and the coverage by volume and use are in
 - **Scope of CQ12:** declared withdrawals of facilities in the extent, not all abstraction from a
   unit, nor consumption; weighted allocations ("an explicit allocation with weights ≤ 1") are not
   implemented, since no policy asks for one.
+
+## 12.7, third group: CQ7 and CQ8 (2026-10-26)
+
+### What was done
+- **CQ7** `cq07_crops` (the RPG codes observed in a well's 3 km zone in one edition: original code,
+  label, RPG group, mapped class or "unmapped", irrigation assumption, clipped area, release, and
+  SKOS alignments when they exist), `cq07_classes` (class areas, the unmapped area included, with
+  the number of codes they add up), `cq07_demand` (main and wide potential demand, m³ per calendar
+  year, procedure, the dated category with its threshold and rule), `cq07_status` (unknown when no
+  edition of that year exists: an edition answers only its own year; partial while codes are not
+  aligned to a shared vocabulary).
+- **CQ8** `cq08_influences` (driver, variable, mechanism, proposed sign, driver group, distance,
+  resolution, confidence, eligibility and its reason, conditions, the path: both attributions and
+  the shared unit or group, and whether the policy accepts it), `cq08_status` (partial for every
+  well with a unit: only pumping-drawdown pathways exist so far; rain recharge, canal return and
+  river exchange are not yet Influence records, so their absence says nothing).
+- **Fixtures:** CQ7 an override before the group (AGR is citrus), the unmapped area kept in the
+  total, synthetic alignments (our own namespace, no unverified external IRI) giving "supported",
+  2020 unknown, 2016 unknown although a demand estimate exists (no crops observed); CQ8 the exact
+  path: non-increasing sign, eligible; the group-level path: no sign; an unaccepted segment (a
+  possible attribution) blocks the path under the main policy.
+- **Data (v4):** CQ7 for all 65 wells × 11 editions: 13,684 code rows, class areas and demand
+  estimates = the clipped-area table, the class table (`code_to_class`) and the weekly index summed
+  by calendar year (threshold 597,028 m³); every answer partial (no alignment before 12.9); 2014 and
+  2026 unknown. CQ8: all 1,848 influences (rule outputs) = the CQ2 candidates (read from the
+  attributions): two derivations, the same paths, signs and eligibility by resolution, the same
+  selections and distances.
+- **Parameters now bound by VALUES** (see the first group's "Why"), and two more pyoxigraph lessons:
+  an EXISTS that joins two subjects took 4 s per evaluation (once per crop code: cq07_status over
+  60 s → 0.15 s with OPTIONAL counts), and the patterns-before-BIND rule of the second group.
+  Whole test: 2 min 49 s, mostly the 3,575 CQ7 queries.
+
+### What is left of 12.7
+- **CQ10** (explanations of real outputs) needs the model results (Phase 4–5); **CQ15** (probable
+  irrigation) needs the satellite rule (12.10). Both MUST: their queries and fixtures come with
+  their inputs.
+- **SHOULD/COULD** (CQ4, 5, 6, 9, 13, 14, 16): fixture contracts for their missing-evidence
+  behaviour (an answer "unknown" with its reason, never an empty "supported").
+- CQ7's alignment columns fill in with 12.9 (RPG → AGROVOC); the status then turns supported.

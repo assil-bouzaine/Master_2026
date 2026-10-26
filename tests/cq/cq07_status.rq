@@ -1,0 +1,39 @@
+# CQ7 · Answer status for the land use around a well (common answer contract,
+# docs/competency_questions.md §2)
+#
+# Parameters  ?W  any IRI;  ?year  calendar year (xsd:integer)
+# Reads       asserted facts and the crop classes derived by the rules
+# Returns     one row: the number of crop codes observed and of codes without an alignment, and
+#             ?status not_applicable (no crop demand zone for ?W), unknown (no RPG edition of
+#             ?year in the graph: an edition answers only its own year, so nothing is said of the
+#             crops that year), partial (crops and areas observed, but no demand estimate, or some
+#             codes not yet aligned to a shared vocabulary: task 12.9), supported (crops, areas,
+#             classes, demand and alignments); ?reason in words.
+# Counts from OPTIONALs, not EXISTS: in pyoxigraph 0.5 an EXISTS that joins two subjects took 4 s
+# per evaluation, once per crop code.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+SELECT ?W ?year (COUNT(DISTINCT ?c) AS ?codes) (COUNT(DISTINCT ?unaligned) AS ?unalignedCodes)
+       (IF(COUNT(?zone) = 0, "not_applicable", IF(COUNT(DISTINCT ?c) = 0, "unknown",
+            IF(COUNT(DISTINCT ?unaligned) > 0 || COUNT(DISTINCT ?e) = 0, "partial", "supported"))) AS ?status)
+       (IF(COUNT(?zone) = 0, "no crop demand zone for this IRI",
+         IF(COUNT(DISTINCT ?c) = 0, "no RPG edition of that year in the graph: an edition answers only its own year",
+         IF(COUNT(DISTINCT ?e) = 0, "crops observed, but no demand estimate for that year",
+         IF(COUNT(DISTINCT ?unaligned) > 0, "crop codes not yet aligned to a shared vocabulary (task 12.9)",
+            "crops, areas, classes, demand and alignments")))) AS ?reason)
+WHERE {
+    OPTIONAL { ?zone lulcw:zoneOf ?W . }
+    OPTIONAL {
+        ?z lulcw:zoneOf ?W .
+        ?o a lulcw:CropAreaObservation ; sosa:hasFeatureOfInterest ?z ; lulcw:rpgEdition ?year ;
+           lulcw:cropCode ?c .
+        OPTIONAL { ?c skos:exactMatch|skos:closeMatch|skos:broadMatch|skos:narrowMatch|skos:relatedMatch ?al . }
+        BIND (IF(BOUND(?al), ?none, ?c) AS ?unaligned)
+    }
+    OPTIONAL {
+        ?z2 lulcw:zoneOf ?W .
+        ?e a lulcw:CropDemandEstimate ; sosa:hasFeatureOfInterest ?z2 ; lulcw:rpgEdition ?year .
+    }
+}
+GROUP BY ?W ?year

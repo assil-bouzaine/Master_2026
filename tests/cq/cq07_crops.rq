@@ -1,0 +1,34 @@
+# CQ7 · Dated land use around a well: the crop codes of one RPG edition
+# (docs/competency_questions.md §4, CQ7; task 12.7)
+#
+# Parameters  ?W     a lulcw:Piezometer (its crop demand zone: the area within 3 km)
+#             ?year  RPG edition = calendar year (xsd:integer); an edition answers its own year only
+# Reads       asserted facts (lulcw_kg_<dataset>.ttl: clipped crop areas, crop codes) and the
+#             crop class of each code, derived by the SHACL-AF rules; no OWL reasoning
+# Returns     one row per RPG crop code observed in the zone that year: the original code, its
+#             label and RPG group, the mapped crop class ("unmapped" when none) with its irrigation
+#             assumption, the clipped area (ha: the parcels' area inside the zone, not whole
+#             parcels), the RPG release, and the code's alignments to shared vocabularies (SKOS
+#             mapping relation and target; none before task 12.9). Crop identity says nothing of
+#             whether a parcel is irrigated, nor from which source.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+SELECT ?W ?year ?code ?label ?rpgGroup ?class ?irrigationAssumption ?areaHa ?release
+       ?alignmentRelation ?alignment
+WHERE {
+    ?zone lulcw:zoneOf ?W .
+    ?o a lulcw:CropAreaObservation ; sosa:hasFeatureOfInterest ?zone ; lulcw:rpgEdition ?year ;
+       lulcw:cropCode ?c ; sosa:hasSimpleResult ?areaHa .
+    ?c skos:notation ?code ; lulcw:rpgGroupCode ?rpgGroup .
+    OPTIONAL { ?c skos:prefLabel ?label . }
+    OPTIONAL { ?o prov:wasDerivedFrom ?release . }
+    OPTIONAL { ?c lulcw:cropClass ?cls . ?cls skos:notation ?classCode .
+               OPTIONAL { ?cls lulcw:irrigationAssumption ?irrigationAssumption . } }
+    OPTIONAL { ?c ?alignmentRelation ?alignment .
+               FILTER (?alignmentRelation IN (skos:exactMatch, skos:closeMatch, skos:broadMatch,
+                                              skos:narrowMatch, skos:relatedMatch)) }
+    BIND (COALESCE(?classCode, "unmapped") AS ?class)
+}
+ORDER BY DESC(?areaHa) ?code

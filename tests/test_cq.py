@@ -5,8 +5,10 @@
 
 Each file of tests/cq/ answers one competency question or one part of it (docs/competency_questions.md
 §6): its header states the parameters, what it reads (asserted facts or SHACL-AF rule outputs; no
-OWL reasoning) and its columns. Parameters are pre-bound with pyoxigraph's substitutions (SEP-0007),
-which apply only to variables of the SELECT list, so every query returns its parameters on each row.
+OWL reasoning) and its columns. Parameters are bound by a VALUES clause placed at the top of the
+query's WHERE block (standard SPARQL 1.1, any engine), and every query returns them on each row.
+pyoxigraph's own substitutions (SEP-0007) act as a join after evaluation in 0.5, too late for the
+status queries: a well-year without data must still give a row (and cq07_status took over 60 s).
 Each question has a status query (supported, partial, unknown, conflicting, not_applicable, with a
 reason: the common answer contract, §2), so that an empty answer from a search that covered nothing
 is never read as "none".
@@ -46,12 +48,13 @@ import pyogrio
 import pyoxigraph as ox
 import rdflib
 from rdflib import Literal
-from rdflib.namespace import RDF, RDFS, XSD
+from rdflib.namespace import RDF, RDFS, SKOS, XSD
 
 from src.analysis.bdlisa_profile import GPKG
 from src.analysis.bnpe_profile import load as load_bnpe
 from src.analysis.piezo_profile import PLAIN_BBOX
 from src.config import CRS_L93, DATASET, DATASET_DIR, INTERIM
+from src.dataset.crop_demand import AREA_OUT, code_to_class, load_classes
 from src.kg import pump_attribution as pa
 from src.kg.apply_rules import RULES, SHAPES, check, ontology_network, rule_records, run_rules
 from src.kg.build_kg import BNPE_SNAPSHOT, PLAIN_MARGIN_DEG
@@ -99,10 +102,18 @@ def sqrt(x):
 FUNCTIONS = {ox.NamedNode("http://www.w3.org/2005/xpath-functions/math#sqrt"): sqrt}   # XPath 3.1
 
 
+def bind(query, params):
+    """The query with its parameters bound by a VALUES clause at the top of its WHERE block."""
+    if not params:
+        return query
+    i = query.index("WHERE {") + len("WHERE {")
+    row = " ".join(str(term(v)) for v in params.values())
+    return f"{query[:i]}\n    VALUES ({' '.join('?' + k for k in params)}) {{ ({row}) }}{query[i:]}"
+
+
 def ask(store, name, **params):
-    """Run tests/cq/<name>.rq with the parameters pre-bound; rows as dicts of Python values."""
-    res = store.query((CQ / f"{name}.rq").read_text(), custom_functions=FUNCTIONS,
-                      substitutions={ox.Variable(k): term(v) for k, v in params.items()})
+    """Run tests/cq/<name>.rq with the parameters bound; rows as dicts of Python values."""
+    res = store.query(bind((CQ / f"{name}.rq").read_text(), params), custom_functions=FUNCTIONS)
     cols = [v.value for v in res.variables]
     return [{c: py(r[c]) for c in cols} for r in res]
 
@@ -167,6 +178,10 @@ def cq_fixture():
             a((o, p, v))
         if use:
             a((o, L.waterUse, L[use]))
+    # CQ7: the three crop codes aligned to synthetic concepts of our own namespace (a stand-in for
+    # the AGROVOC alignments of task 12.9; no unverified external IRI)
+    for code in ("PEC", "AGR", "ZZZ"):
+        a((d(f"crop-code/{code}"), SKOS.closeMatch, d(f"test-concept/{code.lower()}")))
     return fx, u
 
 
@@ -321,6 +336,52 @@ def test_cq12_fixture(s):
           "and group-level volume kept apart, the parts add up to the declared total under every policy")
 
 
+def test_cq7_fixture(s):
+    w1 = d("piezometer/W1")
+    crops = {r["code"]: (r["areaHa"], r["class"], local(r["irrigationAssumption"]), local(r["alignment"]))
+             for r in ask(s, "cq07_crops", W=w1, year=2023)}
+    assert crops == {"PEC": (4.0, "orchard", "UsuallyIrrigated", "pec"),
+                     "AGR": (2.0, "citrus", "UsuallyIrrigated", "agr"),
+                     "ZZZ": (1.0, "unmapped", None, "zzz")}, crops      # an override beats the group
+    classes = {r["class"]: (r["areaHa"], r["codes"]) for r in ask(s, "cq07_classes", W=w1, year=2023)}
+    assert classes == {"orchard": (4.0, 1), "citrus": (2.0, 1), "unmapped": (1.0, 1)}, classes
+    assert sum(a for a, _ in classes.values()) == sum(c[0] for c in crops.values())   # unmapped kept
+    dem = {local(r["property"]): (r["demandM3"], local(r["category"]), r["thresholdM3"])
+           for r in ask(s, "cq07_demand", W=w1, year=2023)}
+    assert dem == {"PotentialIrrigationDemandMain": (2000.0, "HighIrrigationDemand", 800.0),
+                   "PotentialIrrigationDemandWide": (2500.0, None, None)}, dem
+    assert one(s, "cq07_status", W=w1, year=2023)["status"] == "supported"
+    for y in (2020, 2016):        # no RPG edition of 2020; 2016 has a demand estimate but no crops
+        st = one(s, "cq07_status", W=w1, year=y)
+        assert st["status"] == "unknown" and ask(s, "cq07_crops", W=w1, year=y) == [], (y, st)
+    assert one(s, "cq07_status", W=d("facility/F1"), year=2023)["status"] == "not_applicable"
+    print("  6. CQ7 fixtures: original codes, their classes (override before group) and alignments, "
+          "the unmapped area kept in the total, the dated demand category; a 2023 edition does not "
+          "answer 2020")
+
+
+def test_cq8_fixture(s):
+    w1 = d("piezometer/W1")
+
+    def infl(policy):
+        return {(r["driverCode"], local(r["resolution"])): (local(r["responseSign"]), local(r["eligibility"]),
+                                                            local(r["confidence"]), r["viaCode"], r["selected"])
+                for r in ask(s, "cq08_influences", W=w1, policy=policy)}
+    main = infl(MAIN)
+    assert main == {("F1", "ExactUnitResolution"): ("NegativeResponse", "EligibleConstraint", "Probable", "U", True),
+                    ("F2", "UnitGroupResolution"): ("UnknownResponse", "IneligibleConstraint", "Probable", "g", True),
+                    ("F4", "ExactUnitResolution"): ("NegativeResponse", "EligibleConstraint", "Possible", "U", False),
+                    ("F6", "ExactUnitResolution"): ("NegativeResponse", "EligibleConstraint", "Probable", "U", True)}, main
+    assert all(v[4] for v in infl(d("policy/all-links")).values())
+    assert not any(v[4] for v in infl(CONF_ONLY).values())        # every facility path is probable or less
+    st = one(s, "cq08_status", W=w1)
+    assert st["status"] == "partial" and st["drivers"] == "PumpingDrawdown", st
+    assert ask(s, "cq08_influences", W=d("piezometer/W6"), policy=MAIN) == []
+    assert one(s, "cq08_status", W=d("piezometer/W6"))["status"] == "unknown"
+    print("  7. CQ8 fixtures: a supported pumping path gives a conditional non-increasing sign, a "
+          "group-level path no sign; an unaccepted segment blocks the path; partial: pumping only")
+
+
 # ----------------------------------------------------------------------------------- 2. data
 def iris(store, q):
     """{literal value: IRI term} from a two-column query."""
@@ -406,11 +467,12 @@ def test_data(store):
         n_links += len(pairs.get(code, {}))
         st = one(store, "cq11_status", W=iri, r=RADIUS)["status"]
         assert st == ("supported" if code in set(w["code_bss"]) else "unknown"), (code, st)
-    print(f"  6. data: CQ1 anchors hold; {len(pz)} wells (statuses {n}) = the dataset, the BD LISA "
+    print(f"  8. data: CQ1 anchors hold; {len(pz)} wells (statuses {n}) = the dataset, the BD LISA "
           f"polygons and stacks, no screen; CQ3 {len(units)} units, {n_rel} relation-polygon rows = the "
           f"stacks ({len(units) - len(in_stack)} units in no stack: unknown); CQ11 {n_links // 2} "
           f"neighbour pairs = the dataset, selections follow the policies")
     test_data_pumps(store, wells, pz, x, y)
+    test_data_landuse(store, wells, pz)
 
 
 BNPE_USE = {"AEP": "DrinkingWaterUse", "IRR": "IrrigationUse", "IND": "IndustryUse",
@@ -459,11 +521,12 @@ def test_data_pumps(store, wells, pz, x, y):
 
     # CQ2: every well with a unit, against the attribution table and the BNPE points
     w = wells.assign(x93=x, y93=y)
-    n_exact = n_group = n_unres = 0
+    n_exact = n_group = n_unres = n_infl = 0
     for _, b in w.iterrows():
         iri = pz[b["code_bss"]]
         if not isinstance(b["code_bdlisa"], str):
             assert one(store, "cq02_status", W=iri, r=RADIUS)["status"] == "unknown"
+            assert one(store, "cq08_status", W=iri)["status"] == "unknown"
             continue
         rows = ask(store, "cq02_candidates", W=iri, r=RADIUS, policy=MAIN)
         m = with_unit[with_unit["unit"] == b["code_bdlisa"]]
@@ -485,6 +548,17 @@ def test_data_pumps(store, wells, pz, x, y):
         assert one(store, "cq02_status", W=iri, r=RADIUS)["status"] == "supported"
         n_exact += len(want)
         n_unres += len(want_u)
+        # CQ8: the influences (rule outputs) against the CQ2 candidates (read from the attributions)
+        inf = {(r["driverCode"], local(r["resolution"])): r for r in ask(store, "cq08_influences", W=iri, policy=MAIN)}
+        cand = {(r["bnpeCode"], local(r["resolution"])): r for r in rows}
+        assert inf.keys() == cand.keys(), (b["code_bss"], sorted(set(inf) ^ set(cand))[:4])
+        for k, r in inf.items():
+            exact = k[1] == "ExactUnitResolution"
+            assert (local(r["responseSign"]), local(r["eligibility"])) == (
+                ("NegativeResponse", "EligibleConstraint") if exact else ("UnknownResponse", "IneligibleConstraint")), k
+            assert r["selected"] == cand[k]["selected"] and abs(r["distanceM"] - cand[k]["distanceM"]) < 1e-6, k
+        assert one(store, "cq08_status", W=iri)["status"] == "partial"
+        n_infl += len(inf)
 
     # CQ12: every year, the plain's facility extent, the three policies
     ext = iris(store, 'SELECT ?k ?e WHERE { ?e a <http://www.opengis.net/ont/geosparql#Feature> . '
@@ -525,13 +599,62 @@ def test_data_pumps(store, wells, pz, x, y):
         if 2012 <= year <= 2024:
             totals["declared"] += sum(declared.values())
     share = {k: 100 * v / totals["declared"] for k, v in totals.items() if k != "declared"}
-    print(f"  7. data: CQ2 {n_exact} exact and {n_group} group-level candidate rows within 5 km of the wells "
-          f"= the attribution table and the BNPE points, {n_unres} unresolved neighbours; CQ12 every year "
+    print(f"  9. data: CQ2 {n_exact} exact and {n_group} group-level candidate rows within 5 km of the wells "
+          f"= the attribution table and the BNPE points, {n_unres} unresolved neighbours; CQ8 {n_infl} "
+          f"influences = the CQ2 candidates (signs and eligibility by resolution); CQ12 every year "
           f"{rec['year'].min()}-{rec['year'].max()}: declared totals = the BNPE snapshot, allocations = the table "
           f"under the three policies, parts add up to the totals; main policy 2012-2024: "
           f"{share['main unit']:.1f} % at exact unit, {share['main unit or group']:.1f} % with the unit groups "
           f"(of {totals['declared'] / 1e6:.1f} Mm³ declared; docs/pump_coverage.md, on the dataset's "
           f"reconstruction: 61.8 % and 72.3 %)")
+
+
+def test_data_landuse(store, wells, pz):
+    """CQ7 for every well and RPG year, against the clipped areas, the class table and the index."""
+    ar = pd.read_parquet(AREA_OUT)
+    groups = ar.groupby("CODE_CULTU")["CODE_GROUP"].first()
+    spec = dict(zip(groups.index, code_to_class(groups.index.to_numpy(), groups.to_numpy(), load_classes())))
+    ar = ar.assign(cls=ar["CODE_CULTU"].map(spec).fillna("unmapped"))
+    by_code = ar.groupby(["code_bss", "rpg_year", "CODE_CULTU"])["ha"].sum()
+    by_class = ar.groupby(["code_bss", "rpg_year", "cls"])["ha"].sum()
+    dem = pd.read_parquet(INTERIM / f"crop_demand_weekly_{DATASET}.parquet",
+                          columns=["code_bss", "week", "demand_main_m3", "demand_wide_m3"])
+    days = dem.loc[dem.index.repeat(7)].reset_index(drop=True)   # each week spread over its 7 days
+    days["day"] = days["week"] - pd.to_timedelta(np.tile(np.arange(6, -1, -1), len(dem)), unit="D")
+    tot = days.groupby(["code_bss", days["day"].dt.year])[["demand_main_m3", "demand_wide_m3"]].sum() / 7.0
+    thr = float(np.quantile(tot.loc[(slice(None), list(range(2015, 2020))), "demand_main_m3"], 2 / 3))
+    years = sorted(ar["rpg_year"].unique())
+    has_code, has_class = set(by_code.index.droplevel(2)), set(by_class.index.droplevel(2))
+    n_rows = 0
+    for code, iri in pz.items():
+        for y in years:
+            y = int(y)
+            crops = {r["code"]: r for r in ask(store, "cq07_crops", W=iri, year=y)}
+            want = by_code.loc[code, y] if (code, y) in has_code else pd.Series(dtype=float)
+            assert set(crops) == set(want.index), (code, y, sorted(set(crops) ^ set(want.index))[:4])
+            assert all(abs(crops[k]["areaHa"] - v) <= 1e-6 for k, v in want.items()), (code, y)
+            assert all(crops[k]["class"] == spec.get(k, "unmapped") for k in crops), (code, y)
+            assert not any(r["alignment"] for r in crops.values())       # no alignment before 12.9
+            cls = {r["class"]: r["areaHa"] for r in ask(store, "cq07_classes", W=iri, year=y)}
+            wc = by_class.loc[code, y] if (code, y) in has_class else pd.Series(dtype=float)
+            assert cls.keys() == set(wc.index) and all(abs(cls[k] - v) <= 1e-4 for k, v in wc.items()), (code, y)
+            dm = {local(r["property"]): r for r in ask(store, "cq07_demand", W=iri, year=y)}
+            main, wide = tot.loc[(code, y)]
+            assert abs(dm["PotentialIrrigationDemandMain"]["demandM3"] - main) <= 0.051, (code, y)
+            assert abs(dm["PotentialIrrigationDemandWide"]["demandM3"] - wide) <= 0.051, (code, y)
+            cat = local(dm["PotentialIrrigationDemandMain"]["category"])
+            assert cat == ("HighIrrigationDemand" if dm["PotentialIrrigationDemandMain"]["demandM3"]
+                           >= dm["PotentialIrrigationDemandMain"]["thresholdM3"] else "BelowHighIrrigationDemand")
+            assert abs(dm["PotentialIrrigationDemandMain"]["thresholdM3"] - thr) <= 0.11
+            st = one(store, "cq07_status", W=iri, year=y)
+            assert st["status"] == "partial" and st["unalignedCodes"] == len(crops), (code, y, st)
+            n_rows += len(crops)
+        for y in (min(years) - 1, max(years) + 1):                      # no edition: unknown
+            assert one(store, "cq07_status", W=iri, year=int(y))["status"] == "unknown", (code, y)
+    print(f"  10. data: CQ7 {len(pz)} wells x {len(years)} RPG editions: {n_rows} code rows, class areas and "
+          f"demand estimates = the clipped areas, the class table and the weekly index (threshold "
+          f"{thr:,.0f} m³); every answer partial (codes not yet aligned); {years[0] - 1} and "
+          f"{years[-1] + 1} unknown")
 
 
 def main():
@@ -541,11 +664,13 @@ def main():
     test_cq11_fixture(s)
     test_cq2_fixture(s)
     test_cq12_fixture(s)
+    test_cq7_fixture(s)
+    test_cq8_fixture(s)
     facts, derived = KG / f"lulcw_kg_{DATASET}.ttl", KG / f"lulcw_kg_{DATASET}_rules.ttl"
     if facts.exists() and derived.exists():
         test_data(store_of(facts, derived))
     else:
-        print("  6. skipped: run src.kg.build_kg and src.kg.apply_rules first")
+        print("  8. skipped: run src.kg.build_kg and src.kg.apply_rules first")
     print("test_cq: all checks passed")
 
 

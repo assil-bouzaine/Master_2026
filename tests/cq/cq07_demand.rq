@@ -1,0 +1,27 @@
+# CQ7 · Potential irrigation demand around a well, and its dated category
+# (docs/competency_questions.md §4, CQ7; task 12.7)
+#
+# Parameters  ?W  a lulcw:Piezometer;  ?year  calendar year (xsd:integer)
+# Reads       asserted facts (lulcw:CropDemandEstimate) and the SHACL-AF rule outputs
+#             (lulcw:IrrigationDemandAssessment, the rule's threshold)
+# Returns     one row per estimate: main (classes usually irrigated) or wide (partly irrigated
+#             classes added), the potential demand (m³ for the calendar year: crop areas of that
+#             year's RPG edition x max(0, Kc x ETP - rain), FAO-56 with SAFRAN), the procedure,
+#             and for the main estimate its category (high or below) with the threshold (m³, the
+#             upper tercile of the training years 2015-2019 over the 65 zones) and the rule. A
+#             potential requirement, never metered irrigation; the threshold is relative to these
+#             zones, not an agronomic norm.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+SELECT ?W ?year ?property ?demandM3 ?procedure ?category ?thresholdM3 ?rule
+WHERE {
+    ?zone lulcw:zoneOf ?W .
+    ?e a lulcw:CropDemandEstimate ; sosa:hasFeatureOfInterest ?zone ; lulcw:rpgEdition ?year ;
+       sosa:observedProperty ?property ; sosa:hasSimpleResult ?demandM3 .
+    OPTIONAL { ?e sosa:usedProcedure ?procedure . }
+    OPTIONAL { ?as a lulcw:IrrigationDemandAssessment ; prov:wasDerivedFrom ?e ;
+                   lulcw:demandCategory ?category ; lulcw:derivationRule ?rule .
+               ?rule lulcw:demandThresholdM3 ?thresholdM3 . }
+}
+ORDER BY ?property

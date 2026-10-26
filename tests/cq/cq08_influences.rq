@@ -1,0 +1,38 @@
+# CQ8 · Conditional influences on a well and whether their signs may constrain a model
+# (docs/competency_questions.md §4, CQ8; task 12.7)
+#
+# Parameters  ?W  a lulcw:Piezometer;  ?policy  a lulcw:ExportPolicy
+# Reads       SHACL-AF rule outputs (lulcw:Influence, lulcw:selectedUnder) and asserted facts
+#             (attributions, codes); no OWL reasoning
+# Returns     one row per influence on ?W: the driver (facility code), driver variable, mechanism,
+#             the proposed response sign, the driver group, the distance (m), the resolution of the
+#             path, its confidence, the constraint eligibility and its reason, the conditions, the
+#             path (the facility's and the well's attributions and the shared unit or group), and
+#             whether ?policy accepts the path (both attributions selected; a missing or unaccepted
+#             segment blocks it). A sign is a directional response to a stated input change with
+#             the other drivers held fixed, not a weekly correlation nor measured causality; an
+#             absent path is not proof of no influence (cq08_status.rq says which drivers exist).
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+SELECT ?W ?policy ?influence ?driverCode ?driverVariable ?mechanism ?responseSign ?driverGroup
+       ?distanceM ?resolution ?confidence ?eligibility ?eligibilityReason ?conditions
+       ?driverAttribution ?wellAttribution ?via ?viaCode ?selected
+WHERE {
+    ?influence a lulcw:Influence ; lulcw:targetEntity ?W ; lulcw:driverEntity ?driver ;
+        lulcw:driverVariable ?driverVariable ; lulcw:mechanism ?mechanism ;
+        lulcw:responseSign ?responseSign ; lulcw:driverGroup ?driverGroup ;
+        lulcw:resolution ?resolution ; lulcw:confidence ?confidence ;
+        lulcw:constraintEligibility ?eligibility ;
+        prov:wasDerivedFrom ?driverAttribution , ?wellAttribution .
+    ?driverAttribution lulcw:attributedEntity ?driver ;
+        lulcw:candidateUnit|lulcw:candidateGroup ?via .
+    ?wellAttribution lulcw:attributedEntity ?W .
+    ?driver lulcw:bnpeCode ?driverCode .
+    OPTIONAL { ?influence lulcw:horizontalDistanceM ?distanceM . }
+    OPTIONAL { ?influence lulcw:eligibilityReason ?eligibilityReason . }
+    OPTIONAL { ?influence lulcw:conditions ?conditions . }
+    OPTIONAL { ?via lulcw:bdlisaCode ?unitCode . }
+    BIND (COALESCE(?unitCode, STRAFTER(STR(?via), "/unit-group/")) AS ?viaCode)
+    BIND (EXISTS { ?influence lulcw:selectedUnder ?policy . } AS ?selected)
+}
+ORDER BY ?distanceM ?driverCode ?resolution

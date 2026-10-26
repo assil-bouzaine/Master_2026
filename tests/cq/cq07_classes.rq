@@ -1,0 +1,24 @@
+# CQ7 · Dated land use around a well: area by crop class
+# (docs/competency_questions.md §4, CQ7; task 12.7)
+#
+# Parameters  ?W  a lulcw:Piezometer;  ?year  RPG edition = calendar year (xsd:integer)
+# Reads       SHACL-AF rule outputs (lulcw:CropClassArea) and the crop classes (asserted)
+# Returns     one row per crop class in the zone that year: the class, its clipped area (ha; the
+#             sum of the code areas it cites, "unmapped" codes included, so the total is the whole
+#             observed area), the number of codes it adds up, and the class's irrigation
+#             assumption (usually / partly irrigated, rainfed, not cropped: an assumption from the
+#             2020 agricultural census, not an observation of irrigation).
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+SELECT ?W ?year ?class ?areaHa ?irrigationAssumption (COUNT(DISTINCT ?o) AS ?codes)
+WHERE {
+    ?zone lulcw:zoneOf ?W .
+    ?x a lulcw:CropClassArea ; sosa:hasFeatureOfInterest ?zone ; lulcw:rpgEdition ?year ;
+       lulcw:cropClass ?cls ; sosa:hasSimpleResult ?areaHa ; prov:wasDerivedFrom ?o .
+    ?cls skos:notation ?class .
+    OPTIONAL { ?cls lulcw:irrigationAssumption ?irrigationAssumption . }
+}
+GROUP BY ?W ?year ?class ?areaHa ?irrigationAssumption
+ORDER BY DESC(?areaHa) ?class

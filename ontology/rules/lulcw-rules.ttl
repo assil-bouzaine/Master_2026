@@ -14,13 +14,17 @@
 #   order 21  `monitors` and `pumpsFrom`, the main policy's view of the selected attributions
 #   order 30  same-unit well links within the reference radius (CQ11)
 #   order 31  pumping influences, facility -> piezometer, through a shared unit or group (CQ8)
-#   order 40  a well link or an influence is selected by a policy only if every unit
-#             attribution it derives from is (an unaccepted segment blocks the path)
 #   order 50  land use (CQ7): the crop class of each RPG crop code, the clipped area of each
 #             class per zone and RPG year (unmapped codes kept), and a dated high-irrigation-
 #             demand assessment per zone and year
 #   order 60  recharge-related forcing (CQ4): per reference extent and unit mapped at outcrop,
 #             the outcrop area, its part inside weather cells and the weight of each cell
+#   order 61  recharge-proxy influences, weather cell -> piezometer, through the outcrop of the
+#             unit the well is attributed to, in its search zone or in the unit-wide extent (CQ4,
+#             CQ8)
+#   order 90  a well link or an influence is selected by a policy only if every unit
+#             attribution it derives from is (an unaccepted segment blocks the path); last, so
+#             that it sees every derived path (it ran at order 40 until the recharge influences)
 # Distances are horizontal, in Lambert-93 metres, parsed from the GeoSPARQL WKT points;
 # math:sqrt is the XPath 3.1 function (W3C), registered in rdflib by the runner.
 # The rules' descriptions and parameters are the data nodes at the end of this file
@@ -31,7 +35,7 @@
 
 <https://w3id.org/lulcw/rules> a owl:Ontology ;
     dcterms:title "LULC-Water SHACL-AF rules"@en , "Règles SHACL-AF LULC-Water"@fr ;
-    dcterms:description "SHACL-AF SPARQL rules that derive stratigraphic relations, policy selections, same-unit well links and pumping influences from the facts of the LULC-Water knowledge graph."@en ;
+    dcterms:description "SHACL-AF SPARQL rules that derive stratigraphic relations, policy selections, same-unit well links, pumping influences, land-use classes and categories, outcrop coverages and recharge-proxy influences from the facts of the LULC-Water knowledge graph."@en ;
     dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
     dcterms:created "2026-10-25"^^xsd:date ;
     sh:declare
@@ -343,7 +347,7 @@ WHERE {
 
 lulcwr:PathSelectionShape a sh:NodeShape ;
     sh:targetClass lulcw:ExportPolicy ;
-    sh:order 40 ;
+    sh:order 90 ;
     sh:rule lulcwr:selectPaths .
 
 # Counted rather than tested with nested NOT EXISTS: a path is selected when the number of
@@ -578,6 +582,125 @@ WHERE {
 """ .
 
 #################################################################
+# CQ4, CQ8: recharge-proxy influences, weather cell -> piezometer
+#################################################################
+
+lulcwr:RechargeInfluenceShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/recharge-influence> ;
+    sh:order 61 ;
+    sh:rule lulcwr:rechargeInfluenceLocal , lulcwr:rechargeInfluenceUnitWide .
+
+# One influence per weather cell and well attribution: the cell holds part of the outcrop of the
+# exact unit the well is attributed to (any confidence; the policies select later), inside the
+# well's outcrop search zone (first rule: the main runs, decided by Assil on 2026-10-26) or inside
+# a fixed extent of the rule (second rule: the unit-wide sensitivity, the forcing cells, where
+# every well of a unit gets the same cells). The driver is the cell's weekly effective rainfall,
+# the one recharge proxy of the main runs: soil drainage is part of the same surplus, so a
+# sensitivity replaces PE by it and never adds it (analysis plan §14 item 15). Its sign is the
+# non-decreasing response of diffuse recharge; the influence names the pathways it does not
+# represent. A unit without outcrop in the extent gives no influence, which is not zero recharge
+# (CQ4). Join order (see the CQ4 rules): no constant object and no class pattern in the joins,
+# each pattern after the one that binds its subject; the role is tested by a FILTER.
+lulcwr:rechargeInfluenceLocal a sh:SPARQLRule ;
+    sh:order 1 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?inf a lulcw:Influence ;
+        lulcw:driverEntity ?c ; lulcw:targetEntity ?w ;
+        lulcw:driverVariable lulcw:EffectiveRainfall ; lulcw:proxyFor lulcw:GroundwaterRecharge ;
+        lulcw:mechanism lulcw:DiffuseRecharge ;
+        lulcw:responseSign lulcw:PositiveResponse ;
+        lulcw:driverGroup lulcw:RechargeProxies ;
+        lulcw:withinExtent ?s ;
+        lulcw:resolution lulcw:ExactUnitResolution ;
+        lulcw:confidence ?conf ;
+        lulcw:constraintEligibility lulcw:EligibleConstraint ;
+        lulcw:eligibilityReason "The cell holds mapped outcrop of the exact unit the well is attributed to, so the non-decreasing response of diffuse recharge applies to its effective rainfall: more rain on the unit's outcrop does not lower the unit's head. A recharge proxy, not a recharge: outcrop does not prove infiltration, and the pathways named by lulcw:omitsPathway are not represented. Whether recharge signs constrain the model, and with which proxy (effective rainfall in the main runs, soil drainage as a sensitivity, never both), is settled at Gate 3 (analysis plan, section 14 item 15)." ;
+        lulcw:conditions ?cond ;
+        lulcw:omitsPathway lulcw:LateralInflow , lulcw:VerticalLeakage , lulcw:RiverExchange , lulcw:CanalReturnFlow ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasDerivedFrom ?aw , ?cov , ?cw ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    {   # the well's zone, its attribution and unit, the unit's coverage in the zone, its cells
+        ?s lulcw:zoneOf ?w .
+        ?aw lulcw:attributedEntity ?w ; lulcw:role ?role ; lulcw:candidateUnit ?u ; lulcw:confidence ?conf .
+        FILTER (?role = lulcw:MonitoringRole)
+        ?cov lulcw:withinExtent ?s ; lulcw:coverageUnit ?u ; lulcw:coveredFraction ?frac ;
+             lulcw:hasCellWeight ?cw .
+        ?cw lulcw:weightCell ?c ; lulcw:cellWeight ?wt .
+        ?s lulcw:zoneRadiusM ?r .
+    }
+    ?u lulcw:bdlisaCode ?code .
+    BIND (CONCAT("Effective rainfall of this weather cell over the outcrop of unit ", ?code,
+                 " mapped within ", STR(xsd:integer(ROUND(?r))), " m of the well (the main runs' local extent): ",
+                 "the cell holds a share ", IF(?wt < 0.001, "under 0.001", STR(ROUND(?wt * 1000) / 1000)), " of that outcrop, the shares renormalised ",
+                 "over the part inside weather cells (covered fraction ", STR(ROUND(?frac * 1000) / 1000), "). ",
+                 "The sign refers to an increase of the cell's weekly effective rainfall with the other drivers held fixed.")
+          AS ?cond)
+    BIND (IRI(CONCAT("https://w3id.org/lulcw/data/influence/recharge/local/",
+                     STRAFTER(STR(?c), "/weather-cell/"), "/to/",
+                     STRAFTER(STR(?aw), "/attribution/piezometer/"))) AS ?inf)
+}
+""" .
+
+lulcwr:rechargeInfluenceUnitWide a sh:SPARQLRule ;
+    sh:order 2 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?inf a lulcw:Influence ;
+        lulcw:driverEntity ?c ; lulcw:targetEntity ?w ;
+        lulcw:driverVariable lulcw:EffectiveRainfall ; lulcw:proxyFor lulcw:GroundwaterRecharge ;
+        lulcw:mechanism lulcw:DiffuseRecharge ;
+        lulcw:responseSign lulcw:PositiveResponse ;
+        lulcw:driverGroup lulcw:RechargeProxies ;
+        lulcw:withinExtent ?s ;
+        lulcw:resolution lulcw:ExactUnitResolution ;
+        lulcw:confidence ?conf ;
+        lulcw:constraintEligibility lulcw:EligibleConstraint ;
+        lulcw:eligibilityReason "The cell holds mapped outcrop of the exact unit the well is attributed to, so the non-decreasing response of diffuse recharge applies to its effective rainfall: more rain on the unit's outcrop does not lower the unit's head. A recharge proxy, not a recharge: outcrop does not prove infiltration, and the pathways named by lulcw:omitsPathway are not represented. Whether recharge signs constrain the model, and with which proxy (effective rainfall in the main runs, soil drainage as a sensitivity, never both), is settled at Gate 3 (analysis plan, section 14 item 15)." ;
+        lulcw:conditions ?cond ;
+        lulcw:omitsPathway lulcw:LateralInflow , lulcw:VerticalLeakage , lulcw:RiverExchange , lulcw:CanalReturnFlow ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasDerivedFrom ?aw , ?cov , ?cw ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    {   # the rule's fixed extents, the coverages there, the wells attributed to their units
+        $this lulcw:appliesInExtent ?s .
+        ?cov lulcw:withinExtent ?s ; lulcw:coverageUnit ?u ; lulcw:coveredFraction ?frac ;
+             lulcw:outcropAreaM2 ?o .
+        ?aw lulcw:candidateUnit ?u ; lulcw:attributedEntity ?w .
+        ?w lulcw:bssCode ?b .
+        ?aw lulcw:role ?role ; lulcw:confidence ?conf .
+        FILTER (?role = lulcw:MonitoringRole)
+        ?cov lulcw:hasCellWeight ?cw .
+        ?cw lulcw:weightCell ?c ; lulcw:cellWeight ?wt .
+    }
+    ?u lulcw:bdlisaCode ?code ; lulcw:mappedOutcropAreaM2 ?m .
+    BIND (IF(?o < ?m * (1 - 1e-6) - 10.0,
+             CONCAT(" The extent holds a share ", STR(ROUND(?o / ?m * 1000) / 1000), " of the unit's mapped outcrop: ",
+                    "rain on the rest is not represented."), "") AS ?clip)
+    BIND (CONCAT("Effective rainfall of this weather cell over the outcrop of unit ", ?code,
+                 " in the forcing extent (the unit-wide sensitivity: every well of the unit gets the same cells): ",
+                 "the cell holds a share ", IF(?wt < 0.001, "under 0.001", STR(ROUND(?wt * 1000) / 1000)), " of that outcrop, the shares renormalised ",
+                 "over the part inside weather cells (covered fraction ", STR(ROUND(?frac * 1000) / 1000), ").", ?clip,
+                 " The sign refers to an increase of the cell's weekly effective rainfall with the other drivers held fixed.")
+          AS ?cond)
+    BIND (IRI(CONCAT("https://w3id.org/lulcw/data/influence/recharge/unit-wide/",
+                     STRAFTER(STR(?c), "/weather-cell/"), "/to/",
+                     STRAFTER(STR(?aw), "/attribution/piezometer/"))) AS ?inf)
+}
+""" .
+
+#################################################################
 # The rules as data: descriptions and parameters (copied into the graph by the runner, which
 # adds lulcw:ruleVersion and the execution record)
 #################################################################
@@ -628,6 +751,12 @@ WHERE {
     rdfs:label "outcrop coverage and cell weights"@en ;
     rdfs:seeAlso lulcwr:outcropCoverage , lulcwr:outcropCoverageEvidence , lulcwr:cellWeight ;
     rdfs:comment "For each reference extent (an outcrop search zone or the forcing extent) and each unit mapped at outcrop (order 1 of an elementary polygon's stack) there: the outcrop area, the part inside weather cells, the covered fraction, and per cell the share of the covered area (weights renormalised over the covered area, summing to one). Built from the polygon-cell intersection areas, which it cites. A unit without outcrop in the extent gets no coverage. Outcrop is a mapped property, not proof of recharge (CQ4)."@en .
+
+<https://w3id.org/lulcw/data/rule/recharge-influence> a lulcw:DerivationRule ;
+    rdfs:label "recharge-proxy influence"@en ;
+    rdfs:seeAlso lulcwr:rechargeInfluenceLocal , lulcwr:rechargeInfluenceUnitWide ;
+    lulcw:appliesInExtent <https://w3id.org/lulcw/data/extent/forcing-cells> ;
+    rdfs:comment "A candidate diffuse-recharge influence of a weather cell on a piezometer, one per cell and well attribution: the cell holds part of the outcrop of the exact unit the well is attributed to, inside the well's 5 km outcrop search zone (the main runs) or inside the forcing extent (the unit-wide sensitivity, lulcw:appliesInExtent), with the cell's share of that outcrop. Driver: the cell's weekly effective rainfall, a proxy of groundwater recharge (soil drainage replaces it only in a sensitivity, never added to it); sign non-decreasing, eligible, the use of the sign settled at Gate 3. Each influence names the pathways it omits (lateral inflow, vertical leakage, river exchange, canal return flow): for the Pliocene these are the main ones (analysis plan section 14 item 15). A unit without outcrop in the extent gives no influence, which is not zero recharge (CQ4, CQ8)."@en .
 
 <https://w3id.org/lulcw/data/rule/high-irrigation-demand> a lulcw:DerivationRule ;
     rdfs:label "high irrigation demand"@en ;

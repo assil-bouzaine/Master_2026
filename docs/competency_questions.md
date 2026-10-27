@@ -123,11 +123,11 @@ the data contract; historical v3 findings remain in the linked step notes.
 | CQ1 | What hydrogeological and monitoring context is known for well W? | G F V | MUST | Well metadata/stacks available; screens incomplete |
 | CQ2 | Which abstraction facilities may draw from W's unit, with what evidence and uncertainty? | G F C V R | MUST | Attribution tables available; resolution/conflicts need explicit representation |
 | CQ3 | What is the local vertical arrangement of units in S? | G F V | MUST | BD LISA stacks available; aggregate contacts need spatial qualification |
-| CQ4 | Which mapped outcrop areas of U can support recharge-related inputs, and how are they covered by weather cells? | F E | SHOULD | Geometry/grid available; weighted intersections to build |
+| CQ4 | Which mapped outcrop areas of U can support recharge-related inputs, and how are they covered by weather cells? | F E | SHOULD | Built 2026-10-27: coverages, weights and recharge-proxy influences (with CQ8) |
 | CQ5 | Which river reaches are associated with U, and what is known about exchange and gauge relevance? | G F C | SHOULD | River/gauge metadata available; hydraulic evidence incomplete |
 | CQ6 | Which canal supply areas overlap U, and which intake-to-recharge pathways are supported? | G F C R S | COULD | Intakes available; supply-area and pathway evidence missing |
 | CQ7 | What crops/land uses occupy S in year y, and what irrigation-demand estimates are justified? | F E R S | MUST | RPG 2016/2023 available; demand method/mappings to validate |
-| CQ8 | Which driver-to-head pathways are admissible for W, and under what conditions may their signs constrain the model? | C G E V | MUST | Inputs partly available; rule/constraint catalogue to build |
+| CQ8 | Which driver-to-head pathways are admissible for W, and under what conditions may their signs constrain the model? | C G E V | MUST | Pumping drawdown and recharge proxies built; river and canal pathways wait for CQ5, CQ6 |
 | CQ9 | Which restriction events applied to the relevant location, resource and use during T? | E V | COULD | Level histories available; authoritative spatial applicability missing |
 | CQ10 | Which evidence and model results support an explanation of W at time t? | E V S | MUST | KG, model-result links and explanation checks to build |
 | CQ11 | Which wells are same-unit neighbours of W under a declared distance/depth policy? | G V | MUST | Well metadata available |
@@ -257,7 +257,8 @@ area, and which evidence justifies using those cells to construct a recharge pro
   not recharge the deep aquifers, which are fed by the Têt and its Quaternary aquifer
   upstream, the Corbières karst and the peripheral massifs (SMNPR), and by downward leakage
   from the Quaternary driven by Pliocene pumping (BRGM/RP-71486-FR); analysis plan §14
-  item 15.
+  item 15. *Increment 2 (2026-10-27):* the cells become recharge-proxy influences on the
+  wells (CQ8): 193 in the 65 search zones (54 wells), 960 unit-wide (59 wells).
 - **Acceptance:** synthetic outcrop area 100 ha with non-overlapping cell intersections
   of 60 and 40 ha gives weights 0.6 and 0.4. If only 80 ha are covered, return coverage
   0.8; any weights renormalised over covered area are labelled as such. A fully covered
@@ -364,6 +365,17 @@ may their response signs constrain a model?
   unconditional OWL claims about every instance. Distance is a selection assumption,
   not hydraulic proof. Literature-extracted rules retain passage, scope and review
   status; unreviewed extracted text cannot enable a hard constraint.
+  *Built:* pumping drawdown (2026-10-26; `tests/cq/cq08_*.rq`), and recharge proxies
+  (2026-10-27, CQ4 increment 2): one influence per weather cell over the outcrop of the
+  exact unit W is attributed to, in W's 5 km search zone (main runs) or in the forcing
+  extent (unit-wide sensitivity), with the cell's share of the outcrop; driver the cell's
+  weekly effective rainfall (`lulcw:proxyFor lulcw:GroundwaterRecharge`; soil drainage
+  replaces it only in a sensitivity, never added to it), sign non-decreasing, eligible,
+  its use as a constraint settled at Gate 3; each names the pathways it omits
+  (`lulcw:omitsPathway`: lateral inflow, vertical leakage, river exchange, canal return
+  flow). `cq08_status` reports the recharge search: derived, none_found (a completed search
+  found no outcrop of W's unit in its zone; not zero recharge) or unknown. Canal return flow
+  and river exchange are not yet influences (CQ5, CQ6): the answer stays partial.
 - **Acceptance:** a synthetic supported pumping path yields a conditional negative
   response sign; a name-only river link yields no hard sign. A missing/unaccepted
   segment blocks an accepted end-to-end path. Seasonal deficit and reconstructed

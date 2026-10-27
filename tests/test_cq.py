@@ -32,6 +32,12 @@ is never read as "none".
          unit"); U (not in BD LISA) unknown; a well as unit or a crop zone as extent not_applicable;
          the facts without the
          rule outputs answer unknown for A, never "no mapped outcrop"
+   CQ8   W1: pumping paths as in tests/test_kg_rules.py, recharge unknown (its unit U is not in BD
+         LISA); W7: two recharge proxies (c1 0.625, c2 0.375 of X's outcrop in its zone), effective
+         rainfall for groundwater recharge, non-decreasing, eligible, with the four omitted pathways,
+         recharge derived; W8: none in its zone (a completed search: none_found), one unit-wide
+         (c2), not selected by confident-only (probable); W2 (no search zone) unknown; the facts
+         without the rule outputs: W7 unknown, never "none"; W8 none_found
 2. Data (dataset v4, facts + rule outputs), against pandas / GeoPandas on the source tables:
    CQ1   the two anchors of the CQ document (W1 = 10964X0119/NYLS-1: 97 m, 671AA00; W2 =
          10906X0039/C2-1: stack 718BP02 > 671AA00); for every well, the candidate unit = the
@@ -49,6 +55,9 @@ is never read as "none".
          "no mapped outcrop", supported; in the forcing extent, partial exactly for the units whose
          mapped outcrop reaches beyond the cells; MILLAS C2-1 / 718BP02: 27.08 km² (Codex review of
          2026-10-26); the facts without the rule outputs: unknown for it
+   CQ8   recharge proxies of every well = the cells and weights of cq04_cells for its recorded unit
+         in its zone and in the forcing extent; statuses derived / none_found (cq04_status "no mapped
+         outcrop") / unknown (a unit outside BD LISA, no unit)
    The data checks run only on a validated release (src.kg.release.check).
 """
 import json
@@ -326,15 +335,48 @@ def test_cq8_fixture(s):
     assert all(v[4] for v in infl(d("policy/all-links")).values())
     assert not any(v[4] for v in infl(CONF_ONLY).values())        # every facility path is probable or less
     st = one(s, "cq08_status", W=w1)
-    assert st["status"] == "partial" and st["drivers"] == "PumpingDrawdown", st
+    assert (st["status"], st["drivers"], st["recharge"]) == ("partial", "PumpingDrawdown", "unknown"), st
+    assert "not described by BD LISA" in st["reason"]             # W1's unit U: its outcrop is not known
     assert ask(s, "cq08_influences", W=d("piezometer/W6"), policy=MAIN) == []
     assert one(s, "cq08_status", W=d("piezometer/W6"))["status"] == "unknown"
+
+    # recharge proxies: W7 (unit X at outcrop in its zone, 0.8 inside the cells), W8 (no Y outcrop in
+    # its zone: a completed search; only the unit-wide sensitivity connects it), W2 (no search zone)
+    w7, w8 = d("piezometer/W7"), d("piezometer/W8")
+    r7 = {r["driverCode"]: r for r in ask(s, "cq08_influences", W=w7, policy=CONF_ONLY)}
+    assert {k: (r["cellWeight"], local(r["mechanism"]), local(r["responseSign"]), local(r["eligibility"]),
+                local(r["driverVariable"]), local(r["proxyFor"]), local(r["driverGroup"]), r["viaCode"],
+                local(r["extent"]), r["selected"]) for k, r in r7.items()} == {
+        "c1": (0.625, "DiffuseRecharge", "PositiveResponse", "EligibleConstraint", "EffectiveRainfall",
+               "GroundwaterRecharge", "RechargeProxies", "X", "W7", True),
+        "c2": (0.375, "DiffuseRecharge", "PositiveResponse", "EligibleConstraint", "EffectiveRainfall",
+               "GroundwaterRecharge", "RechargeProxies", "X", "W7", True)}, r7
+    assert all(set(r["omittedPathways"].split()) == {"LateralInflow", "VerticalLeakage", "RiverExchange",
+                                                     "CanalReturnFlow"} for r in r7.values())
+    assert all(r["distanceM"] is None and r["driverAttribution"] is None for r in r7.values())
+    st = one(s, "cq08_status", W=w7)
+    assert (st["status"], st["drivers"], st["recharge"]) == ("partial", "DiffuseRecharge", "derived"), st
+    r8 = ask(s, "cq08_influences", W=w8, policy=MAIN)
+    assert [(r["driverCode"], r["cellWeight"], local(r["extent"]), r["selected"]) for r in r8] == \
+        [("c2", 1.0, "forcing-cells", True)], r8                   # the unit-wide sensitivity only
+    assert [r["selected"] for r in ask(s, "cq08_influences", W=w8, policy=CONF_ONLY)] == [False]   # probable
+    st = one(s, "cq08_status", W=w8)
+    assert st["recharge"] == "none_found" and "completed search" in st["reason"], st
+    assert one(s, "cq08_status", W=d("piezometer/W2"))["recharge"] == "unknown"        # no search zone
+    # the facts without the rule outputs: W7's unit is at outcrop in its zone, so its recharge is
+    # unknown, never "none"; W8's search found no outcrop of its unit, with or without the rules
+    facts_only = to_store(cq_fixture()[0].g)
+    assert one(facts_only, "cq08_status", W=w7)["recharge"] == "unknown"
+    assert one(facts_only, "cq08_status", W=w8)["recharge"] == "none_found"
     print("  7. CQ8 fixtures: a supported pumping path gives a conditional non-increasing sign, a "
-          "group-level path no sign; an unaccepted segment blocks the path; partial: pumping only")
+          "group-level path no sign; an unaccepted segment blocks the path; recharge proxies: one per cell "
+          "over the outcrop of the well's unit, non-decreasing, with the pathways they omit; none for a unit "
+          "without outcrop in the zone (a completed search), unknown without a search or a derivation; "
+          "partial: canal and river pathways not derived")
 
 
 def test_cq4_fixture(s, u):
-    zone, forcing, rule = d("outcrop-zone/W1"), d("extent/forcing-cells-test"), d("rule/outcrop-coverage")
+    zone, forcing, rule = d("outcrop-zone/W1"), d("extent/forcing-cells"), d("rule/outcrop-coverage")
     cov = one(s, "cq04_coverage", U=u["X"], S=zone)
     assert (cov["outcropAreaM2"], cov["coveredAreaM2"], cov["coveredFraction"], cov["polygons"], cov["rule"]) == \
         (1.0e6, 8.0e5, 0.8, 1, str(rule)), cov
@@ -530,7 +572,8 @@ def test_data_pumps(store, wells, pz, x, y):
         n_exact += len(want)
         n_unres += len(want_u)
         # CQ8: the influences (rule outputs) against the CQ2 candidates (read from the attributions)
-        inf = {(r["driverCode"], local(r["resolution"])): r for r in ask(store, "cq08_influences", W=iri, policy=MAIN)}
+        inf = {(r["driverCode"], local(r["resolution"])): r for r in ask(store, "cq08_influences", W=iri, policy=MAIN)
+               if local(r["mechanism"]) == "PumpingDrawdown"}
         cand = {(r["bnpeCode"], local(r["resolution"])): r for r in rows}
         assert inf.keys() == cand.keys(), (b["code_bss"], sorted(set(inf) ^ set(cand))[:4])
         for k, r in inf.items():
@@ -692,6 +735,49 @@ def test_data_forcing(store, facts_file):
           f"(fraction {millas['coveredFraction']:.3f}); facts without rule outputs: unknown")
 
 
+def test_data_recharge(store):
+    """CQ8 recharge proxies for every well, against CQ4's own answers on the same graph: in the
+    well's search zone, the influences are the cells of cq04_cells for its recorded unit, with the
+    same weights; unit-wide, those of the forcing extent. Status: derived where the unit has outcrop
+    in the zone, none_found for a unit described by BD LISA without outcrop there (cq04_status: "no
+    mapped outcrop"), unknown for a unit outside BD LISA and for the wells without a unit."""
+    wells = pd.read_parquet(DATASET_DIR / "wells.parquet")
+    pz = iris(store, "SELECT ?c ?w WHERE { ?w a lulcw:Piezometer ; lulcw:bssCode ?c }")
+    unit = iris(store, "SELECT ?c ?u WHERE { ?u lulcw:bdlisaCode ?c }")
+    zone = iris(store, "SELECT ?c ?z WHERE { ?z a lulcw:OutcropSearchZone ; lulcw:zoneOf/lulcw:bssCode ?c }")
+    described = {r[0].value for r in store.query(
+        "PREFIX lulcw: <https://w3id.org/lulcw#> PREFIX prov: <http://www.w3.org/ns/prov#> "
+        "SELECT ?c WHERE { ?u lulcw:bdlisaCode ?c ; prov:wasDerivedFrom ?r }")}
+    forcing = ox.NamedNode(str(d("extent/forcing-cells")))
+    status, n_local, n_wide, none_found = {}, 0, 0, []
+    for b, code in zip(wells["code_bss"], wells["code_bdlisa"]):
+        st = one(store, "cq08_status", W=pz[b])
+        rech = [r for r in ask(store, "cq08_influences", W=pz[b], policy=MAIN)
+                if local(r["mechanism"]) == "DiffuseRecharge"]
+        if not isinstance(code, str):
+            assert (st["status"], st["recharge"], rech) == ("unknown", "unknown", []), (b, st)
+            status["no unit"] = status.get("no unit", 0) + 1
+            continue
+        for S, kind in ((zone[b], "local"), (forcing, "unit-wide")):
+            want = {f"{x['gridXHm']}_{x['gridYHm']}": x["weight"] for x in ask(store, "cq04_cells", U=unit[code], S=S)}
+            got = {r["driverCode"]: r["cellWeight"] for r in rech if r["extent"] == S.value}
+            assert got == want, (b, kind, got, want)
+            assert all(r["selected"] for r in rech), b          # the 60 recorded units: confident or probable
+            n_local += len(got) if kind == "local" else 0
+            n_wide += len(got) if kind == "unit-wide" else 0
+        c4 = one(store, "cq04_status", U=unit[code], S=zone[b])
+        has_local = any(r["extent"] == zone[b].value for r in rech)
+        expect = "derived" if has_local else ("none_found" if code in described else "unknown")
+        assert st["recharge"] == expect and st["status"] == "partial", (b, code, st, expect)
+        if expect == "none_found":
+            assert c4["reason"].startswith("no mapped outcrop"), (b, c4)
+            none_found.append(b)
+        status[expect] = status.get(expect, 0) + 1
+    print(f"  13. data: CQ8 recharge proxies of every well = CQ4's cells and weights for its recorded unit "
+          f"({n_local} in the 5 km zones, {n_wide} unit-wide); statuses {status}; no outcrop of the unit "
+          f"within 5 km (a completed search): {', '.join(none_found)}")
+
+
 def main():
     s, u = fixture_store()
     test_cq1_fixture(s)
@@ -708,8 +794,9 @@ def main():
         store = store_of(facts, derived)
         test_data(store)
         test_data_forcing(store, facts)
+        test_data_recharge(store)
     else:
-        print("  9-12. skipped: run src.kg.build_kg and src.kg.apply_rules first")
+        print("  9-13. skipped: run src.kg.build_kg and src.kg.apply_rules first")
     print("test_cq: all checks passed")
 
 

@@ -733,7 +733,12 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       drainage is part of the same surplus. A recharge influence therefore uses one of them
       (PE in the main runs, matching "effective rain raises the head" of the design; DRAINC as
       a sensitivity), named a recharge proxy, never both as independent water inputs; to settle
-      at Gate 3 together with the sign constraint.
+      at Gate 3 together with the sign constraint. *In the graph since 2026-10-27 (CQ4 increment
+      2):* one `lulcw:Influence` per weather cell and well attribution, in the 5 km search zone and
+      in the unit-wide extent, with PE as its driver (`lulcw:proxyFor lulcw:GroundwaterRecharge`),
+      the non-decreasing sign marked eligible and the omitted pathways listed
+      (`lulcw:omitsPathway`); a shape refuses two proxies of one surplus on one path. No recharge
+      constraint is applied before Gate 3 confirms this item.
     - *Cartographic meaning of "exact unit".* An exact-unit attribution (CQ2, CQ8) means the
       same mapped BD LISA entity; it does not establish a common screened horizon or a
       hydraulic connection, which matters in the Pliocene multilayer.

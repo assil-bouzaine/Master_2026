@@ -346,6 +346,22 @@ dated `IrrigationDemandAssessment` with `HighIrrigationDemand` / `BelowHighIrrig
 irrigation assumptions, and the FAO-56 parameters of a class. Facts from `src/kg/landuse.py`; the
 class of each code, the class areas and the assessments are derived by rules (step note §12.6).
 
+Version 0.4.0 (2026-10-26/27, CQ4): recharge-related forcing: `WeatherCell` (an 8 km SAFRAN
+square), `OutcropSearchZone` (5 km around a well) under `WellZone`, `PolygonCellIntersection`,
+`OutcropCoverage`, `CellWeight`, `SoilDrainage`, `hasForcingSeries`, `mappedOutcropAreaM2`. Facts
+from `src/kg/forcing.py`; coverages and weights are derived by rules (step note, CQ4 increment 1).
+
+Version 0.5.0 (2026-10-27, CQ4 increment 2 and CQ8): recharge proxies as `Influence` records.
+`GroundwaterRecharge` is an observable property that nothing in the graph measures; `proxyFor`
+says that an influence's driver (the cell's effective rainfall) stands in for it; `omitsPathway`
+names the mechanisms an influence does not represent, with two new ones, `LateralInflow` and
+`VerticalLeakage` (beside `RiverExchange` and `CanalReturnFlow`), so that an explanation never
+presents a proxy as the whole supply; the driver group `RechargeProxies` (the cells of one well
+carry nearly the same weekly signal); `appliesInExtent`, a rule's fixed extents (the forcing
+extent of the unit-wide sensitivity). The sign stated is the non-decreasing response of diffuse
+recharge; its use as a constraint, and the choice of proxy (effective rainfall, or soil drainage
+as a sensitivity, never both), are settled at Gate 3 (analysis plan §14 item 15).
+
 ## 8. Instances: the knowledge graph (task 12.5, 2026-10-24)
 
 `src/kg/build_kg.py` writes `data/processed/kg/lulcw_kg_<dataset>.ttl` from the source
@@ -384,6 +400,8 @@ that a query states whether it reads facts or rule outputs):
 | `stratigraphic-relation/<codepoly>/<upper code>/<lower code>` | a local stratigraphic relation, witnessed by that one polygon |
 | `well-link/<well key A>/<well key B>` | a same-unit well link (A = the BSS code that sorts first) |
 | `influence/pumping/<facility code>/<rank>[/group]/to/<well key>/<rank>` | a pumping influence, one per evidence path (the two attributions it joins) |
+| `<extent>/outcrop-coverage/<unit code>`, `…/outcrop-coverage/<unit code>/<cell id>` | a unit's outcrop coverage in a reference extent (`outcrop-zone/<well key>` or `extent/forcing-cells`) and the weight of one weather cell in it (CQ4) |
+| `influence/recharge/local/<cell id>/to/<well key>/<rank>`, `influence/recharge/unit-wide/…` | a recharge-proxy influence: one weather cell over the outcrop of the well's unit, in its 5 km search zone (main) or the forcing extent (unit-wide sensitivity) |
 | `rule/<name>`, `execution/kg-rules` | the 12.6 rules (with their radius) and their run |
 
 Plain triples (`overlies`, `selectedUnder`, `monitors`, `pumpsFrom`) are projections of these

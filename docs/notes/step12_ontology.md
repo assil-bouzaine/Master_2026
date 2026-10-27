@@ -1034,3 +1034,127 @@ unit-wide extent (a) as a sensitivity row. Analysis plan §14 item 14 updated.
 - **The depth rule has almost nothing to choose from:** 0 pairs within 10 m, 2 within 20 m, 13
   within 50 m, 47 without a threshold. The minimum-support proposal (plan §14 item 15) decides
   in practice between 50 m and none.
+
+## 2026-10-27 (continued): CQ4 increment 2, recharge-proxy influences
+
+### Recurring check (CLAUDE.md §7), answered before starting
+1. *Chain link advanced:* water → model. The weather inputs of arm D become qualified
+   `lulcw:Influence` records (cell → well, through the well's unit and its outcrop), with a sign,
+   an eligibility and the pathways they leave out, so that the export (12.8) and the
+   explanations (CQ10) read them from the graph instead of from model code.
+2. *Where dated land use enters:* unchanged: the weekly crop-thirst index (LU-4: no detectable
+   improvement on the core wells) and the graph's dated crop areas, classes and demand
+   categories (CQ7). Recharge proxies are climate inputs, not land use; land use reaches no model
+   graph until the export.
+3. *Observed / inferred / assumed / unknown:* outcrop polygons and the cell grid are observed
+   (BD LISA, SIM2 points); coverages, weights and now the influences are inferred by rules; the
+   sign (more effective rain on the unit's own outcrop does not lower its head) is an assumption
+   of the mechanism, and recharge itself stays unknown: effective rain is a proxy of it, and the
+   pathways the sources name for the Pliocene (the Têt and its alluvium upstream, the karst and
+   border massifs, leakage from the Quaternary, canals) are not represented.
+4. *Evidence vs plan:* CQ4 increment 1 is done and tested; this increment derives the
+   influences. Still plans: CQ5, CQ6, the export, the two-well path to a model output.
+5. *Next model experiment:* none before the export.
+6. *Still missing from the subject:* satellite semantics (12.10), explanations of real outputs
+   (CQ10), the scenario (CQ16), the AGROVOC gold set (Assil) and the OntoAligner run.
+
+### Facts checked before writing the rule (release of 2026-10-27, dataset v4)
+- The join well attribution → its unit → the coverage of that unit in the well's 5 km search
+  zone → cell weights gives **193 cell → well pairs for 54 wells** (each well its own 1–5 cells,
+  median 4); none of the 54 coverages is partial (every outcrop piece of a zone lies inside a
+  cell). No influence for 6 wells with a unit: the 5 Pliocene wells whose unit has no outcrop
+  within 5 km (BAR3, BAR4, TOR3, F3N4, F; a completed search found none: "no mapped outcrop",
+  not zero recharge) and CARRIE, whose unit 760AE09 is not in the Occitanie extract (unknown).
+  The unit-wide extent (sensitivity) gives 960 pairs for 59 wells.
+- The 60 monitoring attributions with a unit: 56 confident, 4 probable.
+- **Weekly effective rainfall is negative in 56 % of cell-weeks** (PE = rain − actual
+  evaporation exactly, in every cell; minimum −44 mm): a dry week has a negative recharge proxy.
+  The sign stated by the influence is about an increase of PE, so it holds for negative values.
+- **The cells of one well carry nearly the same weekly PE:** over the 280 pairs of cells that
+  share a well (training weeks, to 2019) the correlation has median 0.999, 10th percentile 0.90,
+  minimum 0.76 (DRAINC: 0.945, 0.71, 0.47). Their separate contributions cannot be identified,
+  so they form one driver group.
+
+### What was done
+- **Ontology 0.5.0** (262 terms; ELK and HermiT consistent, ROBOT report without error):
+  `GroundwaterRecharge`, an observable property that nothing in the graph measures; `proxyFor`
+  (the influence's driver stands in for it); `omitsPathway` with two new mechanisms,
+  `LateralInflow` (from neighbouring formations such as the Corbières karst and the border
+  massifs, or from the unit beyond the extent) and `VerticalLeakage` (between superposed units,
+  e.g. the Quaternary → Pliocene leakage of BRGM/RP-71486-FR), beside `RiverExchange` and
+  `CanalReturnFlow`; the driver group `RechargeProxies`; `appliesInExtent` (a rule's fixed
+  extents); `EffectiveRainfall` now says what PE is (rain minus actual evapotranspiration,
+  negative in dry weeks).
+- **The rule** (order 61, after the coverages): one `lulcw:Influence` per weather cell and well
+  attribution, where the cell holds outcrop of the exact unit the well is attributed to, in the
+  well's 5 km search zone (`influence/recharge/local/<cell>/to/<well>/<rank>`) or in the forcing
+  extent (`…/unit-wide/…`, the sensitivity). Driver: the cell's weekly effective rainfall,
+  `proxyFor` groundwater recharge; mechanism diffuse recharge; sign non-decreasing; eligible,
+  with the reason stating that its use as a constraint and the choice of proxy are settled at
+  Gate 3; the four omitted pathways; the cell's share and the covered fraction in the
+  conditions (unit-wide: the share of the unit's outcrop the extent holds, when it clips it). It
+  cites the well's attribution, the coverage and the cell weight, so a policy selects it exactly
+  when it selects the attribution. The path selection moved from order 40 to 90 (last), so that
+  it also sees these paths; its results for the older paths are unchanged.
+- **Shapes:** a recharge proxy must state what it stands in for, its extent and its omitted
+  pathways; its driver is effective rainfall or soil drainage; its path must join the cell to the
+  well (the well's attribution, that unit's coverage in the influence's extent, the cell's weight
+  in it); its extent is the well's own search zone or a fixed extent of its rule; whole-graph
+  checks: no two proxies of one cell on one attribution in one extent (effective rainfall and soil
+  drainage would count one surplus twice), and every cell weight of a well's unit in its zone (or
+  the unit-wide extent) has its influence, so a missing derivation is a violation, never a silent
+  "no recharge pathway". The pumping-only checks now say so (mechanism filter); the exact-unit
+  check covers both mechanisms.
+- **Queries:** `cq08_influences` returns both mechanisms (driver code = BNPE code or SAFRAN cell,
+  proxy, extent, cell weight, omitted pathways); `cq08_status` adds `recharge` = derived /
+  none_found (a completed search: the zone holds BD LISA pieces, the unit is described, none of
+  it at outcrop) / unknown.
+- **Tests:** fixtures W7 (unit X at outcrop in its zone, 0.8 inside the cells: 0.625 / 0.375) and
+  W8 (no outcrop of Y in its zone: none locally, one unit-wide cell; probable, so not selected by
+  confident-only); W1's zone holds outcrop of other units only and gets nothing; 7 new negative
+  controls (32 in all); data checks against the GeoPandas oracle (`test_kg_rules`) and against
+  CQ4's own answers for every well (`test_cq`).
+- **`src/analysis/lu6_example.py`** reports pumping and recharge proxies apart (a new section 4
+  per well), and its list of gaps no longer counts rain recharge among the missing pathways. The
+  two wells: MILLAS C2-1 gets 5 cells over the 27.08 km² of 718BP02 within 5 km (23 % of the
+  unit's mapped outcrop; shares 0.77, 0.13, 0.09, 0.02, <0.01), PONTEILLA NYLS-1 5 cells over
+  59.00 km² of 671AA00 (20 %; 0.67, 0.20, 0.11, 0.03, <0.01); unit-wide, 10 and 23 cells.
+- **Release of 2026-10-27 (evening):** facts 373,306 triples (unchanged), rule outputs 160,669
+  (+31,190: the recharge proxies and their selections), no violation (the 8 infos of the wells
+  without an investigation depth), rules 140 s, total 5 min 20 s. Pumping influences unchanged
+  (1,848; main policy 434, confident-only 134). Recharge proxies: **193 in the search zones for
+  54 wells** (52 distinct cells; confident-only selects 188: the 5 cells of the 3 wells whose unit is
+  probable drop) and
+  **960 unit-wide for 59 wells** (79 cells; confident-only 946). 172 of the 1,153 have a share
+  under 0.0005 (12 of them local): slivers where a cell barely touches the outcrop, together at
+  most 0.13 % of any well's weights; the graph keeps them (they are geometry), and their
+  conditions say "a share under 0.001" (the first run printed "0.0"; fixed before this release).
+
+- **Two slow queries, found by the test time** (13.7 min for `test_cq`, against 5.5 after the
+  fix). `cq08_status` grouped its rows by its flags, so its six EXISTS tests ran once per
+  influence row (10 s for a Pliocene well): the mechanisms are now aggregated in a sub-select and
+  the flags evaluated once (0.09 s). `cq08_influences` took 0.44 s a well because pyoxigraph 0.5
+  evaluates the inside of an OPTIONAL on its own, in the written order, before joining it: the
+  recharge block began with `prov:wasDerivedFrom`, whose self-join meets the thousands of
+  observations the crop-class areas cite; each block now starts from its most selective pattern
+  (the cell weights, the attributions): 0.07 s, the same rows.
+- **Checks, release of 2026-10-27 evening:** `test_ontology` (262 terms), `test_kg_rules` (32
+  negative controls; sections 4–6 on the data, the recharge proxies = the GeoPandas oracle;
+  1 min 39 s), `test_cq` (CQ8 fixtures and data: every well's proxies = CQ4's cells and weights;
+  statuses derived 54, none_found 5, unknown 1, no unit 5; 5 min 35 s), `test_kg`, `test_release`:
+  all pass.
+
+### What to consider
+- **The sign is eligible, not applied.** Assil settles at Gate 3 whether recharge signs constrain
+  the model and with which proxy (PE main, DRAINC as a replacing sensitivity). Until then the
+  export carries the edges and their sign mask, and no constrained variant uses them.
+- **PE is negative in 56 % of the weeks.** A response linear in PE lowers the head in dry weeks
+  as Pastas' recharge does (rain minus a share of evaporation); a clipped proxy, max(PE, 0), would
+  be a different proxy with its own sign statement. A Gate 3 point with the proxy choice.
+- **Sliver cells.** Whether the export drops cells with a share under 0.001 must be fixed before
+  any arm runs: it changes D's edge count (sparsity, compared in E and F), not its weighted inputs.
+- **What D gets and does not get.** 54 of the 60 wells with a unit have local weather edges; the 5
+  Pliocene wells without Pliocene outcrop within 5 km and CARRIE have none in the main runs (the
+  per-well inventory of 12.8 reports it), while C gives every well its nearest cell.
+- **Still partial:** river exchange (CQ5) and canal return flow (CQ6) are not influences yet; for
+  the Pliocene they, and the leakage the sources describe, matter more than local rain.

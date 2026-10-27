@@ -5,19 +5,48 @@
 # Reads       asserted facts and the SHACL-AF rule outputs
 # Returns     one row: ?status not_applicable (?W is not a piezometer), unknown (no unit is
 #             attributed to ?W, so no pathway through a unit can be stated), partial (the graph
-#             derives pumping-drawdown pathways only: rain recharge, canal return flow and river
-#             exchange are not yet lulcw:Influence records, so their absence says nothing);
-#             ?drivers lists the mechanisms present for ?W; ?reason in words.
+#             derives pumping-drawdown pathways and recharge proxies; canal return flow and river
+#             exchange are not yet lulcw:Influence records (CQ5, CQ6), so their absence says nothing);
+#             ?drivers lists the mechanisms present for ?W; ?recharge, the main runs' recharge proxies
+#             (the well's 5 km search zone): derived (at least one), none_found (a completed search:
+#             the zone holds BD LISA pieces, every unit attributed to ?W is described by BD LISA, and
+#             none is at outcrop in the zone: "no mapped outcrop", not zero recharge; the unit-wide
+#             sensitivity may still connect the well), unknown (no search zone, a unit outside BD LISA,
+#             or outcrop of the unit in the zone without a derived influence: the rule outputs are
+#             missing or stale), not_applicable; ?reason in words.
+# A negative recharge answer needs a completed search, never the mere absence of an influence
+# (Codex review of 2026-10-26, §1; cq04_status.rq gives the same answer per unit).
 PREFIX lulcw: <https://w3id.org/lulcw#>
-SELECT ?W (GROUP_CONCAT(DISTINCT STRAFTER(STR(?mech), "#"); separator=" ") AS ?drivers)
+PREFIX prov: <http://www.w3.org/ns/prov#>
+SELECT ?W (COALESCE(?d, "") AS ?drivers)
        (IF(!?isWell, "not_applicable", IF(!?hasUnit, "unknown", "partial")) AS ?status)
+       (IF(!?isWell, "not_applicable",
+         IF(!?hasUnit, "unknown",
+         IF(?localRecharge, "derived",
+         IF(?searched && ?allDescribed && !?outcropOfUnit, "none_found", "unknown")))) AS ?recharge)
        (IF(!?isWell, "not a piezometer of the graph",
          IF(!?hasUnit, "no unit is attributed to the well, so no pathway through a unit can be stated",
-            "pumping-drawdown pathways only: rain recharge, canal return flow and river exchange are not yet derived, so their absence says nothing")) AS ?reason)
+            CONCAT("pumping-drawdown pathways and recharge proxies are derived; canal return flow and river exchange are not yet (CQ5, CQ6), so their absence says nothing. Recharge proxies: ",
+              IF(?localRecharge, "derived from the weather cells over the outcrop of the well's unit in its search zone (proxies of recharge: lateral inflow, vertical leakage, river exchange and canal return flow are not represented)",
+              IF(?searched && ?allDescribed && !?outcropOfUnit, "none, the well's unit has no mapped outcrop in its search zone (a completed search; not zero recharge)",
+                 "unknown: no search zone, a unit not described by BD LISA, or outcrop of the unit in the zone without a derived influence (rule outputs missing or stale)"))))) AS ?reason)
 WHERE {
-    OPTIONAL { ?i a lulcw:Influence ; lulcw:targetEntity ?W ; lulcw:mechanism ?mech . }
+    OPTIONAL {   # the mechanisms present, aggregated apart so the flags below are evaluated once
+        SELECT ?W (GROUP_CONCAT(DISTINCT STRAFTER(STR(?mech), "#"); separator=" ") AS ?d)
+        WHERE { ?i a lulcw:Influence ; lulcw:targetEntity ?W ; lulcw:mechanism ?mech . }
+        GROUP BY ?W
+    }
     BIND (EXISTS { ?W a lulcw:Piezometer } AS ?isWell)
     BIND (EXISTS { ?m lulcw:attributedEntity ?W ; lulcw:role lulcw:MonitoringRole ;
                       lulcw:candidateUnit ?u . } AS ?hasUnit)
+    BIND (EXISTS { ?r lulcw:targetEntity ?W ; lulcw:mechanism lulcw:DiffuseRecharge ; lulcw:withinExtent ?z0 .
+                   ?z0 lulcw:zoneOf ?W . } AS ?localRecharge)
+    BIND (EXISTS { ?z1 lulcw:zoneOf ?W ; a lulcw:OutcropSearchZone .
+                   ?x lulcw:withinExtent ?z1 ; a lulcw:PolygonCellIntersection . } AS ?searched)
+    BIND (NOT EXISTS { ?m3 lulcw:attributedEntity ?W ; lulcw:role lulcw:MonitoringRole ; lulcw:candidateUnit ?u3 .
+                       FILTER NOT EXISTS { ?u3 prov:wasDerivedFrom ?rec . } } AS ?allDescribed)
+    BIND (EXISTS { ?m2 lulcw:attributedEntity ?W ; lulcw:role lulcw:MonitoringRole ; lulcw:candidateUnit ?u2 .
+                   ?z2 lulcw:zoneOf ?W ; a lulcw:OutcropSearchZone .
+                   ?y lulcw:withinExtent ?z2 ; lulcw:intersectedPolygon ?p .
+                   ?p lulcw:hasStackLayer ?l . ?l lulcw:layerOrder 1 ; lulcw:layerUnit ?u2 . } AS ?outcropOfUnit)
 }
-GROUP BY ?W ?isWell ?hasUnit

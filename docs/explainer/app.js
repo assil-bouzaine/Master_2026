@@ -138,6 +138,7 @@
     ["pliocene", "Deep sand-and-clay layers", "Many sheets of sand separated by clay, 2 to 5 million years old, reached from about 10 to 250 m deep in our wells. The main store of drinking water.", "Experts: the Pliocene multilayer aquifer; BD LISA code 671AA00"],
     ["karst", "Karst", "Limestone dissolved into cracks and tunnels. Water moves fast and in surprising ways.", "Here: the Corbières karst, BD LISA 681AM00"],
     ["recharge", "Recharge", "Water soaking down into an underground layer and refilling it, mostly from rain."],
+    ["proxy", "Stand-in", "A number we can measure used in place of one we cannot: the rain left after evaporation, over the patch where a layer reaches the surface, stands in for the water that really refills it. A stand-in can be wrong in size and misses other ways in, so the map always says it is one.", "Experts: proxy; here effective rainfall (SIM2 PE) for groundwater recharge"],
     ["drought", "Drought", "A long dry period. In the Roussillon, 2022–2025 brought record-low water levels and water-use limits."],
     ["artesian", "Artesian", "When deep water is under so much pressure that it rises above the ground and flows out of the well by itself."],
     ["confined", "Confined layer", "A water layer sealed by clay above it. Its water is under pressure, like in a squeezed bottle."],

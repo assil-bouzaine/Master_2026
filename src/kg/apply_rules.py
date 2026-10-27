@@ -20,7 +20,9 @@ stratigraphic relations with their witness polygons and the `overlies` shortcut 
 selections of each export policy and the main policy's monitors/pumpsFrom view (CQ1, CQ2),
 same-unit well links within 5 km (CQ11) and pumping influences (CQ8); for land use (CQ7), the
 crop class of each RPG code, class areas per zone and RPG year, and a dated high-irrigation-
-demand category per zone and year. They are derived by SPARQL inside the graph, so that the
+demand category per zone and year; for recharge-related forcing (CQ4), the outcrop coverages and
+cell weights, and the recharge-proxy influences of the weather cells on the wells (CQ4, CQ8).
+They are derived by SPARQL inside the graph, so that the
 equivalence test of task 12.8 compares two independent derivations (pandas on the source tables
 is the other).
 
@@ -222,25 +224,47 @@ def counts(facts, added):
             (None, L.investigationDepthDifferenceM, None)))),
         "well_links_selected_by_policy": one(
             "SELECT ?p (COUNT(?l) AS ?n) WHERE { ?l a lulcw:WellLink ; lulcw:selectedUnder ?p } GROUP BY ?p"),
+        "influences_by_mechanism": one(
+            "SELECT ?m (COUNT(?i) AS ?n) WHERE { ?i a lulcw:Influence ; lulcw:mechanism ?m } GROUP BY ?m"),
+        # pumping drawdown (CQ8): the keys of the summaries before the recharge proxies
         "influences_by_resolution": one(
-            "SELECT ?r (COUNT(?i) AS ?n) WHERE { ?i a lulcw:Influence ; lulcw:resolution ?r } GROUP BY ?r"),
+            "SELECT ?r (COUNT(?i) AS ?n) WHERE { ?i a lulcw:Influence ; lulcw:mechanism lulcw:PumpingDrawdown ; "
+            "lulcw:resolution ?r } GROUP BY ?r"),
         "influences_by_eligibility": one(
-            "SELECT ?e (COUNT(?i) AS ?n) WHERE { ?i a lulcw:Influence ; lulcw:constraintEligibility ?e } "
-            "GROUP BY ?e"),
+            "SELECT ?e (COUNT(?i) AS ?n) WHERE { ?i a lulcw:Influence ; lulcw:mechanism lulcw:PumpingDrawdown ; "
+            "lulcw:constraintEligibility ?e } GROUP BY ?e"),
         "influences_by_confidence": one(
-            "SELECT ?c (COUNT(?i) AS ?n) WHERE { ?i a lulcw:Influence ; lulcw:confidence ?c } GROUP BY ?c"),
+            "SELECT ?c (COUNT(?i) AS ?n) WHERE { ?i a lulcw:Influence ; lulcw:mechanism lulcw:PumpingDrawdown ; "
+            "lulcw:confidence ?c } GROUP BY ?c"),
         "influences_selected_by_policy": one(
-            "SELECT ?p (COUNT(?i) AS ?n) WHERE { ?i a lulcw:Influence ; lulcw:selectedUnder ?p } GROUP BY ?p"),
+            "SELECT ?p (COUNT(?i) AS ?n) WHERE { ?i a lulcw:Influence ; lulcw:mechanism lulcw:PumpingDrawdown ; "
+            "lulcw:selectedUnder ?p } GROUP BY ?p"),
         "eligible_influences_selected_by_policy": one(
-            "SELECT ?p (COUNT(?i) AS ?n) WHERE { ?i a lulcw:Influence ; lulcw:selectedUnder ?p ; "
-            "lulcw:constraintEligibility lulcw:EligibleConstraint } GROUP BY ?p"),
+            "SELECT ?p (COUNT(?i) AS ?n) WHERE { ?i a lulcw:Influence ; lulcw:mechanism lulcw:PumpingDrawdown ; "
+            "lulcw:selectedUnder ?p ; lulcw:constraintEligibility lulcw:EligibleConstraint } GROUP BY ?p"),
     }
     pairs = g.query(pre + "SELECT ?p (COUNT(DISTINCT CONCAT(STR(?f), STR(?w))) AS ?n) "
                     "(COUNT(DISTINCT ?f) AS ?nf) (COUNT(DISTINCT ?w) AS ?nw) WHERE { ?i a lulcw:Influence ; "
+                    "lulcw:mechanism lulcw:PumpingDrawdown ; "
                     "lulcw:driverEntity ?f ; lulcw:targetEntity ?w ; lulcw:selectedUnder ?p } GROUP BY ?p")
     out["influence_facility_well_pairs_by_policy"] = {
         str(r[0]).split("/")[-1]: {"pairs": int(r[1]), "facilities": int(r[2]), "wells": int(r[3])}
         for r in pairs}
+    # recharge proxies (CQ4, CQ8): per extent kind, the influences, the wells they reach and the
+    # influences each policy selects
+    kind = ("BIND (IF(STRSTARTS(STR(?s), STR(<outcrop-zone/>)), <kind/search-zone>, ?s) AS ?k)")
+    rech = g.query(pre + "SELECT ?k (COUNT(?i) AS ?n) (COUNT(DISTINCT ?w) AS ?nw) (COUNT(DISTINCT ?c) AS ?nc) "
+                   "WHERE { ?i a lulcw:Influence ; lulcw:mechanism lulcw:DiffuseRecharge ; lulcw:withinExtent ?s ; "
+                   f"lulcw:targetEntity ?w ; lulcw:driverEntity ?c . {kind} }} GROUP BY ?k")
+    out["recharge_influences_by_extent_kind"] = {
+        str(r[0]).split("/")[-1]: {"influences": int(r[1]), "wells": int(r[2]), "cells": int(r[3])} for r in rech}
+    sel = g.query(pre + "SELECT ?k ?p (COUNT(?i) AS ?n) WHERE { ?i a lulcw:Influence ; "
+                  "lulcw:mechanism lulcw:DiffuseRecharge ; lulcw:withinExtent ?s ; lulcw:selectedUnder ?p . "
+                  f"{kind} }} GROUP BY ?k ?p")
+    out["recharge_influences_selected_by_policy"] = {}
+    for r in sel:
+        out["recharge_influences_selected_by_policy"].setdefault(str(r[0]).split("/")[-1], {})[
+            str(r[1]).split("/")[-1]] = int(r[2])
     out["crop_codes_by_class"] = one(
         "SELECT ?c (COUNT(?k) AS ?n) WHERE { ?k a lulcw:CropCode ; lulcw:cropClass ?c } GROUP BY ?c")
     out["crop_codes_without_class"] = int(list(g.query(pre + "SELECT (COUNT(?k) AS ?n) WHERE { "
@@ -284,7 +308,8 @@ def main():
     out.add((head, DCT.title, Literal(f"LULC-Water knowledge graph, dataset {DATASET}: links derived "
                                       "by the SHACL-AF rules", lang="en")))
     out.add((head, DCT.description, Literal(
-        "Stratigraphic relations, policy selections, same-unit well links and pumping influences "
+        "Stratigraphic relations, policy selections, same-unit well links, pumping influences, "
+        "land-use classes and categories, outcrop coverages and recharge-proxy influences "
         f"derived from lulcw_kg_{DATASET}.ttl by ontology/rules/lulcw-rules.ttl (task 12.6).",
         lang="en")))
     out.add((head, DCT.created, Literal(date.today().isoformat(), datatype=XSD.date)))

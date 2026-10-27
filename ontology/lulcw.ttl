@@ -19,9 +19,9 @@
 # M2 = square metre, M3 = cubic metre) and are stated in each definition.
 
 <https://w3id.org/lulcw> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/0.4.0> ;
-    owl:versionInfo "0.4.0" ;
-    owl:priorVersion <https://w3id.org/lulcw/0.3.0> ;
+    owl:versionIRI <https://w3id.org/lulcw/0.5.0> ;
+    owl:versionInfo "0.5.0" ;
+    owl:priorVersion <https://w3id.org/lulcw/0.4.0> ;
     dcterms:title "LULC-Water bridging module"@en , "Module de liaison LULC-Water"@fr ;
     dcterms:description "Bridging module of the LULC-Water network of ontologies (SAVE Water, PRIMA): wells, abstraction facilities, hydrogeological units and the qualified, evidence-carrying assertions (unit attributions, stratigraphic relations, well links, influences, annual abstraction accounting) that structure, constrain and explain a groundwater-level model of the Roussillon multilayer aquifer."@en ,
         "Module de liaison du réseau d'ontologies LULC-Water (SAVE Water, PRIMA) : piézomètres, ouvrages de prélèvement, entités hydrogéologiques et assertions qualifiées, porteuses de preuves (attributions à une entité, relations stratigraphiques, liens entre piézomètres, influences, bilans annuels des prélèvements), qui structurent, contraignent et expliquent un modèle des niveaux piézométriques de l'aquifère multicouche du Roussillon."@fr ;
@@ -34,7 +34,8 @@
         "0.1.1 (2026-10-24, task 12.5): water use EnergyUse (BNPE code ENE); GeoSPARQL hasMetricArea added to the reused terms for polygon areas."@en ,
         "0.2.0 (2026-10-25, task 12.6): admitsConfidence and searchRadiusM, so that export policies and spatial rules carry their parameters as data; constraint eligibility defined from the evidence of the pathway, applied only under a policy that selects every segment. The SHACL shapes and SHACL-AF rules are in ontology/shapes/ and ontology/rules/."@en ,
         "0.3.0 (2026-10-25, task 12.6, CQ7): land use and crops: RPG crop codes, crop classes with their FAO-56 parameters and irrigation assumptions, crop demand zones, clipped crop areas per RPG year, potential irrigation demand estimates and their dated categories."@en ,
-        "0.4.0 (2026-10-26, CQ4): recharge-related forcing: SAFRAN weather cells, the mapped outcrop of units inside reference extents, polygon-cell intersection areas, outcrop coverage and cell weights; WellZone generalises the crop demand zone, so zoneOf and zoneRadiusM also serve the outcrop search zone; observable property SoilDrainage; the mapped outcrop area of each unit, so that a reference extent states how much of the unit it clips."@en ;
+        "0.4.0 (2026-10-26, CQ4): recharge-related forcing: SAFRAN weather cells, the mapped outcrop of units inside reference extents, polygon-cell intersection areas, outcrop coverage and cell weights; WellZone generalises the crop demand zone, so zoneOf and zoneRadiusM also serve the outcrop search zone; observable property SoilDrainage; the mapped outcrop area of each unit, so that a reference extent states how much of the unit it clips."@en ,
+        "0.5.0 (2026-10-27, CQ4 and CQ8): recharge-proxy influences: the observable property GroundwaterRecharge, which no input of the graph measures; proxyFor, so that an influence states what its driver stands in for; omitsPathway, so that it names the pathways it does not represent; the mechanisms LateralInflow and VerticalLeakage; the driver group RechargeProxies; withinExtent also serves influences, and appliesInExtent names the fixed extents a rule derives in."@en ;
     owl:imports <https://w3id.org/lulcw/imports/sosa> , <https://w3id.org/lulcw/imports/prov> ,
         <https://w3id.org/lulcw/imports/time> , <https://w3id.org/lulcw/imports/skos> ,
         <https://w3id.org/lulcw/imports/geo> .
@@ -407,7 +408,7 @@ lulcw:Mechanism a owl:Class ; rdfs:subClassOf skos:Concept ;
     skos:definition "A physical process by which a driver can change groundwater head, stated as a conditional specification, not as a universal law about every instance."@en .
 lulcw:MechanismScheme a skos:ConceptScheme ;
     rdfs:label "mechanisms"@en , "mécanismes"@fr ;
-    skos:definition "Values of lulcw:Mechanism (the four constraint families of CLAUDE.md §3)."@en .
+    skos:definition "Values of lulcw:Mechanism: the four constraint families of the design (pumping drawdown, diffuse recharge, canal return flow, river exchange), and pathways named so that a proxy is never presented as the complete supply (lateral inflow, vertical leakage)."@en .
 lulcw:PumpingDrawdown a lulcw:Mechanism ; skos:inScheme lulcw:MechanismScheme ; skos:topConceptOf lulcw:MechanismScheme ;
     skos:prefLabel "pumping drawdown"@en , "rabattement par pompage"@fr ;
     rdfs:label "pumping drawdown"@en , "rabattement par pompage"@fr ;
@@ -424,6 +425,14 @@ lulcw:RiverExchange a lulcw:Mechanism ; skos:inScheme lulcw:MechanismScheme ; sk
     skos:prefLabel "river exchange"@en , "échange nappe-rivière"@fr ;
     rdfs:label "river exchange"@en , "échange nappe-rivière"@fr ;
     skos:definition "Exchange between a river reach and a unit; its direction depends on hydraulic conditions and needs documented evidence before any sign is used."@en .
+lulcw:LateralInflow a lulcw:Mechanism ; skos:inScheme lulcw:MechanismScheme ; skos:topConceptOf lulcw:MechanismScheme ;
+    skos:prefLabel "lateral inflow"@en , "apport latéral"@fr ;
+    rdfs:label "lateral inflow"@en , "apport latéral"@fr ;
+    skos:definition "Groundwater flowing into a unit from adjacent formations (e.g. the Corbières karst and the massifs bordering the Roussillon plain) or from parts of the unit beyond a reference extent. Named so that a local recharge proxy is never presented as the whole supply; not yet derived as an influence."@en .
+lulcw:VerticalLeakage a lulcw:Mechanism ; skos:inScheme lulcw:MechanismScheme ; skos:topConceptOf lulcw:MechanismScheme ;
+    skos:prefLabel "vertical leakage"@en , "drainance verticale"@fr ;
+    rdfs:label "vertical leakage"@en , "drainance verticale"@fr ;
+    skos:definition "Exchange of water between superposed units through a semi-permeable bed or a direct contact (CQ3), e.g. the downward leakage from the Quaternary into the Pliocene that follows Pliocene pumping (BRGM/RP-71486-FR); its direction follows the head difference. Named so that a local recharge proxy is never presented as the whole supply; not yet derived as an influence."@en .
 
 lulcw:DriverGroup a owl:Class ; rdfs:subClassOf skos:Concept ;
     rdfs:label "driver group"@en , "groupe de forçages"@fr ;
@@ -435,6 +444,10 @@ lulcw:SummerDemand a lulcw:DriverGroup ; skos:inScheme lulcw:DriverGroupScheme ;
     skos:prefLabel "summer demand"@en , "demande estivale"@fr ;
     rdfs:label "summer demand"@en , "demande estivale"@fr ;
     skos:definition "Reconstructed seasonal pumping and the climatic deficit, which move together within a year (r = 0.92 to 0.97) and are attributed jointly."@en .
+lulcw:RechargeProxies a lulcw:DriverGroup ; skos:inScheme lulcw:DriverGroupScheme ; skos:topConceptOf lulcw:DriverGroupScheme ;
+    skos:prefLabel "recharge proxies"@en , "indicateurs de recharge"@fr ;
+    rdfs:label "recharge proxies"@en , "indicateurs de recharge"@fr ;
+    skos:definition "The recharge-proxy influences of one well, one per weather cell over the outcrop of its unit, reported together: neighbouring cells carry nearly the same weekly signal, so their separate contributions are not identifiable. In the irrigation season the proxy also moves with the climatic deficit of the summer-demand group (docs/analysis_plan.md §8)."@en .
 
 lulcw:ConstraintEligibility a owl:Class ; rdfs:subClassOf skos:Concept ;
     rdfs:label "constraint eligibility"@en , "éligibilité à la contrainte"@fr ;
@@ -481,7 +494,10 @@ lulcw:ReconstructedWeeklyVolume a sosa:ObservableProperty ;
     skos:definition "Weekly volume obtained by spreading annual declarations with documented profiles, in cubic metres per week; a model driver, not an observation."@en .
 lulcw:EffectiveRainfall a sosa:ObservableProperty ;
     rdfs:label "effective rainfall"@en , "pluie efficace"@fr ;
-    skos:definition "SAFRAN effective rainfall summed over a week, in millimetres."@en .
+    skos:definition "SIM2 (SAFRAN-ISBA) daily effective rainfall (variable PE: rainfall minus actual evapotranspiration) summed over a week, in millimetres; negative in weeks when evapotranspiration exceeds rainfall. A recharge-related input, not a measured recharge."@en .
+lulcw:GroundwaterRecharge a sosa:ObservableProperty ;
+    rdfs:label "groundwater recharge"@en , "recharge des nappes"@fr ;
+    skos:definition "Water reaching the saturated zone of a unit per unit of time, by any pathway (diffuse infiltration, lateral inflow, leakage, river or canal losses). Not observed in this graph: effective rainfall and soil drainage over a unit's outcrop stand in for one part of it."@en .
 lulcw:CanalDiversionVolume a sosa:ObservableProperty ;
     rdfs:label "canal diversion volume"@en , "volume dérivé par les canaux"@fr ;
     skos:definition "Volume declared at canal intakes, spread over the irrigation season, in cubic metres; a proxy for return flow, not a recharge volume."@en .
@@ -712,6 +728,16 @@ lulcw:constraintEligibility a owl:ObjectProperty ;
     rdfs:domain lulcw:Influence ; rdfs:range lulcw:ConstraintEligibility ;
     rdfs:label "has constraint eligibility"@en , "a pour éligibilité à la contrainte"@fr ;
     skos:definition "Whether the evidence of an influence allows its response sign to constrain a model. An eligible influence is constrained only under a policy that selects it, i.e. one that selects every segment of its pathway."@en .
+
+lulcw:proxyFor a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:Influence ; rdfs:range sosa:ObservableProperty ;
+    rdfs:label "proxy for"@en , "indicateur de"@fr ;
+    skos:definition "The quantity that an influence's driver variable stands in for, when the driver is a proxy (effective rainfall over an outcrop for groundwater recharge). The response sign refers to the proxy, never to the quantity it stands in for."@en .
+
+lulcw:omitsPathway a owl:ObjectProperty ;
+    rdfs:domain lulcw:Influence ; rdfs:range lulcw:Mechanism ;
+    rdfs:label "omits pathway"@en , "omet la voie"@fr ;
+    skos:definition "A mechanism that can also change the head at the target but that the influence does not represent: named so that an explanation never presents the influence as the complete pathway. It does not assert that the mechanism is active at the target."@en .
 
 lulcw:allocatesRecord a owl:ObjectProperty , owl:FunctionalProperty ;
     rdfs:domain lulcw:VolumeAllocation ; rdfs:range lulcw:AnnualAbstractionRecord ;
@@ -1068,7 +1094,11 @@ lulcw:intersectedCell a owl:ObjectProperty , owl:FunctionalProperty ;
 lulcw:withinExtent a owl:ObjectProperty , owl:FunctionalProperty ;
     rdfs:range geo:Feature ;
     rdfs:label "within extent"@en , "dans l'emprise"@fr ;
-    skos:definition "The reference extent (an outcrop search zone or a named extent) a polygon-cell intersection or an outcrop coverage is computed in."@en .
+    skos:definition "The reference extent (an outcrop search zone or a named extent) a polygon-cell intersection, an outcrop coverage or a recharge-proxy influence is computed in."@en .
+lulcw:appliesInExtent a owl:ObjectProperty ;
+    rdfs:domain lulcw:DerivationRule ; rdfs:range geo:Feature ;
+    rdfs:label "applies in extent"@en , "s'applique dans l'emprise"@fr ;
+    skos:definition "A named reference extent in which a rule derives its assertions, besides any per-well zone it uses (e.g. the forcing extent of the unit-wide sensitivity of the recharge proxies)."@en .
 lulcw:coverageUnit a owl:ObjectProperty , owl:FunctionalProperty ;
     rdfs:domain lulcw:OutcropCoverage ; rdfs:range lulcw:HydrogeologicalUnit ;
     rdfs:label "coverage unit"@en , "entité couverte"@fr ;

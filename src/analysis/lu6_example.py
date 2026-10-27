@@ -11,6 +11,7 @@ from, and every gap is a status, not a silence. The model step is the pre-regist
 test (LU-4, results/<dataset>/land_use_test.csv); an explanation of a model output (CQ10) and the
 satellite rule (CQ15) do not exist yet and are listed as such.
 """
+import re
 from datetime import date
 from urllib.parse import unquote
 
@@ -31,6 +32,15 @@ MAIN = URIRef(f"{D}policy/main")
 
 def ha(x):
     return f"{x:,.0f}"
+
+
+def share(w):
+    return f"{w:.2f}" if w >= 0.005 else "<0.01"
+
+
+def words(name):
+    """A concept's local name in words: CanalReturnFlow -> canal return flow."""
+    return re.sub(r"(?<!^)(?=[A-Z])", " ", name).lower()
 
 
 def section(s, code, what, pz, lines):
@@ -112,15 +122,41 @@ def section(s, code, what, pz, lines):
             for u, n in uses.items()) + ".")
     lines.append(f"- {len(unres)} nearby facilities have no candidate unit (unresolved, never zero, never attributed).")
     inf = ask(s, "cq08_influences", W=w, policy=MAIN)
-    elig = [r for r in inf if local(r["eligibility"]) == "EligibleConstraint"]
+    pump = [r for r in inf if local(r["mechanism"]) == "PumpingDrawdown"]
+    elig = [r for r in pump if local(r["eligibility"]) == "EligibleConstraint"]
     acc = [r for r in elig if r["selected"]]
-    lines.append(f"- Influences derived by the rules: {len(inf)} paths, {len(elig)} with the non-increasing sign "
-                 f"of pumping drawdown (exact unit), {len(acc)} of these accepted by the main policy; "
-                 f"{len(inf) - len(elig)} group-level paths carry no sign.")
+    lines.append(f"- Pumping influences derived by the rules: {len(pump)} paths, {len(elig)} with the "
+                 f"non-increasing sign of pumping drawdown (exact unit), {len(acc)} of these accepted by the "
+                 f"main policy; {len(pump) - len(elig)} group-level paths carry no sign.")
     if acc:
         lines.append(f"  Their stated condition: \"{acc[0]['conditions']}\"")
-    st2, st8 = one(s, "cq02_status", W=w, r=RADIUS), one(s, "cq08_status", W=w)
-    lines.append(f"- Status CQ2: {st2['status']}. Status CQ8: {st8['status']}: {st8['reason']}.\n")
+    st2 = one(s, "cq02_status", W=w, r=RADIUS)
+    lines.append(f"- Status CQ2: {st2['status']}.\n")
+
+    # 4. recharge proxies (CQ4, CQ8)
+    lines.append("### 4. Rain over the outcrop of the well's unit: recharge proxies (CQ4, CQ8)\n")
+    rech = [r for r in inf if local(r["mechanism"]) == "DiffuseRecharge"]
+    near = sorted((r for r in rech if "/outcrop-zone/" in r["extent"]), key=lambda r: -r["cellWeight"])
+    wide = [r for r in rech if "/outcrop-zone/" not in r["extent"]]
+    zone = iris(s, "SELECT ?c ?z WHERE { ?z a lulcw:OutcropSearchZone ; lulcw:zoneOf/lulcw:bssCode ?c }")[code]
+    cov = ask(s, "cq04_coverage", U=URIRef(f"{D}unit/{unit}"), S=zone) if unit else []
+    if near:
+        lines.append(f"- {len(near)} SAFRAN cells hold the outcrop of {unit} mapped within {RADIUS / 1000:g} km "
+                     f"of the well ({cov[0]['outcropAreaM2'] / 1e6:.2f} km², {cov[0]['unitShareInS']:.0%} of the "
+                     "unit's mapped outcrop); their shares: "
+                     + ", ".join(f"{r['driverCode']} {share(r['cellWeight'])}" for r in near) + ".")
+    else:
+        lines.append(f"- No outcrop of {unit} is mapped within {RADIUS / 1000:g} km of the well: no recharge proxy "
+                     "in the main runs (not zero recharge).")
+    lines.append(f"- The unit-wide sensitivity gives the well {len(wide)} cells (every well of {unit} the same).")
+    if rech:
+        r = rech[0]
+        lines.append(f"- Each proxy is the cell's weekly {words(local(r['driverVariable']))} standing in for "
+                     f"{words(local(r['proxyFor']))}, with a non-decreasing response, eligible to constrain a "
+                     "model (whether recharge signs do is settled at Gate 3). Not represented: "
+                     + ", ".join(words(m) for m in sorted(r["omittedPathways"].split())) + ".")
+    st8 = one(s, "cq08_status", W=w)
+    lines.append(f"- Status CQ8: {st8['status']} (recharge proxies: {st8['recharge']}): {st8['reason']}.\n")
     return unit
 
 
@@ -134,8 +170,8 @@ def main():
              "competency-question query (`tests/cq/`), with its status; a gap is reported as a status, "
              "never as a silence.\n",
              "The chain of the subject: dated land use → water demand and supported pathways → model → "
-             "groundwater → explanation. Sections 1–3 answer it from the graph for each well; section 4 "
-             "is the model step; section 5 lists what cannot be answered yet.\n"]
+             "groundwater → explanation. Sections 1–4 answer it from the graph for each well; section 5 "
+             "is the model step; section 6 lists what cannot be answered yet.\n"]
     units = {}
     for code, what in WELLS.items():
         units[code] = section(s, code, what, pz, lines)
@@ -160,8 +196,8 @@ def main():
     lines.append(f"\nIn Mm³; declared total {decl / 1e6:.1f} Mm³. Declared withdrawals of facilities in the "
                  "extent, not consumption nor all abstraction from a unit.\n")
 
-    # 4. the model step (LU-4)
-    lines.append("## 4. Does a model use this land use? (LU-4, pre-registered)\n")
+    # 5. the model step (LU-4)
+    lines.append("## 5. Does a model use this land use? (LU-4, pre-registered)\n")
     t = pd.read_csv(RESULTS_DIR / "land_use_test.csv")
     main_rows = t[(t["kind"] == "main")]
     for _, r in main_rows.iterrows():
@@ -172,14 +208,17 @@ def main():
                  "trained on the same machine). The alluvium wells, where crops and canals should matter "
                  "most, are too few among the core wells for a group test (step 12d note).\n")
 
-    # 5. what cannot be answered yet
-    lines.append("## 5. What the graph cannot say yet\n")
+    # 6. what cannot be answered yet
+    lines.append("## 6. What the graph cannot say yet\n")
     lines.append("- **Whether a parcel is irrigated, and from which water** (CQ15): the satellite rule "
                  "needs the Earth Engine login (task 12.10); 84 % of the plain's declared irrigation water is "
                  "surface water (mostly the Têt and Agly canals), so most crop demand never reaches a "
                  "borehole.")
-    lines.append("- **Canal return flow to the alluvium** (CQ6), rain recharge (CQ4) and river exchange "
-                 "(CQ5) are not yet `lulcw:Influence` records: CQ8 is partial for every well.")
+    lines.append("- **Canal return flow to the alluvium** (CQ6) and river exchange (CQ5) are not yet "
+                 "`lulcw:Influence` records: CQ8 is partial for every well. Rain over the outcrop is a proxy "
+                 "(section 4): for the Pliocene the sources name other pathways as the main ones (the Têt and "
+                 "its alluvium upstream, the Corbières karst and the border massifs, leakage from the "
+                 "Quaternary).")
     lines.append("- **Irrigation pumping by unit:** the main policy places no irrigation volume in a unit "
                  "(`docs/pump_coverage.md`); farm-borehole effects come only from the all-links sensitivity.")
     lines.append("- **An explanation of a model output** (CQ10): needs the Phase 4 model and its contributions.")

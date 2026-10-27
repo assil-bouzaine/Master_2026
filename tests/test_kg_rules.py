@@ -25,6 +25,13 @@
         fraction 1; 0.8 of 1 km² inside cells gives a fraction 0.8 and weights renormalised over
         the covered part (0.625 / 0.375); a unit only below order 1 gets no coverage; every piece
         of the outcrop, the one outside the cells too, is cited
+   CQ8  recharge proxies: W7 (unit X at outcrop in its zone) gets one influence per cell, weights
+        0.625 / 0.375, effective rainfall standing in for groundwater recharge, non-decreasing,
+        eligible, the four omitted pathways named, the covered fraction in its conditions; W8 (no
+        outcrop of its unit Y in its zone) gets none locally and one unit-wide (c2, weight 1, the
+        extent holding 0.8 of Y's outcrop said in its conditions); W1, whose zone holds outcrop of
+        other units only, gets none; a policy selects a proxy exactly when it selects the well's
+        attribution (W8's is probable)
    The fixture graph, with the rule outputs, has no violation.
 3. Negative controls, each inserted on purpose and reported as a violation: an ordering chained
    across two polygons, a self-paired well link, an eligible influence with an unknown sign,
@@ -38,7 +45,11 @@
    two pieces with one polygon, extent and cell, a piece under 1 m², a coverage citing a piece of
    another extent, a covered fraction that is not covered / outcrop, a cell weight outside any
    coverage, a coverage larger than the unit's whole mapped outcrop, two coverages for one extent
-   and unit.
+   and unit; (CQ8 recharge proxies) a proxy that does not name the pathways it omits, a second
+   proxy of the same surplus on one path (soil drainage beside effective rainfall), a missing
+   proxy in a well's zone and in the unit-wide extent (a derivation not run, or stale), a proxy
+   resting on another well's attribution, a driver that is not a water-surplus proxy, a proxy in
+   another well's search zone.
 4. Data-backed regression (when the graph and the rule outputs exist), against pandas on the
    source tables: the stratigraphic relations equal the pairs of the BD LISA stack table for
    the graph's polygons, and the direct contacts of the plain's polygons equal the overlies
@@ -54,9 +65,12 @@
    src.kg.apply_rules is the one of the current files and has no violation.
 5. Data, CQ4: the outcrop coverages and cell weights equal oracle_coverage (GeoPandas on BD LISA
    and the raw SAFRAN grid, written apart from src.kg.forcing), and each unit's mapped outcrop equals
-   the order-1 polygons of the whole extract. Sections 4-5 run only on a
-   validated release (src.kg.release.check): facts, rule outputs, rules, shapes and ontology
-   unchanged since src.kg.apply_rules validated them.
+   the order-1 polygons of the whole extract.
+6. Data, CQ8 recharge proxies: for every well with a recorded unit described by BD LISA, the cells
+   and weights of its influences equal the oracle's for that unit in its zone and in the forcing
+   extent; none for the other wells; signs, proxy, omitted pathways and policy selections as
+   specified. Sections 4-6 run only on a validated release (src.kg.release.check): facts, rule
+   outputs, rules, shapes and ontology unchanged since src.kg.apply_rules validated them.
 """
 import json
 import re
@@ -244,6 +258,8 @@ def build_fixture():
     fx.facility("F3", 300, 0, None, None)                # explicit unknown
     fx.facility("F4", 400, 0, U, L.Possible)             # exact, possible
     fx.facility("F5", 0, 20000, U, L.Confident)          # beyond the radius of every well
+    fx.well("W7", -30000, 0, X, L.Confident, depth=60)   # recharge: X at outcrop in its zone
+    fx.well("W8", -30000, -30000, Y, L.Probable, depth=70)   # no Y outcrop in its zone; unit-wide only
     add_landuse(fx)
     add_forcing(fx, (A, B, C, X, Y, Z))
     return fx, {"A": A, "B": B, "C": C, "X": X, "Y": Y, "Z": Z, "U": U, "V": V, "G": G}
@@ -255,7 +271,11 @@ def add_forcing(fx, described):
     as 0.5 km² in c1, 0.3 km² in c2 and 0.2 km² outside every cell; the forcing extent holds
     polygon 3 (Y at outcrop) in c2. Units A-Z are described by BD LISA (a source record), U and V
     are not; mapped outcrop over the whole release: A 1 km² (all in the zone), X 2 km² (half),
-    Y 1.25 km² (the forcing extent clips it to 0.8), B, C, Z never at outcrop."""
+    Y 1.25 km² (the forcing extent clips it to 0.8), B, C, Z never at outcrop.
+    Recharge proxies (CQ8): W7 (unit X) has polygon 2 in its zone as W1 has; W8 (unit Y) has
+    polygon 1 (A at outcrop, no Y) in its zone, so a completed search finds no outcrop of its unit,
+    and only the forcing extent (the unit-wide sensitivity) connects it to c2. W1's zone holds
+    outcrop of A and X, but W1 monitors U, which is not at outcrop anywhere."""
     a = fx.g.add
     for u in described:
         a((u, PROV.wasDerivedFrom, fx.rel))
@@ -273,16 +293,18 @@ def add_forcing(fx, described):
         a((se, L.seriesVariable, L.EffectiveRainfall))
         a((se, L.storedIn, Literal(f"forcing_weekly.parquet [cell_id = {k}, column PE]")))
         a((c, L.hasForcingSeries, se))
-    zone, forcing = d("outcrop-zone/W1"), d("extent/forcing-cells-test")
-    a((zone, RDF.type, L.OutcropSearchZone))
-    a((zone, L.zoneOf, d("piezometer/W1")))
-    a((zone, L.zoneRadiusM, Literal(RADIUS, datatype=XSD.double)))
+    zones, forcing = {}, d("extent/forcing-cells")
+    for w in ("W1", "W7", "W8"):
+        zones[w] = d(f"outcrop-zone/{w}")
+        a((zones[w], RDF.type, L.OutcropSearchZone))
+        a((zones[w], L.zoneOf, d(f"piezometer/{w}")))
+        a((zones[w], L.zoneRadiusM, Literal(RADIUS, datatype=XSD.double)))
     a((forcing, RDF.type, GEO.Feature))
     for ext, poly, cell, m2 in FIXTURE_PIECES:
         x = d(f"polygon-cell/{ext}/{poly}/{cell or 'outside'}")
         a((x, RDF.type, L.PolygonCellIntersection))
         a((x, L.intersectedPolygon, d(f"polygon/{poly}")))
-        a((x, L.withinExtent, zone if ext == "zone" else forcing))
+        a((x, L.withinExtent, zones["W1"] if ext == "zone" else zones.get(ext, forcing)))
         if cell:
             a((x, L.intersectedCell, d(f"weather-cell/{cell}")))
         a((x, L.intersectionAreaM2, Literal(m2, datatype=XSD.double)))
@@ -290,10 +312,12 @@ def add_forcing(fx, described):
 
 
 FIXTURE_MAPPED_OUTCROP = {"A": 1.0e6, "X": 2.0e6, "Y": 1.25e6}
-# extent, polygon, cell (None = outside every cell), m²
+# extent ("zone" = W1's search zone, W7 / W8 = theirs), polygon, cell (None = outside every cell), m²
 FIXTURE_PIECES = (("zone", 1, "c1", 6.0e5), ("zone", 1, "c2", 4.0e5),
                   ("zone", 2, "c1", 5.0e5), ("zone", 2, "c2", 3.0e5), ("zone", 2, None, 2.0e5),
-                  ("forcing", 3, "c2", 1.0e6))
+                  ("forcing", 3, "c2", 1.0e6),
+                  ("W7", 2, "c1", 5.0e5), ("W7", 2, "c2", 3.0e5), ("W7", 2, None, 2.0e5),
+                  ("W8", 1, "c1", 6.0e5), ("W8", 1, "c2", 4.0e5))
 
 
 def add_landuse(fx):
@@ -399,9 +423,10 @@ def test_fixtures(rules, shapes, net):
     assert abs(got[("W1", "W2")][0] - 4999.0) < 1e-6 and got[("W1", "W2")][1] is None
     assert got[("W1", "W2")][2] == "Probable" and abs(got[("W2", "W3")][0] - 2.0) < 1e-6
 
-    # CQ8
+    # CQ8: pumping drawdown
     infl = {(f.rsplit("/", 1)[-1], w.rsplit("/", 1)[-1]): (s.split("#")[-1], e.split("#")[-1], r.split("#")[-1])
             for f, w, s, e, r in select(g, """SELECT ?f ?w ?s ?e ?r WHERE { ?i a lulcw:Influence ;
+                lulcw:mechanism lulcw:PumpingDrawdown ;
                 lulcw:driverEntity ?f ; lulcw:targetEntity ?w ; lulcw:responseSign ?s ;
                 lulcw:constraintEligibility ?e ; lulcw:resolution ?r }""")}
     for w in ("W1", "W2", "W3"):
@@ -409,6 +434,35 @@ def test_fixtures(rules, shapes, net):
         assert infl[("F4", w)] == ("NegativeResponse", "EligibleConstraint", "ExactUnitResolution")
         assert infl[("F2", w)] == ("UnknownResponse", "IneligibleConstraint", "UnitGroupResolution")
     assert len(infl) == 9 and not any(f in ("F3", "F5") or w == "W4" for f, w in infl), infl
+
+    # CQ4, CQ8: recharge proxies. W7 gets c1 and c2 from X's outcrop in its zone, with X's weights
+    # renormalised over the covered 0.8; W8 gets c2 only from the unit-wide extent, where Y is
+    # clipped to 0.8 of its outcrop; nothing reaches W1 (its unit U is at outcrop nowhere, and A
+    # and X in its zone are not its unit) nor any well without a zone
+    rech = {}
+    for c, w, s, wt, sign, elig, var, q, conf, grp, res, n_om, cond in select(g, """
+            SELECT ?c ?w ?s ?wt ?sign ?elig ?var ?q ?conf ?grp ?res (COUNT(DISTINCT ?om) AS ?n) ?cond WHERE {
+            ?i a lulcw:Influence ; lulcw:mechanism lulcw:DiffuseRecharge ; lulcw:driverEntity ?c ;
+               lulcw:targetEntity ?w ; lulcw:withinExtent ?s ; lulcw:responseSign ?sign ;
+               lulcw:constraintEligibility ?elig ; lulcw:driverVariable ?var ; lulcw:proxyFor ?q ;
+               lulcw:confidence ?conf ; lulcw:driverGroup ?grp ; lulcw:resolution ?res ;
+               lulcw:omitsPathway ?om ; lulcw:conditions ?cond ; prov:wasDerivedFrom ?cw .
+            ?cw lulcw:cellWeight ?wt . }
+            GROUP BY ?c ?w ?s ?wt ?sign ?elig ?var ?q ?conf ?grp ?res ?cond"""):
+        rech[(c.rsplit("/", 1)[-1], w.rsplit("/", 1)[-1], s.rsplit("/", 1)[-1])] = (
+            wt, *(x.split("#")[-1] for x in (sign, elig, var, q, conf, grp, res)), n_om, cond)
+    same = ("PositiveResponse", "EligibleConstraint", "EffectiveRainfall", "GroundwaterRecharge")
+    assert {k: v[:5] for k, v in rech.items()} == {
+        ("c1", "W7", "W7"): (0.625, *same), ("c2", "W7", "W7"): (0.375, *same),
+        ("c2", "W8", "forcing-cells"): (1.0, *same)}, rech
+    assert all(v[5:9] == (("Confident" if k[1] == "W7" else "Probable"), "RechargeProxies",
+                          "ExactUnitResolution", 4) for k, v in rech.items()), rech
+    assert "within 5000 m" in rech[("c1", "W7", "W7")][9] and "covered fraction 0.8" in rech[("c1", "W7", "W7")][9]
+    assert "share 0.8 of the unit's mapped outcrop" in rech[("c2", "W8", "forcing-cells")][9], rech
+    rsel = {(w.rsplit("/", 1)[-1], p.rsplit("/", 1)[-1]) for w, p in select(g, """SELECT ?w ?p WHERE {
+        ?i lulcw:mechanism lulcw:DiffuseRecharge ; lulcw:targetEntity ?w ; lulcw:selectedUnder ?p }""")}
+    assert rsel == {("W7", "main"), ("W7", "confident-only"), ("W7", "all-links"),
+                    ("W8", "main"), ("W8", "all-links")}, rsel     # W8's attribution is probable
 
     # CQ2 and path selection
     sel = {(x.split("/attribution/")[-1], p.rsplit("/", 1)[-1]) for x, p in select(
@@ -419,7 +473,7 @@ def test_fixtures(rules, shapes, net):
     pumps = {(str(s).rsplit("/", 1)[-1], str(o).rsplit("/", 1)[-1]) for s, o in g.subject_objects(L.pumpsFrom)}
     assert pumps == {("F1", "U"), ("F5", "U")}, pumps            # F2 is group-level, F4 possible
     paths = {(f.rsplit("/", 1)[-1], w.rsplit("/", 1)[-1], p.rsplit("/", 1)[-1]) for f, w, p in select(
-        g, "SELECT ?f ?w ?p WHERE { ?i lulcw:driverEntity ?f ; lulcw:targetEntity ?w ; lulcw:selectedUnder ?p }")}
+        g, "SELECT ?f ?w ?p WHERE { ?i lulcw:mechanism lulcw:PumpingDrawdown ; lulcw:driverEntity ?f ; lulcw:targetEntity ?w ; lulcw:selectedUnder ?p }")}
     assert ("F1", "W1", "main") in paths and ("F4", "W1", "main") not in paths
     assert ("F4", "W1", "all-links") in paths
     assert not any(p == "confident-only" for _, _, p in paths)    # F1, F2 probable; F4 possible
@@ -446,24 +500,27 @@ def test_fixtures(rules, shapes, net):
         SELECT ?s ?u ?o ?c ?f WHERE { ?v a lulcw:OutcropCoverage ; lulcw:withinExtent ?s ; lulcw:coverageUnit ?u ;
             lulcw:outcropAreaM2 ?o ; lulcw:coveredAreaM2 ?c ; lulcw:coveredFraction ?f }""")}
     assert cov == {("W1", "A"): (1.0e6, 1.0e6, 1.0), ("W1", "X"): (1.0e6, 8.0e5, 0.8),
-                   ("forcing-cells-test", "Y"): (1.0e6, 1.0e6, 1.0)}, cov   # B, C: not at outcrop
-    wts = {(u.rsplit("/", 1)[-1], c.rsplit("/", 1)[-1]): (w, a) for u, c, w, a in select(g, """
-        SELECT ?u ?c ?w ?a WHERE { ?v lulcw:coverageUnit ?u ; lulcw:hasCellWeight ?x .
+                   ("W7", "X"): (1.0e6, 8.0e5, 0.8), ("W8", "A"): (1.0e6, 1.0e6, 1.0),
+                   ("forcing-cells", "Y"): (1.0e6, 1.0e6, 1.0)}, cov   # B, C: not at outcrop
+    wts = {(s.rsplit("/", 1)[-1], u.rsplit("/", 1)[-1], c.rsplit("/", 1)[-1]): (w, a) for s, u, c, w, a in select(g, """
+        SELECT ?s ?u ?c ?w ?a WHERE { ?v lulcw:withinExtent ?s ; lulcw:coverageUnit ?u ; lulcw:hasCellWeight ?x .
             ?x lulcw:weightCell ?c ; lulcw:cellWeight ?w ; lulcw:coveredAreaM2 ?a }""")}
-    want = {("A", "c1"): (0.6, 6.0e5), ("A", "c2"): (0.4, 4.0e5), ("X", "c1"): (0.625, 5.0e5),
-            ("X", "c2"): (0.375, 3.0e5), ("Y", "c2"): (1.0, 1.0e6)}
+    want = {(s, "A", "c1"): (0.6, 6.0e5) for s in ("W1", "W8")} | {(s, "A", "c2"): (0.4, 4.0e5) for s in ("W1", "W8")} | \
+           {(s, "X", "c1"): (0.625, 5.0e5) for s in ("W1", "W7")} | {(s, "X", "c2"): (0.375, 3.0e5) for s in ("W1", "W7")} | \
+           {("forcing-cells", "Y", "c2"): (1.0, 1.0e6)}
     assert wts.keys() == want.keys() and all(abs(wts[k][0] - w) < 1e-12 and wts[k][1] == a
                                              for k, (w, a) in want.items()), wts
-    cited = {u.rsplit("/", 1)[-1]: int(n) for u, n in select(g, """SELECT ?u (COUNT(?x) AS ?n) WHERE {
-        ?v a lulcw:OutcropCoverage ; lulcw:coverageUnit ?u ; prov:wasDerivedFrom ?x } GROUP BY ?u""")}
-    assert cited == {"A": 2, "X": 3, "Y": 1}, cited                # every piece, the outside one too
+    cited = {(s.rsplit("/", 1)[-1], u.rsplit("/", 1)[-1]): int(n) for s, u, n in select(g, """SELECT ?s ?u (COUNT(?x) AS ?n) WHERE {
+        ?v a lulcw:OutcropCoverage ; lulcw:withinExtent ?s ; lulcw:coverageUnit ?u ; prov:wasDerivedFrom ?x } GROUP BY ?s ?u""")}
+    assert cited == {("W1", "A"): 2, ("W1", "X"): 3, ("W7", "X"): 3, ("W8", "A"): 2,
+                     ("forcing-cells", "Y"): 1}, cited             # every piece, the outside one too
 
     conforms, _, results = check(g, shapes, net)
     assert conforms and violations(results) == 0, results
     infos = sum(n for k, n in results.items() if k.startswith("Info"))
     assert infos == 1, results                                    # W2's missing depth
-    print(f"  2. fixtures: CQ3, CQ11, CQ8, CQ2, CQ7 and CQ4 cases hold; {len(added)} derived triples; "
-          f"no violation, 1 info (the missing depth)")
+    print(f"  2. fixtures: CQ3, CQ11, CQ8 (pumping and recharge proxies), CQ2, CQ7 and CQ4 cases hold; "
+          f"{len(added)} derived triples; no violation, 1 info (the missing depth)")
     return g
 
 
@@ -542,7 +599,7 @@ def test_negative_controls(g, shapes, net):
     }
     # CQ4: coverages and weights of the fixture (A, X in the search zone of W1; Y in the forcing extent)
     zone, cov_a = d("outcrop-zone/W1"), d("outcrop-zone/W1/outcrop-coverage/A")
-    cov_x, cov_y = d("outcrop-zone/W1/outcrop-coverage/X"), d("extent/forcing-cells-test/outcrop-coverage/Y")
+    cov_x, cov_y = d("outcrop-zone/W1/outcrop-coverage/X"), d("extent/forcing-cells/outcrop-coverage/Y")
     dbl = lambda v: Literal(v, datatype=XSD.double)  # noqa: E731
 
     def now(s, p):
@@ -585,6 +642,32 @@ def test_negative_controls(g, shapes, net):
              (d(str(cov_a)[len(D):] + "-bis"), L.withinExtent, zone),
              (d(str(cov_a)[len(D):] + "-bis"), L.coverageUnit, d("unit/A"))], (),
             "OutcropCoverageKeyShape", "share an extent and a unit"),
+    }
+    # CQ4, CQ8: the recharge proxies of W7 (local, c1 and c2) and W8 (unit-wide, c2)
+    r7 = d("influence/recharge/local/c1/to/W7/1")
+    r8 = d("influence/recharge/unit-wide/c2/to/W8/1")
+    twin = d("influence/recharge/local/c1/to/W7/1/drainage")
+    cases |= {
+        "a recharge proxy that does not name the pathways it omits": (
+            [], now(r7, L.omitsPathway), "InfluenceShape", "the pathways it omits"),
+        "a second proxy of the same surplus on one path": (
+            [(twin, p, o) for _, p, o in g.triples((r7, None, None)) if p != L.driverVariable]
+            + [(twin, L.driverVariable, L.SoilDrainage)], (),
+            "RechargeInfluenceKeyShape", "one water surplus counted twice"),
+        "a missing recharge proxy (a derivation not run or stale)": (
+            [], list(g.triples((r7, None, None))), "RechargeInfluenceKeyShape", "in the well's search zone has no"),
+        "a missing unit-wide recharge proxy": (
+            [], list(g.triples((r8, None, None))), "RechargeInfluenceKeyShape", "in a fixed extent of the rule has no"),
+        "a recharge proxy resting on another well's attribution": (
+            [(r7, PROV.wasDerivedFrom, d("attribution/piezometer/W1/1"))],
+            [(r7, PROV.wasDerivedFrom, d("attribution/piezometer/W7/1"))],
+            "InfluenceShape", "does not join the weather cell"),
+        "a recharge proxy whose driver is not a water-surplus proxy": (
+            [(r7, L.driverVariable, L.ReconstructedWeeklyVolume)], now(r7, L.driverVariable),
+            "InfluenceShape", "not effective rainfall or soil drainage"),
+        "a recharge proxy in another well's search zone": (
+            [(r7, L.withinExtent, zone)], now(r7, L.withinExtent),
+            "InfluenceShape", "neither the target well's search zone"),
     }
 
     for name, (add, remove, shape, text) in cases.items():
@@ -726,7 +809,61 @@ def test_data_forcing(store):
     partial = sorted(k for k, (o, c, f) in got.items() if f < 1 - 1e-9)
     assert all(f == 1.0 for (s, _), (_, _, f) in got.items() if s == "forcing-cells")   # the cells are the extent
     clipped = sorted(u for (s, u), (o, _, _) in got.items() if s == "forcing-cells" and o < mapped[u] * (1 - 1e-6) - 10)
-    return got, partial, clipped
+    return got, partial, clipped, want
+
+
+def test_data_recharge(store, oracle):
+    """CQ4/CQ8 recharge proxies against the GeoPandas oracle of test_data_forcing and the dataset's
+    recorded units: each well with a recorded unit described by BD LISA gets, in its search zone, one
+    influence per cell that holds that unit's outcrop there, with the oracle's renormalised weight,
+    and in the forcing extent the unit-wide cells; a well without a recorded unit, or whose unit BD
+    LISA does not describe, gets none. Every influence: effective rainfall standing in for
+    groundwater recharge, non-decreasing, eligible, exact unit, the four omitted pathways; a policy
+    selects it exactly when it admits the well's attribution."""
+    wells = pd.read_parquet(DATASET_DIR / "wells.parquet")
+    described = {c for (c,) in rows(store, "SELECT ?c WHERE { ?u lulcw:bdlisaCode ?c ; prov:wasDerivedFrom ?r }")}
+    got, n = {}, 0
+    for b, kind, cell, w, sign, elig, var, q, res, grp, n_om in rows(store, """
+            SELECT ?b ?kind ?cell ?w ?sign ?elig ?var ?q ?res ?grp (COUNT(DISTINCT ?om) AS ?n) WHERE {
+            ?i a lulcw:Influence ; lulcw:mechanism lulcw:DiffuseRecharge ; lulcw:targetEntity/lulcw:bssCode ?b ;
+               lulcw:driverEntity ?c ; lulcw:withinExtent ?s ; lulcw:responseSign ?sign ;
+               lulcw:constraintEligibility ?elig ; lulcw:driverVariable ?var ; lulcw:proxyFor ?q ;
+               lulcw:resolution ?res ; lulcw:driverGroup ?grp ; lulcw:omitsPathway ?om ; prov:wasDerivedFrom ?cw .
+            ?cw lulcw:cellWeight ?w .
+            ?c lulcw:safranGridXHm ?gx ; lulcw:safranGridYHm ?gy .
+            BIND (CONCAT(STR(?gx), "_", STR(?gy)) AS ?cell)
+            BIND (IF(STRSTARTS(STR(?s), STR(<outcrop-zone/>)), "local", "unit-wide") AS ?kind) }
+            GROUP BY ?b ?kind ?cell ?w ?sign ?elig ?var ?q ?res ?grp"""):
+        assert (sign, elig, var, q, res, grp, n_om) == tuple(str(x) for x in (
+            L.PositiveResponse, L.EligibleConstraint, L.EffectiveRainfall, L.GroundwaterRecharge,
+            L.ExactUnitResolution, L.RechargeProxies)) + (4,), (b, cell, sign, elig, var, q, res, grp, n_om)
+        got.setdefault((b, kind), {})[cell] = w
+        n += 1
+    want, sliver = {}, set()
+    for b, u in zip(wells["code_bss"], wells["code_bdlisa"]):
+        if not isinstance(u, str) or u not in described:
+            continue
+        for kind, key in (("local", b), ("unit-wide", "forcing-cells")):
+            o, c, by_cell = oracle.get((key, u), (0.0, 0.0, {}))
+            if o >= 50.0 and c > 0:
+                want[(b, kind)] = {cell: a / c for cell, a in by_cell.items() if a >= 1.0}
+            elif o > 0:
+                sliver.add((b, kind))     # under 50 m²: the graph may or may not keep it (1 m² pieces)
+    assert set(got) - sliver == set(want), f"recharge wells differ: {sorted((set(got) - sliver) ^ set(want))[:6]}"
+    for k, cells in want.items():
+        big = {cell for cell, w in cells.items() if w > 1e-5}
+        assert big <= set(got[k]) and all(abs(got[k].get(cell, 0.0) - w) <= 1e-5 for cell, w in cells.items()), k
+    assert all(abs(sum(v.values()) - 1) <= 1e-9 for v in got.values())
+    # selection: exactly the policies that admit the well's attribution
+    bad = rows(store, """SELECT ?i ?p WHERE { ?i a lulcw:Influence ; lulcw:mechanism lulcw:DiffuseRecharge ;
+            prov:wasDerivedFrom ?a . ?a a lulcw:UnitAttribution ; lulcw:confidence ?c . ?p a lulcw:ExportPolicy .
+            BIND (EXISTS { ?p lulcw:admitsConfidence ?c } AS ?admits)
+            BIND (EXISTS { ?i lulcw:selectedUnder ?p } AS ?selected)
+            FILTER (?admits != ?selected) }""")
+    assert not bad, f"recharge proxies selected against their attribution's confidence: {bad[:3]}"
+    local = {b for b, kind in got if kind == "local"}
+    with_unit = {b for b, u in zip(wells["code_bss"], wells["code_bdlisa"]) if isinstance(u, str)}
+    return n, len(local), len({b for b, kind in got if kind == "unit-wide"}), sorted(with_unit - local)
 
 
 def test_data(store):
@@ -875,11 +1012,15 @@ def main():
         m = release.check()        # the files must form a validated release (src.kg.release)
         store = store_of(facts, derived)
         test_data(store)
-        got, partial, clipped = test_data_forcing(store)
+        got, partial, clipped, oracle = test_data_forcing(store)
         print(f"  5. data: CQ4 {len(got)} outcrop coverages (65 search zones + the forcing extent) = the "
               f"GeoPandas oracle on BD LISA and the SAFRAN grid (areas, fractions, weights), mapped outcrop "
               f"of every unit = the whole extract; {len(partial)} search-zone outcrops partly outside the "
               f"cells; the forcing cells clip {', '.join(clipped) or 'no unit'}; release of {m['released']}")
+        n, n_local, n_wide, without = test_data_recharge(store, oracle)
+        print(f"  6. data: CQ8 {n} recharge proxies = the oracle's cells and weights for the recorded units: "
+              f"{n_local} wells in their 5 km zone, {n_wide} unit-wide; no local proxy for "
+              f"{', '.join(without)}; signs, proxy, omitted pathways and policy selections as specified")
     else:
         print("  4. skipped: run src.kg.build_kg and src.kg.apply_rules first")
     print("test_kg_rules: all checks passed")

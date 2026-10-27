@@ -649,7 +649,9 @@ starts from its most selective pattern; never GROUP BY over EXISTS flags (they r
 `scripts/colab_pull.py <zip> --version v4` and the v4 reports (they now show exact support);
 `chronos2_ft` at the next GPU session (new T4 runtime, mount Drive, `!pip uninstall -y -q
 datasets`, `%env PFE_DATASET=v4`, `%env STEPS=chronos2_ft`, the run cell); confirm or change the
-proposals of analysis plan §14 item 15; the AGROVOC gold set: write the plant/product/land-use
+proposals of analysis plan §14 item 15 (with them, for Gate 3: do recharge signs constrain the
+model, PE as is or max(PE, 0), and does the export drop cells holding under 0.001 of an outcrop;
+step note, CQ4 increment 2); the AGROVOC gold set: write the plant/product/land-use
 rule first (`src/kg/agrovoc_gold.py` docstring), then `check`; `blind` makes the second
 annotator's sheet; ask the supervisor (or SMNPR/BRGM) for the bounded review of the two LU-6
 wells.

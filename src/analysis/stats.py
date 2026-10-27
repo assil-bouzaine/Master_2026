@@ -95,19 +95,34 @@ def paired(ma, mb, wells, split="test_drought", metric="NSE", task="simulation",
            variant="all", core_only=True, seed=2026, strict=False):
     """Compare run a with run b well by well. Positive differences mean a is better
     (for error metrics such as RMSE, pass the negated metric or read the sign).
-    Paired support (third review, docs/review_codex_2026-10-24.md §7): each run is scored on
-    its own available weeks, so a well scored on different numbers of weeks in the two runs is
-    counted in `support_mismatch`; strict=True (primary contrasts) refuses such a pair."""
+    Paired support (third review, docs/review_codex_2026-10-24.md §7; exact from 2026-10-27,
+    Codex review of 2026-10-26 §2): each run is scored on its own available weeks. A well whose
+    scored weeks differ between the runs is counted in `support_mismatch`: compared on the
+    `support` digests of src.models.evaluate (`support_check` = "exact"), or on n_weeks for tables
+    scored before the digest existed ("n_weeks", which misses equal counts on different weeks).
+    Wells scored in one run only (MIN_WEEKS, missing predictions) are counted in n_wells_only_a /
+    n_wells_only_b and left out of the comparison. strict=True (primary contrasts) refuses any of
+    these, and tables without digests: a primary contrast compares the same well-weeks."""
     a = _select(ma, task, horizon, split, variant, metric, core_only)
     b = _select(mb, task, horizon, split, variant, metric, core_only)
     j = pd.concat([a.rename("a"), b.rename("b")], axis=1).dropna()
-    na = _select(ma, task, horizon, split, variant, "n_weeks", core_only).reindex(j.index)
-    nb = _select(mb, task, horizon, split, variant, "n_weeks", core_only).reindex(j.index)
-    mismatch = sorted(j.index[na.to_numpy() != nb.to_numpy()])
-    if strict and mismatch:
-        raise ValueError(f"{split}: scored on different weeks in the two runs: {mismatch}")
+    rows_a = set(_select(ma, task, horizon, split, variant, "n_weeks", core_only).dropna().index)
+    rows_b = set(_select(mb, task, horizon, split, variant, "n_weeks", core_only).dropna().index)
+    exact = "support" in ma.columns and "support" in mb.columns
+    key = "support" if exact else "n_weeks"
+    ka = _select(ma, task, horizon, split, variant, key, core_only).reindex(j.index)
+    kb = _select(mb, task, horizon, split, variant, key, core_only).reindex(j.index)
+    mismatch = sorted(j.index[ka.to_numpy() != kb.to_numpy()])
+    only_a, only_b = sorted(rows_a - rows_b), sorted(rows_b - rows_a)
+    if strict and not exact:
+        raise ValueError(f"{split}: exact support unknown (no `support` column); rescore the runs "
+                         "with python -m src.models.evaluate")
+    if strict and (mismatch or only_a or only_b):
+        raise ValueError(f"{split}: scored on different well-weeks in the two runs: different weeks "
+                         f"{mismatch}, scored in a only {only_a}, in b only {only_b}")
     out = {"n_wells": len(j), "median_a": j["a"].median(), "median_b": j["b"].median(),
-           "support_mismatch": len(mismatch)}
+           "support_mismatch": len(mismatch), "support_check": "exact" if exact else "n_weeks",
+           "n_wells_only_a": len(only_a), "n_wells_only_b": len(only_b)}
     if len(j) < 5:
         return out | {"median_diff": np.nan, "ci_lo": np.nan, "ci_hi": np.nan,
                       "share_a_better": np.nan, "p_wilcoxon": np.nan, "p_cluster": np.nan}

@@ -19,7 +19,11 @@ Variants (test periods only for the last two): "all" weeks; "validated", weeks w
 than half "Non qualifié" days (the v1-v3 definition, kept for comparison); "strict" (added
 2026-10-23, analysis plan v2), weeks whose every value is qualified "Correcte". Values
 qualified "Incorrecte" are dropped before the weekly mean from dataset v4 on; none fall in
-the test period of v3. n_weeks gives the coverage of each variant.
+the test period of v3. n_weeks gives the coverage of each variant, and `support` (added
+2026-10-27, Codex review of 2026-10-26 §2) a 16-hex digest of its exact scored weeks: two runs
+are paired on the same observations of a well only when their digests agree, since equal
+counts can hide different weeks (src.analysis.stats.paired). Skill is scored on the weeks of
+that support that have a benchmark value; the climatology benchmark covers every week.
 Suspect placeholders (dataset v4 on, decided 2026-10-24; src.dataset.placeholders): the weeks
 of a run of >= 28 days with a depth of exactly 0.00 m (CORNEILLA PD5, Dec 2022 - Jan 2024,
 60 weeks) leave every variant; "all_unmasked" (test periods only) keeps them, to show the
@@ -42,6 +46,7 @@ Metrics, per well and period:
            doi:10.1002/hyp.6825).
 """
 import argparse
+import hashlib
 import json
 
 import numpy as np
@@ -73,6 +78,12 @@ def kge_parts(obs, sim):
 
 def kge(obs, sim):
     return kge_parts(obs, sim)[0]
+
+
+def support_hash(weeks):
+    """16-hex SHA-256 of the sorted scored weeks (as days since 1970): the exact support."""
+    days = np.sort(pd.to_datetime(weeks).to_numpy().astype("datetime64[D]").astype("int64"))
+    return hashlib.sha256(days.tobytes()).hexdigest()[:16]
 
 
 def split_of(weeks, splits):
@@ -150,7 +161,8 @@ def score(pred):
                 if den > 0:
                     skill = 1 - np.sum((gb["pred"].to_numpy() - ob) ** 2) / den
             rows.append({"code_bss": code, "task": task, "horizon": h, "split": split,
-                         "variant": variant, "n_weeks": len(g), "NSE": nse(o, s), "KGE": k,
+                         "variant": variant, "n_weeks": len(g), "support": support_hash(g["week"]),
+                         "NSE": nse(o, s), "KGE": k,
                          "RMSE": float(np.sqrt(np.mean((s - o) ** 2))),
                          "bias": float(np.mean(s - o)), "r": r, "alpha": alpha,
                          "beta_n": beta_n, "skill": skill})

@@ -11,7 +11,12 @@
    exact value.
 5. Holm matches a hand computation.
 6. Paired support: a well scored on different numbers of weeks by the two runs is counted,
-   and strict mode refuses the pair (third review, docs/review_codex_2026-10-24.md §7).
+   and strict mode refuses the pair (third review, docs/review_codex_2026-10-24.md §7). Exact
+   support (Codex review of 2026-10-26, §2): six wells lose their first scored week in one run
+   and their last in the other, so the counts agree but 12 well-weeks differ; the support
+   digests of src.models.evaluate catch all six wells and strict mode refuses; the same
+   predictions give the same digests; a well scored in one run only is counted and refused;
+   strict mode refuses tables without digests.
 7. Cluster sensitivity: its primary grid reproduces paired() exactly, a shifted origin
    regroups wells, and leave-one-cluster-out gives one row per cluster.
 """
@@ -23,6 +28,7 @@ from scipy.stats import wilcoxon
 
 from src.analysis.stats import (EXACT_MAX_CLUSTERS, SENS_KM, SENS_SHIFTS, cluster_sensitivity,
                                 clusters, holm, paired, sign_flip_p)
+from src.models.evaluate import support_hash
 
 
 def reference_p(groups):
@@ -83,6 +89,30 @@ def main():
         raise AssertionError("strict mode accepted different scored weeks")
     except ValueError:
         pass
+    # exact support: equal counts on different weeks (the counterexample of the Codex review)
+    weeks = pd.date_range("2022-05-01", periods=60, freq="W-SUN")
+    def scored(drop):    # metrics tables scored by src.models.evaluate.score on the kept weeks
+        rows = []
+        for i, c in enumerate(codes):
+            w = weeks.delete(drop)
+            rows.append({"code_bss": c, "task": "simulation", "horizon": 0, "split": "test_drought",
+                         "variant": "all", "core": True, "NSE": 0.1 * i, "n_weeks": len(w),
+                         "support": support_hash(pd.Series(w))})
+        return pd.DataFrame(rows)
+    first, last = scored(0), scored(-1)
+    assert (first["n_weeks"] == last["n_weeks"]).all()               # counts agree ...
+    r = paired(first, last.assign(NSE=last["NSE"] - 0.05), wells)
+    assert r["support_mismatch"] == 6 and r["support_check"] == "exact", r   # ... the weeks do not
+    assert paired(first, scored(0), wells, strict=True)["support_mismatch"] == 0   # same weeks: same digest
+    for bad in (last, first.iloc[:5], first.drop(columns="support")):
+        try:
+            paired(first, bad, wells, strict=True)
+            raise AssertionError("strict mode accepted a different or unknown support")
+        except ValueError:
+            pass
+    r = paired(first, first.iloc[:5], wells)
+    assert (r["n_wells_only_a"], r["n_wells_only_b"], r["n_wells"]) == (1, 0, 5), r
+    assert paired(ma, mb, wells)["support_check"] == "n_weeks"       # legacy tables: counts only
     rng = np.random.default_rng(7)  # 7. cluster sensitivity: 24 wells over ~40 x 40 km
     codes = [f"S{i}" for i in range(24)]
     wells = pd.DataFrame({"code_bss": codes, "x": 2.60 + 0.45 * rng.random(24),

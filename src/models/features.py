@@ -41,6 +41,7 @@ from src.config import CRS_L93, CRS_WGS84, DATASET, INTERIM, R3_STARTS
 from src.dataset.load import FORCING_VARS, _pumping_near_wells
 from src.dataset.pumping import canal_series, seasonal_drinking_water
 from src.models.evaluate import DS, RESULTS
+from src.models.manifest import dataset_hashes
 
 ROLL_WEEKS = (4, 13, 26, 52, 104)
 ROLL_VARS = ("rain", "ETP", "PE", "DRAINC", "deficit")
@@ -197,6 +198,7 @@ def build_panel(refresh=False, train_start=None, land_use=None):
             raise ValueError(f"train_start {train_start} is not an R3 window {R3_STARTS}")
     cache = CACHE.with_name(f"panel_{window}.parquet") if window else CACHE
     if cache.exists() and not refresh:
+        check_panel_cache(cache)
         return pd.read_parquet(cache)
     splits = json.loads((DS / "splits.json").read_text())
     wells = pd.read_parquet(DS / "wells.parquet")
@@ -284,7 +286,25 @@ def build_panel(refresh=False, train_start=None, land_use=None):
     P["anom"] = P["z"] - P["clim_z"]
     cache.parent.mkdir(parents=True, exist_ok=True)
     P.to_parquet(cache, index=False)
+    cache.with_suffix(".json").write_text(json.dumps({
+        "dataset": DATASET, "train_start": train_start,
+        "dataset_files_sha256_16": dataset_hashes()}, indent=1))
     return P
+
+
+def check_panel_cache(cache):
+    """A base panel cache is read only if the dataset files it was built from are unchanged
+    (its record <cache>.json, written from 2026-10-27; Codex review of 2026-10-26 §8): a dataset
+    rebuilt for the confirmation weeks must never meet an old panel. A cache without a record
+    predates the check and is read as it is."""
+    rec = cache.with_suffix(".json")
+    if not rec.exists():
+        return
+    want, got = json.loads(rec.read_text())["dataset_files_sha256_16"], dataset_hashes()
+    diff = sorted(k for k in set(want) | set(got) if want.get(k) != got.get(k))
+    if diff:
+        raise RuntimeError(f"{cache.name} was built from other dataset files ({', '.join(diff)}): "
+                           "rebuild it with build_panel(refresh=True)")
 
 
 def input_columns(P):

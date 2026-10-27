@@ -21,10 +21,14 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 
-from src.config import DATASET, DATASET_DIR, ROOT
+from src.config import DATASET, DATASET_DIR, RAW, ROOT
 
+# Every dataset file a run reads (src.models.features, the runners, src.models.evaluate). rivers,
+# gauges and pumping points were missing until 2026-10-27 (Codex review of 2026-10-26, §8): older
+# manifests do not prove those inputs, and are not completed after the fact.
 DATASET_FILES = ("meta.json", "splits.json", "wells.parquet", "heads_weekly.parquet",
-                 "forcing_weekly.parquet", "pumping_weekly.parquet", "placeholder_weeks.parquet")
+                 "forcing_weekly.parquet", "pumping_weekly.parquet", "pumping_points.parquet",
+                 "rivers_weekly.parquet", "gauges.parquet", "placeholder_weeks.parquet")
 
 
 def sha256_file(path, chunk=1 << 20):
@@ -66,9 +70,17 @@ def environment():
     return env
 
 
+# inputs outside the dataset folder (src.models.taccari reads the SAFRAN grid points)
+OTHER_INPUTS = {"safran_grid": RAW / "safran" / "grid_cells_66.parquet"}
+
+
 def dataset_hashes():
     return {f: sha256_file(DATASET_DIR / f)[:16] for f in DATASET_FILES
             if (DATASET_DIR / f).exists()}
+
+
+def other_input_hashes():
+    return {k: sha256_file(p)[:16] for k, p in OTHER_INPUTS.items() if p.exists()}
 
 
 def write_manifest(out, config, seeds_done=()):
@@ -77,7 +89,8 @@ def write_manifest(out, config, seeds_done=()):
     m = json.loads(f.read_text()) if f.exists() else {"created": None, "sessions": []}
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     m["created"] = m["created"] or now
-    m["dataset"] = {"version": DATASET, "files_sha256_16": dataset_hashes()}
+    m["dataset"] = {"version": DATASET, "files_sha256_16": dataset_hashes(),
+                    "other_inputs_sha256_16": other_input_hashes()}
     m["config"] = json.loads(json.dumps(config, default=str))
     m["seeds_done"] = sorted(set(m.get("seeds_done", [])) | set(seeds_done))
     m["sessions"].append({"at": now, "code": code_version(), "environment": environment()})

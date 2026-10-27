@@ -134,7 +134,7 @@ rule was fixed; its numbers are superseded by `docs/results_baselines.md`.
   | Hyperparameters | selected on the validation weeks of all core wells | the same configuration (fixed-configuration transfer) | the same configuration | the same |
   | Input standardisation (neural), river-gap fills, exogenous node scaling | all training rows 2005–2019 | the same, held-out wells included (their forcings are known) | the same: the whole training period of the wells kept | as R1 |
   | Head statistics: mean, sd, climatology of z, artesian share | per well, 2005–2019 | per well, 2005–2019, held-out wells included ("dynamics" convention) | per well, the window only; a well without heads in the window leaves the regime (2016–2019: 4 non-core wells) | as R1 |
-  | Graph | positions and static attributes, never heads | the same; held-out wells stay as nodes (transductive) | the same | the same |
+  | Graph | positions and static attributes; the one exception, the depth threshold of D's well links, uses the head anomalies this regime allows (§14 item 15) | the same; held-out wells stay as nodes (transductive), the threshold chosen without them | the same; the threshold chosen on the window's heads | as R1 |
   | Pumping reconstruction | annual declarations of every year, by the BNPE rules (allowed for simulation, §7b) | the same | the same | the same |
   | SGI reference | observed monthly means up to 2019 | the same | the same (not limited to the window) | the same |
   | Skill benchmark | training climatology 2005–2019 | the held-out well's own | the full-period climatology (same yardstick) | as R1 |
@@ -541,7 +541,7 @@ Decided by Assil after the second external review; reasons and checks in
    harder twin.
 9. §11 freeze tag and confirmation check; §12 wording.
 
-## 14. Amendments before the tag (2026-10-24 to 26)
+## 14. Amendments before the tag (2026-10-24 to 27)
 
 After the third review (`docs/review_codex_2026-10-24.md`); verdicts and checks in
 `docs/review_codex_2026-10-24_response.md`. Items 1–4 and 9–11 were decided by Assil
@@ -673,3 +673,94 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       head anomalies (head minus the well's training mean for that week of the year) of the
       linked pairs; frozen before any arm runs. Pairs without an
       investigation depth enter only the "none" variant (CQ11).
+15. **After the Codex review of 2026-10-26 (`docs/review_codex_2026-10-26.md`; verdicts in
+    `docs/review_codex_2026-10-26_response.md`). Written on 2026-10-27, before the export or
+    any arm exists. Assil asked Claude to adopt the suggestions it judged sound; the points
+    that refine one of his decisions are marked "to confirm by Assil before the export".**
+    - *Exact paired support (§6, done).* Every scored group stores a digest of its exact
+      scored weeks (`support`, `src/models/evaluate.py`); `stats.paired` compares digests,
+      counts wells scored in one run only, and in strict mode (primary contrasts) refuses
+      different weeks, one-sided wells and tables without digests. Equal counts on different
+      weeks had passed before (`tests/test_stats.py` keeps the counterexample). All v4 tables
+      were rescored on 2026-10-27: no v4 contrast against the reference had a difference the
+      counts missed, and the LU-4 main contrasts pass the exact check with unchanged numbers.
+    - *What D vs C can establish (items 4 and 14, §10, §12).* D and C are two complete
+      connection policies: a D vs C effect can combine hydrogeological routing, sparsity and
+      evidence coverage (5 Pliocene wells have no weather edge in D; canal relations may stay
+      incomplete). Before any arm runs, the 12.8 export writes a per-well, per-relation
+      inventory: direct connections, source coverage, weights, the inputs reachable within the
+      message-passing depth, and any input given directly at a well node. A D vs C result is
+      worded as the benefit or cost of the KG connection policy; a semantic-routing reading
+      needs the degree- and distance-matched controls (E, F). A coverage-matched diagnostic,
+      if wanted, is defined before any score and kept apart from the main arm; a subset of
+      wells is chosen by metadata, never by which wells favour D.
+    - *Depth threshold per regime (item 14; to confirm by Assil before the export).* The
+      threshold is chosen from head anomalies, so it is target information and must stay
+      inside each regime's allowed heads (the table of §4 is amended): R1 and the refit, the
+      training wells to 2019; R2, for each fold k, only the wells outside fold k (within the
+      nested D vs C selection already planned for R2); R3, only the window's head weeks. Of
+      the 47 same-unit pairs within 5 km, 0 differ by at most 10 m, 2 by at most 20 m and 13
+      by at most 50 m (42 have both depths), so a maximum of medians would compare 2 pairs
+      with 47. Proposed: a threshold is eligible only if it keeps at least 10 linked pairs,
+      each with at least 104 shared training weeks; ties (medians within 0.02) go to the
+      looser threshold; recorded per regime and fold: candidates, qualifying pairs, shared
+      weeks, missing-depth exclusions, the medians and the choice. A threshold chosen once on
+      all wells and the full training period may appear only as a fixed-development
+      sensitivity, labelled as using the held-out wells' (R2) or out-of-window (R3) heads.
+      Spatially structured validation follows the intended prediction setting (Roberts et al.
+      2017, doi:10.1111/ecog.02881); applying it to graph selection is ours.
+    - *Recharge edges (item 14 weather edges; CQ4).* The 5 km local outcrop rule stays as the
+      approved, declared approximation, with the unit-wide sensitivity; what each represents
+      and omits is stated with every result. The local rule represents diffuse recharge on the
+      outcrop of the well's own unit near the well; it omits lateral inflow from distant
+      outcrops (partly in the unit-wide variant), inflow from the Corbières karst and the
+      peripheral massifs, infiltration of the Têt and its Quaternary aquifer upstream
+      (Bouleternère to Saint-Féliu-d'Amont), downward leakage from the Quaternary, canal
+      return flow (CQ6) and river infiltration (CQ5). For the Pliocene these omitted pathways
+      are the main ones: rain infiltration alone does not recharge the deep aquifers
+      (Syndicat Mixte des Nappes du Roussillon, "Présentation des nappes",
+      https://nappes-roussillon.fr/en-pratique/fonctionnement-des-nappes/, read 2026-10-27);
+      in the Têt sector, downward leakage from the Quaternary to the Pliocene follows Pliocene
+      pumping and was about 8–10 % of the water brought by the canals in September 2017,
+      while 60–70 % of the canal water returned to the Têt upstream of Perpignan (Ladouche &
+      Caballero 2022, BRGM/RP-71486-FR, Dem'Eaux Roussillon production #11b, read
+      2026-10-27). The unit-wide extent (the forcing cells) also clips two units: 15 % of the
+      mapped outcrop of 681AF00 and 9 % of 681AO00 lie outside the cells, and CQ4 answers
+      "partial" there.
+    - *One recharge proxy per influence.* SIM2's effective rain (PE) equals rain minus actual
+      evapotranspiration (EVAP) within 0.13 % over 2006–2025 in every cell of the dataset, and
+      it is close to drainage plus runoff (median cell: PE 183 mm/yr, DRAINC + RUNC 178): soil
+      drainage is part of the same surplus. A recharge influence therefore uses one of them
+      (PE in the main runs, matching "effective rain raises the head" of the design; DRAINC as
+      a sensitivity), named a recharge proxy, never both as independent water inputs; to settle
+      at Gate 3 together with the sign constraint.
+    - *Cartographic meaning of "exact unit".* An exact-unit attribution (CQ2, CQ8) means the
+      same mapped BD LISA entity; it does not establish a common screened horizon or a
+      hydraulic connection, which matters in the Pliocene multilayer.
+    - *Bounded domain review before the broad sweeps.* The two LU-6 wells (MILLAS C2-1, the
+      alluvium; PONTEILLA NYLS-1, the Pliocene) and their recharge, abstraction and canal
+      pathways go to the supervisor or a hydrogeologist (SMNPR, BRGM) for a targeted check of
+      quantities and units, not only geometry; not a replacement of the pipeline by a
+      groundwater simulator.
+    - *Land-use result wording (item 13).* Summaries say "no detectable improvement from this
+      demand index under these models, settings, wells and drought period" (the LSTM interval
+      still reaches a median gain of about +0.16 NSE), never "land use adds no information";
+      the two alluvium groups (4 and 2 core wells) carry no regional claim. A future
+      equivalence claim needs a negligible-effect margin fixed in advance.
+    - *Alignment evaluation (12.9), protocol fixed before the gold set is filled:* see the
+      12.9 section of `docs/notes/step12_ontology.md` and `src/kg/agrovoc_gold.py`.
+    - *Reproducibility.* New run manifests hash every dataset file a run reads (rivers,
+      gauges and pumping points were missing) and the raw SAFRAN grid; a base panel cache is
+      refused when its dataset files changed; `docs/run_inventory_v4.md` lists which runs are
+      replayable (38), recomputable (4) or predictions only (18, plus the EA-LSTM folds, 1 of
+      5 with checkpoints). Old manifests are not completed after the fact; a model needed for
+      the confirmation check or an intervention is rerun under a new run identity. The 12.8
+      export will bind to the graph release (`src/kg/release.py`) and the policy, feature and
+      code versions.
+    - *Order of the next steps (Codex §9, agreed):* a consistent CQ4 release with its
+      missing-evidence safeguards (done 2026-10-27); exact support (done); the D coverage
+      inventory and the per-regime threshold rule; the export and the two-well executable path
+      (source observations → KG derivation → tensors → a model output → a contribution
+      explanation); the small, difficult twin; then the frozen primary contrasts. CQ5 and CQ6
+      get a bounded evidence search and keep documented gaps; no canal service area is
+      invented to complete a diagram.

@@ -1,0 +1,43 @@
+# Response to the Codex review of 2026-10-26
+
+Review: `docs/review_codex_2026-10-26.md` (written by Codex as `codex.md` at 21:22 on
+2026-10-26, kept unchanged; md5 24e45d04…). It read the snapshot at commit `013c1c7` with the
+unfinished CQ4 increment. On 2026-10-27 Assil asked Claude to check each suggestion, adopt the
+sound ones and continue. Every factual claim was checked against the code and the data, and the
+two external hydrogeological sources were read. Points that refine one of Assil's decisions are
+written into the analysis plan (§14 item 15) as "to confirm by Assil before the export".
+
+## 1. Verdicts
+
+| Point | Verdict | What was done (2026-10-27) |
+|---|---|---|
+| **1** Mismatched graph files are read silently; a missing derivation reads as negative evidence | **Holds.** The facts had 373,259 triples, the rule outputs came from 356,377; `cq04_status` answered "supported, no mapped outcrop" for MILLAS C2-1 / 718BP02, whose 27.08 km² of outcrop were in the facts | `src/kg/release.py`: `apply_rules` deletes the release when it starts and writes `lulcw_kg_<v>_release.json` only after a validation without violation: SHA-256 of the facts, rules, shapes, every ontology file (hashed before the run, unchanged at its end) and the outputs. `kg_store`, the tests' data checks and the coming export call `release.check()`, which refuses any changed file. `cq04_status` gives "no mapped outcrop" only after a completed search (no order-1 piece of the unit in the extent); outcrop facts without a derived coverage answer **unknown**. `tests/test_release.py` (stale pair refused, outputs edited, inputs edited during a run, interrupted run); CQ4 fixtures and data checks, MILLAS 27.08 km² included; the facts without their rule outputs answer unknown |
+| (found while finishing CQ4) | **A defect of mine**: the CQ4 rules of 2026-10-26 never finished (stopped after 25 min). rdflib sorts a pattern block again when it evaluates it, by the number of unbound terms, so `lulcw:layerOrder 1` and the one-variable class pattern `?x a lulcw:PolygonCellIntersection` went first and crossed 1,769 pieces with every layer and every coverage | The constant became a variable tested by a FILTER, the class pattern was dropped where the property's domain implies it, and the rule file explains why. The whole derivation now takes about 5 minutes (rules about 2, validation 2.5–3) |
+| (found while finishing CQ4) | The forcing extent is the union of the cells, so its coverage was 1 by construction, hiding that two units reach beyond the cells: 15 % of the mapped outcrop of 681AF00 and 9 % of 681AO00 (the CQ4 contract asks to "state explicitly whether S clips the unit") | Each unit described by BD LISA records its whole mapped outcrop (`lulcw:mappedOutcropAreaM2`, ontology 0.4.0); `cq04_coverage` reports the unit's share inside S; in the unit-wide extent a clipped unit is **partial**; a shape refuses a coverage larger than the unit's outcrop; the oracle checks the areas on the whole extract |
+| **2** `paired()` compares counts of scored weeks, not the weeks | **Holds** (the counterexample reproduces: 12 different well-weeks passed `strict=True`) | `src/models/evaluate.py` stores a digest of the exact scored weeks per group (`support`); `stats.paired` compares the digests, counts wells scored in one run only, and in strict mode refuses either, and tables without digests. All 61 v4 tables rescored: no v4 contrast against the Pastas reference has a difference the counts missed; the LU-4 main contrasts pass the exact check with the numbers Codex recomputed (+0.015919 [−0.041644, +0.051254]; +0.001311 [−0.045913, +0.163209]). `tests/test_stats.py` keeps the counterexample |
+| **3** D vs C compares two connection policies, not routing alone | **Holds** | Analysis plan §14 item 15: the 12.8 export writes a per-well, per-relation inventory (direct connections, source coverage, weights, inputs reachable within the message-passing depth, inputs given at well nodes) before any arm; D vs C is worded as the benefit or cost of the KG connection policy unless the matched controls support the routing reading; any coverage-matched diagnostic is defined before scores |
+| **4** The depth threshold is chosen from heads, against the regime table | **Holds**, and the data make it sharper: of the 47 same-unit pairs within 5 km, **0** differ by ≤ 10 m, **2** by ≤ 20 m, 13 by ≤ 50 m | Regime table amended; threshold chosen inside each regime's allowed heads (R2 per fold without its wells, R3 on the window); proposed minimum support (≥ 10 pairs with ≥ 104 shared training weeks), tie rule and records; a global choice only as a labelled sensitivity. Proposal to confirm by Assil before the export |
+| **5** Recharge edges need a physical reading before hard constraints | **Holds.** Both sources read: SMNPR ("Présentation des nappes": rain infiltration alone does not recharge the deep aquifers; the Têt and its Quaternary aquifer infiltrate into the Pliocene upstream, between Bouleternère and Saint-Féliu-d'Amont; the Corbières karst and the peripheral massifs recharge it) and Ladouche & Caballero 2022, BRGM/RP-71486-FR (downward leakage Quaternary → Pliocene follows Pliocene pumping, ≈ 8–10 % of the canal inflow in September 2017; 60–70 % of canal water returns to the Têt). Our data: SIM2's PE equals rain − EVAP within 0.13 % and ≈ drainage + runoff, so DRAINC is part of PE | Analysis plan §14 item 15: the local 5 km rule stays as the approved, declared approximation (with the unit-wide sensitivity), and every result states what it represents and omits; one recharge proxy per influence (PE main, DRAINC sensitivity), never both; "exact unit" keeps its cartographic meaning; a bounded domain review of the two LU-6 wells before the broad sweeps (Assil's to-do) |
+| **6** Define the alignment evaluation before the gold set | **Holds** (198 rows, 0 labels) | `src/kg/agrovoc_gold.py`: protocol in the docstring (decision rules written before the first label, alternatives, no collapsing of SKOS relations, scoring of target and relation separately, per code first, area-weighted second with its denominator); columns `split` (40 dev / 158 eval, fixed now), `second` (30 codes, 78 % of the area, incl. the 3 codes without a candidate from their own label), `alternatives`; `blind` writes the second annotator's sheet without candidates; `check` reports agreement and Cohen's kappa |
+| **7** Keep the null result's wording exact | **Holds** for the summaries (the step note was already careful) | CLAUDE.md now says "no detectable improvement from this demand index under these models, settings, wells and drought period"; plan §14 item 15 adds the margin rule for any future equivalence claim |
+| **8** Executable releases and complete input records | **Holds**: `DATASET_FILES` lacked rivers and gauges (and pumping points), which the features read | Manifests hash them and the raw SAFRAN grid (Taccari); a base panel cache records its dataset files and is refused once they change (older caches have no record and are read as before); `src/analysis/run_inventory.py` → `docs/run_inventory_v4.md`: 38 replayable, 4 recomputable, 18 predictions only, EA-LSTM folds 1 of 5 with checkpoints. Nothing is completed after the fact; the export will bind to the graph release |
+| **9** Next milestone: an executable two-well path; order of work | Agreed | Order in plan §14 item 15 and CLAUDE.md: CQ4 release and safeguards (done) → exact support (done) → D inventory and per-regime threshold → export and the two-well path to a model output and its contribution explanation → small twin → frozen primary contrasts; CQ5/CQ6 bounded, gaps documented; one satellite rule |
+
+## 2. What Assil decides
+
+1. The depth-threshold proposal (minimum 10 pairs with 104 shared weeks, ties to the looser
+   threshold, per-regime choice), before the export.
+2. One recharge proxy per influence (PE main, DRAINC sensitivity), at Gate 3 with the sign
+   constraints.
+3. The plant/product/land-use rule of the gold set before its first label, and whether the
+   supervisor annotates the 30-code subset.
+4. Whom to ask for the bounded domain review of the two LU-6 wells (supervisor, SMNPR, BRGM).
+
+## 3. State after the answer
+
+- Graph release of 2026-10-27: facts 373,306 triples (ontology 0.4.0), rule outputs with 317
+  outcrop coverages (47 in the forcing extent, 270 in the 65 search zones) and 1,134 cell
+  weights; no violation; `tests/test_release.py`, `test_kg_rules`, `test_cq`, `test_ontology`,
+  `test_stats` pass.
+- The Colab results of session 2 are still to be pulled (Assil), then the v4 reports regenerate
+  with exact support.

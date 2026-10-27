@@ -934,3 +934,103 @@ unit-wide extent (a) as a sensitivity row. Analysis plan §14 item 14 updated.
   keys) and the four CQ4 queries are written; the CQ7 queries now name their zone class.
 - **Not done:** the rule run on the new facts (stopped), the CQ4 tests, the commit. The rules
   output on disk predates the CQ4 facts. Resume order: CLAUDE.md §7, "Resume here".
+
+## 2026-10-27: CQ4 increment 1 finished, the Codex review of 2026-10-26 answered
+
+### Recurring check (CLAUDE.md §7), answered before starting
+1. *Chain link advanced:* water → model: CQ4 gives the weather cells over each well's unit
+   outcrop, the first of the three relations (weather, river, canal) that arm D takes from the
+   graph (analysis plan §14 item 14). The review's points also protect the model → explanation
+   link (exact support, graph releases).
+2. *Where dated land use enters:* unchanged since 2026-10-26: the weekly crop-thirst index
+   (LU-4: no detectable improvement on the core wells) and the graph's dated crop areas,
+   classes and demand categories (CQ7); no model graph yet.
+3. *Observed / inferred / assumed / unknown:* outcrop polygons and cell grid observed (BD LISA,
+   SIM2 grid points); the 8 km squares around the points assumed (stated); coverages and
+   weights inferred by rules; recharge itself unknown: outcrop is a proxy, weak for the
+   Pliocene (below).
+4. *Evidence vs plan:* done today: the CQ4 release, its tests and oracle, the release guard,
+   exact support, the run inventory, the gold-set protocol. Plans: CQ4 increment 2 (recharge
+   influences), CQ5, CQ6, the export, the two-well executable path.
+5. *Next model experiment:* none before the export; `chronos2_ft` completes the baselines only.
+6. *Still missing from the subject:* satellite semantics (12.10), explanations of real outputs
+   (CQ10), the scenario (CQ16); the AGROVOC gold set (Assil) and the OntoAligner run.
+
+### What was done
+- **The rules that never finished.** Last night's run of the CQ4 rules was stopped after 25
+  minutes; today's ran as long before the laptop shut down. Profiled on the CQ4 part of the
+  graph (12,722 triples): the first rule alone took 216 s, the evidence rule crossed 1,769
+  pieces with 317 coverages. Cause: rdflib sorts the patterns of a block **again when it
+  evaluates it**, by how many of their terms are still unbound (a stable sort). A pattern with a
+  constant (`?l lulcw:layerOrder 1`) or a one-variable class test (`?x a
+  lulcw:PolygonCellIntersection`) counts as nearly bound and jumps ahead of the patterns that
+  should bind its variable first, so every piece met every layer (and every coverage). The
+  order set by `fast_sparql` survives only when `$this` binds the first pattern, which is why
+  the older rules were fast. Fix: the order becomes a variable tested by a FILTER, the class
+  test is dropped where the property's domain implies it. The whole derivation now takes
+  about 5 minutes (rules 2 minutes, validation about 2.5–3). Rule for future rules, written in
+  the rules file: no constant or lone class pattern ahead of the pattern that binds its subject.
+- **Graph releases** (`src/kg/release.py`, Codex §1): `apply_rules` removes the release file
+  when it starts and writes `lulcw_kg_v4_release.json` only after a validation without
+  violation: the SHA-256 of the facts, rules, shapes, the 11 ontology files and the two
+  outputs. Every reader checks it: after today's ontology edit, the tests refused the old
+  derivation ("the graph of v4 changed since its derivation (ontology, shapes)") until the
+  rules ran again. The CQ4 status query also needs a completed search before it says "no
+  mapped outcrop": the facts alone (no rule outputs) now answer unknown for MILLAS C2-1's unit
+  718BP02, where Codex had found the false negative.
+- **The unit's whole outcrop.** The forcing extent is the union of the 141 cells, so a unit's
+  coverage there was 1 by construction. Measured on the whole BD LISA extract: 681AF00 has 15 %
+  of its mapped outcrop outside the cells, 681AO00 9 %, the 45 other units none. Each unit now
+  records its mapped outcrop (`lulcw:mappedOutcropAreaM2`), the coverage query gives the share
+  of it inside S, and the unit-wide answer for those two units is partial ("S clips the unit").
+  In a 5 km search zone the share is reported but not turned into partial: the zone clips by
+  design.
+- **CQ4 tests.** Fixtures (60/40 and 80-of-100 cases, a unit only below order 1, a unit
+  outside BD LISA, a clipped unit, the facts without their derivation) and 9 negative controls
+  (weights not summing to one, pieces larger than their polygon, a duplicate piece, a sliver,
+  a coverage citing another extent, a wrong fraction, an orphan weight, a coverage larger than
+  the unit's outcrop, two coverages for one key). Data: the 317 coverages and 1,134 cell
+  weights equal a GeoPandas oracle written apart from `src/kg/forcing.py` (overlay of the BD
+  LISA polygons with squares rebuilt from the raw grid; areas within 50 m², weights within
+  1e-5; first run off by 82 m² because the oracle rounded the well positions to 0.1 m); MILLAS
+  C2-1 / 718BP02: 27.08 km², Codex's figure.
+- **What the stratigraphy gained.** The 176 outcrop polygons added for CQ4 bring their stacks:
+  150 direct contacts and 16 indirect orderings (95 and 13 before), 38 `overlies` pairs (28).
+  The plain's 26 contacts of Step 6b are unchanged; the oracle covers all 377 polygons.
+- **Exact support** (Codex §2): each scored group stores a digest of its exact weeks; `paired`
+  compares them. The 61 v4 tables were rescored; no contrast against the reference had hidden
+  different weeks, and LU-4's numbers are unchanged.
+- **Reproducibility** (Codex §8): manifests now hash rivers, gauges, pumping points and the raw
+  SAFRAN grid; panel caches record their dataset files; `docs/run_inventory_v4.md`: 38 runs
+  replayable, 4 recomputable, 18 predictions only (the main LSTM, ST-GNN and Taccari runs of
+  Colab session 1 have no checkpoints), EA-LSTM folds 1 of 5.
+- **Gold-set protocol** (Codex §6): before the first label; `split` 40 dev / 158 eval, a
+  30-code second-annotator subset (78 % of the area), `alternatives`; see
+  `src/kg/agrovoc_gold.py`.
+- **Checks on the release of 2026-10-27** (facts 373,306 triples, rule outputs 129,479, no
+  violation): `test_ontology` (255 terms, ELK and HermiT consistent), `test_kg`, `test_kg_rules`
+  (25 negative controls; CQ4 oracle: 317 coverages, mapped outcrop of the 47 units, the forcing
+  cells clip 681AF00 and 681AO00), `test_cq` (CQ4 statuses: 315 supported, 2 partial; the
+  recorded units of 5 Pliocene wells have no outcrop within 5 km: "no mapped outcrop", the 5
+  wells without a weather edge in D; MILLAS 27.08 km²; facts alone: unknown), `test_release`,
+  `test_stats`, `test_checkpoint`, `test_run_cache`, `test_land_use_inputs`,
+  `test_regime_boundaries`: all pass. The rescoring of the 61 v4 tables added the digests;
+  the paired results recomputed afterwards (LU-4: +0.015919 [−0.041644, +0.051254] and
+  +0.001311 [−0.045913, +0.163209]) equal those of the step 12d note and of Codex.
+- **Two sources read** (Codex §5): the SMNPR page on how the aquifers work and the BRGM report
+  RP-71486-FR on canal, river and groundwater exchanges in the Têt valley. Both say the Pliocene
+  is fed mainly from elsewhere (the Têt and its alluvium upstream, the Corbières karst, the
+  border massifs, leakage from the Quaternary pulled down by Pliocene pumping), not by rain on
+  its own outcrop near a well. Analysis plan §14 item 15 lists what the 5 km rule omits.
+
+### What to consider
+- **Recharge edges are a proxy.** For the 20 Pliocene core wells, the local-outcrop weather
+  edge is the weakest of the three pathways the sources name. CQ4 increment 2 should label its
+  influences "recharge proxy" and keep the omitted pathways visible (CQ3 for leakage, CQ5 for
+  the Têt, CQ6 for the canals); the domain review of the two LU-6 wells is the check.
+- **PE and DRAINC are one water.** In our forcing file, PE = rain − actual evaporation (within
+  0.13 %) and ≈ drainage + runoff: a model given both as separate recharge drivers counts the
+  drainage twice.
+- **The depth rule has almost nothing to choose from:** 0 pairs within 10 m, 2 within 20 m, 13
+  within 50 m, 47 without a threshold. The minimum-support proposal (plan §14 item 15) decides
+  in practice between 50 m and none.

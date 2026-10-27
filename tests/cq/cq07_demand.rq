@@ -16,7 +16,7 @@ PREFIX prov: <http://www.w3.org/ns/prov#>
 PREFIX sosa: <http://www.w3.org/ns/sosa/>
 SELECT ?W ?year ?property ?demandM3 ?procedure ?category ?thresholdM3 ?rule
 WHERE {
-    ?zone lulcw:zoneOf ?W .
+    ?zone a lulcw:CropDemandZone ; lulcw:zoneOf ?W .
     ?e a lulcw:CropDemandEstimate ; sosa:hasFeatureOfInterest ?zone ; lulcw:rpgEdition ?year ;
        sosa:observedProperty ?property ; sosa:hasSimpleResult ?demandM3 .
     OPTIONAL { ?e sosa:usedProcedure ?procedure . }

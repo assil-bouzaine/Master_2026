@@ -1,0 +1,30 @@
+# CQ4 · Outcrop of a unit in a reference extent, and how weather cells cover it
+# (docs/competency_questions.md §4, CQ4)
+#
+# Parameters  ?U  a lulcw:HydrogeologicalUnit
+#             ?S  a reference extent: a well's lulcw:OutcropSearchZone (5 km) or the forcing extent
+#                 <https://w3id.org/lulcw/data/extent/forcing-cells> (all the SAFRAN cells)
+# Reads       SHACL-AF rule outputs (lulcw:OutcropCoverage; lulcw_kg_<dataset>_rules.ttl) over
+#             asserted polygon-cell intersection areas; no OWL reasoning
+# Returns     one row, or none when ?U is not mapped at outcrop in ?S (cq04_status then says
+#             "no mapped outcrop in S", which is not zero recharge): the outcrop area (m², where ?U
+#             is order 1 of an elementary polygon's stack, inside ?S), the part inside weather
+#             cells, the covered fraction (the cell weights of cq04_cells.rq are renormalised over
+#             the covered part), the unit's whole mapped outcrop in the BD LISA extract and the share
+#             of it inside ?S (below 1: ?S clips the unit, and recharge-related inputs from the rest
+#             are not represented), the number of outcrop polygons, and the rule. Outcrop is a mapped
+#             geological property, not proof of infiltration or of a complete contributing area.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+SELECT ?U ?S ?outcropAreaM2 ?coveredAreaM2 ?coveredFraction ?mappedOutcropAreaM2 ?unitShareInS
+       (COUNT(DISTINCT ?p) AS ?polygons) ?rule
+WHERE {
+    ?cov a lulcw:OutcropCoverage ; lulcw:coverageUnit ?U ; lulcw:withinExtent ?S ;
+         lulcw:outcropAreaM2 ?outcropAreaM2 ; lulcw:coveredAreaM2 ?coveredAreaM2 ;
+         lulcw:coveredFraction ?coveredFraction ; lulcw:derivationRule ?rule ;
+         prov:wasDerivedFrom ?x .
+    ?x lulcw:intersectedPolygon ?p .
+    OPTIONAL { ?U lulcw:mappedOutcropAreaM2 ?mappedOutcropAreaM2 . }
+    BIND (?outcropAreaM2 / ?mappedOutcropAreaM2 AS ?unitShareInS)
+}
+GROUP BY ?U ?S ?outcropAreaM2 ?coveredAreaM2 ?coveredFraction ?mappedOutcropAreaM2 ?unitShareInS ?rule

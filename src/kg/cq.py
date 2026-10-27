@@ -19,6 +19,7 @@ import rdflib
 from rdflib.namespace import XSD
 
 from src.config import DATASET, PROCESSED, ROOT
+from src.kg import release
 
 CQ = ROOT / "tests" / "cq"
 KG = PROCESSED / "kg"
@@ -91,7 +92,10 @@ def local(iri):
 
 
 def kg_store(dataset=DATASET):
-    """pyoxigraph store of the facts and the rule outputs (src.kg.build_kg, src.kg.apply_rules)."""
+    """pyoxigraph store of the facts and the rule outputs (src.kg.build_kg, src.kg.apply_rules),
+    only when they form a validated release (src.kg.release.check raises StaleRelease otherwise:
+    a stale pair would read a link not yet derived as a negative answer)."""
+    release.check(dataset)
     s = ox.Store()
     for f in (KG / f"lulcw_kg_{dataset}.ttl", KG / f"lulcw_kg_{dataset}_rules.ttl"):
         s.bulk_load(path=str(f), format=ox.RdfFormat.TURTLE)

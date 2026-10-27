@@ -18,7 +18,7 @@ PREFIX sosa: <http://www.w3.org/ns/sosa/>
 SELECT ?W ?year ?code ?label ?rpgGroup ?class ?irrigationAssumption ?areaHa ?release
        ?alignmentRelation ?alignment
 WHERE {
-    ?zone lulcw:zoneOf ?W .
+    ?zone a lulcw:CropDemandZone ; lulcw:zoneOf ?W .
     ?o a lulcw:CropAreaObservation ; sosa:hasFeatureOfInterest ?zone ; lulcw:rpgEdition ?year ;
        lulcw:cropCode ?c ; sosa:hasSimpleResult ?areaHa .
     ?c skos:notation ?code ; lulcw:rpgGroupCode ?rpgGroup .

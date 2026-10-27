@@ -10,6 +10,9 @@ network mixed in (sh:class follows rdfs:subClassOf). Writes, next to the facts:
                                          versions and the execution record
   lulcw_kg_<dataset>_shacl.ttl           the validation report
   lulcw_kg_<dataset>_rules_summary.json  counts, validation results, run time
+  lulcw_kg_<dataset>_release.json        only when the shapes find no violation: the hashes of
+                                         the facts, rules, shapes, ontology and outputs that
+                                         belong together (src.kg.release; readers check them)
 and exits with an error when the shapes find a violation (warnings and infos are reported).
 
 The derived links are the ones the model's graph is made of (docs/ontology_design.md §4):
@@ -40,7 +43,6 @@ import json
 import math
 import sys
 import time
-import xml.etree.ElementTree as ET
 from contextlib import contextmanager
 from datetime import date
 
@@ -56,10 +58,10 @@ from rdflib.plugins.sparql.operators import register_custom_function
 
 from src.config import DATASET, ROOT
 from src.dataset.crop_demand import FROZEN_EDITION as LAST_TRAINING_YEAR   # 2019
+from src.kg import release
 from src.kg.build_kg import D, DCT, L, OUT, PROV, git_version, write_turtle
 
-RULES = ROOT / "ontology" / "rules" / "lulcw-rules.ttl"
-SHAPES = ROOT / "ontology" / "shapes" / "lulcw-shapes.ttl"
+RULES, SHAPES = release.RULES, release.SHAPES
 MATH_SQRT = URIRef("http://www.w3.org/2005/xpath-functions/math#sqrt")
 EXECUTION = URIRef(D + "execution/kg-rules")
 HIGH_DEMAND = URIRef(D + "rule/high-irrigation-demand")
@@ -117,11 +119,8 @@ def fast_sparql():
 
 def ontology_network():
     """The ontology network (lulcw-meta and every module of the catalog), parsed offline."""
-    onto = ROOT / "ontology"
-    files = {u.get("name"): onto / u.get("uri")
-             for u in ET.parse(onto / "catalog-v001.xml").getroot().iter() if u.tag.endswith("uri")}
     g = rdflib.Graph()
-    for f in files.values():
+    for f in release.ontology_files().values():
         g.parse(f)
     return g
 
@@ -250,6 +249,10 @@ def counts(facts, added):
     out["demand_assessments_by_category"] = one(
         "SELECT ?c (COUNT(?a) AS ?n) WHERE { ?a a lulcw:IrrigationDemandAssessment ; "
         "lulcw:demandCategory ?c } GROUP BY ?c")
+    out["outcrop_coverages_by_extent_kind"] = one(
+        "SELECT ?k (COUNT(?v) AS ?n) WHERE { ?v a lulcw:OutcropCoverage ; lulcw:withinExtent ?s . "
+        "BIND (IF(STRSTARTS(STR(?s), STR(<outcrop-zone/>)), <kind/search-zone>, ?s) AS ?k) } GROUP BY ?k")
+    out["cell_weights"] = len(list(added.subjects(RDF.type, L.CellWeight)))
     thr = list(g.objects(HIGH_DEMAND, L.demandThresholdM3))
     out["high_demand_threshold_m3"] = float(thr[0]) if thr else None
     return out
@@ -257,6 +260,8 @@ def counts(facts, added):
 
 def main():
     t0 = time.time()
+    inputs = release.input_hashes()     # before anything is read; checked again at the end
+    release.invalidate()                # a derivation in progress, or a failed one, has no release
     facts_file = OUT / f"lulcw_kg_{DATASET}.ttl"
     facts = rdflib.Graph().parse(facts_file)
     rules = rdflib.Graph().parse(RULES)
@@ -314,7 +319,13 @@ def main():
     print(json.dumps(summary, indent=1, ensure_ascii=False))
     print(f"-> {rules_file.relative_to(ROOT)}")
     if not conforms:
-        raise SystemExit("SHACL violations: see the report and shacl_results above")
+        raise SystemExit("SHACL violations: see the report and shacl_results above (no release written)")
+    facts_summary = OUT / f"lulcw_kg_{DATASET}_summary.json"
+    built = json.loads(facts_summary.read_text()) if facts_summary.exists() else {}
+    release.write(inputs, rules_code_version=version, facts_code_version=built.get("code_version"),
+                  facts_triples=len(facts), rule_outputs_triples=len(out),
+                  shacl_results=results)
+    print(f"-> {release.manifest_path().relative_to(ROOT)} (validated release)")
 
 
 if __name__ == "__main__":

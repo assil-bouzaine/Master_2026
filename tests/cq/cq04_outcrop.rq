@@ -1,0 +1,23 @@
+# CQ4 · Where a unit is mapped at outcrop in a reference extent: the polygons
+#
+# Parameters  ?U, ?S  as in cq04_coverage.rq
+# Reads       asserted facts: BD LISA elementary polygons, their stack layers and geometry, and
+#             the polygon-cell intersection areas inside ?S; no OWL reasoning
+# Returns     one row per elementary polygon where ?U is order 1 and which has a part in ?S: its
+#             BD LISA code, the area of that part (m²), the part of it inside weather cells (m²),
+#             and the polygon's whole geometry (GeoSPARQL WKT, Lambert-93; the part in ?S is not
+#             stored as a geometry).
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+SELECT ?U ?S ?polygonCode (SUM(?a) AS ?areaInExtentM2) (SUM(?in) AS ?areaInCellsM2) ?wkt
+WHERE {
+    ?x a lulcw:PolygonCellIntersection ; lulcw:intersectedPolygon ?p ; lulcw:withinExtent ?S ;
+       lulcw:intersectionAreaM2 ?a .
+    ?p lulcw:hasStackLayer ?l ; lulcw:polygonCode ?polygonCode ; geo:hasGeometry ?g .
+    ?l lulcw:layerOrder 1 ; lulcw:layerUnit ?U .
+    ?g geo:asWKT ?wkt .
+    OPTIONAL { ?x lulcw:intersectedCell ?c . }
+    BIND (IF(BOUND(?c), ?a, 0.0) AS ?in)
+}
+GROUP BY ?U ?S ?polygonCode ?wkt
+ORDER BY ?polygonCode

@@ -21,6 +21,10 @@
         stays in the totals as unmapped; class areas are the sums of their codes' clipped areas;
         the high-demand threshold is the upper tercile of the training years' estimates (800 m³
         here) and every zone-year gets a dated category
+   CQ4  0.6 + 0.4 km² of a unit's outcrop in two cells give weights 0.6 / 0.4 and a covered
+        fraction 1; 0.8 of 1 km² inside cells gives a fraction 0.8 and weights renormalised over
+        the covered part (0.625 / 0.375); a unit only below order 1 gets no coverage; every piece
+        of the outcrop, the one outside the cells too, is cited
    The fixture graph, with the rule outputs, has no violation.
 3. Negative controls, each inserted on purpose and reported as a violation: an ordering chained
    across two polygons, a self-paired well link, an eligible influence with an unknown sign,
@@ -30,7 +34,11 @@
    class area that is not the sum of its codes, a category that disagrees with the threshold,
    an RPG edition used for another year, a crop code with two classes, a code area that no class
    area counts, a code area counted by two class areas, two class areas for one zone, year and
-   class.
+   class; (CQ4) cell weights that do not sum to one, pieces of a polygon larger than the polygon,
+   two pieces with one polygon, extent and cell, a piece under 1 m², a coverage citing a piece of
+   another extent, a covered fraction that is not covered / outcrop, a cell weight outside any
+   coverage, a coverage larger than the unit's whole mapped outcrop, two coverages for one extent
+   and unit.
 4. Data-backed regression (when the graph and the rule outputs exist), against pandas on the
    source tables: the stratigraphic relations equal the pairs of the BD LISA stack table for
    the graph's polygons, and the direct contacts of the plain's polygons equal the overlies
@@ -44,6 +52,11 @@
    spread over its days and
    summed by calendar year, and the threshold and categories follow; the validation report of
    src.kg.apply_rules is the one of the current files and has no violation.
+5. Data, CQ4: the outcrop coverages and cell weights equal oracle_coverage (GeoPandas on BD LISA
+   and the raw SAFRAN grid, written apart from src.kg.forcing), and each unit's mapped outcrop equals
+   the order-1 polygons of the whole extract. Sections 4-5 run only on a
+   validated release (src.kg.release.check): facts, rule outputs, rules, shapes and ontology
+   unchanged since src.kg.apply_rules validated them.
 """
 import json
 import re
@@ -63,6 +76,7 @@ from src.config import CRS_L93, CRS_WGS84, DATASET, DATASET_DIR, INTERIM, PROCES
 from src.dataset.crop_demand import AREA_OUT, code_to_class, load_classes
 from src.kg.apply_rules import (RULES, SHAPES, check, ontology_network, rule_records,
                                 run_rules)
+from src.kg import release
 from src.kg.build_kg import BNPE_SNAPSHOT
 
 KG = PROCESSED / "kg"
@@ -231,7 +245,55 @@ def build_fixture():
     fx.facility("F4", 400, 0, U, L.Possible)             # exact, possible
     fx.facility("F5", 0, 20000, U, L.Confident)          # beyond the radius of every well
     add_landuse(fx)
+    add_forcing(fx, (A, B, C, X, Y, Z))
     return fx, {"A": A, "B": B, "C": C, "X": X, "Y": Y, "Z": Z, "U": U, "V": V, "G": G}
+
+
+def add_forcing(fx, described):
+    """CQ4 fixture, on the three polygons of the stacks (1 km² each): the search zone of W1 holds
+    polygon 1 (A at outcrop) as 0.6 km² in cell c1 and 0.4 km² in c2, and polygon 2 (X at outcrop)
+    as 0.5 km² in c1, 0.3 km² in c2 and 0.2 km² outside every cell; the forcing extent holds
+    polygon 3 (Y at outcrop) in c2. Units A-Z are described by BD LISA (a source record), U and V
+    are not; mapped outcrop over the whole release: A 1 km² (all in the zone), X 2 km² (half),
+    Y 1.25 km² (the forcing extent clips it to 0.8), B, C, Z never at outcrop."""
+    a = fx.g.add
+    for u in described:
+        a((u, PROV.wasDerivedFrom, fx.rel))
+        m2 = FIXTURE_MAPPED_OUTCROP.get(str(u).rsplit("/", 1)[-1], 0.0)
+        a((u, L.mappedOutcropAreaM2, Literal(m2, datatype=XSD.double)))
+    for k, (x, y) in {"c1": (100, 200), "c2": (180, 200)}.items():
+        c = d(f"weather-cell/{k}")
+        a((c, RDF.type, L.WeatherCell))
+        a((c, L.safranGridXHm, Literal(x, datatype=XSD.integer)))
+        a((c, L.safranGridYHm, Literal(y, datatype=XSD.integer)))
+        a((c, L.inRelease, fx.rel))
+        fx.geometry(c, "weather-cell", k, "POLYGON((0 0, 8000 0, 8000 8000, 0 8000, 0 0))")
+        se = d(f"series/forcing-test/{k}/PE")
+        a((se, RDF.type, L.ObservationSeries))
+        a((se, L.seriesVariable, L.EffectiveRainfall))
+        a((se, L.storedIn, Literal(f"forcing_weekly.parquet [cell_id = {k}, column PE]")))
+        a((c, L.hasForcingSeries, se))
+    zone, forcing = d("outcrop-zone/W1"), d("extent/forcing-cells-test")
+    a((zone, RDF.type, L.OutcropSearchZone))
+    a((zone, L.zoneOf, d("piezometer/W1")))
+    a((zone, L.zoneRadiusM, Literal(RADIUS, datatype=XSD.double)))
+    a((forcing, RDF.type, GEO.Feature))
+    for ext, poly, cell, m2 in FIXTURE_PIECES:
+        x = d(f"polygon-cell/{ext}/{poly}/{cell or 'outside'}")
+        a((x, RDF.type, L.PolygonCellIntersection))
+        a((x, L.intersectedPolygon, d(f"polygon/{poly}")))
+        a((x, L.withinExtent, zone if ext == "zone" else forcing))
+        if cell:
+            a((x, L.intersectedCell, d(f"weather-cell/{cell}")))
+        a((x, L.intersectionAreaM2, Literal(m2, datatype=XSD.double)))
+        a((x, PROV.wasGeneratedBy, d("execution/polygon-cell-intersection")))
+
+
+FIXTURE_MAPPED_OUTCROP = {"A": 1.0e6, "X": 2.0e6, "Y": 1.25e6}
+# extent, polygon, cell (None = outside every cell), m²
+FIXTURE_PIECES = (("zone", 1, "c1", 6.0e5), ("zone", 1, "c2", 4.0e5),
+                  ("zone", 2, "c1", 5.0e5), ("zone", 2, "c2", 3.0e5), ("zone", 2, None, 2.0e5),
+                  ("forcing", 3, "c2", 1.0e6))
 
 
 def add_landuse(fx):
@@ -379,11 +441,28 @@ def test_fixtures(rules, shapes, net):
     assert cats == {2016: "HighIrrigationDemand", 2017: "BelowHighIrrigationDemand",
                     2023: "HighIrrigationDemand"}, cats
 
+    # CQ4: coverage per (extent, unit at outcrop), weights renormalised over the covered part
+    cov = {(s.rsplit("/", 1)[-1], u.rsplit("/", 1)[-1]): (o, c, f) for s, u, o, c, f in select(g, """
+        SELECT ?s ?u ?o ?c ?f WHERE { ?v a lulcw:OutcropCoverage ; lulcw:withinExtent ?s ; lulcw:coverageUnit ?u ;
+            lulcw:outcropAreaM2 ?o ; lulcw:coveredAreaM2 ?c ; lulcw:coveredFraction ?f }""")}
+    assert cov == {("W1", "A"): (1.0e6, 1.0e6, 1.0), ("W1", "X"): (1.0e6, 8.0e5, 0.8),
+                   ("forcing-cells-test", "Y"): (1.0e6, 1.0e6, 1.0)}, cov   # B, C: not at outcrop
+    wts = {(u.rsplit("/", 1)[-1], c.rsplit("/", 1)[-1]): (w, a) for u, c, w, a in select(g, """
+        SELECT ?u ?c ?w ?a WHERE { ?v lulcw:coverageUnit ?u ; lulcw:hasCellWeight ?x .
+            ?x lulcw:weightCell ?c ; lulcw:cellWeight ?w ; lulcw:coveredAreaM2 ?a }""")}
+    want = {("A", "c1"): (0.6, 6.0e5), ("A", "c2"): (0.4, 4.0e5), ("X", "c1"): (0.625, 5.0e5),
+            ("X", "c2"): (0.375, 3.0e5), ("Y", "c2"): (1.0, 1.0e6)}
+    assert wts.keys() == want.keys() and all(abs(wts[k][0] - w) < 1e-12 and wts[k][1] == a
+                                             for k, (w, a) in want.items()), wts
+    cited = {u.rsplit("/", 1)[-1]: int(n) for u, n in select(g, """SELECT ?u (COUNT(?x) AS ?n) WHERE {
+        ?v a lulcw:OutcropCoverage ; lulcw:coverageUnit ?u ; prov:wasDerivedFrom ?x } GROUP BY ?u""")}
+    assert cited == {"A": 2, "X": 3, "Y": 1}, cited                # every piece, the outside one too
+
     conforms, _, results = check(g, shapes, net)
     assert conforms and violations(results) == 0, results
     infos = sum(n for k, n in results.items() if k.startswith("Info"))
     assert infos == 1, results                                    # W2's missing depth
-    print(f"  2. fixtures: CQ3, CQ11, CQ8, CQ2 and CQ7 cases hold; {len(added)} derived triples; "
+    print(f"  2. fixtures: CQ3, CQ11, CQ8, CQ2, CQ7 and CQ4 cases hold; {len(added)} derived triples; "
           f"no violation, 1 info (the missing depth)")
     return g
 
@@ -461,6 +540,52 @@ def test_negative_controls(g, shapes, net):
              (d("crop-class-area/W1/2023/orchard-bis"), L.cropClass, d("crop-class/orchard"))], (),
             "CropClassAreaKeyShape", "share a zone"),
     }
+    # CQ4: coverages and weights of the fixture (A, X in the search zone of W1; Y in the forcing extent)
+    zone, cov_a = d("outcrop-zone/W1"), d("outcrop-zone/W1/outcrop-coverage/A")
+    cov_x, cov_y = d("outcrop-zone/W1/outcrop-coverage/X"), d("extent/forcing-cells-test/outcrop-coverage/Y")
+    dbl = lambda v: Literal(v, datatype=XSD.double)  # noqa: E731
+
+    def now(s, p):
+        return list(g.triples((s, p, None)))
+
+    def piece(key, poly, cell, m2):
+        x = d(f"polygon-cell/zone/{poly}/{key}")
+        return [(x, RDF.type, L.PolygonCellIntersection), (x, L.intersectedPolygon, d(f"polygon/{poly}")),
+                (x, L.withinExtent, zone), (x, L.intersectionAreaM2, dbl(m2)),
+                (x, PROV.wasGeneratedBy, d("execution/polygon-cell-intersection"))] + \
+               ([(x, L.intersectedCell, d(f"weather-cell/{cell}"))] if cell else [])
+    cases |= {
+        "cell weights that do not sum to one": (
+            [(d("outcrop-zone/W1/outcrop-coverage/A/c1"), L.cellWeight, dbl(0.7))],
+            now(d("outcrop-zone/W1/outcrop-coverage/A/c1"), L.cellWeight),
+            "OutcropCoverageShape", "do not sum to one"),
+        "pieces of a polygon larger than the polygon": (
+            piece("outside", 1, None, 1.0e4), (), "PolygonCellIntersectionKeyShape", "exceed the polygon's area"),
+        "two pieces for one polygon, extent and cell": (
+            piece("c1-bis", 1, "c1", 1.0), (), "PolygonCellIntersectionKeyShape", "share a polygon"),
+        "a piece under 1 m²": (
+            [(d("polygon-cell/zone/2/outside"), L.intersectionAreaM2, dbl(0.5))],
+            now(d("polygon-cell/zone/2/outside"), L.intersectionAreaM2),
+            "PolygonCellIntersectionShape", "sliver"),
+        "a coverage citing a piece of another extent": (
+            [(cov_y, PROV.wasDerivedFrom, d("polygon-cell/zone/1/c1"))], (),
+            "OutcropCoverageShape", "from another extent"),
+        "a covered fraction that is not covered / outcrop": (
+            [(cov_x, L.coveredFraction, dbl(0.9))], now(cov_x, L.coveredFraction),
+            "OutcropCoverageShape", "covered fraction is not"),
+        "a cell weight outside any coverage": (
+            [(d("cell-weight/orphan"), RDF.type, L.CellWeight), (d("cell-weight/orphan"), L.weightCell, d("weather-cell/c1")),
+             (d("cell-weight/orphan"), L.cellWeight, dbl(0.5)), (d("cell-weight/orphan"), L.coveredAreaM2, dbl(1.0))], (),
+            "CellWeightShape", "exactly one outcrop coverage"),
+        "a coverage larger than the unit's whole mapped outcrop": (
+            [(d("unit/Y"), L.mappedOutcropAreaM2, dbl(5.0e5))], now(d("unit/Y"), L.mappedOutcropAreaM2),
+            "MappedOutcropShape", "exceeds the unit's whole mapped outcrop"),
+        "two coverages for one extent and unit": (
+            [(d(str(cov_a)[len(D):] + "-bis"), RDF.type, L.OutcropCoverage),
+             (d(str(cov_a)[len(D):] + "-bis"), L.withinExtent, zone),
+             (d(str(cov_a)[len(D):] + "-bis"), L.coverageUnit, d("unit/A"))], (),
+            "OutcropCoverageKeyShape", "share an extent and a unit"),
+    }
 
     for name, (add, remove, shape, text) in cases.items():
         res = bad(add, remove)
@@ -508,6 +633,100 @@ def oracle_relations(codes):
                 out.add((int(cp), units[i], units[j], "DirectContact" if j == i + 1 else "IndirectOrdering",
                          tuple(sorted(units[i + 1:j]))))
     return out
+
+
+def oracle_coverage(units, wells):
+    """CQ4 with GeoPandas on the raw sources, written apart from src.kg.forcing: the SAFRAN cells
+    as 8 km squares around the grid points (EPSG:27572, edges densified every 250 m, then
+    Lambert-93), a 5 km disc around each well (Lambert-93), and the BD LISA polygons whose order-1
+    unit is one of `units`, cut by each extent and overlaid with the cells. Returns
+    {(extent, unit): (outcrop m², covered m², {cell_id: covered m² in it})}, extent = "forcing-cells"
+    or the well's code_bss; parts under 1 m² are slivers of shared edges, kept here."""
+    from shapely import segmentize
+    from shapely.geometry import Point, box
+    from src.config import RAW
+    grid = pd.read_parquet(RAW / "safran" / "grid_cells_66.parquet")
+    cells = gpd.GeoDataFrame(
+        {"cell_id": grid["cell_id"]}, crs="EPSG:27572",
+        geometry=[segmentize(box(x * 100 - 4000, y * 100 - 4000, x * 100 + 4000, y * 100 + 4000), 250.0)
+                  for x, y in zip(grid["LAMBX"], grid["LAMBY"])]).to_crs(CRS_L93)
+    pts = gpd.GeoSeries(gpd.points_from_xy(wells["x"], wells["y"]), crs=CRS_WGS84).to_crs(CRS_L93)
+    extents = {"forcing-cells": cells.union_all()} | {   # unrounded centres, as the graph's zones
+        c: Point(pt.x, pt.y).buffer(RADIUS, 256) for c, pt in zip(wells["code_bss"], pts)}
+    bounds = gpd.GeoSeries(list(extents.values()), crs=CRS_L93).total_bounds
+    poly = pyogrio.read_dataframe(GPKG, layer="POLYG_ELEMENTAIRES", bbox=tuple(bounds))[["codepoly", "geometry"]]
+    pile = pyogrio.read_dataframe(GPKG, layer="TABLE_PILE_ENTITES_NIV3", read_geometry=False)
+    first = pile[pile["OrdRelatif"].astype(int) == 1]
+    top = first.set_index(first["CodePoly"].astype(int))["CodeEH"]
+    assert top.index.is_unique, "a polygon with two units at order 1"
+    poly["unit"] = poly["codepoly"].astype(int).map(top)
+    poly = poly[poly["unit"].isin(units)]
+    out = {}
+    for key, ext in extents.items():
+        part = poly[poly.intersects(ext)].copy()
+        part["geometry"] = part.geometry.intersection(ext)
+        part = part[part.area > 0]
+        if part.empty:
+            continue
+        pieces = gpd.overlay(part[["unit", "geometry"]], cells, how="intersection", keep_geom_type=True)
+        per_cell = pieces.assign(a=pieces.area).groupby(["unit", "cell_id"])["a"].sum()
+        for unit, total in part.assign(a=part.area).groupby("unit")["a"].sum().items():
+            by_cell = per_cell.loc[unit].to_dict() if unit in per_cell.index.get_level_values(0) else {}
+            out[(key, unit)] = (total, sum(by_cell.values()), by_cell)
+    return out
+
+
+def oracle_mapped_outcrop(units):
+    """{unit: m²} of the order-1 polygons of the whole BD LISA extract (pyogrio, apart from
+    src.kg.forcing.mapped_outcrop)."""
+    poly = pyogrio.read_dataframe(GPKG, layer="POLYG_ELEMENTAIRES")[["codepoly", "geometry"]]
+    pile = pyogrio.read_dataframe(GPKG, layer="TABLE_PILE_ENTITES_NIV3", read_geometry=False)
+    first = pile[pile["OrdRelatif"].astype(int) == 1]
+    unit = poly["codepoly"].astype(int).map(first.set_index(first["CodePoly"].astype(int))["CodeEH"])
+    m2 = pd.Series(poly.area.to_numpy()).groupby(unit.to_numpy()).sum()
+    return {u: float(m2.get(u, 0.0)) for u in units}
+
+
+def test_data_forcing(store):
+    """CQ4 rule outputs against oracle_coverage: the same (extent, unit) keys, outcrop and covered
+    areas, covered fractions and cell weights; slivers under 1 m² are dropped by the graph, so
+    areas agree within 1 m² per dropped piece (50 m² allowed) and weights within 1e-5."""
+    wells = pd.read_parquet(DATASET_DIR / "wells.parquet")
+    units = {c for (c,) in rows(store, "SELECT ?c WHERE { ?u lulcw:bdlisaCode ?c ; prov:wasDerivedFrom ?r }")}
+    got = {}
+    for s, b, u, o, c, f in rows(store, """SELECT ?s ?b ?u ?o ?c ?f WHERE {
+            ?v a lulcw:OutcropCoverage ; lulcw:withinExtent ?s ; lulcw:coverageUnit/lulcw:bdlisaCode ?u ;
+               lulcw:outcropAreaM2 ?o ; lulcw:coveredAreaM2 ?c ; lulcw:coveredFraction ?f .
+            OPTIONAL { ?s lulcw:zoneOf/lulcw:bssCode ?b } }"""):
+        got[("forcing-cells" if b is None else b, u)] = (o, c, f)
+    wts = {}
+    for s, b, u, cell, w in rows(store, """SELECT ?s ?b ?u ?cell ?w WHERE {
+            ?v a lulcw:OutcropCoverage ; lulcw:withinExtent ?s ; lulcw:coverageUnit/lulcw:bdlisaCode ?u ;
+               lulcw:hasCellWeight ?x . ?x lulcw:weightCell ?wc ; lulcw:cellWeight ?w .
+            ?wc lulcw:safranGridXHm ?gx ; lulcw:safranGridYHm ?gy .
+            BIND (CONCAT(STR(?gx), "_", STR(?gy)) AS ?cell)
+            OPTIONAL { ?s lulcw:zoneOf/lulcw:bssCode ?b } }"""):
+        wts.setdefault(("forcing-cells" if b is None else b, u), {})[cell] = w
+    want = {k: v for k, v in oracle_coverage(units, wells).items() if v[0] >= 50.0}
+    got = {k: v for k, v in got.items() if v[0] >= 50.0}
+    assert set(got) == set(want), f"coverage keys: {sorted(set(got) ^ set(want))[:6]}"
+    for k, (o, c, by_cell) in want.items():
+        go, gc, gf = got[k]
+        assert abs(go - o) <= 50.0 and abs(gc - c) <= 50.0, (k, go, o, gc, c)
+        assert abs(gf - (c / o)) <= 1e-5, (k, gf, c / o)
+        w_want = {cell: a / c for cell, a in by_cell.items() if a >= 1.0} if c > 0 else {}
+        w_got = wts.get(k, {})
+        big = {cell for cell, w in w_want.items() if w > 1e-5}
+        assert big <= set(w_got) and all(abs(w_got.get(cell, 0.0) - w) <= 1e-5 for cell, w in w_want.items()), k
+    mapped = {c: m for c, m in rows(store, "SELECT ?c ?m WHERE { ?u lulcw:bdlisaCode ?c ; lulcw:mappedOutcropAreaM2 ?m }")}
+    assert set(mapped) == units, "units described by BD LISA without a mapped outcrop, or the reverse"
+    want_m = oracle_mapped_outcrop(units)
+    assert all(abs(mapped[u] - want_m[u]) <= 1e-6 * want_m[u] + 1e-3 for u in units), "mapped outcrop areas"
+    assert all(o <= mapped[u] * (1 + 1e-6) + 1 for (_, u), (o, _, _) in got.items())
+    partial = sorted(k for k, (o, c, f) in got.items() if f < 1 - 1e-9)
+    assert all(f == 1.0 for (s, _), (_, _, f) in got.items() if s == "forcing-cells")   # the cells are the extent
+    clipped = sorted(u for (s, u), (o, _, _) in got.items() if s == "forcing-cells" and o < mapped[u] * (1 - 1e-6) - 10)
+    return got, partial, clipped
 
 
 def test_data(store):
@@ -653,7 +872,14 @@ def main():
     test_negative_controls(g, shapes, net)
     facts, derived = KG / f"lulcw_kg_{DATASET}.ttl", KG / f"lulcw_kg_{DATASET}_rules.ttl"
     if facts.exists() and derived.exists():
-        test_data(store_of(facts, derived))
+        m = release.check()        # the files must form a validated release (src.kg.release)
+        store = store_of(facts, derived)
+        test_data(store)
+        got, partial, clipped = test_data_forcing(store)
+        print(f"  5. data: CQ4 {len(got)} outcrop coverages (65 search zones + the forcing extent) = the "
+              f"GeoPandas oracle on BD LISA and the SAFRAN grid (areas, fractions, weights), mapped outcrop "
+              f"of every unit = the whole extract; {len(partial)} search-zone outcrops partly outside the "
+              f"cells; the forcing cells clip {', '.join(clipped) or 'no unit'}; release of {m['released']}")
     else:
         print("  4. skipped: run src.kg.build_kg and src.kg.apply_rules first")
     print("test_kg_rules: all checks passed")

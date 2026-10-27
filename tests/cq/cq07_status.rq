@@ -23,16 +23,16 @@ SELECT ?W ?year (COUNT(DISTINCT ?c) AS ?codes) (COUNT(DISTINCT ?unaligned) AS ?u
          IF(COUNT(DISTINCT ?unaligned) > 0, "crop codes not yet aligned to a shared vocabulary (task 12.9)",
             "crops, areas, classes, demand and alignments")))) AS ?reason)
 WHERE {
-    OPTIONAL { ?zone lulcw:zoneOf ?W . }
+    OPTIONAL { ?zone a lulcw:CropDemandZone ; lulcw:zoneOf ?W . }
     OPTIONAL {
-        ?z lulcw:zoneOf ?W .
+        ?z a lulcw:CropDemandZone ; lulcw:zoneOf ?W .
         ?o a lulcw:CropAreaObservation ; sosa:hasFeatureOfInterest ?z ; lulcw:rpgEdition ?year ;
            lulcw:cropCode ?c .
         OPTIONAL { ?c skos:exactMatch|skos:closeMatch|skos:broadMatch|skos:narrowMatch|skos:relatedMatch ?al . }
         BIND (IF(BOUND(?al), ?none, ?c) AS ?unaligned)
     }
     OPTIONAL {
-        ?z2 lulcw:zoneOf ?W .
+        ?z2 a lulcw:CropDemandZone ; lulcw:zoneOf ?W .
         ?e a lulcw:CropDemandEstimate ; sosa:hasFeatureOfInterest ?z2 ; lulcw:rpgEdition ?year .
     }
 }

@@ -19,9 +19,9 @@
 # M2 = square metre, M3 = cubic metre) and are stated in each definition.
 
 <https://w3id.org/lulcw> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/0.3.0> ;
-    owl:versionInfo "0.3.0" ;
-    owl:priorVersion <https://w3id.org/lulcw/0.2.0> ;
+    owl:versionIRI <https://w3id.org/lulcw/0.4.0> ;
+    owl:versionInfo "0.4.0" ;
+    owl:priorVersion <https://w3id.org/lulcw/0.3.0> ;
     dcterms:title "LULC-Water bridging module"@en , "Module de liaison LULC-Water"@fr ;
     dcterms:description "Bridging module of the LULC-Water network of ontologies (SAVE Water, PRIMA): wells, abstraction facilities, hydrogeological units and the qualified, evidence-carrying assertions (unit attributions, stratigraphic relations, well links, influences, annual abstraction accounting) that structure, constrain and explain a groundwater-level model of the Roussillon multilayer aquifer."@en ,
         "Module de liaison du réseau d'ontologies LULC-Water (SAVE Water, PRIMA) : piézomètres, ouvrages de prélèvement, entités hydrogéologiques et assertions qualifiées, porteuses de preuves (attributions à une entité, relations stratigraphiques, liens entre piézomètres, influences, bilans annuels des prélèvements), qui structurent, contraignent et expliquent un modèle des niveaux piézométriques de l'aquifère multicouche du Roussillon."@fr ;
@@ -33,7 +33,8 @@
     rdfs:comment "Namespace provisional until the w3id.org redirect is accepted (docs/ontology_design.md §6)."@en ,
         "0.1.1 (2026-10-24, task 12.5): water use EnergyUse (BNPE code ENE); GeoSPARQL hasMetricArea added to the reused terms for polygon areas."@en ,
         "0.2.0 (2026-10-25, task 12.6): admitsConfidence and searchRadiusM, so that export policies and spatial rules carry their parameters as data; constraint eligibility defined from the evidence of the pathway, applied only under a policy that selects every segment. The SHACL shapes and SHACL-AF rules are in ontology/shapes/ and ontology/rules/."@en ,
-        "0.3.0 (2026-10-25, task 12.6, CQ7): land use and crops: RPG crop codes, crop classes with their FAO-56 parameters and irrigation assumptions, crop demand zones, clipped crop areas per RPG year, potential irrigation demand estimates and their dated categories."@en ;
+        "0.3.0 (2026-10-25, task 12.6, CQ7): land use and crops: RPG crop codes, crop classes with their FAO-56 parameters and irrigation assumptions, crop demand zones, clipped crop areas per RPG year, potential irrigation demand estimates and their dated categories."@en ,
+        "0.4.0 (2026-10-26, CQ4): recharge-related forcing: SAFRAN weather cells, the mapped outcrop of units inside reference extents, polygon-cell intersection areas, outcrop coverage and cell weights; WellZone generalises the crop demand zone, so zoneOf and zoneRadiusM also serve the outcrop search zone; observable property SoilDrainage; the mapped outcrop area of each unit, so that a reference extent states how much of the unit it clips."@en ;
     owl:imports <https://w3id.org/lulcw/imports/sosa> , <https://w3id.org/lulcw/imports/prov> ,
         <https://w3id.org/lulcw/imports/time> , <https://w3id.org/lulcw/imports/skos> ,
         <https://w3id.org/lulcw/imports/geo> .
@@ -884,8 +885,13 @@ lulcw:CropClass a owl:Class ;
     rdfs:label "crop class"@en , "classe de culture"@fr ;
     skos:definition "One of the harmonised crop classes of the project (configs/lu_crop_classes.csv), grouping RPG crop codes by a written rule (code overrides first, then the RPG crop group), with the FAO-56 single crop coefficients and growth stages used outside OWL and an irrigation assumption."@en .
 
-lulcw:CropDemandZone a owl:Class ;
+lulcw:WellZone a owl:Class ;
     rdfs:subClassOf geo:Feature ;
+    rdfs:label "well zone"@en , "zone autour d'un piézomètre"@fr ;
+    skos:definition "The area within a fixed horizontal radius of a piezometer over which a named, reproducible reference query runs (clipping crop parcels, searching the outcrop of a unit): not a capture zone or a hydraulic limit."@en .
+
+lulcw:CropDemandZone a owl:Class ;
+    rdfs:subClassOf lulcw:WellZone ;
     rdfs:label "crop demand zone"@en , "zone de demande des cultures"@fr ;
     skos:definition "The area within a fixed horizontal radius of a piezometer (3 km in this project) over which declared parcels are clipped: a named, reproducible reference query, not a capture zone or a hydraulic limit."@en .
 
@@ -970,9 +976,9 @@ lulcw:irrigationAssumption a owl:ObjectProperty , owl:FunctionalProperty ;
     rdfs:label "has irrigation assumption"@en , "a pour hypothèse d'irrigation"@fr ;
     skos:definition "How commonly the crop class is assumed to be irrigated in the study area."@en .
 lulcw:zoneOf a owl:ObjectProperty , owl:FunctionalProperty ;
-    rdfs:domain lulcw:CropDemandZone ; rdfs:range lulcw:Piezometer ;
+    rdfs:domain lulcw:WellZone ; rdfs:range lulcw:Piezometer ;
     rdfs:label "zone of"@en , "zone de"@fr ;
-    skos:definition "The piezometer at the centre of a crop demand zone."@en .
+    skos:definition "The piezometer at the centre of a well zone (a crop demand zone or an outcrop search zone); queries name the kind of zone they want."@en .
 lulcw:demandCategory a owl:ObjectProperty , owl:FunctionalProperty ;
     rdfs:domain lulcw:IrrigationDemandAssessment ; rdfs:range lulcw:DemandCategory ;
     rdfs:label "has demand category"@en , "a pour catégorie de demande"@fr ;
@@ -1011,12 +1017,96 @@ lulcw:plantingMonth a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domai
 lulcw:perennial a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:CropClass ; rdfs:range xsd:boolean ;
     rdfs:label "perennial"@en , "pérenne"@fr ;
     skos:definition "Whether the crop class is perennial (it keeps its initial coefficient off season) rather than annual (no requirement off season)."@en .
-lulcw:zoneRadiusM a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:CropDemandZone ; rdfs:range xsd:double ;
+lulcw:zoneRadiusM a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:WellZone ; rdfs:range xsd:double ;
     rdfs:label "zone radius (m)"@en , "rayon de la zone (m)"@fr ;
-    skos:definition "Radius in metres (Lambert-93) of a crop demand zone around its piezometer."@en .
+    skos:definition "Radius in metres (Lambert-93) of a well zone around its piezometer."@en .
 lulcw:rpgEdition a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:integer ;
     rdfs:label "RPG edition"@en , "édition du RPG"@fr ;
     skos:definition "The annual RPG edition (campaign year) a crop area observation or a demand estimate uses."@en .
 lulcw:demandThresholdM3 a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:DerivationRule ; rdfs:range xsd:double ;
     rdfs:label "demand threshold (m³)"@en , "seuil de demande (m³)"@fr ;
     skos:definition "Annual potential irrigation demand of a zone, in cubic metres, at or above which an assessment rule gives the high category; frozen on the training years before any test evaluation."@en .
+
+#################################################################
+# Recharge-related forcing (0.4.0, CQ4): weather cells over the mapped outcrop of units
+#################################################################
+
+lulcw:WeatherCell a owl:Class ;
+    rdfs:subClassOf geo:Feature ;
+    rdfs:label "weather cell"@en , "maille météorologique"@fr ;
+    skos:definition "A point of the 8 km SAFRAN grid of Météo-France's SIM2 reanalysis, taken as the 8 km square centred on it (Lambert II étendu), whose daily forcing is summed weekly outside the graph: a spatial support for model inputs, not a measurement site."@en .
+
+lulcw:OutcropSearchZone a owl:Class ;
+    rdfs:subClassOf lulcw:WellZone ;
+    rdfs:label "outcrop search zone"@en , "zone de recherche des affleurements"@fr ;
+    skos:definition "The area within a fixed horizontal radius of a piezometer (5 km here, the radius of the pumping influences) inside which the mapped outcrop of units is intersected with weather cells: a reference extent for recharge-related inputs, not a recharge area or a capture zone."@en .
+
+lulcw:PolygonCellIntersection a owl:Class ;
+    rdfs:label "polygon-cell intersection"@en , "intersection polygone-maille"@fr ;
+    skos:definition "The part of one BD LISA elementary polygon that lies inside one reference extent and inside one weather cell, or outside every weather cell when no cell is given, with its area in square metres, computed outside OWL (GeoPandas, Lambert-93). The geometric support of recharge-related weights, not a statement about recharge."@en .
+
+lulcw:OutcropCoverage a owl:Class ;
+    rdfs:label "outcrop coverage"@en , "couverture d'un affleurement"@fr ;
+    skos:definition "For one hydrogeological unit and one reference extent, derived by a rule: the area where the unit is mapped at outcrop (order 1 of an elementary polygon's stack) inside the extent, the part of it inside weather cells, and the covered fraction. Outcrop is a mapped geological property: it does not prove infiltration, effective recharge or a complete contributing area, and recharge may also come by leakage, lateral inflow or return flow."@en .
+
+lulcw:CellWeight a owl:Class ;
+    rdfs:label "cell weight"@en , "poids d'une maille"@fr ;
+    skos:definition "The share, derived by a rule, of a unit's covered outcrop area in a reference extent that lies inside one weather cell. Weights are renormalised over the covered area and sum to one over the cells of an outcrop coverage; the covered fraction says how much of the outcrop they represent."@en .
+
+lulcw:SoilDrainage a sosa:ObservableProperty ;
+    rdfs:label "soil drainage"@en , "drainage du sol"@fr ;
+    skos:definition "SIM2 (SAFRAN-ISBA) daily drainage (variable DRAINC, 'Drainage' in Météo-France's parameter list) summed over a week, in millimetres: modelled water leaving the soil, a recharge-related input, not a measured recharge."@en .
+
+lulcw:intersectedPolygon a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:PolygonCellIntersection ; rdfs:range lulcw:ElementaryPolygon ;
+    rdfs:label "intersected polygon"@en , "polygone intersecté"@fr ;
+    skos:definition "The elementary polygon a polygon-cell intersection is a part of."@en .
+lulcw:intersectedCell a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:PolygonCellIntersection ; rdfs:range lulcw:WeatherCell ;
+    rdfs:label "intersected cell"@en , "maille intersectée"@fr ;
+    skos:definition "The weather cell a polygon-cell intersection lies in; absent for the part of the polygon outside every cell."@en .
+lulcw:withinExtent a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:range geo:Feature ;
+    rdfs:label "within extent"@en , "dans l'emprise"@fr ;
+    skos:definition "The reference extent (an outcrop search zone or a named extent) a polygon-cell intersection or an outcrop coverage is computed in."@en .
+lulcw:coverageUnit a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:OutcropCoverage ; rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "coverage unit"@en , "entité couverte"@fr ;
+    skos:definition "The hydrogeological unit whose mapped outcrop an outcrop coverage describes."@en .
+lulcw:hasCellWeight a owl:ObjectProperty ;
+    rdfs:domain lulcw:OutcropCoverage ; rdfs:range lulcw:CellWeight ;
+    rdfs:label "has cell weight"@en , "a pour poids de maille"@fr ;
+    skos:definition "Links an outcrop coverage to the weight of each weather cell its covered area lies in."@en .
+lulcw:hasForcingSeries a owl:ObjectProperty ;
+    rdfs:domain lulcw:WeatherCell ; rdfs:range lulcw:ObservationSeries ;
+    rdfs:label "has forcing series"@en , "a pour série de forçage"@fr ;
+    skos:definition "Links a weather cell to a series of its forcing kept outside the graph (one series per variable)."@en .
+lulcw:weightCell a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:CellWeight ; rdfs:range lulcw:WeatherCell ;
+    rdfs:label "weighted cell"@en , "maille pondérée"@fr ;
+    skos:definition "The weather cell a cell weight is about."@en .
+
+lulcw:safranGridXHm a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:WeatherCell ; rdfs:range xsd:integer ;
+    rdfs:label "SAFRAN grid X (hm)"@en , "X de la grille SAFRAN (hm)"@fr ;
+    skos:definition "Easting of the SAFRAN grid point, in hectometres of Lambert II étendu (LAMBX)."@en .
+lulcw:safranGridYHm a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:WeatherCell ; rdfs:range xsd:integer ;
+    rdfs:label "SAFRAN grid Y (hm)"@en , "Y de la grille SAFRAN (hm)"@fr ;
+    skos:definition "Northing of the SAFRAN grid point, in hectometres of Lambert II étendu (LAMBY)."@en .
+lulcw:intersectionAreaM2 a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:PolygonCellIntersection ; rdfs:range xsd:double ;
+    rdfs:label "intersection area (m²)"@en , "surface de l'intersection (m²)"@fr ;
+    skos:definition "Area of a polygon-cell intersection, in square metres (Lambert-93)."@en .
+lulcw:outcropAreaM2 a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:OutcropCoverage ; rdfs:range xsd:double ;
+    rdfs:label "outcrop area (m²)"@en , "surface d'affleurement (m²)"@fr ;
+    skos:definition "Area, in square metres, where the unit is mapped at outcrop inside the reference extent."@en .
+lulcw:coveredAreaM2 a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:double ;
+    rdfs:label "covered area (m²)"@en , "surface couverte (m²)"@fr ;
+    skos:definition "Area, in square metres, of the unit's outcrop inside the reference extent that lies inside weather cells: in all of them for an outcrop coverage, in one cell for a cell weight."@en .
+lulcw:coveredFraction a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:OutcropCoverage ; rdfs:range xsd:double ;
+    rdfs:label "covered fraction"@en , "fraction couverte"@fr ;
+    skos:definition "Covered area divided by outcrop area, between 0 and 1: the share of the outcrop in the extent that the cell weights represent."@en .
+lulcw:mappedOutcropAreaM2 a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:HydrogeologicalUnit ; rdfs:range xsd:double ;
+    rdfs:label "mapped outcrop area (m²)"@en , "surface d'affleurement cartographiée (m²)"@fr ;
+    skos:definition "Total area, in square metres, of the elementary polygons of the geological release where the unit is mapped at outcrop (order 1 of the stack), wherever they lie: the reference against which a reference extent states how much of the unit's outcrop it clips. Zero for a unit never at outcrop in the release."@en .
+lulcw:cellWeight a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:CellWeight ; rdfs:range xsd:double ;
+    rdfs:label "cell weight value"@en , "valeur du poids de la maille"@fr ;
+    skos:definition "Covered outcrop area inside the cell divided by the covered outcrop area of the coverage, between 0 and 1 (renormalised over the covered area)."@en .

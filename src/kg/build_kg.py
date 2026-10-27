@@ -16,6 +16,9 @@ Scope: the six MUST competency questions (docs/competency_questions.md), in thei
   CQ7       land use (src/kg/landuse.py, task 12.6): RPG crop codes, crop classes with their
             FAO-56 parameters, a crop demand zone per piezometer, clipped crop areas per RPG
             edition and calendar-year potential irrigation demand
+  CQ4       recharge-related forcing (src/kg/forcing.py): SAFRAN weather cells with their weekly
+            forcing series, the forcing extent, an outcrop search zone per piezometer, and the
+            area of every polygon of the graph inside each cell and reference extent
 
 Only facts and assertions whose derivation already exists outside the graph enter here.
 The links that the model's graph is made of (stratigraphic relations and `overlies`, well
@@ -28,7 +31,10 @@ Choices
   area of the project; polygon areas as geo:hasMetricArea (m²). Points rounded to 0.1 m,
   polygon vertices to 0.01 m.
 - Polygons: those intersecting the plain box, plus those containing a piezometer or a
-  facility (a point on a shared edge keeps the first polygon, as in src.kg.pump_attribution).
+  facility (a point on a shared edge keeps the first polygon, as in src.kg.pump_attribution),
+  plus (CQ4) the polygons where a unit of these stacks is mapped at outcrop inside the weather
+  cells or a search zone, to closure (the outcrops of units first met in an added stack are
+  added too), so that every unit of the graph has its whole outcrop there.
 - Monitoring attribution: the ADES record (Hub'Eau codes_bdlisa, in list order), confident if
   the recorded unit is under the point or within EDGE_M of it, else probable (the record rule
   of task 12.3). No record: an explicit unknown; map position alone does not establish what a
@@ -65,7 +71,7 @@ from src.analysis.bdlisa_profile import GPKG, group_of
 from src.analysis.bnpe_profile import load as load_bnpe
 from src.analysis.piezo_profile import PLAIN_BBOX
 from src.config import CRS_L93, CRS_WGS84, DATASET, DATASET_DIR, INTERIM, PROCESSED, RAW, ROOT
-from src.kg import landuse
+from src.kg import forcing, landuse
 from src.kg import pump_attribution as pa
 
 L = Namespace("https://w3id.org/lulcw#")
@@ -292,8 +298,8 @@ def unit_class(code, t):
     return hits[0] if hits else L.HydrogeologicalUnit
 
 
-def load_bdlisa(points_l93):
-    """TME (level 3), stacks, and the polygons of the plain or under a point."""
+def load_bdlisa(points_l93, aoi=None):
+    """TME (level 3), stacks, and the polygons of the plain, under a point or meeting `aoi`."""
     tme = pyogrio.read_dataframe(GPKG, layer="TME", read_geometry=False)
     tme = tme[tme["niveaueh"].astype(str) == "3"].copy()
     for c in ("natureeh", "themeeh", "milieueh"):
@@ -303,6 +309,8 @@ def load_bdlisa(points_l93):
     plain_box = gpd.GeoSeries([box(*PLAIN_BBOX)], crs=CRS_WGS84).to_crs(CRS_L93).iloc[0]
     bounds = np.minimum(points_l93.total_bounds[:2], plain_box.bounds[:2]) - EDGE_M
     upper = np.maximum(points_l93.total_bounds[2:], plain_box.bounds[2:]) + EDGE_M
+    if aoi is not None:
+        bounds, upper = np.minimum(bounds, aoi.bounds[:2]), np.maximum(upper, aoi.bounds[2:])
     poly = pyogrio.read_dataframe(GPKG, layer="POLYG_ELEMENTAIRES",
                                   bbox=(*bounds, *upper))[["codepoly", "geometry"]]
     assert poly["codepoly"].is_unique
@@ -709,8 +717,10 @@ def main():
     w_pts = gpd.GeoSeries(gpd.points_from_xy(wells["x"], wells["y"]), crs=CRS_WGS84).to_crs(CRS_L93)
     f_pts = gpd.GeoSeries(gpd.points_from_xy(fac["longitude"], fac["latitude"]),
                           crs=CRS_WGS84).to_crs(CRS_L93)
+    cells = forcing.grid()
+    aoi = forcing.area_of_interest(cells, w_pts)
     tme, pile, poly, plain_box = load_bdlisa(pd.concat([w_pts, f_pts], ignore_index=True)
-                                             .pipe(gpd.GeoSeries, crs=CRS_L93))
+                                             .pipe(gpd.GeoSeries, crs=CRS_L93), aoi)
     w_cp, f_cp = locate(w_pts, poly), locate(f_pts, poly)
 
     attr = pd.read_parquet(INTERIM / "pump_unit_attribution.parquet")
@@ -728,12 +738,27 @@ def main():
     extra = set(attr["unit"].dropna()) | set(evid["rec_unit"].dropna()) | \
         {c for b in wells["code_bss"] for c in recorded_codes(raw, b)}
 
+    # polygons: the plain, those under a well or a facility, and (CQ4) the outcrop polygons of
+    # the units of these stacks inside the cells or a search zone, each with its whole stack;
+    # to closure, since an added stack can hold a unit not met before (2 passes on v4)
+    used = set(w_cp.dropna()) | set(f_cp.dropna())
+    base = poly[poly.intersects(plain_box) | poly["codepoly"].isin(used)]
+    polys = set(base["codepoly"])
+    units0 = set(pile.loc[pile["CodePoly"].isin(polys), "CodeEH"]) | extra
+    units_all, passes = set(units0), 0
+    while add := forcing.outcrop_polygons(pile, poly, units_all, aoi) - polys:
+        polys |= add
+        units_all |= set(pile.loc[pile["CodePoly"].isin(add), "CodeEH"])
+        passes += 1
+    outcrops = polys - set(base["codepoly"])
+
     kg = KG()
     rel, rule, ex = provenance(kg, versions)
     ext = extents(kg)
     unit, groups, stacks, keep = units_and_polygons(
-        kg, rel, tme, pile, poly, set(w_cp.dropna()) | set(f_cp.dropna()), plain_box,
-        ext["plain-box"][0], extra)
+        kg, rel, tme, pile, poly, used | outcrops, plain_box, ext["plain-box"][0], extra)
+    new_units = sorted(set(unit) - units0)
+    assert set(unit) == units_all, "units differ from the closure's"
     n_bodies, n_unknown_pz = piezometers(kg, rel, rule, ex, unit, wells, w_pts, w_cp, stacks,
                                          poly, pile, ext["plain-box"][0])
     ev_table = evaluations(kg, rule, ex, ev)
@@ -742,6 +767,9 @@ def main():
     n_rec = annual_records(kg, rel, gw)
     policies(kg)
     land = landuse.add(kg, rel, wells, versions)
+    forc = forcing.add(kg, rel, wells, w_pts, keep, cells, versions, unit, pile, set(tme.index))
+    forc |= {"outcrop_polygons_added": len(outcrops), "outcrop_passes": passes,
+             "units_first_met_in_added_stacks": new_units}
 
     head = URIRef(D + f"kg-{DATASET}")
     kg.node(head, OWL.Ontology)
@@ -779,7 +807,7 @@ def main():
         "polygons": len(keep), "polygons_in_plain_box": int(keep.intersects(plain_box).sum()),
         "piezometers_without_polygon": int(w_cp.isna().sum()),
         "facilities_without_polygon": int(f_cp.isna().sum()),
-        "land_use": land, "crop_demand_code_version": versions["crop"],
+        "land_use": land, "crop_demand_code_version": versions["crop"], "forcing": forc,
     }
     (OUT / f"lulcw_kg_{DATASET}_summary.json").write_text(json.dumps(summary, indent=1,
                                                                      ensure_ascii=False))

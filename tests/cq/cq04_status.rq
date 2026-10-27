@@ -1,0 +1,50 @@
+# CQ4 · Answer status for a unit's outcrop coverage in a reference extent (common answer
+# contract, docs/competency_questions.md §2)
+#
+# Parameters  ?U  any IRI;  ?S  any IRI
+# Reads       asserted facts and the rule outputs of cq04_coverage.rq
+# Returns     one row: ?status not_applicable (?U is not a hydrogeological unit, or ?S is not a
+#             reference extent with computed intersections), unknown (?U is not described by BD
+#             LISA, so its outcrop is not known; or the facts hold outcrop pieces of ?U in ?S but no
+#             coverage was derived from them: the rule outputs are missing or stale), partial (part
+#             of the outcrop in ?S lies outside every weather cell: the weights cover only the
+#             covered fraction; or ?S is the unit-wide extent and the unit's mapped outcrop reaches
+#             beyond it, so recharge-related inputs from there are not represented: 681AF00 and
+#             681AO00 in the forcing cells), supported (the outcrop is fully covered, or the search
+#             found no piece of ?U at outcrop in ?S: "no mapped outcrop in S", which is not zero
+#             recharge); ?reason in words; ?coveredFraction when a coverage exists; ?unitShareInS,
+#             the share of the unit's mapped outcrop inside ?S (cq04_coverage). A search zone clips
+#             the unit by design (a declared local approximation): its share is reported, not
+#             turned into "partial".
+# A negative answer needs a completed search (Codex review of 2026-10-26, §1): "no mapped outcrop"
+# is given only when the asserted pieces of ?S hold no outcrop of ?U, never from the mere absence
+# of a derived coverage. src.kg.cq.kg_store also refuses facts and rule outputs that do not form a
+# validated release (src.kg.release).
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+SELECT ?U ?S ?coveredFraction ?unitShareInS ?status ?reason
+WHERE {
+    OPTIONAL { ?cov a lulcw:OutcropCoverage ; lulcw:coverageUnit ?U ; lulcw:withinExtent ?S ;
+                    lulcw:coveredFraction ?coveredFraction ; lulcw:outcropAreaM2 ?inS . }
+    OPTIONAL { ?U lulcw:mappedOutcropAreaM2 ?unitOutcrop . }
+    BIND (?inS / ?unitOutcrop AS ?unitShareInS)
+    BIND (EXISTS { ?S a lulcw:OutcropSearchZone . } AS ?local)
+    BIND (BOUND(?inS) && BOUND(?unitOutcrop) && !?local && ?inS < ?unitOutcrop * (1 - 1e-6) - 10.0 AS ?clipped)
+    BIND (EXISTS { ?U lulcw:bdlisaCode ?code . } AS ?isUnit)   # every unit node, whatever its subtype
+    BIND (EXISTS { ?x lulcw:withinExtent ?S ; a lulcw:PolygonCellIntersection . } AS ?isExtent)
+    BIND (EXISTS { ?U prov:wasDerivedFrom ?rec . } AS ?inBdlisa)
+    BIND (EXISTS { ?y a lulcw:PolygonCellIntersection ; lulcw:withinExtent ?S ; lulcw:intersectedPolygon ?p .
+                   ?p lulcw:hasStackLayer ?l . ?l lulcw:layerOrder 1 ; lulcw:layerUnit ?U . } AS ?mapped)
+    BIND (IF(!?isUnit || !?isExtent, "not_applicable",
+          IF(!?inBdlisa, "unknown",
+          IF(?mapped && !BOUND(?coveredFraction), "unknown",
+          IF((BOUND(?coveredFraction) && ?coveredFraction < 1 - 1e-9) || ?clipped, "partial", "supported")))) AS ?status)
+    BIND (IF(!?isUnit, "not a hydrogeological unit of the graph",
+          IF(!?isExtent, "not a reference extent with computed polygon-cell intersections",
+          IF(!?inBdlisa, "the unit is not described by BD LISA (not in the Occitanie extract): its outcrop is not known",
+          IF(?mapped && !BOUND(?coveredFraction), "the facts hold outcrop of the unit in S but no coverage was derived from them: the rule outputs are missing or stale (run src.kg.apply_rules)",
+          IF(!BOUND(?coveredFraction), "no mapped outcrop in S (the unit is order 1 of no polygon piece there); not zero recharge",
+          IF(?coveredFraction < 1 - 1e-9, "part of the outcrop in S lies outside every weather cell; the weights are renormalised over the covered part",
+          IF(?clipped, "S clips the unit: part of its mapped outcrop (BD LISA extract) lies outside S, so recharge-related inputs from there are not represented (unitShareInS)",
+             "the outcrop in S is entirely inside weather cells"))))))) AS ?reason)
+}

@@ -1,0 +1,22 @@
+# CQ4 · The weather cells that cover a unit's outcrop in a reference extent, with their weights
+#
+# Parameters  ?U, ?S  as in cq04_coverage.rq
+# Reads       SHACL-AF rule outputs (lulcw:CellWeight) and asserted facts (cells, forcing series)
+# Returns     one row per weather cell holding part of the covered outcrop: the SAFRAN grid point
+#             (Lambert II étendu, hm), the outcrop area inside the cell (m²), the weight (that area
+#             over the covered outcrop area; weights sum to one), and where the cell's weekly
+#             effective rainfall and soil drainage are stored (recharge-related inputs, not
+#             measured recharge).
+PREFIX lulcw: <https://w3id.org/lulcw#>
+SELECT ?U ?S ?cell ?gridXHm ?gridYHm ?coveredAreaM2 ?weight ?effectiveRainfallIn ?soilDrainageIn
+WHERE {
+    ?cov a lulcw:OutcropCoverage ; lulcw:coverageUnit ?U ; lulcw:withinExtent ?S ;
+         lulcw:hasCellWeight ?cw .
+    ?cw lulcw:weightCell ?cell ; lulcw:cellWeight ?weight ; lulcw:coveredAreaM2 ?coveredAreaM2 .
+    ?cell lulcw:safranGridXHm ?gridXHm ; lulcw:safranGridYHm ?gridYHm .
+    OPTIONAL { ?cell lulcw:hasForcingSeries ?s1 .
+               ?s1 lulcw:seriesVariable lulcw:EffectiveRainfall ; lulcw:storedIn ?effectiveRainfallIn . }
+    OPTIONAL { ?cell lulcw:hasForcingSeries ?s2 .
+               ?s2 lulcw:seriesVariable lulcw:SoilDrainage ; lulcw:storedIn ?soilDrainageIn . }
+}
+ORDER BY DESC(?weight) ?cell

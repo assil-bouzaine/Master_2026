@@ -245,6 +245,19 @@ area, and which evidence justifies using those cells to construct a recharge pro
   intersections and their provenance remain to be built. Geometric association is
   represented separately from hydraulic interpretation, using
   [GeoSPARQL 1.1](https://docs.ogc.org/is/22-047r1/22-047r1.html).
+  *Built 2026-10-27 (increment 1; `tests/cq/cq04_*.rq`):* polygon-cell intersection
+  areas for the 65 search zones (5 km) and the forcing extent (the 141 cells), outcrop
+  coverages and cell weights derived by rules, and each unit's whole mapped outcrop in the
+  BD LISA extract, so that an answer states how much of the unit S holds (`unitShareInS`).
+  A negative answer ("no mapped outcrop in S") follows a completed search of the asserted
+  pieces; outcrop facts without a derived coverage answer unknown, and facts and rule
+  outputs are read only as a validated release (Codex review of 2026-10-26, §1). The
+  forcing extent clips 681AF00 (15 % of its outcrop outside the cells) and 681AO00 (9 %):
+  partial. For the Pliocene, local outcrop is a weak proxy: rain infiltration alone does
+  not recharge the deep aquifers, which are fed by the Têt and its Quaternary aquifer
+  upstream, the Corbières karst and the peripheral massifs (SMNPR), and by downward leakage
+  from the Quaternary driven by Pliocene pumping (BRGM/RP-71486-FR); analysis plan §14
+  item 15.
 - **Acceptance:** synthetic outcrop area 100 ha with non-overlapping cell intersections
   of 60 and 40 ha gives weights 0.6 and 0.4. If only 80 ha are covered, return coverage
   0.8; any weights renormalised over covered area are labelled as such. A fully covered

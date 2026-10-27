@@ -25,6 +25,13 @@ is never read as "none".
    CQ11  W1 within 5 km: W2 at 4,999 m, depth difference missing, probable, selected by main but not
          by confident-only; W2: W3 (2 m) and W1; W1 within 4 km: none, and supported (searched);
          6 km: partial (links derived within 5 km only); W6 unknown; W4 (alone in its unit) supported
+   CQ4   in W1's search zone, X's outcrop is 0.8 inside cells: partial, weights 0.625 / 0.375 over the
+         covered part, its polygon and the cells' effective-rainfall series; A fully covered; B (only
+         below order 1) and Y (outcrop elsewhere) "no mapped outcrop in S", supported; Y in the
+         forcing extent, which holds 1 of its 1.25 km² of mapped outcrop: partial ("S clips the
+         unit"); U (not in BD LISA) unknown; a well as unit or a crop zone as extent not_applicable;
+         the facts without the
+         rule outputs answer unknown for A, never "no mapped outcrop"
 2. Data (dataset v4, facts + rule outputs), against pandas / GeoPandas on the source tables:
    CQ1   the two anchors of the CQ document (W1 = 10964X0119/NYLS-1: 97 m, 671AA00; W2 =
          10906X0039/C2-1: stack 718BP02 > 671AA00); for every well, the candidate unit = the
@@ -36,6 +43,13 @@ is never read as "none".
    CQ11  for every well, the neighbours within 5 km = the same-unit pairs of wells.parquet, with
          distances and depth differences; a link is selected exactly when the policy admits its
          confidence
+   CQ4   for every search zone and the forcing extent, coverages and cell weights = the GeoPandas
+         oracle of tests.test_kg_rules (BD LISA and the raw SAFRAN grid); partial exactly where part of
+         the outcrop is outside the cells; each well's recorded unit without outcrop in its zone:
+         "no mapped outcrop", supported; in the forcing extent, partial exactly for the units whose
+         mapped outcrop reaches beyond the cells; MILLAS C2-1 / 718BP02: 27.08 km² (Codex review of
+         2026-10-26); the facts without the rule outputs: unknown for it
+   The data checks run only on a validated release (src.kg.release.check).
 """
 import json
 
@@ -56,9 +70,11 @@ from src.dataset.crop_demand import AREA_OUT, code_to_class, load_classes
 from src.kg import pump_attribution as pa
 from src.kg.apply_rules import RULES, SHAPES, check, ontology_network, rule_records, run_rules
 from src.kg.build_kg import BNPE_SNAPSHOT, PLAIN_MARGIN_DEG
+from src.kg import release
 from src.kg.cq import ask, iris, local, one
 from tests.test_kg_rules import (GEO, KG, L, RADIUS, SOSA, TIME, build_fixture, d, l93,
-                                 oracle_relations, store_of, violations)
+                                 oracle_coverage, oracle_mapped_outcrop, oracle_relations, store_of,
+                                 violations)
 
 MAIN, CONF_ONLY = d("policy/main"), d("policy/confident-only")
 
@@ -317,6 +333,41 @@ def test_cq8_fixture(s):
           "group-level path no sign; an unaccepted segment blocks the path; partial: pumping only")
 
 
+def test_cq4_fixture(s, u):
+    zone, forcing, rule = d("outcrop-zone/W1"), d("extent/forcing-cells-test"), d("rule/outcrop-coverage")
+    cov = one(s, "cq04_coverage", U=u["X"], S=zone)
+    assert (cov["outcropAreaM2"], cov["coveredAreaM2"], cov["coveredFraction"], cov["polygons"], cov["rule"]) == \
+        (1.0e6, 8.0e5, 0.8, 1, str(rule)), cov
+    cells = [(local(r["cell"]), r["weight"], r["coveredAreaM2"], r["effectiveRainfallIn"], r["soilDrainageIn"])
+             for r in ask(s, "cq04_cells", U=u["X"], S=zone)]
+    assert cells == [("c1", 0.625, 5.0e5, "forcing_weekly.parquet [cell_id = c1, column PE]", None),
+                     ("c2", 0.375, 3.0e5, "forcing_weekly.parquet [cell_id = c2, column PE]", None)], cells
+    out = [(r["polygonCode"], r["areaInExtentM2"], r["areaInCellsM2"]) for r in ask(s, "cq04_outcrop", U=u["X"], S=zone)]
+    assert out == [(2, 1.0e6, 8.0e5)], out
+    status = {k: (r["status"], r["reason"]) for k, uu, ss in (
+        ("A", u["A"], zone), ("X", u["X"], zone), ("B", u["B"], zone), ("Y in zone", u["Y"], zone),
+        ("Y in forcing", u["Y"], forcing), ("U", u["U"], zone), ("a well", d("piezometer/W1"), zone),
+        ("a crop zone", u["A"], d("zone/W1"))) for r in [one(s, "cq04_status", U=uu, S=ss)]}
+    assert {k: v[0] for k, v in status.items()} == {
+        "A": "supported", "X": "partial", "B": "supported", "Y in zone": "supported", "Y in forcing": "partial",
+        "U": "unknown", "a well": "not_applicable", "a crop zone": "not_applicable"}, status
+    assert status["B"][1].startswith("no mapped outcrop") and "not described by BD LISA" in status["U"][1]
+    y = one(s, "cq04_status", U=u["Y"], S=forcing)      # Y: 1 of its 1.25 km² inside the forcing extent
+    assert y["status"] == "partial" and y["reason"].startswith("S clips the unit") and y["unitShareInS"] == 0.8, y
+    assert one(s, "cq04_coverage", U=u["X"], S=zone)["unitShareInS"] == 0.5   # a search zone: reported only
+    assert ask(s, "cq04_coverage", U=u["B"], S=zone) == [] and ask(s, "cq04_cells", U=u["B"], S=zone) == []
+    # the facts without the rule outputs: the outcrop of A is there, its coverage is not, so the answer
+    # is unknown, never "no mapped outcrop" (Codex review of 2026-10-26, §1)
+    facts_only = to_store(cq_fixture()[0].g)
+    st = one(facts_only, "cq04_status", U=u["A"], S=zone)
+    assert st["status"] == "unknown" and "no coverage was derived" in st["reason"], st
+    assert one(facts_only, "cq04_status", U=u["B"], S=zone)["status"] == "supported"   # searched: none
+    print("  8. CQ4 fixtures: outcrop, covered fraction 0.8 and weights 0.625 / 0.375 renormalised over the "
+          "covered part; no outcrop of B in S (supported, not zero recharge); U not in BD LISA (unknown); "
+          "a unit-wide extent that clips the unit: partial; outcrop facts without a derived coverage: "
+          "unknown, not a negative answer")
+
+
 # ----------------------------------------------------------------------------------- 2. data
 def test_data(store):
     wells = pd.read_parquet(DATASET_DIR / "wells.parquet")
@@ -397,7 +448,7 @@ def test_data(store):
         n_links += len(pairs.get(code, {}))
         st = one(store, "cq11_status", W=iri, r=RADIUS)["status"]
         assert st == ("supported" if code in set(w["code_bss"]) else "unknown"), (code, st)
-    print(f"  8. data: CQ1 anchors hold; {len(pz)} wells (statuses {n}) = the dataset, the BD LISA "
+    print(f"  9. data: CQ1 anchors hold; {len(pz)} wells (statuses {n}) = the dataset, the BD LISA "
           f"polygons and stacks, no screen; CQ3 {len(units)} units, {n_rel} relation-polygon rows = the "
           f"stacks ({len(units) - len(in_stack)} units in no stack: unknown); CQ11 {n_links // 2} "
           f"neighbour pairs = the dataset, selections follow the policies")
@@ -529,7 +580,7 @@ def test_data_pumps(store, wells, pz, x, y):
         if 2012 <= year <= 2024:
             totals["declared"] += sum(declared.values())
     share = {k: 100 * v / totals["declared"] for k, v in totals.items() if k != "declared"}
-    print(f"  9. data: CQ2 {n_exact} exact and {n_group} group-level candidate rows within 5 km of the wells "
+    print(f"  10. data: CQ2 {n_exact} exact and {n_group} group-level candidate rows within 5 km of the wells "
           f"= the attribution table and the BNPE points, {n_unres} unresolved neighbours; CQ8 {n_infl} "
           f"influences = the CQ2 candidates (signs and eligibility by resolution); CQ12 every year "
           f"{rec['year'].min()}-{rec['year'].max()}: declared totals = the BNPE snapshot, allocations = the table "
@@ -581,10 +632,64 @@ def test_data_landuse(store, wells, pz):
             n_rows += len(crops)
         for y in (min(years) - 1, max(years) + 1):                      # no edition: unknown
             assert one(store, "cq07_status", W=iri, year=int(y))["status"] == "unknown", (code, y)
-    print(f"  10. data: CQ7 {len(pz)} wells x {len(years)} RPG editions: {n_rows} code rows, class areas and "
+    print(f"  11. data: CQ7 {len(pz)} wells x {len(years)} RPG editions: {n_rows} code rows, class areas and "
           f"demand estimates = the clipped areas, the class table and the weekly index (threshold "
           f"{thr:,.0f} m³); every answer partial (codes not yet aligned); {years[0] - 1} and "
           f"{years[-1] + 1} unknown")
+
+
+def test_data_forcing(store, facts_file):
+    """CQ4 for every well's search zone and the forcing extent, against the GeoPandas oracle of
+    tests/test_kg_rules.py (BD LISA and the raw SAFRAN grid); the MILLAS anchor; and the facts
+    without their rule outputs, which must answer unknown, not "no mapped outcrop"."""
+    wells = pd.read_parquet(DATASET_DIR / "wells.parquet")
+    unit = iris(store, "SELECT ?c ?u WHERE { ?u lulcw:bdlisaCode ?c }")
+    described = {c for c, in ((r[0].value,) for r in store.query(
+        "PREFIX lulcw: <https://w3id.org/lulcw#> PREFIX prov: <http://www.w3.org/ns/prov#> "
+        "SELECT ?c WHERE { ?u lulcw:bdlisaCode ?c ; prov:wasDerivedFrom ?r }"))}
+    zone = iris(store, "SELECT ?c ?z WHERE { ?z a lulcw:OutcropSearchZone ; lulcw:zoneOf/lulcw:bssCode ?c }")
+    assert set(zone) == set(wells["code_bss"]), "search zones differ from the dataset's wells"
+    extent = {**zone, "forcing-cells": ox.NamedNode(str(d("extent/forcing-cells")))}
+    want = {k: v for k, v in oracle_coverage(described, wells).items() if v[0] >= 50.0}
+    unit_m2 = oracle_mapped_outcrop(described)
+    n_cells, statuses = 0, {}
+    for (key, code), (o, c, by_cell) in want.items():
+        S, U = extent[key], unit[code]
+        r = one(store, "cq04_coverage", U=U, S=S)
+        assert abs(r["outcropAreaM2"] - o) <= 50 and abs(r["coveredAreaM2"] - c) <= 50, (key, code, r, o, c)
+        cells = {f"{x['gridXHm']}_{x['gridYHm']}": x["weight"] for x in ask(store, "cq04_cells", U=U, S=S)}
+        assert abs(sum(cells.values()) - 1) <= 1e-9 if c > 0 else not cells, (key, code)
+        assert all(abs(cells.get(k, 0.0) - a / c) <= 1e-5 for k, a in by_cell.items()), (key, code)
+        n_cells += len(cells)
+        st = one(store, "cq04_status", U=U, S=S)["status"]
+        clipped = key == "forcing-cells" and o < unit_m2[code] * (1 - 1e-6) - 10
+        assert st == ("partial" if c < o - 1e-6 * o or clipped else "supported"), (key, code, st, c, o)
+        statuses[st] = statuses.get(st, 0) + 1
+    # each well's recorded unit: with outcrop in its zone, the coverage above; without, a completed
+    # search that found none (supported, "no mapped outcrop"); not in BD LISA, unknown
+    rec = dict(zip(wells["code_bss"], wells["code_bdlisa"]))
+    none_found = 0
+    for b, z in zone.items():
+        code = rec.get(b)
+        if not isinstance(code, str) or code not in unit:
+            continue
+        st = one(store, "cq04_status", U=unit[code], S=z)
+        if code not in described:
+            assert st["status"] == "unknown", (b, code, st)
+        elif (b, code) not in want:
+            assert st["status"] == "supported" and st["reason"].startswith("no mapped outcrop"), (b, code, st)
+            none_found += 1
+    millas = one(store, "cq04_coverage", U=unit["718BP02"], S=zone["10906X0039/C2-1"])
+    assert abs(millas["outcropAreaM2"] / 1e6 - 27.08) < 0.01, millas    # Codex review of 2026-10-26, §1
+    # the facts alone (rule outputs missing): MILLAS's unit has outcrop facts in its zone, so the
+    # answer is unknown, never the negative "no mapped outcrop" of the stale pair Codex found
+    facts_only = store_of(facts_file)
+    st = one(facts_only, "cq04_status", U=unit["718BP02"], S=zone["10906X0039/C2-1"])
+    assert st["status"] == "unknown" and "no coverage was derived" in st["reason"], st
+    print(f"  12. data: CQ4 {len(want)} (extent, unit) coverages = the GeoPandas oracle (areas, {n_cells} cell "
+          f"weights), statuses {statuses}; {none_found} recorded units without outcrop in their well's zone: "
+          f"supported, 'no mapped outcrop'; MILLAS C2-1 / 718BP02: {millas['outcropAreaM2'] / 1e6:.2f} km² "
+          f"(fraction {millas['coveredFraction']:.3f}); facts without rule outputs: unknown")
 
 
 def main():
@@ -596,11 +701,15 @@ def main():
     test_cq12_fixture(s)
     test_cq7_fixture(s)
     test_cq8_fixture(s)
+    test_cq4_fixture(s, u)
     facts, derived = KG / f"lulcw_kg_{DATASET}.ttl", KG / f"lulcw_kg_{DATASET}_rules.ttl"
     if facts.exists() and derived.exists():
-        test_data(store_of(facts, derived))
+        release.check()            # the files must form a validated release (src.kg.release)
+        store = store_of(facts, derived)
+        test_data(store)
+        test_data_forcing(store, facts)
     else:
-        print("  8. skipped: run src.kg.build_kg and src.kg.apply_rules first")
+        print("  9-12. skipped: run src.kg.build_kg and src.kg.apply_rules first")
     print("test_cq: all checks passed")
 
 

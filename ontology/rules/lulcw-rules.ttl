@@ -19,6 +19,8 @@
 #   order 50  land use (CQ7): the crop class of each RPG crop code, the clipped area of each
 #             class per zone and RPG year (unmapped codes kept), and a dated high-irrigation-
 #             demand assessment per zone and year
+#   order 60  recharge-related forcing (CQ4): per reference extent and unit mapped at outcrop,
+#             the outcrop area, its part inside weather cells and the weight of each cell
 # Distances are horizontal, in Lambert-93 metres, parsed from the GeoSPARQL WKT points;
 # math:sqrt is the XPath 3.1 function (W3C), registered in rdflib by the runner.
 # The rules' descriptions and parameters are the data nodes at the end of this file
@@ -477,6 +479,105 @@ WHERE {
 """ .
 
 #################################################################
+# CQ4: outcrop coverage and cell weights per unit and reference extent
+#################################################################
+
+lulcwr:OutcropCoverageShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/outcrop-coverage> ;
+    sh:order 60 ;
+    sh:rule lulcwr:outcropCoverage , lulcwr:outcropCoverageEvidence , lulcwr:cellWeight .
+
+# For each reference extent and each unit mapped at outcrop (order 1) in a polygon that has a
+# part in the extent: the outcrop area (every part of those polygons in the extent), the
+# covered area (the parts inside a weather cell) and their ratio. A unit with no outcrop in the
+# extent gets no coverage: "no mapped outcrop", never a zero recharge.
+# Join order: rdflib sorts a basic graph pattern again when it evaluates it, by the number of
+# terms not yet bound (a stable sort), so a constant such as "lulcw:layerOrder 1" would pull its
+# pattern ahead of the piece's own polygon and cross every piece with every order-1 layer (the
+# first version ran for over 25 minutes). The order is therefore a variable tested by a FILTER,
+# and each pattern follows the one that binds its subject.
+lulcwr:outcropCoverage a sh:SPARQLRule ;
+    sh:order 1 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?cov a lulcw:OutcropCoverage ; lulcw:coverageUnit ?u ; lulcw:withinExtent ?s ;
+         lulcw:outcropAreaM2 ?area ; lulcw:coveredAreaM2 ?covered ; lulcw:coveredFraction ?frac ;
+         lulcw:evidenceKind lulcw:DerivedAssertion ;
+         lulcw:derivationRule $this ;
+         prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    {
+        SELECT ?s ?u (SUM(?a) AS ?area) (SUM(?in) AS ?covered) WHERE {
+            ?x a lulcw:PolygonCellIntersection ; lulcw:intersectedPolygon ?p ;
+               lulcw:withinExtent ?s ; lulcw:intersectionAreaM2 ?a .
+            ?p lulcw:hasStackLayer ?l .
+            ?l lulcw:layerOrder ?order ; lulcw:layerUnit ?u .
+            FILTER (?order = 1)
+            OPTIONAL { ?x lulcw:intersectedCell ?c . }
+            BIND (IF(BOUND(?c), ?a, 0.0) AS ?in)
+        }
+        GROUP BY ?s ?u
+    }
+    BIND (?covered / ?area AS ?frac)
+    BIND (IRI(CONCAT(STR(?s), "/outcrop-coverage/", STRAFTER(STR(?u), "/unit/"))) AS ?cov)
+}
+""" .
+
+# The pieces are the subjects of lulcw:intersectedPolygon (its domain): no class pattern for ?x,
+# which as a one-variable pattern would be sorted ahead and crossed with every coverage.
+lulcwr:outcropCoverageEvidence a sh:SPARQLRule ;
+    sh:order 2 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+CONSTRUCT { ?cov prov:wasDerivedFrom ?x . }
+WHERE {
+    ?cov lulcw:derivationRule $this ; a lulcw:OutcropCoverage ; lulcw:coverageUnit ?u ;
+         lulcw:withinExtent ?s .
+    ?x lulcw:withinExtent ?s ; lulcw:intersectedPolygon ?p .
+    ?p lulcw:hasStackLayer ?l .
+    ?l lulcw:layerUnit ?u ; lulcw:layerOrder ?order .
+    FILTER (?order = 1)
+}
+""" .
+
+# The weight of each cell: the covered outcrop area inside it divided by the coverage's covered
+# area (renormalised over the covered area; the coverage's covered fraction says how much of the
+# outcrop that is).
+lulcwr:cellWeight a sh:SPARQLRule ;
+    sh:order 3 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?cov lulcw:hasCellWeight ?cw .
+    ?cw a lulcw:CellWeight ; lulcw:weightCell ?c ; lulcw:coveredAreaM2 ?ca ; lulcw:cellWeight ?wgt ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    {
+        SELECT ?s ?u ?c (SUM(?a) AS ?ca) WHERE {
+            ?x a lulcw:PolygonCellIntersection ; lulcw:intersectedPolygon ?p ;
+               lulcw:withinExtent ?s ; lulcw:intersectedCell ?c ; lulcw:intersectionAreaM2 ?a .
+            ?p lulcw:hasStackLayer ?l .
+            ?l lulcw:layerOrder ?order ; lulcw:layerUnit ?u .
+            FILTER (?order = 1)
+        }
+        GROUP BY ?s ?u ?c
+    }
+    ?cov lulcw:coverageUnit ?u ; lulcw:withinExtent ?s ; a lulcw:OutcropCoverage ;
+         lulcw:derivationRule $this ; lulcw:coveredAreaM2 ?tot .
+    FILTER (?tot > 0)
+    BIND (?ca / ?tot AS ?wgt)
+    BIND (IRI(CONCAT(STR(?cov), "/", STRAFTER(STR(?c), "/weather-cell/"))) AS ?cw)
+}
+""" .
+
+#################################################################
 # The rules as data: descriptions and parameters (copied into the graph by the runner, which
 # adds lulcw:ruleVersion and the execution record)
 #################################################################
@@ -522,6 +623,11 @@ WHERE {
     rdfs:label "crop class area"@en ;
     rdfs:seeAlso lulcwr:cropClassArea , lulcwr:cropClassAreaEvidence ;
     rdfs:comment "Clipped area of each crop class in each crop demand zone and RPG edition: the sum of the clipped areas of its codes, each edition for its own year; unmapped codes stay in the totals as the class 'unmapped' (CQ7)."@en .
+
+<https://w3id.org/lulcw/data/rule/outcrop-coverage> a lulcw:DerivationRule ;
+    rdfs:label "outcrop coverage and cell weights"@en ;
+    rdfs:seeAlso lulcwr:outcropCoverage , lulcwr:outcropCoverageEvidence , lulcwr:cellWeight ;
+    rdfs:comment "For each reference extent (an outcrop search zone or the forcing extent) and each unit mapped at outcrop (order 1 of an elementary polygon's stack) there: the outcrop area, the part inside weather cells, the covered fraction, and per cell the share of the covered area (weights renormalised over the covered area, summing to one). Built from the polygon-cell intersection areas, which it cites. A unit without outcrop in the extent gets no coverage. Outcrop is a mapped property, not proof of recharge (CQ4)."@en .
 
 <https://w3id.org/lulcw/data/rule/high-irrigation-demand> a lulcw:DerivationRule ;
     rdfs:label "high irrigation demand"@en ;

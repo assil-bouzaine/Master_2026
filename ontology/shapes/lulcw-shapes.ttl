@@ -30,7 +30,8 @@
         [ sh:prefix "rdfs" ; sh:namespace "http://www.w3.org/2000/01/rdf-schema#"^^xsd:anyURI ] ,
         [ sh:prefix "skos" ; sh:namespace "http://www.w3.org/2004/02/skos/core#"^^xsd:anyURI ] ,
         [ sh:prefix "sosa" ; sh:namespace "http://www.w3.org/ns/sosa/"^^xsd:anyURI ] ,
-        [ sh:prefix "time" ; sh:namespace "http://www.w3.org/2006/time#"^^xsd:anyURI ] .
+        [ sh:prefix "time" ; sh:namespace "http://www.w3.org/2006/time#"^^xsd:anyURI ] ,
+        [ sh:prefix "geo" ; sh:namespace "http://www.opengis.net/ont/geosparql#"^^xsd:anyURI ] .
 
 #################################################################
 # Wells and facilities: identity, and at least one attribution (CQ1, CQ2)
@@ -637,3 +638,140 @@ SELECT $this WHERE {
     $this prov:wasDerivedFrom ?e ; sosa:hasFeatureOfInterest ?z ; sosa:phenomenonTime ?t .
     FILTER NOT EXISTS { ?e sosa:hasFeatureOfInterest ?z ; sosa:phenomenonTime ?t . }
 }""" ] .
+
+#################################################################
+# Recharge-related forcing (CQ4): weather cells, search zones, intersections, coverage, weights
+#################################################################
+
+lulcwsh:WeatherCellShape a sh:NodeShape ;
+    sh:targetClass lulcw:WeatherCell ;
+    sh:property [ sh:path lulcw:safranGridXHm ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ] ,
+        [ sh:path lulcw:safranGridYHm ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ] ,
+        [ sh:path geo:hasGeometry ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:hasForcingSeries ; sh:minCount 1 ; sh:class lulcw:ObservationSeries ] ,
+        [ sh:path lulcw:inRelease ; sh:minCount 1 ; sh:maxCount 1 ] .
+
+lulcwsh:OutcropSearchZoneShape a sh:NodeShape ;
+    sh:targetClass lulcw:OutcropSearchZone ;
+    sh:property [ sh:path lulcw:zoneOf ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:Piezometer ] ,
+        [ sh:path lulcw:zoneRadiusM ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minExclusive 0 ] .
+
+lulcwsh:PolygonCellIntersectionShape a sh:NodeShape ;
+    sh:targetClass lulcw:PolygonCellIntersection ;
+    sh:property [ sh:path lulcw:intersectedPolygon ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:class lulcw:ElementaryPolygon ] ,
+        [ sh:path lulcw:intersectedCell ; sh:maxCount 1 ; sh:class lulcw:WeatherCell ] ,
+        [ sh:path lulcw:withinExtent ; sh:minCount 1 ; sh:maxCount 1 ; sh:class geo:Feature ] ,
+        [ sh:path lulcw:intersectionAreaM2 ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minInclusive 1.0 ; sh:message "a piece under 1 m² (a sliver) or a negative area" ] ,
+        [ sh:path prov:wasGeneratedBy ; sh:minCount 1 ; sh:maxCount 1 ] .
+
+# Whole-graph checks of the intersections, run once (focus: the execution that computed them).
+lulcwsh:PolygonCellIntersectionKeyShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/execution/polygon-cell-intersection> ;
+    sh:sparql [
+        sh:message "two pieces share a polygon, an extent and a cell (or both are outside every cell)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this (SAMPLE(?x) AS ?value) WHERE {
+    ?x a lulcw:PolygonCellIntersection ; lulcw:intersectedPolygon ?p ; lulcw:withinExtent ?s .
+    OPTIONAL { ?x lulcw:intersectedCell ?c . }
+    BIND (COALESCE(?c, <https://w3id.org/lulcw/data/no-cell>) AS ?cell)
+}
+GROUP BY $this ?p ?s ?cell
+HAVING (COUNT(DISTINCT ?x) > 1)""" ] , [
+        sh:message "the pieces of a polygon in one extent exceed the polygon's area (1 m² tolerance: areas are stored to 0.1 m²)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this (SAMPLE(?p) AS ?value) WHERE {
+    ?x a lulcw:PolygonCellIntersection ; lulcw:intersectedPolygon ?p ; lulcw:withinExtent ?s ;
+       lulcw:intersectionAreaM2 ?a .
+    ?p geo:hasMetricArea ?pa .
+}
+GROUP BY $this ?p ?s ?pa
+HAVING (SUM(?a) > ?pa + 1.0)""" ] .
+
+lulcwsh:OutcropCoverageShape a sh:NodeShape ;
+    sh:targetClass lulcw:OutcropCoverage ;
+    sh:property [ sh:path lulcw:coverageUnit ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:HydrogeologicalUnit ] ,
+        [ sh:path lulcw:withinExtent ; sh:minCount 1 ; sh:maxCount 1 ; sh:class geo:Feature ] ,
+        [ sh:path lulcw:outcropAreaM2 ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minExclusive 0 ] ,
+        [ sh:path lulcw:coveredAreaM2 ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minInclusive 0 ] ,
+        [ sh:path lulcw:coveredFraction ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minInclusive 0 ; sh:maxInclusive 1 ] ,
+        [ sh:path lulcw:derivationRule ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path prov:wasDerivedFrom ; sh:minCount 1 ; sh:class lulcw:PolygonCellIntersection ] ,
+        [ sh:path lulcw:hasCellWeight ; sh:class lulcw:CellWeight ] ;
+    sh:sparql [
+        sh:message "the outcrop area differs from the sum of the pieces it cites" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:outcropAreaM2 ?value ; prov:wasDerivedFrom ?x .
+    ?x lulcw:intersectionAreaM2 ?a .
+}
+GROUP BY $this ?value
+HAVING (ABS(?value - SUM(?a)) > 1e-6 * ?value)""" ] , [
+        sh:message "a cited piece is from another extent, or from a polygon where the unit is not at outcrop" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this prov:wasDerivedFrom ?value ; lulcw:withinExtent ?s ; lulcw:coverageUnit ?u .
+    ?value lulcw:intersectedPolygon ?p .
+    FILTER (NOT EXISTS { ?value lulcw:withinExtent ?s . }
+            || NOT EXISTS { ?p lulcw:hasStackLayer ?l . ?l lulcw:layerOrder 1 ; lulcw:layerUnit ?u . })
+}""" ] , [
+        sh:message "the covered fraction is not the covered area divided by the outcrop area" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:coveredFraction ?value ; lulcw:coveredAreaM2 ?c ; lulcw:outcropAreaM2 ?o .
+    FILTER (ABS(?value - ?c / ?o) > 1e-9)
+}""" ] , [
+        sh:message "the cell weights of a covered outcrop do not sum to one, or do not add up to its covered area" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this (SUM(?w) AS ?value) WHERE {
+    $this lulcw:coveredAreaM2 ?tot .
+    FILTER (?tot > 0)
+    OPTIONAL { $this lulcw:hasCellWeight ?cw . ?cw lulcw:cellWeight ?w0 ; lulcw:coveredAreaM2 ?a0 . }
+    BIND (COALESCE(?w0, 0.0) AS ?w)
+    BIND (COALESCE(?a0, 0.0) AS ?a)
+}
+GROUP BY $this ?tot
+HAVING (ABS(SUM(?w) - 1) > 1e-9 || ABS(SUM(?a) - ?tot) > 1e-6 * ?tot)""" ] .
+
+lulcwsh:MappedOutcropShape a sh:NodeShape ;
+    sh:targetSubjectsOf lulcw:mappedOutcropAreaM2 ;
+    sh:property [ sh:path lulcw:mappedOutcropAreaM2 ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minInclusive 0 ] ;
+    sh:sparql [
+        sh:message "an outcrop coverage exceeds the unit's whole mapped outcrop" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:mappedOutcropAreaM2 ?m .
+    ?value lulcw:coverageUnit $this ; lulcw:outcropAreaM2 ?a .
+    FILTER (?a > ?m * (1 + 1e-6) + 1.0)
+}""" ] .
+
+lulcwsh:CellWeightShape a sh:NodeShape ;
+    sh:targetClass lulcw:CellWeight ;
+    sh:property [ sh:path lulcw:weightCell ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:WeatherCell ] ,
+        [ sh:path lulcw:cellWeight ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minExclusive 0 ; sh:maxInclusive 1 ] ,
+        [ sh:path lulcw:coveredAreaM2 ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minExclusive 0 ] ,
+        [ sh:path [ sh:inversePath lulcw:hasCellWeight ] ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:class lulcw:OutcropCoverage ; sh:message "a cell weight belongs to exactly one outcrop coverage" ] .
+
+lulcwsh:OutcropCoverageKeyShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/outcrop-coverage> ;
+    sh:sparql [
+        sh:message "two outcrop coverages share an extent and a unit" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this (SAMPLE(?v) AS ?value) WHERE {
+    ?v a lulcw:OutcropCoverage ; lulcw:withinExtent ?s ; lulcw:coverageUnit ?u .
+}
+GROUP BY $this ?s ?u
+HAVING (COUNT(DISTINCT ?v) > 1)""" ] .

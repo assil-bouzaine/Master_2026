@@ -14,7 +14,7 @@ PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX sosa: <http://www.w3.org/ns/sosa/>
 SELECT ?W ?year ?class ?areaHa ?irrigationAssumption (COUNT(DISTINCT ?o) AS ?codes)
 WHERE {
-    ?zone lulcw:zoneOf ?W .
+    ?zone a lulcw:CropDemandZone ; lulcw:zoneOf ?W .
     ?x a lulcw:CropClassArea ; sosa:hasFeatureOfInterest ?zone ; lulcw:rpgEdition ?year ;
        lulcw:cropClass ?cls ; sosa:hasSimpleResult ?areaHa ; prov:wasDerivedFrom ?o .
     ?cls skos:notation ?class .

@@ -1520,3 +1520,59 @@ rejected.
   without a ledger row now fails `test_ontology`.
 - **Next:** unchanged: the export (12.8) with its per-well, per-relation inventory and the proposed
   path-aggregation rule (analysis plan §14 item 17), then the two-well path.
+
+## 2026-11-06 (continued): 12.8, step 1: the inventory of arm D
+
+### Recurring check (CLAUDE.md §7)
+1. *Chain link advanced:* water → model: what D's graph gives each well, before any arm is scored.
+2. *Dated land use:* none enters D's graph (no command areas; the crop-thirst index is a feature).
+3. *Observed / inferred / assumed / unknown:* the inventory only reads the release; "constrained"
+   reflects the constraint decisions (pumping accepted, the others pending).
+4. *Evidence vs plan:* done and tested; the HeteroData export itself is still a plan.
+5. *Next model experiment:* none before the export and the two-well path.
+6. *Missing from the subject:* unchanged.
+
+### What was done
+- `src/kg/inventory.py` (`PFE_DATASET=v4 python -m src.kg.inventory [--policy …]`): per well and
+  relation (pumping, recharge in the 5 km zone, recharge unit-wide, river, canal, well links) the
+  sources D connects, the number of evidence paths, eligible and constrained edges (one edge per
+  source; eligible or constrained only if every selected path is, with one sign: the rule proposed
+  in analysis plan §14 item 17), nearest distance, cell weights, CQ8's answer and reason where
+  there is no edge, the well links under each candidate depth threshold (10, 20, 50 m, none), and
+  the distinct sources a depth-2 network reaches through the selected links. Read through the CQ
+  queries, so it cannot drift from the CQ answers. Output
+  `data/processed/kg/inventory_v4_main.parquet` (390 rows) and `.json` (the release's hashes, the
+  policy, the code version, totals).
+- `tests/test_inventory.py`: the aggregation rule on synthetic paths, the CQ fixture (W1's pumping
+  edges per facility, W7's recharge weights, R1's eligible but unconstrained river and canal edges,
+  R8's off-map unknown, symmetric links, monotone reach), and the data totals against independent
+  SPARQL counts of the release. Passes.
+
+### Results (main policy, release of 2026-11-06 13:42 UTC; 65 wells, 33 core)
+
+| relation | wells with an edge (core) | without (core) | wells with an eligible edge | constrained edges | wells reaching more sources at depth 2 (no threshold / 50 m) |
+|---|---|---|---|---|---|
+| pumping (facilities) | 43 (24) | 22 (9) | 40 | 416 | 22 / 13 |
+| recharge, 5 km zone | 54 (27) | 11 (6) | 54 | 0 | 13 / 5 |
+| recharge, unit-wide (sensitivity) | 59 (32) | 6 (1) | 59 | 0 | 0 / 0 |
+| river (pool gauges) | 34 (23) | 31 (10) | 3 | 0 | 4 / 1 |
+| canal | 5 (4) | 60 (29) | 2 | 0 | 0 / 0 |
+| well links (same unit, 5 km) | 38 (22) | 27 (11) | — | — | pairs within 10 / 20 / 50 m / any: 0 / 2 / 13 / 47 |
+
+- One core well gets no exogenous edge at all: CARRIE (its unit 760AE09 is outside BD LISA).
+- Pumping: 434 facility-well edges, 416 eligible (exact unit on both sides), all constrained under
+  the main policy's decision; recharge, river and canal edges are eligible in places but none is
+  constrained before Gate 3.
+- The well links decide much of what a well sees: without a depth threshold 22 wells reach more
+  pumping sources through a linked well; with 50 m, 13. The per-regime threshold therefore changes
+  D's information, not only its structure, and is reported with each regime (item 15).
+
+### What to consider
+- The **D vs C contrast** is a contrast of whole connection policies (item 15): C gives every well its
+  nearest cell and two gauges; D leaves 11 wells (6 core) without a local recharge edge and 31 (10
+  core) without a river edge. This table is the inventory to report beside it; the coverage-matched
+  diagnostic, if wanted, is defined before any score.
+- **Next:** the export proper (node and edge tables for C–F from one node inventory, bound to the
+  release; the HeteroData adapter where PyG is installed, i.e. on Colab or Kaggle), the per-regime
+  depth threshold from each regime's training heads, the equivalence test against pandas, and a
+  fixed-weight forward pass compared between the two.

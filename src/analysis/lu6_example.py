@@ -9,7 +9,8 @@ of the Têt) and a Pliocene well (PONTEILLA NYLS-1), with the stored competency-
 of tests/cq/ (task 12.7) and their answer status, so every statement cites the query it comes
 from, and every gap is a status, not a silence. The model step is the pre-registered land-use
 test (LU-4, results/<dataset>/land_use_test.csv); an explanation of a model output (CQ10) and the
-satellite rule (CQ15) do not exist yet and are listed as such.
+satellite rule (CQ15) do not exist yet and are listed as such. Rivers and canals (CQ5, CQ6) since
+2026-11-06.
 """
 import re
 from datetime import date
@@ -28,6 +29,11 @@ WELLS = {"10906X0039/C2-1": "an alluvium well near the Têt",
 YEARS = range(2015, 2026)
 RADIUS = 5000.0
 MAIN = URIRef(f"{D}policy/main")
+# short citations of the documents of data/raw/documents/documents.json (src.ingest.documents)
+CITE = {"brgm-rp-71486-fr": "BRGM/RP-71486-FR", "sierm-frdg351": "FRDG351 sheet, 2021",
+        "sierm-frdg243": "FRDG243 sheet, 2021", "smnpr-fonctionnement-des-nappes": "SMNPR"}
+SIGN = {"PositiveResponse": "non-decreasing", "NegativeResponse": "non-increasing",
+        "UnknownResponse": "unknown or conditional"}
 
 
 def ha(x):
@@ -157,6 +163,58 @@ def section(s, code, what, pz, lines):
                      + ", ".join(words(m) for m in sorted(r["omittedPathways"].split())) + ".")
     st8 = one(s, "cq08_status", W=w)
     lines.append(f"- Status CQ8: {st8['status']} (recharge proxies: {st8['recharge']}): {st8['reason']}.\n")
+
+    # 5. rivers and canals (CQ5, CQ6, CQ8)
+    lines.append("### 5. Rivers and canals near the well (CQ5, CQ6, CQ8)\n")
+    rz = iris(s, "SELECT ?c ?z WHERE { ?z a lulcw:ReachSearchZone ; lulcw:zoneOf/lulcw:bssCode ?c }")[code]
+    U = URIRef(f"{D}unit/{unit}") if unit else None
+    assoc = [r for r in ask(s, "cq05_associations", S=rz) if r["unitCode"] == unit]
+    kind = {"OnOutcrop": f"on the outcrop of {unit}", "OverCover": f"over the units covering {unit}",
+            "DocumentedLateral": f"beside {unit}, with a documented exchange"}
+    for r in assoc:
+        km = r["lengthOnOutcropM"] or r["lengthOverCoverM"]
+        lines.append(f"- {r['watercourseName']} ({r['watercourseCode']}) runs {kind[r['type']]}"
+                     + (f" for {km / 1000:.1f} km" if km else "")
+                     + (f" (cover: {r['coverUnits']})" if r["coverUnits"] else "")
+                     + f" within {RADIUS / 1000:g} km of the well; {r['statements']} statement(s) apply.")
+    if not assoc:
+        lines.append(f"- No searched watercourse runs on, over or documentedly beside {unit} within "
+                     f"{RADIUS / 1000:g} km of the well.")
+    if U is not None:
+        st5 = one(s, "cq05_status", U=U, S=rz)
+        lines.append(f"- Status CQ5: {st5['status']}: {st5['reason']}.")
+        stm = ask(s, "cq05_statements", S=rz, U=U)
+        for r in [r for r in stm if r["applies"]]:
+            flux = f", {r['fluxM3s']:g} m³/s" if r["fluxM3s"] else ""
+            lines.append(f"  - {r['section']}: {words(r['direction'])} ({words(r['hedging'])}; {r['state']}{flux}; "
+                         f"{CITE.get(r['documentKey'], r['documentKey'])}, p. {r['page']}).")
+        rest = [r for r in stm if not r["applies"]]
+        if rest:
+            lines.append(f"  - {len(rest)} more statement(s) about {unit} listed but not applied (their stretch is "
+                         "not delimited, or no association of the unit meets their section).")
+    gname = {r["gaugeCode"]: r["gaugeName"] for r in ask(s, "cq05_gauges", S=rz)}
+    for r in [r for r in inf if local(r["mechanism"]) == "RiverExchange"]:
+        lines.append(f"- River influence (arm D): gauge {r['driverCode']} ({gname.get(r['driverCode'], '')}), "
+                     f"{words(r['associationType'])}, response {SIGN[local(r['responseSign'])]}, "
+                     f"{words(local(r['eligibility']))}: {r['eligibilityReason']}")
+    lines.append(f"- Status CQ8 (rivers): {st8['river']}: {st8['riverReason']}.")
+    if U is not None:
+        st6 = one(s, "cq06_status", U=U, S=rz)
+        chain = ask(s, "cq06_chain", S=rz, U=U)
+        if chain:
+            names = (chain[0]["canals"] or "").split(" | ")
+            lines.append(f"- Canals run {chain[0]['lengthOnOutcropM'] / 1000:.1f} km on the outcrop of {unit} within "
+                         f"{RADIUS / 1000:g} km (" + ", ".join(names[:4]) + (", ..." if len(names) > 4 else "")
+                         + f"); command area: {chain[0]['commandArea']}.")
+            for r in [r for r in chain if r["statement"]]:
+                flux = f", {r['fluxM3s']:g} m³/s" if r["fluxM3s"] else ""
+                lines.append(f"  - {local(r['statement'])}: {words(r['direction'])} ({words(r['hedging'])}{flux}; "
+                             f"{CITE.get(r['documentKey'], r['documentKey'])}, p. {r['page']}).")
+        lines.append(f"- Status CQ6: {st6['status']}: {st6['reason']}.")
+    for r in [r for r in inf if local(r["mechanism"]) == "CanalReturnFlow"]:
+        lines.append(f"- Canal influence (arm D): the plain's canal intakes, response {SIGN[local(r['responseSign'])]}, "
+                     f"{words(local(r['eligibility']))}.")
+    lines.append(f"- Status CQ8 (canals): {st8['canal']}: {st8['canalReason']}.\n")
     return unit
 
 
@@ -170,8 +228,8 @@ def main():
              "competency-question query (`tests/cq/`), with its status; a gap is reported as a status, "
              "never as a silence.\n",
              "The chain of the subject: dated land use → water demand and supported pathways → model → "
-             "groundwater → explanation. Sections 1–4 answer it from the graph for each well; section 5 "
-             "is the model step; section 6 lists what cannot be answered yet.\n"]
+             "groundwater → explanation. Sections 1–5 answer it from the graph for each well; section 6 "
+             "is the model step; section 7 lists what cannot be answered yet.\n"]
     units = {}
     for code, what in WELLS.items():
         units[code] = section(s, code, what, pz, lines)
@@ -196,8 +254,8 @@ def main():
     lines.append(f"\nIn Mm³; declared total {decl / 1e6:.1f} Mm³. Declared withdrawals of facilities in the "
                  "extent, not consumption nor all abstraction from a unit.\n")
 
-    # 5. the model step (LU-4)
-    lines.append("## 5. Does a model use this land use? (LU-4, pre-registered)\n")
+    # 6. the model step (LU-4)
+    lines.append("## 6. Does a model use this land use? (LU-4, pre-registered)\n")
     t = pd.read_csv(RESULTS_DIR / "land_use_test.csv")
     main_rows = t[(t["kind"] == "main")]
     for _, r in main_rows.iterrows():
@@ -208,17 +266,19 @@ def main():
                  "trained on the same machine). The alluvium wells, where crops and canals should matter "
                  "most, are too few among the core wells for a group test (step 12d note).\n")
 
-    # 6. what cannot be answered yet
-    lines.append("## 6. What the graph cannot say yet\n")
+    # 7. what cannot be answered yet
+    lines.append("## 7. What the graph cannot say yet\n")
     lines.append("- **Whether a parcel is irrigated, and from which water** (CQ15): the satellite rule "
                  "needs the Earth Engine login (task 12.10); 84 % of the plain's declared irrigation water is "
                  "surface water (mostly the Têt and Agly canals), so most crop demand never reaches a "
                  "borehole.")
-    lines.append("- **Canal return flow to the alluvium** (CQ6) and river exchange (CQ5) are not yet "
-                 "`lulcw:Influence` records: CQ8 is partial for every well. Rain over the outcrop is a proxy "
-                 "(section 4): for the Pliocene the sources name other pathways as the main ones (the Têt and "
-                 "its alluvium upstream, the Corbières karst and the border massifs, leakage from the "
-                 "Quaternary).")
+    lines.append("- **Which fields a canal serves, and how much of its water reaches a unit** (CQ6): no "
+                 "command-area map exists for the plain, so the canal link of section 5 is a documented "
+                 "pathway, never a local return amount.")
+    lines.append("- **Lateral inflow and vertical leakage** are not `lulcw:Influence` records: CQ8 is partial "
+                 "for every well. Rain over the outcrop (section 4) and a gauge's discharge (section 5) are "
+                 "proxies: for the Pliocene the sources name other pathways as the main ones (the Têt and its "
+                 "alluvium upstream, the Corbières karst and the border massifs, leakage from the Quaternary).")
     lines.append("- **Irrigation pumping by unit:** the main policy places no irrigation volume in a unit "
                  "(`docs/pump_coverage.md`); farm-borehole effects come only from the all-links sensitivity.")
     lines.append("- **An explanation of a model output** (CQ10): needs the Phase 4 model and its contributions.")

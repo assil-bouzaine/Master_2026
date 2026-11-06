@@ -859,3 +859,382 @@ SELECT $this (SAMPLE(?v) AS ?value) WHERE {
 }
 GROUP BY $this ?s ?u
 HAVING (COUNT(DISTINCT ?v) > 1)""" ] .
+
+#################################################################
+# Rivers, gauges and canals (CQ5, CQ6): facts
+#################################################################
+
+lulcwsh:WatercourseShape a sh:NodeShape ;
+    sh:targetClass lulcw:Watercourse ;
+    sh:property [ sh:path lulcw:bdCarthageCode ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ,
+        [ sh:path lulcw:mainStemLengthM ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minExclusive 0 ] ,
+        [ sh:path lulcw:inRelease ; sh:minCount 1 ; sh:maxCount 1 ] .
+
+lulcwsh:HydrographicReachShape a sh:NodeShape ;
+    sh:targetClass lulcw:HydrographicReach ;
+    sh:property [ sh:path lulcw:bdtopoId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ,
+        [ sh:path lulcw:reachNature ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path geo:hasGeometry ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:inRelease ; sh:minCount 1 ; sh:maxCount 1 ] .
+
+lulcwsh:RiverReachShape a sh:NodeShape ;
+    sh:targetClass lulcw:RiverReach ;
+    sh:property [ sh:path lulcw:reachOf ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:Watercourse ] ,
+        [ sh:path lulcw:onMainStem ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:boolean ] ,
+        [ sh:path lulcw:reachNature ; sh:not [ sh:hasValue "Canal" ] ;
+          sh:message "a reach of nature Canal is a canal reach, never a river reach" ] ;
+    sh:sparql [
+        sh:message "a main-stem reach lacks its chainage, or its chainage runs backwards" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:onMainStem true .
+    OPTIONAL { $this lulcw:chainageFromM ?a }
+    OPTIONAL { $this lulcw:chainageToM ?b }
+    FILTER (!BOUND(?a) || !BOUND(?b) || ?a > ?b)
+}""" ] .
+
+lulcwsh:CanalReachShape a sh:NodeShape ;
+    sh:targetClass lulcw:CanalReach ;
+    sh:property [ sh:path lulcw:reachNature ; sh:hasValue "Canal" ] ,
+        [ sh:path lulcw:reachOf ; sh:maxCount 0 ] .
+
+lulcwsh:ReachSearchZoneShape a sh:NodeShape ;
+    sh:targetClass lulcw:ReachSearchZone ;
+    sh:property [ sh:path lulcw:zoneOf ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:Piezometer ] ,
+        [ sh:path lulcw:zoneRadiusM ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minExclusive 0 ] .
+
+lulcwsh:ReachPieceShape a sh:NodeShape ;
+    sh:targetClass lulcw:ReachPiece ;
+    sh:property [ sh:path lulcw:pieceOfReach ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:HydrographicReach ] ,
+        [ sh:path lulcw:withinExtent ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:ReachSearchZone ] ,
+        [ sh:path lulcw:piecePolygon ; sh:maxCount 1 ; sh:class lulcw:ElementaryPolygon ] ,
+        [ sh:path lulcw:pieceLengthM ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minInclusive 1.0 ; sh:message "a piece under 1 m (a sliver) or a negative length" ] ,
+        [ sh:path lulcw:inSection ; sh:class lulcw:RiverSection ] ,
+        [ sh:path prov:wasGeneratedBy ; sh:minCount 1 ; sh:maxCount 1 ] .
+
+# Whole-graph checks of the pieces, run once (focus: the execution that computed them).
+lulcwsh:ReachPieceKeyShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/execution/river-geometry> ;
+    sh:sparql [
+        sh:message "two pieces share a reach, a zone and a polygon (or both are off the map)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this (SAMPLE(?p) AS ?value) WHERE {
+    ?p lulcw:pieceOfReach ?r ; lulcw:withinExtent ?z .
+    OPTIONAL { ?p lulcw:piecePolygon ?poly . }
+    BIND (COALESCE(?poly, <https://w3id.org/lulcw/data/off-map>) AS ?pg)
+}
+GROUP BY $this ?r ?z ?pg
+HAVING (COUNT(DISTINCT ?p) > 1)""" ] , [
+        sh:message "a river piece lies in a section that is not a stretch of its watercourse" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    ?value lulcw:inSection ?sec ; lulcw:pieceOfReach ?r .
+    ?r lulcw:reachOf ?wc .
+    FILTER NOT EXISTS { ?sec lulcw:sectionOf ?wc }
+}""" ] .
+
+lulcwsh:RiverSectionShape a sh:NodeShape ;
+    sh:targetClass lulcw:RiverSection ;
+    sh:property [ sh:path geo:hasGeometry ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:sectionOf ; sh:class lulcw:Watercourse ] ;
+    sh:sparql [
+        sh:message "a section between two points runs backwards, or a water body states a chainage" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    OPTIONAL { $this lulcw:chainageFromM ?a }
+    OPTIONAL { $this lulcw:chainageToM ?b }
+    OPTIONAL { $this lulcw:wfdCode ?c }
+    FILTER ((BOUND(?c) && (BOUND(?a) || BOUND(?b)))
+            || (!BOUND(?c) && (!BOUND(?a) || !BOUND(?b) || ?a > ?b)))
+}""" ] .
+
+lulcwsh:SurfaceWaterBodyShape a sh:NodeShape ;
+    sh:targetClass lulcw:SurfaceWaterBody ;
+    sh:property [ sh:path lulcw:wfdCode ; sh:minCount 1 ; sh:maxCount 1 ; sh:pattern "^FRDR" ] ,
+        [ sh:path lulcw:inRelease ; sh:minCount 1 ; sh:maxCount 1 ] .
+
+lulcwsh:RiverGaugeShape a sh:NodeShape ;
+    sh:targetClass lulcw:RiverGauge ;
+    sh:property [ sh:path lulcw:gaugeCode ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ,
+        [ sh:path geo:hasGeometry ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:hasDischargeSeries ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:ObservationSeries ] ,
+        [ sh:path lulcw:onWatercourse ; sh:maxCount 1 ; sh:class lulcw:Watercourse ] ,
+        [ sh:path lulcw:localInfluenceCode ; sh:maxCount 1 ; sh:datatype xsd:integer ] ,
+        [ sh:path lulcw:inRelease ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:sparql [
+        sh:message "a gauge on a watercourse lacks its chainage or offset, or its series counts more observed training weeks than training weeks" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:hasDischargeSeries ?se .
+    ?se lulcw:observedTrainingWeeks ?o ; lulcw:trainingWeeks ?n .
+    OPTIONAL { $this lulcw:onWatercourse ?wc }
+    OPTIONAL { $this lulcw:chainageM ?c }
+    OPTIONAL { $this lulcw:offsetFromStemM ?d }
+    FILTER (?o > ?n || ?o < 0 || (BOUND(?wc) && (!BOUND(?c) || !BOUND(?d))))
+}""" ] .
+
+lulcwsh:GaugePoolShape a sh:NodeShape ;
+    sh:targetClass lulcw:GaugePool ;
+    sh:property [ sh:path lulcw:poolMember ; sh:minCount 1 ; sh:class lulcw:RiverGauge ] .
+
+lulcwsh:GaugeZoneRelationShape a sh:NodeShape ;
+    sh:targetClass lulcw:GaugeZoneRelation ;
+    sh:property [ sh:path lulcw:relatedGauge ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:RiverGauge ] ,
+        [ sh:path lulcw:withinExtent ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:ReachSearchZone ] ,
+        [ sh:path lulcw:horizontalDistanceM ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minInclusive 0 ] ,
+        [ sh:path lulcw:alongRiverPosition ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:AlongRiverPosition ] ,
+        [ sh:path lulcw:alongRiverDistanceM ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minInclusive 0 ] ;
+    sh:sparql [
+        sh:message "the distance along the river is given off the main stem, or missing on it" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:alongRiverPosition ?pos .
+    OPTIONAL { $this lulcw:alongRiverDistanceM ?d }
+    FILTER ((?pos = lulcw:OffMainStem) = BOUND(?d))
+}""" ] .
+
+lulcwsh:DocumentShape a sh:NodeShape ;
+    sh:targetClass lulcw:Document ;
+    sh:property [ sh:path lulcw:sourceUrl ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:md5 ; sh:minCount 1 ; sh:maxCount 1 ; sh:pattern "^[0-9a-f]{32}$" ] ,
+        [ sh:path lulcw:retrievalDate ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:date ] .
+
+lulcwsh:DocumentPassageShape a sh:NodeShape ;
+    sh:targetClass lulcw:DocumentPassage ;
+    sh:property [ sh:path lulcw:inDocument ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:Document ] ,
+        [ sh:path lulcw:pageLabel ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:quote ; sh:minCount 1 ; sh:maxCount 1 ; sh:minLength 20 ] .
+
+lulcwsh:ExchangeStatementShape a sh:NodeShape ;
+    sh:targetClass lulcw:ExchangeStatement ;
+    sh:property [ sh:path lulcw:statedMechanism ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:in ( lulcw:RiverExchange lulcw:CanalReturnFlow ) ] ,
+        [ sh:path lulcw:aboutUnit ; sh:minCount 1 ; sh:class lulcw:HydrogeologicalUnit ] ,
+        [ sh:path lulcw:aboutSection ; sh:maxCount 1 ; sh:class lulcw:RiverSection ] ,
+        [ sh:path lulcw:aboutWatercourse ; sh:class lulcw:Watercourse ] ,
+        [ sh:path lulcw:unitAsNamed ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:unitMapping ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:UnitMapping ] ,
+        [ sh:path lulcw:exchangeDirection ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:ExchangeDirection ] ,
+        [ sh:path lulcw:hedging ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:Hedging ] ,
+        [ sh:path lulcw:stateDescription ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:evidenceKind ; sh:hasValue lulcw:ExpertHypothesis ;
+          sh:message "a statement read from a document is literature, not an observation of the graph" ] ,
+        [ sh:path prov:wasDerivedFrom ; sh:minCount 1 ; sh:class lulcw:DocumentPassage ] ;
+    sh:sparql [
+        sh:message "a dated statement ends before it starts" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE { $this lulcw:periodStart ?a ; lulcw:periodEnd ?b . FILTER (?a > ?b) }""" ] , [
+        sh:message "a canal-return statement names a river section (canal statements are located by their units)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE { $this lulcw:statedMechanism lulcw:CanalReturnFlow ; lulcw:aboutSection ?s . }""" ] .
+
+lulcwsh:SurfaceWaterIntakeShape a sh:NodeShape ;
+    sh:targetClass lulcw:SurfaceWaterIntake ;
+    sh:property [ sh:path lulcw:bnpeCode ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:waterSource ; sh:hasValue lulcw:SurfaceWaterSource ] ,
+        [ sh:path geo:hasGeometry ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:candidateWatercourse ; sh:maxCount 1 ; sh:class lulcw:Watercourse ] ,
+        [ sh:path [ sh:inversePath lulcw:intakeMember ] ; sh:minCount 1 ; sh:class lulcw:CanalIntakeGroup ] .
+
+lulcwsh:CanalIntakeGroupShape a sh:NodeShape ;
+    sh:targetClass lulcw:CanalIntakeGroup ;
+    sh:property [ sh:path lulcw:intakeMember ; sh:minCount 1 ; sh:class lulcw:SurfaceWaterIntake ] ,
+        [ sh:path lulcw:hasVolumeSeries ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:ObservationSeries ] .
+
+#################################################################
+# Rivers and canals (CQ5, CQ6): derived associations and influences
+#################################################################
+
+lulcwsh:RiverUnitAssociationShape a sh:NodeShape ;
+    sh:targetClass lulcw:RiverUnitAssociation ;
+    sh:property [ sh:path lulcw:withinExtent ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:ReachSearchZone ] ,
+        [ sh:path lulcw:associationWatercourse ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:Watercourse ] ,
+        [ sh:path lulcw:associationUnit ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:HydrogeologicalUnit ] ,
+        [ sh:path lulcw:associationType ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:AssociationType ] ,
+        [ sh:path lulcw:applicableStatement ; sh:class lulcw:ExchangeStatement ] ,
+        [ sh:path lulcw:derivationRule ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:sparql [
+        sh:message "an association lacks the length or the cover its type requires, or carries another type's" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:associationType ?t .
+    OPTIONAL { $this lulcw:lengthOnOutcropM ?a }
+    OPTIONAL { $this lulcw:lengthOverCoverM ?b }
+    OPTIONAL { $this lulcw:coverUnit ?c }
+    FILTER ((?t = lulcw:OnOutcrop && (!BOUND(?a) || ?a <= 0 || BOUND(?b) || BOUND(?c)))
+            || (?t = lulcw:OverCover && (!BOUND(?b) || ?b <= 0 || !BOUND(?c) || BOUND(?a)))
+            || (?t = lulcw:DocumentedLateral && (BOUND(?a) || BOUND(?b) || BOUND(?c))))
+}""" ] , [
+        sh:message "the associated unit is not the candidate unit of a monitoring attribution of the zone's well" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:withinExtent ?z ; lulcw:associationUnit ?value .
+    ?z lulcw:zoneOf ?w .
+    FILTER NOT EXISTS { ?a lulcw:attributedEntity ?w ; lulcw:role lulcw:MonitoringRole ; lulcw:candidateUnit ?value }
+}""" ] , [
+        sh:message "a documented lateral association has no applicable statement documenting an exchange" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:associationType lulcw:DocumentedLateral .
+    FILTER NOT EXISTS { $this lulcw:applicableStatement ?s . ?s lulcw:exchangeDirection ?d .
+                        FILTER (?d = lulcw:AquiferToSurface || ?d = lulcw:SurfaceToAquifer || ?d = lulcw:ExchangeEquilibrium) }
+}""" ] .
+
+lulcwsh:CanalUnitAssociationShape a sh:NodeShape ;
+    sh:targetClass lulcw:CanalUnitAssociation ;
+    sh:property [ sh:path lulcw:withinExtent ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:ReachSearchZone ] ,
+        [ sh:path lulcw:associationUnit ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:HydrogeologicalUnit ] ,
+        [ sh:path lulcw:lengthOnOutcropM ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minExclusive 0 ] ,
+        [ sh:path lulcw:applicableStatement ; sh:class lulcw:ExchangeStatement ] ,
+        [ sh:path lulcw:derivationRule ; sh:minCount 1 ; sh:maxCount 1 ] .
+
+# River and canal influences: their evidence paths and signs.
+lulcwsh:RiverCanalInfluenceShape a sh:NodeShape ;
+    sh:targetClass lulcw:Influence ;
+    sh:sparql [
+        sh:message "a river influence's path does not join the gauge to the well (the well's attribution naming the association's unit, the association in the well's zone, the gauge's relation to that zone, the gauge on the association's watercourse and in the rule's pool)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:mechanism lulcw:RiverExchange ; lulcw:targetEntity ?w ; lulcw:driverEntity ?g ;
+          lulcw:withinExtent ?z ; lulcw:derivationRule ?r .
+    FILTER NOT EXISTS {
+        $this prov:wasDerivedFrom ?aw , ?as , ?x .
+        ?aw lulcw:attributedEntity ?w ; lulcw:role lulcw:MonitoringRole ; lulcw:candidateUnit ?u .
+        ?as lulcw:withinExtent ?z ; lulcw:associationUnit ?u ; lulcw:associationWatercourse ?wc .
+        ?z lulcw:zoneOf ?w .
+        ?x lulcw:relatedGauge ?g ; lulcw:withinExtent ?z .
+        ?g lulcw:onWatercourse ?wc .
+        ?r lulcw:usesGaugePool ?pool . ?pool lulcw:poolMember ?g .
+    }
+}""" ] , [
+        sh:message "a river influence over cover carries a supported sign or is eligible" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:mechanism lulcw:RiverExchange ; prov:wasDerivedFrom ?as .
+    ?as lulcw:associationType lulcw:OverCover .
+    FILTER (EXISTS { $this lulcw:constraintEligibility lulcw:EligibleConstraint }
+            || NOT EXISTS { $this lulcw:responseSign lulcw:UnknownResponse })
+}""" ] , [
+        sh:message "an eligible river or canal influence has no applicable statement documenting the exchange, or one that states independence" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:constraintEligibility lulcw:EligibleConstraint ; lulcw:mechanism ?m ; prov:wasDerivedFrom ?as .
+    FILTER (?m = lulcw:RiverExchange || ?m = lulcw:CanalReturnFlow)
+    ?as lulcw:associationUnit ?u .
+    FILTER (NOT EXISTS { ?as lulcw:applicableStatement ?s . ?s lulcw:exchangeDirection ?d .
+                         FILTER (?d = lulcw:AquiferToSurface || ?d = lulcw:SurfaceToAquifer || ?d = lulcw:ExchangeEquilibrium) }
+            || EXISTS { ?as lulcw:applicableStatement ?n . ?n lulcw:exchangeDirection lulcw:NoExchange . })
+}""" ] , [
+        sh:message "an eligible canal influence rests on no stated canal-return statement" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:constraintEligibility lulcw:EligibleConstraint ; lulcw:mechanism lulcw:CanalReturnFlow ;
+          prov:wasDerivedFrom ?ca .
+    ?ca lulcw:associationUnit ?u .
+    FILTER NOT EXISTS { ?ca lulcw:applicableStatement ?s . ?s lulcw:exchangeDirection lulcw:SurfaceToAquifer ;
+                        lulcw:hedging lulcw:StatedFinding . }
+}""" ] , [
+        sh:message "a canal influence's path does not join the canal intake group to the well (the well's attribution naming the association's unit, the canal association in the well's zone with a canal-return statement)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:mechanism lulcw:CanalReturnFlow ; lulcw:targetEntity ?w ; lulcw:driverEntity ?grp ;
+          lulcw:withinExtent ?z .
+    FILTER (NOT EXISTS {
+        $this prov:wasDerivedFrom ?aw , ?ca .
+        ?aw lulcw:attributedEntity ?w ; lulcw:role lulcw:MonitoringRole ; lulcw:candidateUnit ?u .
+        ?ca lulcw:withinExtent ?z ; lulcw:associationUnit ?u ; lulcw:applicableStatement ?s .
+        ?s lulcw:exchangeDirection lulcw:SurfaceToAquifer .
+        ?z lulcw:zoneOf ?w .
+    } || NOT EXISTS { ?grp lulcw:intakeMember ?i . })
+}""" ] .
+
+# Whole-graph completeness of the river associations and influences, run once (focus: their
+# rules): a missing derivation is a violation, never a silent "no river pathway".
+lulcwsh:RiverAssociationKeyShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/river-association> ;
+    sh:sparql [
+        sh:message "two river associations share a zone, a watercourse, a unit and a type" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this (SAMPLE(?a) AS ?value) WHERE {
+    ?a lulcw:derivationRule $this ; lulcw:withinExtent ?z ; lulcw:associationWatercourse ?wc ;
+       lulcw:associationUnit ?u ; lulcw:associationType ?t .
+}
+GROUP BY $this ?z ?wc ?u ?t
+HAVING (COUNT(DISTINCT ?a) > 1)""" ] , [
+        sh:message "a river piece of a zone runs on the outcrop of a unit of the zone's well, but no on-outcrop association exists" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT DISTINCT $this ?value WHERE {
+    ?value lulcw:pieceOfReach ?r ; lulcw:withinExtent ?z ; lulcw:piecePolygon ?poly .
+    ?r lulcw:reachOf ?wc .
+    ?z lulcw:zoneOf ?w .
+    ?aw lulcw:attributedEntity ?w ; lulcw:role ?role ; lulcw:candidateUnit ?u .
+    FILTER (?role = lulcw:MonitoringRole)
+    ?poly lulcw:hasStackLayer ?ly .
+    ?ly lulcw:layerUnit ?u ; lulcw:layerOrder ?o .
+    FILTER (?o = 1)
+    FILTER NOT EXISTS { ?a lulcw:derivationRule $this ; lulcw:withinExtent ?z ; lulcw:associationWatercourse ?wc ;
+                        lulcw:associationUnit ?u ; lulcw:associationType lulcw:OnOutcrop . }
+}""" ] .
+
+lulcwsh:RiverInfluenceKeyShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/river-influence> ;
+    sh:sparql [
+        sh:message "a river association whose watercourse has a gauge of the pool has no influence for an attribution naming its unit" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT DISTINCT $this ?value WHERE {
+    $this lulcw:usesGaugePool ?pool .
+    ?pool lulcw:poolMember ?g .
+    ?g lulcw:onWatercourse ?wc .
+    ?value lulcw:associationWatercourse ?wc ; lulcw:withinExtent ?z ; lulcw:associationUnit ?u .
+    ?z lulcw:zoneOf ?w .
+    ?aw lulcw:attributedEntity ?w ; lulcw:role ?role ; lulcw:candidateUnit ?u .
+    FILTER (?role = lulcw:MonitoringRole)
+    FILTER NOT EXISTS { ?i prov:wasDerivedFrom ?value , ?aw ; lulcw:derivationRule $this . }
+}""" ] , [
+        sh:message "two river influences share an association and a well attribution (one gauge per path)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this (SAMPLE(?i) AS ?value) WHERE {
+    ?i lulcw:derivationRule $this ; prov:wasDerivedFrom ?as , ?aw .
+    ?as lulcw:associationType ?t .
+    ?aw lulcw:role ?role .
+    FILTER (?role = lulcw:MonitoringRole)
+}
+GROUP BY $this ?as ?aw
+HAVING (COUNT(DISTINCT ?i) > 1)""" ] .
+
+lulcwsh:CanalInfluenceKeyShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/canal-influence> ;
+    sh:sparql [
+        sh:message "a canal association with a canal-return statement has no influence for an attribution naming its unit" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT DISTINCT $this ?value WHERE {
+    ?value lulcw:derivationRule $this ; lulcw:associationUnit ?u ; lulcw:withinExtent ?z ;
+           lulcw:applicableStatement ?s .
+    ?s lulcw:exchangeDirection lulcw:SurfaceToAquifer .
+    ?z lulcw:zoneOf ?w .
+    ?aw lulcw:attributedEntity ?w ; lulcw:role ?role ; lulcw:candidateUnit ?u .
+    FILTER (?role = lulcw:MonitoringRole)
+    FILTER NOT EXISTS { ?i prov:wasDerivedFrom ?value , ?aw ; lulcw:mechanism lulcw:CanalReturnFlow . }
+}""" ] .

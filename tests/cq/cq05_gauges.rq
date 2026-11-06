@@ -1,0 +1,34 @@
+# CQ5 · Gauges that can represent the rivers of a well's zone (CQ5, task 12.7)
+#
+# Parameters  ?S  a lulcw:ReachSearchZone
+# Reads       asserted facts (gauges, their series, gauge-zone relations, the gauge pool) and the rule
+#             outputs (river influences, whose drivers are the gauges arm D connects)
+# Returns     one row per gauge on a watercourse with reach pieces in ?S: the gauge, its watercourse,
+#             its horizontal distance to the zone's pieces of that watercourse, its position along
+#             the main stem (upstream, downstream, along the zone's stretch, off the main stem) and
+#             the distance along the river, its observed training weeks out of the training weeks,
+#             its record's coverage (empty when not recorded), its local influence (code and comment, as recorded), whether it
+#             belongs to arm C's pool (?inPool) and whether a river influence uses it for the zone's
+#             well (?used). A gauge measures discharge at its own site, not recharge to a unit; a
+#             gauge on the same river outside the zone is a labelled proxy candidate (CQ5 meaning).
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?S ?gaugeCode ?gaugeName ?watercourseCode ?distanceM ?position ?alongRiverM ?observedTrainingWeeks
+       ?trainingWeeks ?coverageStart ?coverageEnd ?localInfluenceCode ?localInfluenceComment ?inPool ?used
+WHERE {
+    ?x a lulcw:GaugeZoneRelation ; lulcw:withinExtent ?S ; lulcw:relatedGauge ?g ;
+       lulcw:horizontalDistanceM ?distanceM ; lulcw:alongRiverPosition ?pos .
+    ?g lulcw:gaugeCode ?gaugeCode ; rdfs:label ?gaugeName ; lulcw:onWatercourse ?wc ; lulcw:hasDischargeSeries ?se .
+    ?wc lulcw:bdCarthageCode ?watercourseCode .
+    ?se lulcw:observedTrainingWeeks ?observedTrainingWeeks ; lulcw:trainingWeeks ?trainingWeeks .
+    OPTIONAL { ?se lulcw:coverageStart ?coverageStart . }
+    OPTIONAL { ?se lulcw:coverageEnd ?coverageEnd . }
+    OPTIONAL { ?x lulcw:alongRiverDistanceM ?alongRiverM . }
+    OPTIONAL { ?g lulcw:localInfluenceCode ?localInfluenceCode . }
+    OPTIONAL { ?g lulcw:localInfluenceComment ?localInfluenceComment . }
+    BIND (EXISTS { ?pool lulcw:poolMember ?g . } AS ?inPool)
+    BIND (EXISTS { ?S lulcw:zoneOf ?w . ?i lulcw:driverEntity ?g ; lulcw:targetEntity ?w ;
+                   lulcw:mechanism lulcw:RiverExchange . } AS ?used)
+    BIND (STRAFTER(STR(?pos), "#") AS ?position)
+}
+ORDER BY ?watercourseCode ?distanceM

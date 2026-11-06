@@ -19,6 +19,10 @@ Scope: the six MUST competency questions (docs/competency_questions.md), in thei
   CQ4       recharge-related forcing (src/kg/forcing.py): SAFRAN weather cells with their weekly
             forcing series, the forcing extent, an outcrop search zone per piezometer, and the
             area of every polygon of the graph inside each cell and reference extent
+  CQ5, CQ6  rivers, gauges and canals (src/kg/rivers.py): watercourses and their main stems, the
+            river and canal reaches near each piezometer cut by the polygons of the graph, the
+            river sections that documents qualify, the gauges with their discharge series, the
+            exchange statements of configs/exchange_evidence.csv, the plain's canal intakes
 
 Only facts and assertions whose derivation already exists outside the graph enter here.
 The links that the model's graph is made of (stratigraphic relations and `overlies`, well
@@ -32,9 +36,10 @@ Choices
   polygon vertices to 0.01 m.
 - Polygons: those intersecting the plain box, plus those containing a piezometer or a
   facility (a point on a shared edge keeps the first polygon, as in src.kg.pump_attribution),
-  plus (CQ4) the polygons where a unit of these stacks is mapped at outcrop inside the weather
-  cells or a search zone, to closure (the outcrops of units first met in an added stack are
-  added too), so that every unit of the graph has its whole outcrop there.
+  plus (CQ5, CQ6) those a river or canal reach of a search zone crosses, plus (CQ4) the polygons
+  where a unit of these stacks is mapped at outcrop inside the weather cells or a search zone, to
+  closure (the outcrops of units first met in an added stack are added too), so that every unit of
+  the graph has its whole outcrop there.
 - Monitoring attribution: the ADES record (Hub'Eau codes_bdlisa, in list order), confident if
   the recorded unit is under the point or within EDGE_M of it, else probable (the record rule
   of task 12.3). No record: an explicit unknown; map position alone does not establish what a
@@ -71,7 +76,7 @@ from src.analysis.bdlisa_profile import GPKG, group_of
 from src.analysis.bnpe_profile import load as load_bnpe
 from src.analysis.piezo_profile import PLAIN_BBOX
 from src.config import CRS_L93, CRS_WGS84, DATASET, DATASET_DIR, INTERIM, PROCESSED, RAW, ROOT
-from src.kg import forcing, landuse
+from src.kg import forcing, landuse, rivers
 from src.kg import pump_attribution as pa
 
 L = Namespace("https://w3id.org/lulcw#")
@@ -736,12 +741,13 @@ def main():
 
     raw = pd.read_parquet(RAW / "hubeau" / "stations_66.parquet").set_index("code_bss")
     extra = set(attr["unit"].dropna()) | set(evid["rec_unit"].dropna()) | \
-        {c for b in wells["code_bss"] for c in recorded_codes(raw, b)}
+        {c for b in wells["code_bss"] for c in recorded_codes(raw, b)} | rivers.statement_units()
+    riv = rivers.Context(wells, w_pts, poly)
 
     # polygons: the plain, those under a well or a facility, and (CQ4) the outcrop polygons of
     # the units of these stacks inside the cells or a search zone, each with its whole stack;
     # to closure, since an added stack can hold a unit not met before (2 passes on v4)
-    used = set(w_cp.dropna()) | set(f_cp.dropna())
+    used = set(w_cp.dropna()) | set(f_cp.dropna()) | riv.polygons
     base = poly[poly.intersects(plain_box) | poly["codepoly"].isin(used)]
     polys = set(base["codepoly"])
     units0 = set(pile.loc[pile["CodePoly"].isin(polys), "CodeEH"]) | extra
@@ -770,15 +776,20 @@ def main():
     forc = forcing.add(kg, rel, wells, w_pts, keep, cells, versions, unit, pile, set(tme.index))
     forc |= {"outcrop_polygons_added": len(outcrops), "outcrop_passes": passes,
              "units_first_met_in_added_stacks": new_units}
+    keys = [w["bss_id"] if isinstance(w["bss_id"], str) and w["bss_id"] else w["code_bss"]
+            for _, w in wells.iterrows()]
+    assert riv.polygons <= set(keep["codepoly"]), "a reach piece's polygon is not in the graph"
+    river = rivers.add(kg, rel, riv, unit, {k: iri("piezometer", k) for k in keys}, versions,
+                       pd.read_parquet(DATASET_DIR / "pumping_points.parquet"))
 
     head = URIRef(D + f"kg-{DATASET}")
     kg.node(head, OWL.Ontology)
     kg.add(head, OWL.imports, URIRef("https://w3id.org/lulcw/meta"))
     kg.add(head, DCT.title, Literal(f"LULC-Water knowledge graph, dataset {DATASET}", lang="en"))
     kg.add(head, DCT.description, Literal(
-        "Source facts and qualified assertions for the MUST competency questions CQ1, CQ2, CQ3, "
-        "CQ7, CQ8, CQ11 and CQ12 (tasks 12.5, 12.6); derived links come from the SHACL-AF rules "
-        "of task 12.6.", lang="en"))
+        "Source facts and qualified assertions for the competency questions CQ1-CQ8, CQ11 and "
+        "CQ12 (tasks 12.5-12.7); derived links come from the SHACL-AF rules of task 12.6.",
+        lang="en"))
     kg.add(head, DCT.created, Literal(date.today().isoformat(), datatype=XSD.date))
     kg.add(head, PROV.wasGeneratedBy, ex["kg"])
     kg.add(head, OWL.versionInfo, Literal(versions["kg"]))
@@ -808,6 +819,7 @@ def main():
         "piezometers_without_polygon": int(w_cp.isna().sum()),
         "facilities_without_polygon": int(f_cp.isna().sum()),
         "land_use": land, "crop_demand_code_version": versions["crop"], "forcing": forc,
+        "rivers_and_canals": river,
     }
     (OUT / f"lulcw_kg_{DATASET}_summary.json").write_text(json.dumps(summary, indent=1,
                                                                      ensure_ascii=False))

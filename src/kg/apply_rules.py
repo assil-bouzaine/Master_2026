@@ -21,7 +21,10 @@ selections of each export policy and the main policy's monitors/pumpsFrom view (
 same-unit well links within 5 km (CQ11) and pumping influences (CQ8); for land use (CQ7), the
 crop class of each RPG code, class areas per zone and RPG year, and a dated high-irrigation-
 demand category per zone and year; for recharge-related forcing (CQ4), the outcrop coverages and
-cell weights, and the recharge-proxy influences of the weather cells on the wells (CQ4, CQ8).
+cell weights, and the recharge-proxy influences of the weather cells on the wells (CQ4, CQ8); for
+rivers and canals (CQ5, CQ6), the river-unit and canal-unit associations of each reach search zone,
+the exchange statements that apply to them, and the river (gauge) and canal (intake group)
+influences on the wells (CQ8).
 They are derived by SPARQL inside the graph, so that the
 equivalence test of task 12.8 compares two independent derivations (pandas on the source tables
 is the other).
@@ -277,6 +280,21 @@ def counts(facts, added):
         "SELECT ?k (COUNT(?v) AS ?n) WHERE { ?v a lulcw:OutcropCoverage ; lulcw:withinExtent ?s . "
         "BIND (IF(STRSTARTS(STR(?s), STR(<outcrop-zone/>)), <kind/search-zone>, ?s) AS ?k) } GROUP BY ?k")
     out["cell_weights"] = len(list(added.subjects(RDF.type, L.CellWeight)))
+    # rivers and canals (CQ5, CQ6, CQ8)
+    out["river_associations_by_type"] = one(
+        "SELECT ?t (COUNT(?a) AS ?n) WHERE { ?a a lulcw:RiverUnitAssociation ; lulcw:associationType ?t } GROUP BY ?t")
+    out["canal_associations"] = len(list(added.subjects(RDF.type, L.CanalUnitAssociation)))
+    out["applicable_statements"] = len(list(added.triples((None, L.applicableStatement, None))))
+    for mech, key in ((L.RiverExchange, "river"), (L.CanalReturnFlow, "canal")):
+        rows = g.query(pre + "SELECT ?e ?s (COUNT(?i) AS ?n) (COUNT(DISTINCT ?w) AS ?nw) WHERE { ?i a lulcw:Influence ; "
+                       f"lulcw:mechanism <{mech}> ; lulcw:constraintEligibility ?e ; lulcw:responseSign ?s ; "
+                       "lulcw:targetEntity ?w } GROUP BY ?e ?s")
+        out[f"{key}_influences_by_eligibility_and_sign"] = {
+            f"{str(r[0]).split('#')[-1]} / {str(r[1]).split('#')[-1]}": {"influences": int(r[2]), "wells": int(r[3])}
+            for r in rows}
+        out[f"{key}_influences_selected_by_policy"] = one(
+            "SELECT ?p (COUNT(?i) AS ?n) WHERE { ?i a lulcw:Influence ; "
+            f"lulcw:mechanism <{mech}> ; lulcw:selectedUnder ?p }} GROUP BY ?p")
     thr = list(g.objects(HIGH_DEMAND, L.demandThresholdM3))
     out["high_demand_threshold_m3"] = float(thr[0]) if thr else None
     return out
@@ -309,7 +327,8 @@ def main():
                                       "by the SHACL-AF rules", lang="en")))
     out.add((head, DCT.description, Literal(
         "Stratigraphic relations, policy selections, same-unit well links, pumping influences, "
-        "land-use classes and categories, outcrop coverages and recharge-proxy influences "
+        "land-use classes and categories, outcrop coverages, recharge-proxy influences, river and "
+        "canal associations and their influences "
         f"derived from lulcw_kg_{DATASET}.ttl by ontology/rules/lulcw-rules.ttl (task 12.6).",
         lang="en")))
     out.add((head, DCT.created, Literal(date.today().isoformat(), datatype=XSD.date)))

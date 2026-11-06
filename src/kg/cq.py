@@ -8,7 +8,13 @@ The queries are SPARQL files; their headers state the parameters, what they read
 columns (docs/competency_questions.md §6). Parameters are bound by a VALUES clause placed at the
 top of the query's WHERE block: standard SPARQL 1.1, evaluated first by any engine. pyoxigraph's
 own substitutions (SEP-0007) act as a join after evaluation in 0.5, too late for the status
-queries, which must give a row even where the graph holds no data. Distances use XPath 3.1
+queries, which must give a row even where the graph holds no data.
+The same VALUES clause also replaces each comment `#bind-parameters` (MARK), which a query puts
+right after the opening brace of a sub-select: pyoxigraph 0.5 evaluates a sub-select on its own
+before joining it, and evaluates every pattern of an EXISTS in full before hash-joining them, so
+a test over a large predicate (the 9,000 reach pieces, prov:wasDerivedFrom) costs 0.1-0.5 s as an
+EXISTS or an unbound sub-select, and milliseconds as a sub-select that starts from the
+parameters (measured 2026-11-06). Elsewhere the comment is ignored: the answers are the same. Distances use XPath 3.1
 math:sqrt, registered here for pyoxigraph (src.kg.apply_rules registers it for rdflib).
 Used by tests/test_cq.py and by the reports that answer questions from the graph.
 """
@@ -65,13 +71,18 @@ def py(v):
     return v.value
 
 
+MARK = "#bind-parameters"
+
+
 def bind(query, params):
-    """The query with its parameters bound by a VALUES clause at the top of its WHERE block."""
+    """The query with its parameters bound by a VALUES clause at the top of its WHERE block and in
+    place of each MARK comment (the sub-selects that start from the parameters)."""
     if not params:
         return query
     i = query.index("WHERE {") + len("WHERE {")
     row = " ".join(str(term(v)) for v in params.values())
-    return f"{query[:i]}\n    VALUES ({' '.join('?' + k for k in params)}) {{ ({row}) }}{query[i:]}"
+    values = f"VALUES ({' '.join('?' + k for k in params)}) {{ ({row}) }}"
+    return f"{query[:i]}\n    {values}{query[i:]}".replace(MARK, values)
 
 
 def ask(store, name, **params):

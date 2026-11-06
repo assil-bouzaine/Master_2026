@@ -124,10 +124,10 @@ the data contract; historical v3 findings remain in the linked step notes.
 | CQ2 | Which abstraction facilities may draw from W's unit, with what evidence and uncertainty? | G F C V R | MUST | Attribution tables available; resolution/conflicts need explicit representation |
 | CQ3 | What is the local vertical arrangement of units in S? | G F V | MUST | BD LISA stacks available; aggregate contacts need spatial qualification |
 | CQ4 | Which mapped outcrop areas of U can support recharge-related inputs, and how are they covered by weather cells? | F E | SHOULD | Built 2026-10-27: coverages, weights and recharge-proxy influences (with CQ8) |
-| CQ5 | Which river reaches are associated with U, and what is known about exchange and gauge relevance? | G F C | SHOULD | River/gauge metadata available; hydraulic evidence incomplete |
-| CQ6 | Which canal supply areas overlap U, and which intake-to-recharge pathways are supported? | G F C R S | COULD | Intakes available; supply-area and pathway evidence missing |
+| CQ5 | Which river reaches are associated with U, and what is known about exchange and gauge relevance? | G F C | SHOULD | Built 2026-11-06: reaches, sections, gauges, cited exchange statements, associations and river influences (with CQ8); exchange documented for a few sections only |
+| CQ6 | Which canal supply areas overlap U, and which intake-to-recharge pathways are supported? | G F C R S | COULD | Built 2026-11-06 as a partial chain (canals on outcrops, intakes, cited return statements, canal influences); command areas a documented gap |
 | CQ7 | What crops/land uses occupy S in year y, and what irrigation-demand estimates are justified? | F E R S | MUST | RPG 2016/2023 available; demand method/mappings to validate |
-| CQ8 | Which driver-to-head pathways are admissible for W, and under what conditions may their signs constrain the model? | C G E V | MUST | Pumping drawdown and recharge proxies built; river and canal pathways wait for CQ5, CQ6 |
+| CQ8 | Which driver-to-head pathways are admissible for W, and under what conditions may their signs constrain the model? | C G E V | MUST | Pumping drawdown, recharge proxies, river exchange and canal return flow built; lateral inflow and vertical leakage not represented |
 | CQ9 | Which restriction events applied to the relevant location, resource and use during T? | E V | COULD | Level histories available; authoritative spatial applicability missing |
 | CQ10 | Which evidence and model results support an explanation of W at time t? | E V S | MUST | KG, model-result links and explanation checks to build |
 | CQ11 | Which wells are same-unit neighbours of W under a declared distance/depth policy? | G V | MUST | Well metadata available |
@@ -285,6 +285,19 @@ for the requested period?
 - **Evidence/readiness:** `dataset_v4/gauges.parquet` and river series are available.
   Names provide candidate associations; reach geometry, hydraulic documentation and
   a gauge-to-reach selection rule still need work.
+  *Built (2026-11-06; `tests/cq/cq05_*.rq`):* BD TOPO reaches of the gauged and documented
+  watercourses cut by the 5 km zone of each well and by the BD LISA polygons; WFD river
+  water bodies and stretches located by BRGM; the gauges with their series coverage, arm
+  C's pool and each gauge's distance and position along the main stem; 32 exchange
+  statements quoted from four documents (direction as a state with its period, hedging,
+  how the source names the unit). Rules give each zone's associations for the units of its
+  well: on outcrop, over cover (covering units listed) or documented lateral, with the
+  statements that apply. `cq05_status`: conflicting where applicable statements disagree
+  (the Têt above the Comelade: FRDG351 losing, BRGM 2017 gaining), supported with a
+  documented exchange or independence, partial when only geometric or part of the reaches is
+  off the map, unknown for a unit not searched (not attributed to the zone's well) or when
+  rule outputs are missing; a completed search with no association is supported, never
+  "no river exchange".
 - **Acceptance:** the Têt name may associate `718BP02` with a river, but cannot alone
   produce a signed recharge constraint. A gauge on the same river but outside the
   relevant reach remains a labelled proxy candidate. Two documented opposing exchange
@@ -308,6 +321,12 @@ irrigation return flow reaching U?
 - **Evidence/readiness:** BNPE canal-related records exist; authoritative supply-area
   polygons, service links and local return-flow evidence are not yet available. The
   current plain-wide canal feature is a modelling proxy, not a mapped local pathway.
+  *Built as a partial chain (2026-11-06; `tests/cq/cq06_*.rq`):* the canal reaches (BD TOPO)
+  on the outcrop of each well's unit within 5 km, the plain's surface intakes behind the
+  canal input (BNPE) and the cited canal-return statements (BRGM/RP-71486-FR, FRDG351);
+  `cq06_chain` returns intake group → canals on the outcrop → [command area not mapped] →
+  unit, with the statements, never a local return amount. Command areas remain a documented
+  data gap (none found on data.gouv.fr, the prefecture site, the Géoplateforme or Sandre).
 - **Acceptance:** synthetic areas supplied by two intakes keep distinct supply chains;
   an overlapping parcel is not counted twice without an allocation rule. With only an
   intake record, return a partial chain and no local recharge amount or hard sign.
@@ -374,8 +393,18 @@ may their response signs constrain a model?
   its use as a constraint settled at Gate 3; each names the pathways it omits
   (`lulcw:omitsPathway`: lateral inflow, vertical leakage, river exchange, canal return
   flow). `cq08_status` reports the recharge search: derived, none_found (a completed search
-  found no outcrop of W's unit in its zone; not zero recharge) or unknown. Canal return flow
-  and river exchange are not yet influences (CQ5, CQ6): the answer stays partial.
+  found no outcrop of W's unit in its zone; not zero recharge) or unknown. River exchange and
+  canal return flow (2026-11-06, CQ5 and CQ6): one influence per river-unit association and
+  well attribution, from the pool gauge of arm C on the associated watercourse nearest to the
+  zone's reaches (driver: weekly discharge, `lulcw:proxyFor lulcw:RiverStage`; non-decreasing
+  on outcrop and for a documented lateral exchange, eligible only with a documented exchange
+  and no stated independence; over cover the sign stays unknown and is never eligible); one
+  canal influence of the plain's intake group where canals cross the outcrop of W's unit and a
+  source documents canal return flow into it (eligible only for a stated finding). Both are
+  settled for use at Gate 3. `cq08_status` reports `river` (derived, no_pool_gauge, none_found,
+  unknown) and `canal` (derived, not_documented, none_found, unknown), with reasons; missing or
+  stale rule outputs answer unknown, never none_found. Lateral inflow and vertical leakage are
+  not influences: the answer stays partial.
 - **Acceptance:** a synthetic supported pumping path yields a conditional negative
   response sign; a name-only river link yields no hard sign. A missing/unaccepted
   segment blocks an accepted end-to-end path. Seasonal deficit and reconstructed

@@ -4,15 +4,16 @@
 # Parameters  ?W  a lulcw:Piezometer;  ?policy  a lulcw:ExportPolicy
 # Reads       SHACL-AF rule outputs (lulcw:Influence, lulcw:selectedUnder, outcrop coverages and cell
 #             weights) and asserted facts (attributions, codes); no OWL reasoning
-# Returns     one row per influence on ?W: the driver (a facility's BNPE code, or a weather cell's
-#             SAFRAN id), driver variable, the quantity it stands in for when it is a proxy (recharge
+# Returns     one row per influence on ?W: the driver (a facility's BNPE code, a weather cell's
+#             SAFRAN id, a gauge's code, or the canal intake group), driver variable, the quantity it stands in for when it is a proxy (recharge
 #             proxies: effective rainfall for groundwater recharge), mechanism, the proposed response
 #             sign, the driver group, the distance (m, pumping), the reference extent and the cell's
 #             share of the outcrop (recharge: the well's 5 km search zone in the main runs, the forcing
 #             extent in the unit-wide sensitivity), the resolution of the path, its confidence, the
 #             constraint eligibility and its reason, the conditions, the path (the facility's and the
 #             well's attributions, the shared unit or group, or the unit whose outcrop the cell
-#             covers), the pathways the influence omits, and whether ?policy accepts the path (every
+#             covers, or the unit a river or canal association names, with the association's type),
+#             the pathways the influence omits, and whether ?policy accepts the path (every
 #             attribution selected; a missing or unaccepted segment blocks it). A sign is a directional
 #             response to a stated input change with the other drivers held fixed, not a weekly
 #             correlation nor measured causality; an absent path is not proof of no influence
@@ -21,7 +22,7 @@ PREFIX lulcw: <https://w3id.org/lulcw#>
 PREFIX prov: <http://www.w3.org/ns/prov#>
 SELECT ?W ?policy ?influence ?driverCode ?driverVariable ?proxyFor ?mechanism ?responseSign ?driverGroup
        ?distanceM ?extent ?cellWeight ?resolution ?confidence ?eligibility ?eligibilityReason ?conditions
-       ?driverAttribution ?wellAttribution ?via ?viaCode ?omittedPathways ?selected
+       ?driverAttribution ?wellAttribution ?via ?viaCode ?associationType ?omittedPathways ?selected
 WHERE {
     ?influence a lulcw:Influence ; lulcw:targetEntity ?W ; lulcw:driverEntity ?driver ;
         lulcw:driverVariable ?driverVariable ; lulcw:mechanism ?mechanism ;
@@ -45,20 +46,30 @@ WHERE {
         ?cov lulcw:hasCellWeight ?cw ; lulcw:coverageUnit ?viaR .
         ?viaR lulcw:bdlisaCode ?codeR .
     }
+    OPTIONAL {   # rivers and canals (CQ5, CQ6): the association the influence derives from
+        ?asn lulcw:associationUnit ?viaA .
+        ?influence prov:wasDerivedFrom ?asn .
+        ?viaA lulcw:bdlisaCode ?codeA .
+        OPTIONAL { ?asn lulcw:associationType ?atype . }
+    }
     OPTIONAL {
         SELECT ?influence (GROUP_CONCAT(STRAFTER(STR(?om), "#"); separator=" ") AS ?omittedPathways)
         WHERE { ?influence lulcw:omitsPathway ?om . }
         GROUP BY ?influence
     }
     OPTIONAL { ?driver lulcw:bnpeCode ?bnpe . }
+    OPTIONAL { ?driver lulcw:gaugeCode ?gauge . }
     OPTIONAL { ?influence lulcw:proxyFor ?proxyFor . }
     OPTIONAL { ?influence lulcw:withinExtent ?extent . }
     OPTIONAL { ?influence lulcw:horizontalDistanceM ?distanceM . }
     OPTIONAL { ?influence lulcw:eligibilityReason ?eligibilityReason . }
     OPTIONAL { ?influence lulcw:conditions ?conditions . }
-    BIND (COALESCE(?viaD, ?viaR) AS ?via)
-    BIND (COALESCE(?codeD, ?codeR, STRAFTER(STR(?viaD), "/unit-group/")) AS ?viaCode)
-    BIND (COALESCE(?bnpe, STRAFTER(STR(?driver), "/weather-cell/")) AS ?driverCode)
+    BIND (COALESCE(?viaD, ?viaR, ?viaA) AS ?via)
+    BIND (COALESCE(?codeD, ?codeR, ?codeA, STRAFTER(STR(?viaD), "/unit-group/")) AS ?viaCode)
+    BIND (COALESCE(?bnpe, ?gauge, IF(STRSTARTS(STR(?driver), "https://w3id.org/lulcw/data/canal-intakes/"),
+                                     CONCAT("canal-intakes:", STRAFTER(STR(?driver), "/canal-intakes/")),
+                                     STRAFTER(STR(?driver), "/weather-cell/"))) AS ?driverCode)
+    BIND (STRAFTER(STR(?atype), "#") AS ?associationType)
     BIND (EXISTS { ?influence lulcw:selectedUnder ?policy . } AS ?selected)
 }
 ORDER BY ?mechanism ?distanceM ?driverCode ?resolution

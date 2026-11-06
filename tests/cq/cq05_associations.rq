@@ -1,0 +1,45 @@
+# CQ5 · River reaches associated with the units of a well's zone (docs/competency_questions.md §4,
+# CQ5; task 12.7)
+#
+# Parameters  ?S  a lulcw:ReachSearchZone (the 5 km zone of a well)
+# Reads       SHACL-AF rule outputs (lulcw:RiverUnitAssociation) and asserted facts (reach pieces,
+#             watercourses, units); no OWL reasoning
+# Returns     one row per association in ?S: the watercourse (BD Carthage code, name), the unit, the
+#             association type (on outcrop: the river runs on the unit's outcrop; over cover: it runs
+#             over the units that cover it, listed in ?coverUnits; documented lateral: a source
+#             documents an exchange between the unit and a section of the zone), the lengths, the
+#             number of reach pieces of the watercourse in ?S, and the number of exchange statements
+#             that apply (cq05_statements.rq lists them). An association is geometric or documentary:
+#             a shared river name, a spatial intersection and a demonstrated hydraulic connection are
+#             different assertions (CQ5 meaning); the search covers the watercourses of the dataset's
+#             gauges and those the documents name, not every stream (cq05_status.rq).
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?S ?association ?watercourseCode ?watercourseName ?unitCode ?type ?lengthOnOutcropM
+       ?lengthOverCoverM ?coverUnits ?pieces ?statements
+WHERE {
+    ?association a lulcw:RiverUnitAssociation ; lulcw:withinExtent ?S ;
+        lulcw:associationWatercourse ?wc ; lulcw:associationUnit ?u ; lulcw:associationType ?t .
+    ?wc lulcw:bdCarthageCode ?watercourseCode ; rdfs:label ?watercourseName .
+    ?u lulcw:bdlisaCode ?unitCode .
+    OPTIONAL { ?association lulcw:lengthOnOutcropM ?lengthOnOutcropM . }
+    OPTIONAL { ?association lulcw:lengthOverCoverM ?lengthOverCoverM . }
+    OPTIONAL {
+        SELECT ?association (GROUP_CONCAT(DISTINCT ?cc; separator=" ") AS ?coverUnits)
+        WHERE { ?association lulcw:coverUnit ?cu . ?cu lulcw:bdlisaCode ?cc . }
+        GROUP BY ?association
+    }
+    OPTIONAL {
+        SELECT ?association (COUNT(DISTINCT ?s) AS ?nst)
+        WHERE { ?association lulcw:applicableStatement ?s . }
+        GROUP BY ?association
+    }
+    OPTIONAL {
+        SELECT ?S ?wc (COUNT(DISTINCT ?p) AS ?pieces)
+        WHERE { ?p lulcw:withinExtent ?S ; lulcw:pieceOfReach ?r . ?r lulcw:reachOf ?wc . }
+        GROUP BY ?S ?wc
+    }
+    BIND (COALESCE(?nst, 0) AS ?statements)
+    BIND (STRAFTER(STR(?t), "#") AS ?type)
+}
+ORDER BY ?watercourseCode ?unitCode ?type

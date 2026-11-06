@@ -32,6 +32,18 @@
         extent holding 0.8 of Y's outcrop said in its conditions); W1, whose zone holds outcrop of
         other units only, gets none; a policy selects a proxy exactly when it selects the well's
         attribution (W8's is probable)
+   CQ5  rivers: R1's watercourse on its unit's outcrop, in a water body where a statement documents
+        drainage, gets an eligible, non-decreasing influence from the nearest gauge of the pool (a
+        nearer gauge outside the pool is not used); R2's river over the unit covering its own gets a
+        conditional, ineligible influence with the cover unit named; R3's unit is not under the
+        reaches, but a statement documents its exchange with the zone's section: documented lateral,
+        eligible; R4 (no documented section, 50 m off the map) non-decreasing but ineligible; R5,
+        where one statement states independence and another an exchange, ineligible; R6's
+        watercourse has no pool gauge: an association and no influence; a statement that does not
+        delimit its stretch applies to no zone
+   CQ6  canals: R1's canal on its unit's outcrop with a stated return statement gives an eligible
+        canal influence of the intake group; R6's, with a hedged one, an ineligible one; the river
+        and canal influences are selected exactly with the wells' attributions
    The fixture graph, with the rule outputs, has no violation.
 3. Negative controls, each inserted on purpose and reported as a violation: an ordering chained
    across two polygons, a self-paired well link, an eligible influence with an unknown sign,
@@ -49,7 +61,14 @@
    proxy of the same surplus on one path (soil drainage beside effective rainfall), a missing
    proxy in a well's zone and in the unit-wide extent (a derivation not run, or stale), a proxy
    resting on another well's attribution, a driver that is not a water-surplus proxy, a proxy in
-   another well's search zone.
+   another well's search zone; (CQ5, CQ6) a missing on-outcrop association, an eligible river
+   influence over cover, an eligible river influence without a documented exchange, a river
+   influence from a gauge outside the pool, two river influences on one path, a missing river
+   influence, a river piece in a section of another watercourse, a statement without its passage,
+   an eligible canal influence on a hedged statement, a canal statement about a river section, a
+   distance along the river off the main stem, a canal reach typed as a river reach, a documented
+   lateral association without its statement, an association whose unit is not the well's, a
+   missing canal influence.
 4. Data-backed regression (when the graph and the rule outputs exist), against pandas on the
    source tables: the stratigraphic relations equal the pairs of the BD LISA stack table for
    the graph's polygons, and the direct contacts of the plain's polygons equal the overlies
@@ -86,7 +105,7 @@ from rdflib.namespace import RDF, RDFS, SKOS, XSD
 
 from src.analysis.bdlisa_profile import GPKG
 from src.analysis.bnpe_profile import load as load_bnpe
-from src.config import CRS_L93, CRS_WGS84, DATASET, DATASET_DIR, INTERIM, PROCESSED
+from src.config import CRS_L93, CRS_WGS84, DATASET, DATASET_DIR, INTERIM, PROCESSED, RAW, ROOT
 from src.dataset.crop_demand import AREA_OUT, code_to_class, load_classes
 from src.kg.apply_rules import (RULES, SHAPES, check, ontology_network, rule_records,
                                 run_rules)
@@ -262,6 +281,7 @@ def build_fixture():
     fx.well("W8", -30000, -30000, Y, L.Probable, depth=70)   # no Y outcrop in its zone; unit-wide only
     add_landuse(fx)
     add_forcing(fx, (A, B, C, X, Y, Z))
+    add_rivers(fx, {"A": A, "B": B, "X": X, "Z": Z})
     return fx, {"A": A, "B": B, "C": C, "X": X, "Y": Y, "Z": Z, "U": U, "V": V, "G": G}
 
 
@@ -309,6 +329,172 @@ def add_forcing(fx, described):
             a((x, L.intersectedCell, d(f"weather-cell/{cell}")))
         a((x, L.intersectionAreaM2, Literal(m2, datatype=XSD.double)))
         a((x, PROV.wasGeneratedBy, d("execution/polygon-cell-intersection")))
+
+
+# CQ5, CQ6: wells R1-R6 (far from the others: no well link, no pumping or recharge path), each with
+# its reach search zone; (zone, reach, watercourse or None for a canal, polygon or None off the map,
+# length m, section or None)
+RIVER_PIECES = (("R1", "r1", "WC1", 2, 1500.0, "FRDRT1"), ("R1", "k1", None, 2, 800.0, None),
+                ("R2", "r2", "WC2", 3, 1200.0, None),
+                ("R3", "r3", "WC1", 2, 700.0, "t-sec2"),
+                ("R4", "r4", "WC1", 2, 900.0, None), ("R4", "r4b", "WC1", None, 50.0, None),
+                ("R5", "r5", "WC1", 2, 600.0, "FRDRT3"),
+                ("R6", "r6", "WC3", 1, 1000.0, None), ("R6", "k6", None, 1, 400.0, None))
+# gauge, watercourse, pool member; per zone: (distance m, position, distance along the river m or None)
+RIVER_GAUGES = {"G1": ("WC1", True), "G2": ("WC1", True), "G3": ("WC1", False), "G4": ("WC2", True),
+                "G5": ("WC3", False)}
+RIVER_RELATIONS = {("R1", "G1"): (1000.0, "UpstreamOfZone", 2000.0), ("R1", "G2"): (3000.0, "DownstreamOfZone", 5000.0),
+                   ("R1", "G3"): (500.0, "AlongZoneStretch", 0.0),
+                   ("R3", "G1"): (4000.0, "UpstreamOfZone", 6000.0), ("R3", "G2"): (2500.0, "DownstreamOfZone", 3000.0),
+                   ("R3", "G3"): (100.0, "OffMainStem", None),
+                   ("R4", "G1"): (1200.0, "UpstreamOfZone", 1500.0), ("R4", "G2"): (2000.0, "DownstreamOfZone", 2500.0),
+                   ("R4", "G3"): (300.0, "AlongZoneStretch", 0.0),
+                   ("R5", "G1"): (800.0, "AlongZoneStretch", 0.0), ("R5", "G2"): (900.0, "DownstreamOfZone", 1000.0),
+                   ("R5", "G3"): (700.0, "AlongZoneStretch", 0.0),
+                   ("R2", "G4"): (600.0, "DownstreamOfZone", 700.0), ("R6", "G5"): (400.0, "AlongZoneStretch", 0.0)}
+# statement, mechanism, section (or None), watercourse (or None), unit, direction, hedging
+RIVER_STATEMENTS = (("S1", "RiverExchange", "FRDRT1", "WC1", "X", "AquiferToSurface", "StatedFinding"),
+                    ("S2", "RiverExchange", "t-sec2", "WC1", "B", "ExchangeEquilibrium", "StatedFinding"),
+                    ("S3", "RiverExchange", "FRDRT3", "WC1", "X", "NoExchange", "StatedFinding"),
+                    ("S4", "RiverExchange", "FRDRT3", "WC1", "X", "SurfaceToAquifer", "StatedFinding"),
+                    ("S5", "RiverExchange", None, "WC1", "X", "SurfaceToAquifer", "StatedFinding"),
+                    ("C1", "CanalReturnFlow", None, None, "X", "SurfaceToAquifer", "StatedFinding"),
+                    ("C2", "CanalReturnFlow", None, None, "A", "SurfaceToAquifer", "HedgedFinding"))
+
+
+def add_rivers(fx, u):
+    """CQ5, CQ6 fixture on the polygons of the stacks: R1 (unit X) has watercourse WC1 on X's outcrop
+    (polygon 2) inside water body FRDRT1, where S1 documents drainage of X, and a canal on that
+    outcrop with a stated return statement (C1); R2 (unit Z) has WC2 over Y, which covers Z
+    (polygon 3); R3 (unit B) has WC1 on polygon 2, which does not hold B, inside section t-sec2 where
+    S2 documents an exchange with B (documented lateral); R4 (unit X) has WC1 on X's outcrop in no
+    documented section, and 50 m of it off the map; R5 (unit X) has WC1 in water body FRDRT3, where
+    S3 states independence and S4 an exchange; R6 (unit A) has WC3 (no pool gauge) on A's outcrop
+    (polygon 1) and a canal there with a hedged return statement (C2). S5 is about WC1 without a
+    delimited stretch: listed, never applied. Gauges G1, G2 (pool) and G3 (not pool) are on WC1, G4
+    (pool) on WC2, G5 (not pool) on WC3; G3 is the nearest in R1's zone but not in the pool."""
+    a = fx.g.add
+    dbl = lambda v: Literal(float(v), datatype=XSD.double)  # noqa: E731
+    exe = d("execution/river-geometry")
+    a((exe, RDF.type, L.RuleExecution))
+    for key, unit in (("R1", "X"), ("R2", "Z"), ("R3", "B"), ("R4", "X"), ("R5", "X"), ("R6", "A")):
+        k = int(key[1])
+        fx.well(key, 100000 + 20000 * k, 100000, u[unit], L.Confident, depth=30)
+        z = d(f"reach-zone/{key}")
+        a((z, RDF.type, L.ReachSearchZone))
+        a((z, L.zoneOf, d(f"piezometer/{key}")))
+        a((z, L.zoneRadiusM, dbl(RADIUS)))
+    for wc in ("WC1", "WC2", "WC3"):
+        n = d(f"watercourse/{wc}")
+        a((n, RDF.type, L.Watercourse))
+        a((n, RDFS.label, Literal(f"river {wc}", lang="fr")))
+        a((n, L.bdCarthageCode, Literal(wc)))
+        a((n, L.mainStemLengthM, dbl(50000)))
+        a((n, L.inRelease, fx.rel))
+    for s, wc in (("FRDRT1", "WC1"), ("FRDRT3", "WC1"), ("t-sec2", "WC1")):
+        n = d(f"water-body/{s}" if s.startswith("FRDR") else f"river-section/{s}")
+        a((n, RDF.type, L.SurfaceWaterBody if s.startswith("FRDR") else L.RiverSection))
+        a((n, RDFS.label, Literal(f"section {s}", lang="fr")))
+        a((n, L.sectionOf, d(f"watercourse/{wc}")))
+        if s.startswith("FRDR"):
+            a((n, L.wfdCode, Literal(s)))
+            a((n, L.inRelease, fx.rel))
+        else:
+            a((n, L.chainageFromM, dbl(1000)))
+            a((n, L.chainageToM, dbl(4000)))
+        fx.geometry(n, "section", s, "LINESTRING(0 0, 1000 0)")
+    reaches = {}
+    for zone, r, wc, poly, length, sec in RIVER_PIECES:
+        if r not in reaches:
+            n = d(f"reach/{r}")
+            a((n, RDF.type, L.RiverReach if wc else L.CanalReach))
+            a((n, RDFS.label, Literal(f"reach {r}", lang="fr")))
+            a((n, L.bdtopoId, Literal(r)))
+            a((n, L.reachNature, Literal("Ecoulement naturel" if wc else "Canal")))
+            if wc:
+                a((n, L.reachOf, d(f"watercourse/{wc}")))
+                a((n, L.onMainStem, Literal(False)))
+            a((n, L.inRelease, fx.rel))
+            fx.geometry(n, "reach", r, "LINESTRING(0 0, 100 0)")
+            reaches[r] = n
+        x = d(f"reach-piece/{zone}/{r}/{poly or 'off-map'}")
+        a((x, RDF.type, L.ReachPiece))
+        a((x, L.pieceOfReach, reaches[r]))
+        if poly:
+            a((x, L.piecePolygon, d(f"polygon/{poly}")))
+        a((x, L.withinExtent, d(f"reach-zone/{zone}")))
+        a((x, L.pieceLengthM, dbl(length)))
+        if sec:
+            a((x, L.inSection, d(f"water-body/{sec}" if sec.startswith("FRDR") else f"river-section/{sec}")))
+        a((x, PROV.wasGeneratedBy, exe))
+    pool = d("gauge-pool/arm-c")
+    a((pool, RDF.type, L.GaugePool))
+    for g, (wc, in_pool) in RIVER_GAUGES.items():
+        n = d(f"gauge/{g}")
+        a((n, RDF.type, L.RiverGauge))
+        a((n, RDFS.label, Literal(f"gauge {g}", lang="fr")))
+        a((n, L.gaugeCode, Literal(g)))
+        a((n, L.onWatercourse, d(f"watercourse/{wc}")))
+        a((n, L.chainageM, dbl(1000)))
+        a((n, L.offsetFromStemM, dbl(5)))
+        a((n, L.inRelease, fx.rel))
+        fx.geometry(n, "gauge", g, "POINT(0 0)")
+        se = d(f"series/rivers-test/{g}")
+        a((se, RDF.type, L.ObservationSeries))
+        a((se, L.seriesVariable, L.RiverDischarge))
+        a((se, L.observedTrainingWeeks, Literal(700, datatype=XSD.integer)))
+        a((se, L.trainingWeeks, Literal(783, datatype=XSD.integer)))
+        a((n, L.hasDischargeSeries, se))
+        if in_pool:
+            a((pool, L.poolMember, n))
+    for (zone, g), (dist, pos, along) in RIVER_RELATIONS.items():
+        x = d(f"gauge-zone/{zone}/{g}")
+        a((x, RDF.type, L.GaugeZoneRelation))
+        a((x, L.relatedGauge, d(f"gauge/{g}")))
+        a((x, L.withinExtent, d(f"reach-zone/{zone}")))
+        a((x, L.horizontalDistanceM, dbl(dist)))
+        a((x, L.alongRiverPosition, getattr(L, pos)))
+        if along is not None:
+            a((x, L.alongRiverDistanceM, dbl(along)))
+        a((x, PROV.wasGeneratedBy, exe))
+    doc = d("document/test")
+    a((doc, RDF.type, L.Document))
+    a((doc, RDFS.label, Literal("test report", lang="fr")))
+    a((doc, L.sourceUrl, Literal("https://example.org/report.pdf", datatype=XSD.anyURI)))
+    a((doc, L.md5, Literal("0" * 32)))
+    a((doc, L.retrievalDate, Literal("2026-11-06", datatype=XSD.date)))
+    for sid, mech, sec, wc, unit, direction, hedging in RIVER_STATEMENTS:
+        pa = d(f"passage/{sid}")
+        a((pa, RDF.type, L.DocumentPassage))
+        a((pa, L.inDocument, doc))
+        a((pa, L.pageLabel, Literal("1")))
+        a((pa, L.quote, Literal(f"a verbatim quote of statement {sid}", lang="fr")))
+        s = d(f"exchange-statement/{sid}")
+        a((s, RDF.type, L.ExchangeStatement))
+        a((s, L.statedMechanism, getattr(L, mech)))
+        if sec:
+            a((s, L.aboutSection, d(f"water-body/{sec}" if sec.startswith("FRDR") else f"river-section/{sec}")))
+        if wc:
+            a((s, L.aboutWatercourse, d(f"watercourse/{wc}")))
+        a((s, L.aboutUnit, u[unit]))
+        a((s, L.unitAsNamed, Literal(f"unit {unit}", lang="fr")))
+        a((s, L.unitMapping, L.UnitListedBySource))
+        a((s, L.exchangeDirection, getattr(L, direction)))
+        a((s, L.hedging, getattr(L, hedging)))
+        a((s, L.stateDescription, Literal("low flow (fixture)", lang="en")))
+        a((s, L.evidenceKind, L.ExpertHypothesis))
+        a((s, PROV.wasDerivedFrom, pa))
+    grp, it = d("canal-intakes/plain"), d("surface-intake/I1")
+    a((grp, RDF.type, L.CanalIntakeGroup))
+    a((it, RDF.type, L.SurfaceWaterIntake))
+    a((it, L.bnpeCode, Literal("I1")))
+    a((it, L.waterSource, L.SurfaceWaterSource))
+    fx.geometry(it, "surface-intake", "I1", "POINT(0 0)")
+    a((grp, L.intakeMember, it))
+    vs = d("series/canal-test/plain")
+    a((vs, RDF.type, L.ObservationSeries))
+    a((vs, L.seriesVariable, L.CanalDiversionVolume))
+    a((grp, L.hasVolumeSeries, vs))
 
 
 FIXTURE_MAPPED_OUTCROP = {"A": 1.0e6, "X": 2.0e6, "Y": 1.25e6}
@@ -515,11 +701,47 @@ def test_fixtures(rules, shapes, net):
     assert cited == {("W1", "A"): 2, ("W1", "X"): 3, ("W7", "X"): 3, ("W8", "A"): 2,
                      ("forcing-cells", "Y"): 1}, cited             # every piece, the outside one too
 
+    # CQ5: river-unit associations, the statements that apply, the river influences
+    assoc = {(z.rsplit("/", 1)[-1], w.rsplit("/", 1)[-1], u_.rsplit("/", 1)[-1], t_.split("#")[-1]): (lo, lc, cv)
+             for z, w, u_, t_, lo, lc, cv in select(g, """SELECT ?z ?wc ?u ?t ?lo ?lc (GROUP_CONCAT(STR(?c)) AS ?cv) WHERE {
+                 ?a a lulcw:RiverUnitAssociation ; lulcw:withinExtent ?z ; lulcw:associationWatercourse ?wc ;
+                    lulcw:associationUnit ?u ; lulcw:associationType ?t .
+                 OPTIONAL { ?a lulcw:lengthOnOutcropM ?lo } OPTIONAL { ?a lulcw:lengthOverCoverM ?lc }
+                 OPTIONAL { ?a lulcw:coverUnit ?c } } GROUP BY ?z ?wc ?u ?t ?lo ?lc""")}
+    assert set(assoc) == {("R1", "WC1", "X", "OnOutcrop"), ("R2", "WC2", "Z", "OverCover"),
+                          ("R3", "WC1", "B", "DocumentedLateral"), ("R4", "WC1", "X", "OnOutcrop"),
+                          ("R5", "WC1", "X", "OnOutcrop"), ("R6", "WC3", "A", "OnOutcrop")}, assoc
+    assert assoc[("R1", "WC1", "X", "OnOutcrop")][0] == 1500.0          # the canal piece is not a river
+    assert assoc[("R4", "WC1", "X", "OnOutcrop")][0] == 900.0           # the off-map piece is not counted
+    assert assoc[("R2", "WC2", "Z", "OverCover")][1:] == (1200.0, str(u["Y"])), assoc
+    applies = {(a_.split("/reach-zone/")[1].split("/")[0], s.rsplit("/", 1)[-1]) for a_, s in select(
+        g, "SELECT ?a ?s WHERE { ?a a lulcw:RiverUnitAssociation ; lulcw:applicableStatement ?s }")}
+    assert applies == {("R1", "S1"), ("R3", "S2"), ("R5", "S3"), ("R5", "S4")}, applies   # S5: not delimited
+    rivers = {(w.rsplit("/", 1)[-1], gg.rsplit("/", 1)[-1]): (sg.split("#")[-1], e.split("#")[-1]) for w, gg, sg, e in select(
+        g, """SELECT ?w ?g ?s ?e WHERE { ?i lulcw:mechanism lulcw:RiverExchange ; lulcw:targetEntity ?w ;
+              lulcw:driverEntity ?g ; lulcw:responseSign ?s ; lulcw:constraintEligibility ?e }""")}
+    assert rivers == {("R1", "G1"): ("PositiveResponse", "EligibleConstraint"),       # G3 nearer, not in the pool
+                      ("R2", "G4"): ("UnknownResponse", "IneligibleConstraint"),      # over cover
+                      ("R3", "G2"): ("PositiveResponse", "EligibleConstraint"),       # documented lateral
+                      ("R4", "G1"): ("PositiveResponse", "IneligibleConstraint"),     # geometric only
+                      ("R5", "G1"): ("PositiveResponse", "IneligibleConstraint")}, rivers  # independence stated
+    # (R6: WC3 has no pool gauge, so no influence)
+    # CQ6: canal-unit associations and canal influences
+    canal = {(z.rsplit("/", 1)[-1], u_.rsplit("/", 1)[-1]): ln for z, u_, ln in select(
+        g, "SELECT ?z ?u ?l WHERE { ?c a lulcw:CanalUnitAssociation ; lulcw:withinExtent ?z ; lulcw:associationUnit ?u ; lulcw:lengthOnOutcropM ?l }")}
+    assert canal == {("R1", "X"): 800.0, ("R6", "A"): 400.0}, canal
+    cinf = {w.rsplit("/", 1)[-1]: e.split("#")[-1] for w, e in select(
+        g, "SELECT ?w ?e WHERE { ?i lulcw:mechanism lulcw:CanalReturnFlow ; lulcw:targetEntity ?w ; lulcw:constraintEligibility ?e }")}
+    assert cinf == {"R1": "EligibleConstraint", "R6": "IneligibleConstraint"}, cinf   # C2 is hedged
+    rsel = {(w.rsplit("/", 1)[-1], p.rsplit("/", 1)[-1]) for w, p in select(
+        g, "SELECT ?w ?p WHERE { ?i lulcw:mechanism lulcw:RiverExchange ; lulcw:targetEntity ?w ; lulcw:selectedUnder ?p }")}
+    assert rsel == {(w, p) for w in ("R1", "R2", "R3", "R4", "R5") for p in ("main", "confident-only", "all-links")}, rsel
+
     conforms, _, results = check(g, shapes, net)
     assert conforms and violations(results) == 0, results
     infos = sum(n for k, n in results.items() if k.startswith("Info"))
     assert infos == 1, results                                    # W2's missing depth
-    print(f"  2. fixtures: CQ3, CQ11, CQ8 (pumping and recharge proxies), CQ2, CQ7 and CQ4 cases hold; "
+    print(f"  2. fixtures: CQ3, CQ11, CQ8 (pumping, recharge proxies, rivers, canals), CQ2, CQ7, CQ4, CQ5 and CQ6 cases hold; "
           f"{len(added)} derived triples; no violation, 1 info (the missing depth)")
     return g
 
@@ -668,6 +890,56 @@ def test_negative_controls(g, shapes, net):
         "a recharge proxy in another well's search zone": (
             [(r7, L.withinExtent, zone)], now(r7, L.withinExtent),
             "InfluenceShape", "neither the target well's search zone"),
+    }
+
+    # CQ5, CQ6: the river and canal fixture (wells R1-R6)
+    a1 = d("reach-zone/R1/river/WC1/X/on-outcrop")
+    a3 = d("reach-zone/R3/river/WC1/B/documented-lateral")
+    i1, i2 = d("influence/river/on-outcrop/G1/to/R1/1"), d("influence/river/over-cover/G4/to/R2/1")
+    i4 = d("influence/river/on-outcrop/G1/to/R4/1")
+    c1, c6 = d("influence/canal/plain/to/R1/1"), d("influence/canal/plain/to/R6/1")
+    twin_r = d("influence/river/on-outcrop/G2/to/R1/1")
+    elig = lambda i: ([(i, L.constraintEligibility, L.EligibleConstraint)], now(i, L.constraintEligibility))  # noqa: E731
+    cases |= {
+        "a missing on-outcrop river association (a derivation not run or stale)": (
+            [], list(g.triples((a1, None, None))), "RiverAssociationKeyShape", "no on-outcrop association exists"),
+        "an eligible river influence over cover": (
+            *elig(i2), "RiverCanalInfluenceShape", "over cover carries a supported sign or is eligible"),
+        "an eligible river influence without a documented exchange": (
+            *elig(i4), "RiverCanalInfluenceShape", "no applicable statement documenting the exchange"),
+        "a river influence from a gauge outside the pool": (
+            [(i1, L.driverEntity, d("gauge/G3"))], now(i1, L.driverEntity),
+            "RiverCanalInfluenceShape", "does not join the gauge to the well"),
+        "two river influences for one association and attribution": (
+            [(twin_r, p_, o) for _, p_, o in g.triples((i1, None, None)) if p_ != L.driverEntity]
+            + [(twin_r, L.driverEntity, d("gauge/G2"))], (),
+            "RiverInfluenceKeyShape", "share an association and a well attribution"),
+        "a missing river influence": (
+            [], list(g.triples((i1, None, None))), "RiverInfluenceKeyShape", "has no influence for an attribution"),
+        "a river piece in a section of another watercourse": (
+            [(d("reach-piece/R2/r2/3"), L.inSection, d("water-body/FRDRT1"))], (),
+            "ReachPieceKeyShape", "not a stretch of its watercourse"),
+        "a statement without its passage": (
+            [], [(d("exchange-statement/S1"), PROV.wasDerivedFrom, d("passage/S1"))],
+            "ExchangeStatementShape", None),
+        "an eligible canal influence on a hedged statement": (
+            *elig(c6), "RiverCanalInfluenceShape", "rests on no stated canal-return statement"),
+        "a canal-return statement about a river section": (
+            [(d("exchange-statement/C1"), L.aboutSection, d("water-body/FRDRT1"))], (),
+            "ExchangeStatementShape", "names a river section"),
+        "a distance along the river off the main stem": (
+            [(d("gauge-zone/R3/G3"), L.alongRiverDistanceM, Literal(10.0, datatype=XSD.double))], (),
+            "GaugeZoneRelationShape", "along the river is given off the main stem"),
+        "a canal reach typed as a river reach": (
+            [(d("reach/k1"), RDF.type, L.RiverReach)], (), "RiverReachShape", None),
+        "a documented lateral association without its statement": (
+            [], [(a3, L.applicableStatement, d("exchange-statement/S2"))],
+            "RiverUnitAssociationShape", "documented lateral association has no applicable statement"),
+        "a river association whose unit is not the well's": (
+            [(a1, L.associationUnit, d("unit/Z"))], now(a1, L.associationUnit),
+            "RiverUnitAssociationShape", "not the candidate unit of a monitoring attribution"),
+        "a missing canal influence": (
+            [], list(g.triples((c1, None, None))), "CanalInfluenceKeyShape", "has no influence for an attribution"),
     }
 
     for name, (add, remove, shape, text) in cases.items():
@@ -866,6 +1138,140 @@ def test_data_recharge(store, oracle):
     return n, len(local), len({b for b, kind in got if kind == "unit-wide"}), sorted(with_unit - local)
 
 
+def oracle_rivers(store):
+    """Independent of src/kg/rivers.py (GeoPandas clip and spatial join instead of its loops): the BD
+    TOPO reaches of the searched watercourses (the dataset's gauged ones and those the statements
+    name) and the canal reaches, clipped to each well's 5 km disc and cut by the BD LISA polygons;
+    per (well, watercourse, unit) the length on the unit's outcrop and over its cover, per (well,
+    unit) the canal length on its outcrop, for the units the graph attributes to the well; and per
+    (well, watercourse) the distance of each gauge to the zone's pieces of that watercourse."""
+    import ast
+    import csv
+    snap = sorted((RAW / "bdtopo_hydro").glob("????-??-??"))[-1]
+    t = gpd.read_parquet(snap / "troncon_hydrographique.parquet")
+    gauges = pd.read_parquet(DATASET_DIR / "gauges.parquet")
+    with open(ROOT / "configs" / "exchange_evidence.csv", encoding="utf-8") as f:
+        named = {c for r in csv.DictReader(f) for c in r["watercourses"].split(";") if c}
+    codes = (set(gauges["code_cours_eau"]) - {"00000000"}) | named
+    lines = t[t["code_du_cours_d_eau_bdcarthage"].isin(codes) | (t["nature"] == "Canal")].copy()
+    lines["kind"] = np.where(lines["nature"] == "Canal", "canal", "river")
+    wells = pd.read_parquet(DATASET_DIR / "wells.parquet")
+    wx, wy = l93(wells["x"], wells["y"])
+    zones = gpd.GeoDataFrame({"code_bss": wells["code_bss"]},
+                             geometry=gpd.points_from_xy(wx, wy).buffer(5000.0, 256), crs=CRS_L93)
+    poly = pyogrio.read_dataframe(GPKG, layer="POLYG_ELEMENTAIRES", columns=["codepoly"],
+                                  bbox=tuple(zones.total_bounds))
+    pile = pyogrio.read_dataframe(GPKG, layer="TABLE_PILE_ENTITES_NIV3", read_geometry=False)
+    stack = pile.sort_values("OrdRelatif").groupby("CodePoly")["CodeEH"].apply(list)
+    units = {}
+    for b, c in rows(store, """SELECT ?b ?c WHERE { ?a lulcw:attributedEntity ?w ; lulcw:role lulcw:MonitoringRole ;
+            lulcw:candidateUnit ?u . ?u lulcw:bdlisaCode ?c . ?w lulcw:bssCode ?b }"""):
+        units.setdefault(b, set()).add(c)
+    river, canal, dist = {}, {}, {}
+    gp = gpd.GeoSeries(gpd.points_from_xy(gauges["longitude_station"], gauges["latitude_station"]),
+                       crs=CRS_WGS84).to_crs(CRS_L93)
+    for z in zones.itertuples():
+        cut = gpd.clip(lines, z.geometry)
+        cut = cut[cut.length > 0]
+        if cut.empty:
+            continue
+        j = gpd.sjoin(cut[["cleabs", "code_du_cours_d_eau_bdcarthage", "kind", "geometry"]], poly,
+                      predicate="intersects")
+        j["part"] = [g.intersection(poly.geometry.loc[k]) for g, k in zip(j.geometry, j["index_right"])]
+        j["len"] = [g.length for g in j["part"]]
+        j["stack"] = j["codepoly"].astype(str).map(stack)
+        for u in units.get(z.code_bss, ()):
+            for r in j[j["len"] >= 1.0].itertuples():
+                s = r.stack if isinstance(r.stack, list) else []
+                if u not in s:
+                    continue
+                if r.kind == "river":
+                    k = (z.code_bss, r.code_du_cours_d_eau_bdcarthage, u, "OnOutcrop" if s[0] == u else "OverCover")
+                    river[k] = river.get(k, 0.0) + r.len
+                elif s[0] == u:
+                    canal[(z.code_bss, u)] = canal.get((z.code_bss, u), 0.0) + r.len
+        rv = j[j["kind"] == "river"]
+        for code, sub in rv.groupby("code_du_cours_d_eau_bdcarthage"):
+            union = gpd.GeoSeries(list(sub["part"])).union_all()
+            for i in gauges.index[gauges["code_cours_eau"] == code]:
+                dist[(z.code_bss, code, gauges.loc[i, "code_station"])] = union.distance(gp.iloc[i])
+    src = (ROOT / "src" / "models" / "features.py").read_text(encoding="utf-8")
+    consts = {n.targets[0].id: ast.literal_eval(n.value) for n in ast.parse(src).body
+              if isinstance(n, ast.Assign) and isinstance(n.targets[0], ast.Name)
+              and n.targets[0].id in ("RIVERS", "NEAR_CANDIDATES")}
+    pool = set(consts["RIVERS"].values()) | set(consts["NEAR_CANDIDATES"])
+    return river, canal, dist, pool
+
+
+def test_data_rivers(store):
+    """CQ5, CQ6, CQ8 against the oracle: every on-outcrop and over-cover association equals the
+    oracle's (well, watercourse, unit) lengths (1 m pieces dropped by the graph: 0.2 % or 5 m),
+    every canal association the oracle's canal length on the unit's outcrop; the pool equals arm C's
+    gauge candidates (src/models/features.py); each river influence comes from the pool gauge on the
+    association's watercourse nearest to the zone's pieces (the oracle's distances, ties by code);
+    the 45 gauges and their observed training weeks equal the dataset's; every statement of
+    configs/exchange_evidence.csv is in the graph with its direction, hedging, units and section."""
+    import csv
+    river, canal, dist, pool = oracle_rivers(store)
+    got = {}
+    for b, code, u, typ, lo, lc in rows(store, """SELECT ?b ?code ?u ?t ?lo ?lc WHERE {
+            ?a a lulcw:RiverUnitAssociation ; lulcw:withinExtent ?z ; lulcw:associationWatercourse ?wc ;
+               lulcw:associationUnit ?uu ; lulcw:associationType ?tt .
+            ?z lulcw:zoneOf ?w . ?w lulcw:bssCode ?b . ?wc lulcw:bdCarthageCode ?code . ?uu lulcw:bdlisaCode ?u .
+            OPTIONAL { ?a lulcw:lengthOnOutcropM ?lo } OPTIONAL { ?a lulcw:lengthOverCoverM ?lc }
+            BIND (STRAFTER(STR(?tt), "#") AS ?t) }"""):
+        if typ != "DocumentedLateral":
+            got[(b, code, u, typ)] = lo if typ == "OnOutcrop" else lc
+    big = {k: v for k, v in river.items() if v >= 5.0}
+    assert set(big) <= set(got) <= set(river), f"associations differ: {sorted(set(big) ^ set(got))[:6]}"
+    for k, v in got.items():
+        assert abs(v - river[k]) <= max(5.0, 0.002 * river[k]), (k, v, river[k])
+    cgot = {(b, u): ln for b, u, ln in rows(store, """SELECT ?b ?u ?l WHERE { ?c a lulcw:CanalUnitAssociation ;
+            lulcw:withinExtent ?z ; lulcw:associationUnit ?uu ; lulcw:lengthOnOutcropM ?l .
+            ?z lulcw:zoneOf ?w . ?w lulcw:bssCode ?b . ?uu lulcw:bdlisaCode ?u }""")}
+    cbig = {k for k, v in canal.items() if v >= 5.0}
+    assert cbig <= set(cgot) <= set(canal), f"canal associations differ: {sorted(cbig ^ set(cgot))[:6]}"
+    assert all(abs(v - canal[k]) <= max(5.0, 0.002 * canal[k]) for k, v in cgot.items())
+    members = {c for (c,) in rows(store, "SELECT ?c WHERE { ?p a lulcw:GaugePool ; lulcw:poolMember ?g . ?g lulcw:gaugeCode ?c }")}
+    assert members == pool, (members, pool)
+    n_inf = 0
+    for b, code, g, typ in rows(store, """SELECT ?b ?code ?g ?t WHERE {
+            ?i a lulcw:Influence ; lulcw:mechanism lulcw:RiverExchange ; lulcw:driverEntity ?gg ;
+               lulcw:targetEntity ?w ; prov:wasDerivedFrom ?a .
+            ?a lulcw:associationWatercourse ?wc ; lulcw:associationType ?tt .
+            ?w lulcw:bssCode ?b . ?wc lulcw:bdCarthageCode ?code . ?gg lulcw:gaugeCode ?g
+            BIND (STRAFTER(STR(?tt), "#") AS ?t) }"""):
+        cand = sorted((round(dist[(b, code, p)]), p) for p in pool if (b, code, p) in dist)
+        assert cand and g == cand[0][1], (b, code, g, cand)
+        n_inf += 1
+    # every association of a watercourse with a pool gauge has its influences
+    pool_rivers = {c for c, in rows(store, "SELECT ?c WHERE { ?p lulcw:poolMember ?g . ?g lulcw:onWatercourse/lulcw:bdCarthageCode ?c }")}
+    no_inf = rows(store, """SELECT ?a WHERE { ?a a lulcw:RiverUnitAssociation ; lulcw:associationWatercourse ?wc .
+            ?wc lulcw:bdCarthageCode ?c . FILTER NOT EXISTS { ?i prov:wasDerivedFrom ?a ; lulcw:mechanism lulcw:RiverExchange } }""")
+    assert not [a for (a,) in no_inf if any(f"/river/{c}/" in a for c in pool_rivers)], no_inf[:3]
+    gauges = pd.read_parquet(DATASET_DIR / "gauges.parquet")
+    split = json.loads((DATASET_DIR / "splits.json").read_text())["train"]
+    rw = pd.read_parquet(DATASET_DIR / "rivers_weekly.parquet")
+    obs = rw[(rw["week"] >= split[0]) & (rw["week"] <= split[1]) & rw["q_m3s"].notna()].groupby("code_station").size()
+    kg_obs = {c: int(n) for c, n in rows(store, """SELECT ?c ?n WHERE { ?g a lulcw:RiverGauge ; lulcw:gaugeCode ?c ;
+            lulcw:hasDischargeSeries/lulcw:observedTrainingWeeks ?n }""")}
+    assert kg_obs == {c: int(obs.get(c, 0)) for c in gauges["code_station"]}, "gauge coverage differs"
+    with open(ROOT / "configs" / "exchange_evidence.csv", encoding="utf-8") as f:
+        want = {r["id"]: r for r in csv.DictReader(f)}
+    kg = {}
+    for sid, m, dr, h, u in rows(store, """SELECT ?s ?m ?d ?h ?u WHERE { ?x a lulcw:ExchangeStatement ;
+            lulcw:statedMechanism ?mm ; lulcw:exchangeDirection ?dd ; lulcw:hedging ?hh ; lulcw:aboutUnit ?uu .
+            ?uu lulcw:bdlisaCode ?u . BIND (STRAFTER(STR(?x), "/exchange-statement/") AS ?s)
+            BIND (STRAFTER(STR(?mm), "#") AS ?m) BIND (STRAFTER(STR(?dd), "#") AS ?d) BIND (STRAFTER(STR(?hh), "#") AS ?h) }"""):
+        kg.setdefault(sid, [m, dr, h, set()])[3].add(u)
+    from src.kg.rivers import DIRECTION, HEDGING
+    assert set(kg) == set(want), set(kg) ^ set(want)
+    for sid, r in want.items():
+        assert kg[sid] == [r["mechanism"], DIRECTION[r["direction"]], HEDGING[r["hedging"]],
+                           set(r["units"].split(";"))], (sid, kg[sid])
+    return len(got), len(cgot), n_inf, len(kg)
+
+
 def test_data(store):
     # stratigraphy
     polys = {int(c) for (c,) in rows(store, "SELECT ?c WHERE { ?p a lulcw:ElementaryPolygon ; lulcw:polygonCode ?c }")}
@@ -1021,6 +1427,11 @@ def main():
         print(f"  6. data: CQ8 {n} recharge proxies = the oracle's cells and weights for the recorded units: "
               f"{n_local} wells in their 5 km zone, {n_wide} unit-wide; no local proxy for "
               f"{', '.join(without)}; signs, proxy, omitted pathways and policy selections as specified")
+        n_assoc, n_canal, n_riv, n_st = test_data_rivers(store)
+        print(f"  7. data: CQ5/CQ6 {n_assoc} on-outcrop and over-cover river associations and {n_canal} canal "
+              f"associations = the GeoPandas oracle (BD TOPO reaches x 5 km discs x BD LISA polygons); "
+              f"{n_riv} river influences from the nearest pool gauge (arm C's 5 gauges); gauge training "
+              f"coverage = the dataset; {n_st} statements = configs/exchange_evidence.csv")
     else:
         print("  4. skipped: run src.kg.build_kg and src.kg.apply_rules first")
     print("test_kg_rules: all checks passed")

@@ -61,6 +61,7 @@ is never read as "none".
    The data checks run only on a validated release (src.kg.release.check).
 """
 import json
+from collections import Counter
 
 import geopandas as gpd
 import numpy as np
@@ -81,9 +82,9 @@ from src.kg.apply_rules import RULES, SHAPES, check, ontology_network, rule_reco
 from src.kg.build_kg import BNPE_SNAPSHOT, PLAIN_MARGIN_DEG
 from src.kg import release
 from src.kg.cq import ask, iris, local, one
-from tests.test_kg_rules import (GEO, KG, L, RADIUS, SOSA, TIME, build_fixture, d, l93,
-                                 oracle_coverage, oracle_mapped_outcrop, oracle_relations, store_of,
-                                 violations)
+from tests.test_kg_rules import (GEO, KG, L, PROV, RADIUS, SOSA, TIME, build_fixture, d, l93,
+                                 oracle_coverage, oracle_mapped_outcrop, oracle_relations, oracle_rivers,
+                                 store_of, violations)
 
 MAIN, CONF_ONLY = d("policy/main"), d("policy/confident-only")
 
@@ -142,6 +143,24 @@ def cq_fixture():
     # the AGROVOC alignments of task 12.9; no unverified external IRI)
     for code in ("PEC", "AGR", "ZZZ"):
         a((d(f"crop-code/{code}"), SKOS.closeMatch, d(f"test-concept/{code.lower()}")))
+    # CQ5, CQ6: R2 and R4 have C as a second candidate (possible), which no reach of their zones runs
+    # on or over (R4's zone has 50 m of river off the map: an incomplete search); S6 states that C is
+    # independent of WC1 in FRDRT1 (R1's zone), where no well monitors C; G1's series has its coverage
+    for key in ("R2", "R4"):
+        fx.attribution(f"piezometer/{key}", d(f"piezometer/{key}"), L.MonitoringRole, u["C"],
+                       conf=L.Possible, rank=2)
+    pa, st6 = d("passage/S6"), d("exchange-statement/S6")
+    for t in ((pa, RDF.type, L.DocumentPassage), (pa, L.inDocument, d("document/test")),
+              (pa, L.pageLabel, Literal("2")), (pa, L.quote, Literal("a verbatim quote of statement S6", lang="fr")),
+              (st6, RDF.type, L.ExchangeStatement), (st6, L.statedMechanism, L.RiverExchange),
+              (st6, L.aboutSection, d("water-body/FRDRT1")), (st6, L.aboutWatercourse, d("watercourse/WC1")),
+              (st6, L.aboutUnit, u["C"]), (st6, L.unitAsNamed, Literal("unit C", lang="fr")),
+              (st6, L.unitMapping, L.UnitListedBySource), (st6, L.exchangeDirection, L.NoExchange),
+              (st6, L.hedging, L.StatedFinding), (st6, L.stateDescription, Literal("low flow (fixture)", lang="en")),
+              (st6, L.evidenceKind, L.ExpertHypothesis), (st6, PROV.wasDerivedFrom, pa),
+              (d("series/rivers-test/G1"), L.coverageStart, Literal("2005-01-02", datatype=XSD.date)),
+              (d("series/rivers-test/G1"), L.coverageEnd, Literal("2026-10-18", datatype=XSD.date))):
+        a(t)
     return fx, u
 
 
@@ -161,7 +180,7 @@ def fixture_store():
     g = fx.g + records + run_rules(fx.g, rules, records)
     conforms, _, results = check(g, shapes, net)
     assert conforms and violations(results) == 0, f"the CQ fixture violates the shapes: {results}"
-    return to_store(g), u
+    return to_store(g), u, g
 
 
 def test_cq1_fixture(s):
@@ -372,7 +391,7 @@ def test_cq8_fixture(s):
           "group-level path no sign; an unaccepted segment blocks the path; recharge proxies: one per cell "
           "over the outcrop of the well's unit, non-decreasing, with the pathways they omit; none for a unit "
           "without outcrop in the zone (a completed search), unknown without a search or a derivation; "
-          "partial: canal and river pathways not derived")
+          "partial: lateral inflow and vertical leakage are never derived")
 
 
 def test_cq4_fixture(s, u):
@@ -408,6 +427,171 @@ def test_cq4_fixture(s, u):
           "covered part; no outcrop of B in S (supported, not zero recharge); U not in BD LISA (unknown); "
           "a unit-wide extent that clips the unit: partial; outcrop facts without a derived coverage: "
           "unknown, not a negative answer")
+
+
+RZ = {k: d(f"reach-zone/{k}") for k in ("R1", "R2", "R3", "R4", "R5", "R6")}
+
+
+def test_cq5_fixture(s, u):
+    """The river cases of tests/test_kg_rules.add_rivers, plus C as a second candidate of R2 and R4
+    and statement S6 (cq_fixture)."""
+    got = {k: [(r["watercourseCode"], r["unitCode"], r["type"], r["lengthOnOutcropM"], r["lengthOverCoverM"],
+                r["coverUnits"], r["pieces"], r["statements"]) for r in ask(s, "cq05_associations", S=z)]
+           for k, z in RZ.items()}
+    assert got == {"R1": [("WC1", "X", "OnOutcrop", 1500.0, None, None, 1, 1)],
+                   "R2": [("WC2", "Z", "OverCover", None, 1200.0, "Y", 1, 0)],
+                   "R3": [("WC1", "B", "DocumentedLateral", None, None, None, 1, 1)],
+                   "R4": [("WC1", "X", "OnOutcrop", 900.0, None, None, 2, 0)],     # 50 m off the map not counted
+                   "R5": [("WC1", "X", "OnOutcrop", 600.0, None, None, 1, 2)],
+                   "R6": [("WC3", "A", "OnOutcrop", 1000.0, None, None, 1, 0)]}, got
+    cases = {"X in R1": (u["X"], RZ["R1"]), "Z in R2": (u["Z"], RZ["R2"]), "C in R2": (u["C"], RZ["R2"]),
+             "B in R3": (u["B"], RZ["R3"]), "X in R4": (u["X"], RZ["R4"]), "C in R4": (u["C"], RZ["R4"]),
+             "X in R5": (u["X"], RZ["R5"]), "A in R6": (u["A"], RZ["R6"]), "Y in R1": (u["Y"], RZ["R1"]),
+             "U in R1": (u["U"], RZ["R1"]), "a well": (d("piezometer/R1"), RZ["R1"]),
+             "an outcrop zone": (u["X"], d("outcrop-zone/W1"))}
+    st = {k: one(s, "cq05_status", U=uu, S=ss) for k, (uu, ss) in cases.items()}
+    assert {k: v["status"] for k, v in st.items()} == {
+        "X in R1": "supported", "Z in R2": "partial", "C in R2": "supported", "B in R3": "supported",
+        "X in R4": "partial", "C in R4": "partial", "X in R5": "conflicting", "A in R6": "partial",
+        "Y in R1": "unknown", "U in R1": "unknown", "a well": "not_applicable",
+        "an outcrop zone": "not_applicable"}, {k: (v["status"], v["reason"]) for k, v in st.items()}
+    assert (st["X in R1"]["associations"], st["B in R3"]["associations"], st["C in R2"]["associations"]) == \
+        ("OnOutcrop", "DocumentedLateral", "")
+    assert st["C in R2"]["reason"].startswith("no searched watercourse") and "completed search" in st["C in R2"]["reason"]
+    assert "off the geological map" in st["C in R4"]["reason"]
+    assert st["X in R4"]["reason"].startswith("associated by geometry only")
+    assert st["Y in R1"]["reason"].startswith("not searched") and "not described by BD LISA" in st["U in R1"]["reason"]
+
+    def stm(k, unit):
+        return [(local(r["statement"]), r["applies"], r["listedBecause"], r["direction"], r["hedging"])
+                for r in ask(s, "cq05_statements", S=RZ[k], U=u[unit])]
+    assert stm("R1", "X") == [("S1", True, "applies", "AquiferToSurface", "StatedFinding"),
+                              ("S5", False, "stretch not delimited", "SurfaceToAquifer", "StatedFinding")], stm("R1", "X")
+    assert stm("R5", "X") == [("S3", True, "applies", "NoExchange", "StatedFinding"),     # kept side by side
+                              ("S4", True, "applies", "SurfaceToAquifer", "StatedFinding"),
+                              ("S5", False, "stretch not delimited", "SurfaceToAquifer", "StatedFinding")], stm("R5", "X")
+    assert stm("R3", "B") == [("S2", True, "applies", "ExchangeEquilibrium", "StatedFinding")]
+    assert stm("R4", "X") == [("S5", False, "stretch not delimited", "SurfaceToAquifer", "StatedFinding")]
+    assert stm("R1", "C") == [("S6", False, "section in zone", "NoExchange", "StatedFinding")]   # no well monitors C
+    r = ask(s, "cq05_statements", S=RZ["R1"], U=u["X"])[0]
+    assert (r["section"], r["document"], r["page"], r["quote"], r["unitAsNamed"], local(r["unitMapping"]), r["state"]) == \
+        ("section FRDRT1", "test report", "1", "a verbatim quote of statement S1", "unit X", "UnitListedBySource",
+         "low flow (fixture)"), r
+
+    gz = [(r["gaugeCode"], r["distanceM"], r["position"], r["alongRiverM"], r["inPool"], r["used"])
+          for r in ask(s, "cq05_gauges", S=RZ["R1"])]
+    assert gz == [("G3", 500.0, "AlongZoneStretch", 0.0, False, False),     # nearest, but not in the pool
+                  ("G1", 1000.0, "UpstreamOfZone", 2000.0, True, True),
+                  ("G2", 3000.0, "DownstreamOfZone", 5000.0, True, False)], gz
+    g1 = next(r for r in ask(s, "cq05_gauges", S=RZ["R1"]) if r["gaugeCode"] == "G1")
+    assert (g1["observedTrainingWeeks"], g1["trainingWeeks"], g1["coverageStart"], g1["coverageEnd"]) == \
+        (700, 783, "2005-01-02", "2026-10-18"), g1
+    assert [(r["gaugeCode"], r["position"], r["alongRiverM"], r["used"]) for r in ask(s, "cq05_gauges", S=RZ["R3"])] == \
+        [("G3", "OffMainStem", None, False), ("G2", "DownstreamOfZone", 3000.0, True), ("G1", "UpstreamOfZone", 6000.0, False)]
+    assert [(r["gaugeCode"], r["inPool"], r["used"]) for r in ask(s, "cq05_gauges", S=RZ["R6"])] == [("G5", False, False)]
+    # the facts without the rule outputs: pieces on X's outcrop, or a documented exchange of B with a
+    # section of the zone, without an association: unknown, never "none found"; C in R2, where no fact
+    # leads to an association, is a completed search with or without the rules
+    facts_only = to_store(cq_fixture()[0].g)
+    for uu, z in ((u["X"], RZ["R1"]), (u["B"], RZ["R3"]), (u["Z"], RZ["R2"])):
+        st = one(facts_only, "cq05_status", U=uu, S=z)
+        assert st["status"] == "unknown" and "missing or stale" in st["reason"], st
+    assert one(facts_only, "cq05_status", U=u["C"], S=RZ["R2"])["status"] == "supported"
+    print("  9. CQ5 fixtures: on outcrop, over cover (cover unit named) and documented lateral associations; "
+          "an exchange documented (supported), only geometric (partial), independence beside an exchange "
+          "(conflicting, both kept); a statement without a delimited stretch listed, never applied; the "
+          "nearest pool gauge used, a nearer gauge outside the pool listed; a unit no well of the zone "
+          "monitors: not searched; off-map reaches: an incomplete search; facts without rule outputs: unknown")
+
+
+def test_cq6_fixture(s, u):
+    cases = {"X in R1": (u["X"], RZ["R1"]), "A in R6": (u["A"], RZ["R6"]), "Z in R2": (u["Z"], RZ["R2"]),
+             "X in R4": (u["X"], RZ["R4"]), "C in R4": (u["C"], RZ["R4"]), "Y in R1": (u["Y"], RZ["R1"]),
+             "U in R1": (u["U"], RZ["R1"]), "an outcrop zone": (u["X"], d("outcrop-zone/W1"))}
+    st = {k: one(s, "cq06_status", U=uu, S=ss) for k, (uu, ss) in cases.items()}
+    assert {k: (v["status"], v["documented"], v["stated"]) for k, v in st.items()} == {
+        "X in R1": ("partial", True, True), "A in R6": ("partial", True, False), "Z in R2": ("supported", False, False),
+        "X in R4": ("supported", False, False), "C in R4": ("supported", False, False),
+        "Y in R1": ("unknown", False, False), "U in R1": ("unknown", False, False),
+        "an outcrop zone": ("not_applicable", False, False)}, {k: (v["status"], v["reason"]) for k, v in st.items()}
+    assert "states canal return flow" in st["X in R1"]["reason"] and "hedged" in st["A in R6"]["reason"]
+    assert st["Z in R2"]["reason"].startswith("no BD TOPO canal reach") and st["Y in R1"]["reason"].startswith("not searched")
+    chain = [(r["lengthOnOutcropM"], r["canals"], r["intakes"], r["intakesWithWatercourse"], r["commandArea"],
+              local(r["statement"]), r["direction"], r["hedging"], r["document"], r["page"])
+             for r in ask(s, "cq06_chain", S=RZ["R1"], U=u["X"])]
+    assert chain == [(800.0, "reach k1", 1, 0, "not mapped", "C1", "SurfaceToAquifer", "StatedFinding",
+                      "test report", "1")], chain
+    assert [(r["lengthOnOutcropM"], local(r["statement"]), r["hedging"]) for r in ask(s, "cq06_chain", S=RZ["R6"], U=u["A"])] == \
+        [(400.0, "C2", "HedgedFinding")]
+    assert ask(s, "cq06_chain", S=RZ["R2"], U=u["Z"]) == []
+    facts_only = to_store(cq_fixture()[0].g)
+    st = one(facts_only, "cq06_status", U=u["X"], S=RZ["R1"])
+    assert st["status"] == "unknown" and "missing or stale" in st["reason"], st
+    assert one(facts_only, "cq06_status", U=u["Z"], S=RZ["R2"])["status"] == "supported"
+    print("  10. CQ6 fixtures: a canal on the unit's outcrop with a stated return statement, and one with a hedged "
+          "statement: partial chains (no command area, no local return amount); no canal on the outcrop: a "
+          "completed search; a unit no well of the zone monitors: not searched; facts without rule outputs: unknown")
+
+
+def test_cq8_rivers_fixture(s, g):
+    """CQ8 for the river and canal fixture (R1-R6), and the statuses on graphs whose rule outputs are
+    missing (facts only) or lack the river or the canal influences."""
+    def infl(k, policy=MAIN):
+        return {local(r["mechanism"]): (r["driverCode"], local(r["responseSign"]), local(r["eligibility"]),
+                                        local(r["driverVariable"]), local(r["proxyFor"]), local(r["driverGroup"]),
+                                        r["viaCode"], r["associationType"], local(r["extent"]), local(r["confidence"]),
+                                        r["selected"])
+                for r in ask(s, "cq08_influences", W=d(f"piezometer/{k}"), policy=policy)}
+    river = ("RiverDischarge", "RiverStage", "RiverDischargeGroup")
+    canal = ("CanalDiversionVolume", None, "SummerDemand")
+    want = {"R1": {"RiverExchange": ("G1", "PositiveResponse", "EligibleConstraint", *river, "X", "OnOutcrop", "R1"),
+                   "CanalReturnFlow": ("canal-intakes:plain", "PositiveResponse", "EligibleConstraint", *canal, "X", None, "R1")},
+            "R2": {"RiverExchange": ("G4", "UnknownResponse", "IneligibleConstraint", *river, "Z", "OverCover", "R2")},
+            "R3": {"RiverExchange": ("G2", "PositiveResponse", "EligibleConstraint", *river, "B", "DocumentedLateral", "R3")},
+            "R4": {"RiverExchange": ("G1", "PositiveResponse", "IneligibleConstraint", *river, "X", "OnOutcrop", "R4")},
+            "R5": {"RiverExchange": ("G1", "PositiveResponse", "IneligibleConstraint", *river, "X", "OnOutcrop", "R5")},
+            "R6": {"CanalReturnFlow": ("canal-intakes:plain", "PositiveResponse", "IneligibleConstraint", *canal, "A", None, "R6")}}
+    for k, w in want.items():
+        got = infl(k)
+        assert got == {m: v + ("Confident", True) for m, v in w.items()}, (k, got)
+        assert all(v[-1] for v in infl(k, CONF_ONLY).values())            # confident attributions
+    reasons = {(k, local(r["mechanism"])): r["eligibilityReason"] for k in want
+               for r in ask(s, "cq08_influences", W=d(f"piezometer/{k}"), policy=MAIN)}
+    assert "doi:10.3133/tm6A16" in reasons[("R1", "RiverExchange")] and "Gate 3" in reasons[("R1", "RiverExchange")]
+    assert "vertical leakage" in reasons[("R2", "RiverExchange")]
+    assert "geometric only" in reasons[("R4", "RiverExchange")] and "independent" in reasons[("R5", "RiverExchange")]
+    assert "hedged" in reasons[("R6", "CanalReturnFlow")]
+    st = {k: one(s, "cq08_status", W=d(f"piezometer/{k}")) for k in ("R1", "R2", "R3", "R4", "R5", "R6", "W7", "W1")}
+    assert {k: (v["status"], v["river"], v["canal"]) for k, v in st.items()} == {
+        "R1": ("partial", "derived", "derived"), "R2": ("partial", "derived", "none_found"),
+        "R3": ("partial", "derived", "none_found"), "R4": ("partial", "derived", "none_found"),
+        "R5": ("partial", "derived", "none_found"), "R6": ("partial", "no_pool_gauge", "derived"),
+        "W7": ("partial", "unknown", "unknown"), "W1": ("partial", "unknown", "unknown")}, st
+    assert set(st["R1"]["drivers"].split()) == {"CanalReturnFlow", "RiverExchange"}
+    assert st["W7"]["riverReason"] == "the well has no reach search zone" and "BD LISA" in st["W1"]["riverReason"]
+    assert "no pool gauge" in st["R6"]["riverReason"] or "none has a gauge of arm C's pool" in st["R6"]["riverReason"]
+
+    # incomplete rule outputs: never a negative answer
+    def without(mech):
+        drop = set(g.subjects(L.mechanism, mech))
+        g2 = rdflib.Graph()
+        for t in g:
+            if t[0] not in drop:
+                g2.add(t)
+        return to_store(g2)
+    st = one(without(L.RiverExchange), "cq08_status", W=d("piezometer/R1"))
+    assert (st["river"], st["canal"]) == ("unknown", "derived") and "missing or stale" in st["riverReason"], st
+    st = one(without(L.CanalReturnFlow), "cq08_status", W=d("piezometer/R1"))
+    assert (st["river"], st["canal"]) == ("derived", "unknown") and "missing or stale" in st["canalReason"], st
+    facts_only = to_store(cq_fixture()[0].g)
+    st = {k: one(facts_only, "cq08_status", W=d(f"piezometer/{k}")) for k in ("R1", "R3", "R6")}
+    assert {k: (v["river"], v["canal"]) for k, v in st.items()} == {
+        "R1": ("unknown", "unknown"), "R3": ("unknown", "none_found"), "R6": ("unknown", "unknown")}, st
+    print("  11. CQ8 river and canal fixtures: the nearest pool gauge drives a river influence, non-decreasing "
+          "and eligible on outcrop or documented lateral with a documented exchange, conditional over cover, "
+          "ineligible when only geometric or contradicted; canal influences only where a return is documented, "
+          "eligible only when stated; a river without a pool gauge: no influence, a reported gap; missing "
+          "rule outputs: unknown, never none_found")
 
 
 # ----------------------------------------------------------------------------------- 2. data
@@ -490,7 +674,7 @@ def test_data(store):
         n_links += len(pairs.get(code, {}))
         st = one(store, "cq11_status", W=iri, r=RADIUS)["status"]
         assert st == ("supported" if code in set(w["code_bss"]) else "unknown"), (code, st)
-    print(f"  9. data: CQ1 anchors hold; {len(pz)} wells (statuses {n}) = the dataset, the BD LISA "
+    print(f"  12. data: CQ1 anchors hold; {len(pz)} wells (statuses {n}) = the dataset, the BD LISA "
           f"polygons and stacks, no screen; CQ3 {len(units)} units, {n_rel} relation-polygon rows = the "
           f"stacks ({len(units) - len(in_stack)} units in no stack: unknown); CQ11 {n_links // 2} "
           f"neighbour pairs = the dataset, selections follow the policies")
@@ -623,7 +807,7 @@ def test_data_pumps(store, wells, pz, x, y):
         if 2012 <= year <= 2024:
             totals["declared"] += sum(declared.values())
     share = {k: 100 * v / totals["declared"] for k, v in totals.items() if k != "declared"}
-    print(f"  10. data: CQ2 {n_exact} exact and {n_group} group-level candidate rows within 5 km of the wells "
+    print(f"  13. data: CQ2 {n_exact} exact and {n_group} group-level candidate rows within 5 km of the wells "
           f"= the attribution table and the BNPE points, {n_unres} unresolved neighbours; CQ8 {n_infl} "
           f"influences = the CQ2 candidates (signs and eligibility by resolution); CQ12 every year "
           f"{rec['year'].min()}-{rec['year'].max()}: declared totals = the BNPE snapshot, allocations = the table "
@@ -675,7 +859,7 @@ def test_data_landuse(store, wells, pz):
             n_rows += len(crops)
         for y in (min(years) - 1, max(years) + 1):                      # no edition: unknown
             assert one(store, "cq07_status", W=iri, year=int(y))["status"] == "unknown", (code, y)
-    print(f"  11. data: CQ7 {len(pz)} wells x {len(years)} RPG editions: {n_rows} code rows, class areas and "
+    print(f"  14. data: CQ7 {len(pz)} wells x {len(years)} RPG editions: {n_rows} code rows, class areas and "
           f"demand estimates = the clipped areas, the class table and the weekly index (threshold "
           f"{thr:,.0f} m³); every answer partial (codes not yet aligned); {years[0] - 1} and "
           f"{years[-1] + 1} unknown")
@@ -729,7 +913,7 @@ def test_data_forcing(store, facts_file):
     facts_only = store_of(facts_file)
     st = one(facts_only, "cq04_status", U=unit["718BP02"], S=zone["10906X0039/C2-1"])
     assert st["status"] == "unknown" and "no coverage was derived" in st["reason"], st
-    print(f"  12. data: CQ4 {len(want)} (extent, unit) coverages = the GeoPandas oracle (areas, {n_cells} cell "
+    print(f"  15. data: CQ4 {len(want)} (extent, unit) coverages = the GeoPandas oracle (areas, {n_cells} cell "
           f"weights), statuses {statuses}; {none_found} recorded units without outcrop in their well's zone: "
           f"supported, 'no mapped outcrop'; MILLAS C2-1 / 718BP02: {millas['outcropAreaM2'] / 1e6:.2f} km² "
           f"(fraction {millas['coveredFraction']:.3f}); facts without rule outputs: unknown")
@@ -773,13 +957,150 @@ def test_data_recharge(store):
             assert c4["reason"].startswith("no mapped outcrop"), (b, c4)
             none_found.append(b)
         status[expect] = status.get(expect, 0) + 1
-    print(f"  13. data: CQ8 recharge proxies of every well = CQ4's cells and weights for its recorded unit "
+    print(f"  16. data: CQ8 recharge proxies of every well = CQ4's cells and weights for its recorded unit "
           f"({n_local} in the 5 km zones, {n_wide} unit-wide); statuses {status}; no outcrop of the unit "
           f"within 5 km (a completed search): {', '.join(none_found)}")
 
 
+EXCHANGE = {"AquiferToSurface", "SurfaceToAquifer", "ExchangeEquilibrium"}
+
+
+def _river_rows(rinf):
+    return [(r["driverCode"], local(r["responseSign"]), local(r["eligibility"]), r["associationType"], r["viaCode"])
+            for r in rinf]
+
+
+def _anchor_c2_1(assoc, rinf, cinf, st5, st6, st8):
+    """MILLAS C2-1 (718BP02): 12.0 km of the Têt on its unit's outcrop (step note, 2026-11-06); the
+    sources disagree on that stretch (FRDG351: losing from Vinça to the Comelade; BRGM, September 2017:
+    gaining from Rodès to T6), so conflicting, while the sign stays eligible (the flux grows with the
+    stage whatever its direction); the river edge comes from Rodès, the nearest pool gauge; stated
+    canal returns into the recent alluvium make the canal edge eligible."""
+    tet = {r["type"]: r for r in assoc if r["watercourseCode"] == "Y04-0400" and r["unitCode"] == "718BP02"}
+    assert round(tet["OnOutcrop"]["lengthOnOutcropM"] / 1000, 1) == 12.0, tet
+    assert st5["status"] == "conflicting", st5
+    assert _river_rows(rinf) == [("Y046403001", "PositiveResponse", "EligibleConstraint", "OnOutcrop", "718BP02")], rinf
+    assert [local(r["eligibility"]) for r in cinf] == ["EligibleConstraint"] and st6["stated"], (cinf, st6)
+
+
+def _anchor_c2_2(assoc, rinf, cinf, st5, st6, st8):
+    """MILLAS C2-2 (671AA00, beside C2-1): the same 12.0 km of the Têt, over the recent alluvium that
+    covers the Pliocene: a river edge via the overlying unit, its sign unknown and never eligible; no
+    canal return is documented into the Pliocene."""
+    tet = {r["type"]: r for r in assoc if r["watercourseCode"] == "Y04-0400" and r["unitCode"] == "671AA00"}
+    assert round(tet["OverCover"]["lengthOverCoverM"] / 1000, 1) == 12.0 and tet["OverCover"]["coverUnits"] == "718BP02", tet
+    assert st5["status"] == "partial", st5
+    assert _river_rows(rinf) == [("Y046403001", "UnknownResponse", "IneligibleConstraint", "OverCover", "671AA00")], rinf
+    assert cinf == [] and st8["canal"] == "not_documented", st8
+
+
+def _anchor_medalu(assoc, rinf, cinf, st5, st6, st8):
+    """MEDALU at Terrats (671AA00): 7.5 km of the Réart on Pliocene outcrop; FRDG243 states that the
+    Canterrane and the upper Réart are independent of the aquifer (supported); neither river has a pool
+    gauge, so D gives it no river edge (a reported gap)."""
+    reart = {r["type"]: r for r in assoc if r["watercourseCode"] == "Y03-0400" and r["unitCode"] == "671AA00"}
+    assert round(reart["OnOutcrop"]["lengthOnOutcropM"] / 1000, 1) == 7.5, reart
+    assert st5["status"] == "supported" and "independent" in st5["reason"], st5
+    assert rinf == [] and st8["river"] == "no_pool_gauge", st8
+
+
+RIVER_ANCHORS = {"10906X0039/C2-1": _anchor_c2_1, "10906X0038/C2-2": _anchor_c2_2,
+                 "10963X0059/MEDALU": _anchor_medalu}
+
+
+def test_data_rivers(store):
+    """CQ5, CQ6 and CQ8 (rivers, canals) for every well, on the released graph. Against the GeoPandas
+    oracle of tests.test_kg_rules (BD TOPO reaches x 5 km discs x BD LISA polygons, independent of
+    src/kg/rivers.py): the on-outcrop and over-cover rows of cq05_associations for the well's recorded
+    unit and their lengths, and the canal length on its outcrop in cq06_chain (pieces under 5 m
+    tolerated, as in tests/test_kg_rules). Between the queries: cq05_status follows the statements
+    that cq05_statements lists as applying (conflicting, supported, partial), cq06_status the canal
+    rows, cq08_status the influences (derived, no_pool_gauge, not_documented, none_found), and
+    cq05_gauges marks as used exactly the gauges of the well's river influences, all in arm C's pool.
+    On a validated release no answer is "missing or stale". Anchors: RIVER_ANCHORS."""
+    river, canal, _, pool = oracle_rivers(store)
+    wells = pd.read_parquet(DATASET_DIR / "wells.parquet")
+    pz = iris(store, "SELECT ?c ?w WHERE { ?w a lulcw:Piezometer ; lulcw:bssCode ?c }")
+    unit = iris(store, "SELECT ?c ?u WHERE { ?u lulcw:bdlisaCode ?c }")
+    rz = iris(store, "SELECT ?c ?z WHERE { ?z a lulcw:ReachSearchZone ; lulcw:zoneOf/lulcw:bssCode ?c }")
+    described = {r[0].value for r in store.query(
+        "PREFIX lulcw: <https://w3id.org/lulcw#> PREFIX prov: <http://www.w3.org/ns/prov#> "
+        "SELECT ?c WHERE { ?u lulcw:bdlisaCode ?c ; prov:wasDerivedFrom ?r }")}
+    assert set(rz) == set(wells["code_bss"]), "every well has its reach search zone"
+    tally = {k: Counter() for k in ("cq05", "cq06", "river", "canal")}
+    gaps, answers = [], {}
+    for b, code in zip(wells["code_bss"], wells["code_bdlisa"]):
+        st8 = one(store, "cq08_status", W=pz[b])
+        assert "stale" not in st8["riverReason"] + st8["canalReason"], (b, st8)
+        inf = ask(store, "cq08_influences", W=pz[b], policy=MAIN)
+        rinf = [r for r in inf if local(r["mechanism"]) == "RiverExchange"]
+        cinf = [r for r in inf if local(r["mechanism"]) == "CanalReturnFlow"]
+        assoc = ask(store, "cq05_associations", S=rz[b])
+        tally["river"][st8["river"]] += 1
+        tally["canal"][st8["canal"]] += 1
+        if not isinstance(code, str) or code not in described:
+            assert (st8["river"], st8["canal"], rinf, cinf, assoc) == ("unknown", "unknown", [], [], []), (b, st8)
+            if isinstance(code, str):
+                for q in ("cq05_status", "cq06_status"):
+                    st = one(store, q, U=unit[code], S=rz[b])
+                    assert st["status"] == "unknown" and "BD LISA" in st["reason"], (b, q, st)
+                    tally[q[:4]]["unknown"] += 1
+            continue
+        # CQ8: river and canal statuses from the influences and the associations
+        canal_rows = [r for r in ask(store, "cq06_chain", S=rz[b], U=unit[code])]
+        want_r = "derived" if rinf else ("no_pool_gauge" if assoc else "none_found")
+        assert st8["river"] == want_r and all(r["driverCode"] in pool for r in rinf), (b, st8["river"], want_r)
+        if want_r == "no_pool_gauge":
+            gaps.append(b)
+        used = {r["gaugeCode"] for r in ask(store, "cq05_gauges", S=rz[b]) if r["used"]}
+        assert used == {r["driverCode"] for r in rinf}, (b, used)
+        # CQ5: the associations of the recorded unit = the oracle
+        mine = {(r["watercourseCode"], r["type"]): r["lengthOnOutcropM"] if r["type"] == "OnOutcrop" else r["lengthOverCoverM"]
+                for r in assoc if r["unitCode"] == code and r["type"] != "DocumentedLateral"}
+        want = {(wc, t): v for (bb, wc, uu, t), v in river.items() if bb == b and uu == code}
+        assert {k for k, v in want.items() if v >= 5.0} <= set(mine) <= set(want), (b, sorted(set(mine) ^ set(want)))
+        for k, v in mine.items():
+            assert abs(v - want[k]) <= max(5.0, 0.002 * want[k]), (b, k, v, want[k])
+        st5 = one(store, "cq05_status", U=unit[code], S=rz[b])
+        app = {r["direction"] for r in ask(store, "cq05_statements", S=rz[b], U=unit[code]) if r["applies"]}
+        found = any(r["unitCode"] == code for r in assoc)
+        conflict = bool(app & EXCHANGE) and ("NoExchange" in app or {"AquiferToSurface", "SurfaceToAquifer"} <= app)
+        if found:
+            want5 = "conflicting" if conflict else ("supported" if app & (EXCHANGE | {"NoExchange"}) else "partial")
+            assert st5["status"] == want5, (b, st5, app)
+        else:
+            assert st5["status"] == "supported" or (st5["status"] == "partial" and "off the geological map" in st5["reason"]), (b, st5)
+        tally["cq05"][st5["status"]] += 1
+        # CQ6: the canal rows of the recorded unit = the oracle; statuses and flags from the statements
+        st6 = one(store, "cq06_status", U=unit[code], S=rz[b])
+        ln = {r["lengthOnOutcropM"] for r in canal_rows}
+        assert len(ln) <= 1, (b, ln)
+        if (b, code) in canal and canal[(b, code)] >= 5.0:
+            assert ln, (b, "canal on the outcrop without an association")
+        if ln:
+            assert (b, code) in canal and abs(ln.pop() - canal[(b, code)]) <= max(5.0, 0.002 * canal[(b, code)]), b
+            assert st6["status"] == "partial", (b, st6)
+        else:
+            assert st6["status"] == "supported" or (st6["status"] == "partial" and "off the geological map" in st6["reason"]), (b, st6)
+        ret = [r for r in canal_rows if r["direction"] == "SurfaceToAquifer"]
+        assert st6["documented"] == bool(ret) and st6["stated"] == any(r["hedging"] == "StatedFinding" for r in ret), (b, st6)
+        mine_c = [r for r in cinf if r["viaCode"] == code]
+        assert bool(mine_c) == bool(ret), (b, "a canal influence exactly where a return is documented")
+        assert all((local(r["eligibility"]) == "EligibleConstraint") ==
+                   (st6["stated"] and not any(x["direction"] == "NoExchange" for x in canal_rows)) for r in mine_c), b
+        tally["cq06"][st6["status"]] += 1
+        answers[b] = (assoc, rinf, cinf, st5, st6, st8)
+    for b, check in RIVER_ANCHORS.items():
+        check(*answers[b])
+    print(f"  17. data: CQ5/CQ6/CQ8 rivers and canals for {len(wells)} wells: river associations and canal "
+          f"lengths of the recorded units = the GeoPandas oracle; cq05_status {dict(tally['cq05'])}, cq06_status "
+          f"{dict(tally['cq06'])}; cq08 river {dict(tally['river'])}, canal {dict(tally['canal'])}; associated "
+          f"rivers without a pool gauge (no river edge in D): {', '.join(gaps) or 'none'}; anchors: "
+          f"{', '.join(RIVER_ANCHORS)}; no stale answer")
+
+
 def main():
-    s, u = fixture_store()
+    s, u, g = fixture_store()
     test_cq1_fixture(s)
     test_cq3_fixture(s, u)
     test_cq11_fixture(s)
@@ -788,6 +1109,9 @@ def main():
     test_cq7_fixture(s)
     test_cq8_fixture(s)
     test_cq4_fixture(s, u)
+    test_cq5_fixture(s, u)
+    test_cq6_fixture(s, u)
+    test_cq8_rivers_fixture(s, g)
     facts, derived = KG / f"lulcw_kg_{DATASET}.ttl", KG / f"lulcw_kg_{DATASET}_rules.ttl"
     if facts.exists() and derived.exists():
         release.check()            # the files must form a validated release (src.kg.release)
@@ -795,8 +1119,9 @@ def main():
         test_data(store)
         test_data_forcing(store, facts)
         test_data_recharge(store)
+        test_data_rivers(store)
     else:
-        print("  9-13. skipped: run src.kg.build_kg and src.kg.apply_rules first")
+        print("  12-17. skipped: run src.kg.build_kg and src.kg.apply_rules first")
     print("test_cq: all checks passed")
 
 

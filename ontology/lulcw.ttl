@@ -19,9 +19,9 @@
 # M2 = square metre, M3 = cubic metre) and are stated in each definition.
 
 <https://w3id.org/lulcw> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/0.6.0> ;
-    owl:versionInfo "0.6.0" ;
-    owl:priorVersion <https://w3id.org/lulcw/0.5.0> ;
+    owl:versionIRI <https://w3id.org/lulcw/0.6.1> ;
+    owl:versionInfo "0.6.1" ;
+    owl:priorVersion <https://w3id.org/lulcw/0.6.0> ;
     dcterms:title "LULC-Water bridging module"@en , "Module de liaison LULC-Water"@fr ;
     dcterms:description "Bridging module of the LULC-Water network of ontologies (SAVE Water, PRIMA): wells, abstraction facilities, hydrogeological units and the qualified, evidence-carrying assertions (unit attributions, stratigraphic relations, well links, influences, annual abstraction accounting) that structure, constrain and explain a groundwater-level model of the Roussillon multilayer aquifer."@en ,
         "Module de liaison du réseau d'ontologies LULC-Water (SAVE Water, PRIMA) : piézomètres, ouvrages de prélèvement, entités hydrogéologiques et assertions qualifiées, porteuses de preuves (attributions à une entité, relations stratigraphiques, liens entre piézomètres, influences, bilans annuels des prélèvements), qui structurent, contraignent et expliquent un modèle des niveaux piézométriques de l'aquifère multicouche du Roussillon."@fr ;
@@ -36,7 +36,8 @@
         "0.3.0 (2026-10-25, task 12.6, CQ7): land use and crops: RPG crop codes, crop classes with their FAO-56 parameters and irrigation assumptions, crop demand zones, clipped crop areas per RPG year, potential irrigation demand estimates and their dated categories."@en ,
         "0.4.0 (2026-10-26, CQ4): recharge-related forcing: SAFRAN weather cells, the mapped outcrop of units inside reference extents, polygon-cell intersection areas, outcrop coverage and cell weights; WellZone generalises the crop demand zone, so zoneOf and zoneRadiusM also serve the outcrop search zone; observable property SoilDrainage; the mapped outcrop area of each unit, so that a reference extent states how much of the unit it clips."@en ,
         "0.5.0 (2026-10-27, CQ4 and CQ8): recharge-proxy influences: the observable property GroundwaterRecharge, which no input of the graph measures; proxyFor, so that an influence states what its driver stands in for; omitsPathway, so that it names the pathways it does not represent; the mechanisms LateralInflow and VerticalLeakage; the driver group RechargeProxies; withinExtent also serves influences, and appliesInExtent names the fixed extents a rule derives in."@en,
-        "0.6.0 (2026-11-06, CQ5 and CQ6): rivers, gauges and canals: watercourses, BD TOPO reaches (river and canal), reach search zones and the pieces of reaches over elementary polygons, river sections and WFD river water bodies, gauges with their discharge series, gauge pools and gauge-zone relations; documents, passages and exchange statements read from them (mechanism, direction, hedging, how the source names the unit); derived river-unit and canal-unit associations; surface-water intakes and the canal intake group; the observable property RiverStage."@en ;
+        "0.6.0 (2026-11-06, CQ5 and CQ6): rivers, gauges and canals: watercourses, BD TOPO reaches (river and canal), reach search zones and the pieces of reaches over elementary polygons, river sections and WFD river water bodies, gauges with their discharge series, gauge pools and gauge-zone relations; documents, passages and exchange statements read from them (mechanism, direction, hedging, how the source names the unit); derived river-unit and canal-unit associations; surface-water intakes and the canal intake group; the observable property RiverStage."@en ,
+        "0.6.1 (2026-11-06, CQ5, CQ6 and CQ8 rules): the driver group RiverDischargeGroup (river stage proxies) for the river influences; measuredAt, the site of the measurement behind an exchange statement; SurfaceWaterIntake is a geo:Feature, no longer an AbstractionFacility, whose instances are the groundwater facilities that carry unit attributions (CQ2); SummerDemand includes the canal diversion volumes."@en ;
     owl:imports <https://w3id.org/lulcw/imports/sosa> , <https://w3id.org/lulcw/imports/prov> ,
         <https://w3id.org/lulcw/imports/time> , <https://w3id.org/lulcw/imports/skos> ,
         <https://w3id.org/lulcw/imports/geo> .
@@ -444,7 +445,11 @@ lulcw:DriverGroupScheme a skos:ConceptScheme ;
 lulcw:SummerDemand a lulcw:DriverGroup ; skos:inScheme lulcw:DriverGroupScheme ; skos:topConceptOf lulcw:DriverGroupScheme ;
     skos:prefLabel "summer demand"@en , "demande estivale"@fr ;
     rdfs:label "summer demand"@en , "demande estivale"@fr ;
-    skos:definition "Reconstructed seasonal pumping and the climatic deficit, which move together within a year (r = 0.92 to 0.97) and are attributed jointly."@en .
+    skos:definition "Reconstructed seasonal pumping, the canal diversion volumes and the climatic deficit, which move together within a year (r = 0.92 to 0.97: irrigation and canal volumes are spread with the deficit) and are attributed jointly."@en .
+lulcw:RiverDischargeGroup a lulcw:DriverGroup ; skos:inScheme lulcw:DriverGroupScheme ; skos:topConceptOf lulcw:DriverGroupScheme ;
+    skos:prefLabel "river stage proxies"@en , "indicateurs du niveau des cours d'eau"@fr ;
+    rdfs:label "river stage proxies"@en , "indicateurs du niveau des cours d'eau"@fr ;
+    skos:definition "The river influences of one well, reported together. A gauge's discharge rises with the storms that drive effective rainfall and, on the regulated Têt and Agly, with the summer dam releases for irrigation, so its separate contribution is read with the recharge proxies and the summer-demand group (docs/analysis_plan.md §8)."@en .
 lulcw:RechargeProxies a lulcw:DriverGroup ; skos:inScheme lulcw:DriverGroupScheme ; skos:topConceptOf lulcw:DriverGroupScheme ;
     skos:prefLabel "recharge proxies"@en , "indicateurs de recharge"@fr ;
     rdfs:label "recharge proxies"@en , "indicateurs de recharge"@fr ;
@@ -1224,9 +1229,9 @@ lulcw:CanalUnitAssociation a owl:Class ;
     skos:definition "Derived by a rule, for one reach search zone and the unit a well is attributed to: the length of canal reaches in the zone that run on the unit's outcrop, and the canal-return statements that name the unit. A canal crossing an outcrop is a candidate seepage or return-flow pathway, not a mapped service area and not a recharge amount (CQ6)."@en .
 
 lulcw:SurfaceWaterIntake a owl:Class ;
-    rdfs:subClassOf lulcw:AbstractionFacility ;
+    rdfs:subClassOf geo:Feature ;
     rdfs:label "surface-water intake"@en , "prise d'eau superficielle"@fr ;
-    skos:definition "An abstraction facility of the BNPE that withdraws surface water for irrigation or to feed a canal; where its water goes is not recorded."@en .
+    skos:definition "A BNPE facility (ouvrage) that withdraws surface water for irrigation or to feed a canal, identified by its BNPE code; where its water goes is not recorded. Kept apart from lulcw:AbstractionFacility, whose instances are the groundwater facilities that carry unit attributions (CQ2)."@en .
 
 lulcw:CanalIntakeGroup a owl:Class ;
     rdfs:label "canal intake group"@en , "ensemble des prises des canaux"@fr ;
@@ -1435,6 +1440,10 @@ lulcw:candidateWatercourse a owl:ObjectProperty , owl:FunctionalProperty ;
     rdfs:domain lulcw:SurfaceWaterIntake ; rdfs:range lulcw:Watercourse ;
     rdfs:label "candidate watercourse"@en , "cours d'eau candidat"@fr ;
     skos:definition "The watercourse nearest to an intake's declared position within the matching tolerance: the river it probably draws from, a geometric candidate, not a declared source."@en .
+lulcw:measuredAt a owl:ObjectProperty ;
+    rdfs:domain lulcw:ExchangeStatement ; rdfs:range geo:Feature ;
+    rdfs:label "measured at"@en , "mesuré au point"@fr ;
+    skos:definition "The site (e.g. a piezometer) where the measurement behind an exchange statement was made, when the source names one."@en .
 lulcw:intakeMember a owl:ObjectProperty ;
     rdfs:domain lulcw:CanalIntakeGroup ; rdfs:range lulcw:SurfaceWaterIntake ;
     rdfs:label "intake member"@en , "prise membre"@fr ;

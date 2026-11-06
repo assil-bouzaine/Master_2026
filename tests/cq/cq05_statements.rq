@@ -1,0 +1,62 @@
+# CQ5 · Documented exchange between a unit and the rivers of a well's zone (CQ5, task 12.7)
+#
+# Parameters  ?S  a lulcw:ReachSearchZone;  ?U  a lulcw:HydrogeologicalUnit
+# Reads       asserted facts (lulcw:ExchangeStatement, documents and passages, sections) and the rule
+#             outputs (lulcw:applicableStatement)
+# Returns     one row per river-exchange statement about ?U that applies in ?S (it is about a section
+#             holding reach pieces of an association of ?U in ?S: ?applies true, ?listedBecause
+#             "applies"), or is about a section holding reach pieces in ?S while no association of ?U
+#             applies it (?listedBecause "section in zone": e.g. a documented independence for a unit
+#             the reaches neither run on nor over), or concerns a watercourse with reaches in ?S
+#             without delimiting its stretch (?listedBecause "stretch not delimited"); the last two
+#             have ?applies false: listed, never applied; with the direction at the state or period
+#             the source gives, the hedging, how the source names the unit and how it was mapped, the
+#             flux, the document (title and key), its page and the quote. Opposing directions are kept side by side, never collapsed
+#             into a timeless sign (CQ5 acceptance); a direction is a state, not the sign of a head
+#             response.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+SELECT ?S ?U ?statement ?applies ?listedBecause ?section ?direction ?hedging ?state ?periodStart ?periodEnd ?fluxM3s
+       ?unitAsNamed ?unitMapping ?document ?documentKey ?page ?quote
+WHERE {
+    ?statement a lulcw:ExchangeStatement ; lulcw:aboutUnit ?U ; lulcw:statedMechanism lulcw:RiverExchange ;
+        lulcw:exchangeDirection ?d ; lulcw:hedging ?h ; lulcw:stateDescription ?state ;
+        lulcw:unitAsNamed ?unitAsNamed ; lulcw:unitMapping ?m ; prov:wasDerivedFrom ?pa .
+    ?pa lulcw:inDocument ?doc ; lulcw:pageLabel ?page ; lulcw:quote ?quote .
+    ?doc rdfs:label ?document .
+    OPTIONAL { ?statement lulcw:aboutSection ?sec . ?sec rdfs:label ?section . }
+    OPTIONAL { ?statement lulcw:periodStart ?periodStart . }
+    OPTIONAL { ?statement lulcw:periodEnd ?periodEnd . }
+    OPTIONAL { ?statement lulcw:fluxM3s ?fluxM3s . }
+    # sub-selects that start from the parameters (#bind-parameters, src/kg/cq.py), keyed by statement:
+    # an EXISTS over the reach pieces costs 0.5 s a statement in pyoxigraph 0.5 (the first version: 21 s)
+    OPTIONAL {   # the statement applies to an association of ?U in ?S
+        SELECT DISTINCT ?statement ?S ?U (1 AS ?hitApplies) WHERE {   #bind-parameters
+            ?a lulcw:applicableStatement ?statement ; lulcw:withinExtent ?S ; lulcw:associationUnit ?U .
+        }
+    }
+    OPTIONAL {   # its section holds reach pieces of ?S
+        SELECT DISTINCT ?statement ?S (1 AS ?hitZone) WHERE {   #bind-parameters
+            ?statement lulcw:aboutSection ?sec2 . ?p2 lulcw:inSection ?sec2 ; lulcw:withinExtent ?S .
+        }
+    }
+    OPTIONAL {   # it delimits no stretch, and its watercourse has reach pieces in ?S
+        SELECT DISTINCT ?statement ?S (1 AS ?hitNear) WHERE {   #bind-parameters
+            ?statement lulcw:aboutWatercourse ?wc .
+            OPTIONAL { ?statement lulcw:aboutSection ?any . }
+            FILTER (!BOUND(?any))
+            ?r lulcw:reachOf ?wc . ?p lulcw:pieceOfReach ?r ; lulcw:withinExtent ?S .
+        }
+    }
+    BIND (BOUND(?hitApplies) AS ?applies)
+    BIND (BOUND(?hitZone) AS ?inZone)
+    FILTER (?applies || ?inZone || BOUND(?hitNear))
+    BIND (IF(?applies, "applies", IF(?inZone, "section in zone", "stretch not delimited")) AS ?listedBecause)
+    BIND (STRAFTER(STR(?doc), "/document/") AS ?documentKey)
+    BIND (STRAFTER(STR(?d), "#") AS ?direction)
+    BIND (STRAFTER(STR(?h), "#") AS ?hedging)
+    BIND (STRAFTER(STR(?m), "#") AS ?unitMapping)
+}
+ORDER BY DESC(?applies) ?section ?statement

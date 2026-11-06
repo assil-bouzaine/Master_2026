@@ -792,3 +792,9 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       canal-return pathway into that unit (FRDG351, BRGM/RP-71486-FR); the sign "canal return
       raises the alluvium head" is eligible there, settled at Gate 3. The command areas stay a
       documented gap.
+    - *In the graph since 2026-11-06 (release of 09:32 UTC; step note, "CQ5 and CQ6 built"):*
+      river edges for 35 wells (24 core): the 32 measured above plus three ancient-alluvium wells
+      linked by a documented lateral exchange; an eligible sign for 7 (5 core), over cover only
+      18 (16 core); associated rivers without a pool gauge for 17 wells (4 core), none found for 7
+      (4 core). Canal edges for 5 wells (4 core), 2 eligible (stated returns into the recent
+      alluvium). The export (12.8) reads them from the graph.

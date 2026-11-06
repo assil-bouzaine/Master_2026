@@ -1287,3 +1287,125 @@ unit-wide extent (a) as a sensitivity row. Analysis plan §14 item 14 updated.
 4. **The per-regime depth threshold of the well links is confirmed as proposed** (analysis plan
    §14 item 15): eligible thresholds keep ≥ 10 linked pairs with ≥ 104 shared training weeks; ties
    (medians within 0.02) go to the looser threshold; chosen inside each regime's allowed heads.
+
+## 2026-11-06 (continued): CQ5 and CQ6 built: facts, rules, shapes, queries, tests
+
+### Recurring check (CLAUDE.md §7)
+Unchanged from the morning's check above (same task): the chain link is water → model (the river
+and canal relations of arm D); dated land use still reaches no model graph (no command areas tie a
+parcel to a canal); no model experiment before the export.
+
+### What was done
+- **Facts** (`src/kg/rivers.py`, called by `src.kg.build_kg`; facts 469,337 triples, +96,031):
+  22 watercourses (the dataset's gauged rivers and those the statements name, by BD Carthage code),
+  each with its main stem (the longest path of its BD TOPO flow network); the 2,755 reaches that meet
+  the 65 reach search zones (1,004 river, 1,751 canal); 8,999 pieces = reach ∩ 5 km zone ∩ elementary
+  polygon (14 off the geological map, pieces under 1 m dropped), whose 69 polygons join the graph's;
+  the 13 WFD river water bodies the sheets name (Sandre, 2022 reporting) and 5 stretches between
+  points located by BRGM, projected on the main stems; the 45 gauges of the dataset with their weekly
+  discharge series and observed training weeks, arm C's pool (5) and 390 gauge-zone relations
+  (distance to the zone's pieces of the gauge's river, position along its main stem); 4 documents, 32
+  passages and exchange statements (`configs/exchange_evidence.csv`, every quote found on its printed
+  page by `tests/test_exchange_evidence.py`); the plain's 181 surface intakes behind the canal input
+  (126 with a candidate watercourse within 500 m), in one intake group with its weekly series.
+- **Ontology 0.6.1** (367 terms; ELK and HermiT consistent, ROBOT without error): the driver group
+  `RiverDischargeGroup` ("river stage proxies"); `measuredAt`, the site of the measurement behind a
+  statement; `SurfaceWaterIntake` is a `geo:Feature`, no longer an `AbstractionFacility` (the CQ2
+  facilities carry unit attributions, the intakes do not); `SummerDemand` includes the canal
+  diversion volumes. ROBOT caught a duplicate English label: the group was first called "river
+  discharge", as the observable property.
+- **Rules** (orders 62-64, after the recharge proxies; the policy selection stays last, at 90): for
+  each reach search zone and unit attributed to its well, a river-unit association **on outcrop**
+  (41), **over cover** with the covering units listed (54) or **documented lateral** (4: a statement
+  about the unit and a section with reach pieces in the zone, where the river runs neither on nor
+  over it); 69 statement applications (a river statement applies when it is about the unit and a
+  section holding a piece of the association's watercourse in the zone; a canal statement, by its
+  unit); **43 river influences** from the pool gauge on the associated watercourse nearest to the
+  zone's pieces: 8 non-decreasing and eligible, 10 non-decreasing but ineligible (geometric only, or
+  independence stated), 25 over cover with an unknown sign, never eligible; 42 canal-unit
+  associations and **5 canal influences** of the intake group where a source documents a return into
+  the unit (2 eligible: stated; 3 hedged). Each influence states its driver (`proxyFor RiverStage`
+  for discharge), conditions (gauge distance and position, training coverage, canal length on the
+  outcrop) and the reason for its eligibility.
+- **Shapes**: the facts (watercourses, reaches, pieces, sections, gauges, pool, gauge-zone relations,
+  documents, passages, statements, intakes) and the derived records, and whole-graph completeness:
+  every association and influence that the facts call for exists, so a missing derivation is a
+  violation, never a silent "no river pathway". 47 negative controls in all.
+- **Queries** (`tests/cq/`): `cq05_associations`, `cq05_statements`, `cq05_gauges`, `cq05_status`,
+  `cq06_chain`, `cq06_status`; `cq08_influences` and `cq08_status` cover the river and canal
+  influences (`river`: derived, no_pool_gauge, none_found, unknown; `canal`: derived, not_documented,
+  none_found, unknown; each with its reason).
+- **Tests**: `test_kg_rules` (fixture wells R1-R6; the associations, canal lengths and gauge choice =
+  the GeoPandas oracle on BD TOPO × 5 km discs × BD LISA, independent of `src/kg/rivers.py`);
+  `test_cq` (CQ5, CQ6 and CQ8 fixtures: documented, geometric, conflicting, not searched, incomplete
+  search, stale or missing rule outputs; data checks for every well, section 17).
+
+### Fixed on the way
+- **Scope and staleness.** The rules associate rivers with the units attributed to a zone's well
+  only, so the status queries now answer unknown with "not searched" for another unit, instead of
+  "rule outputs missing or stale"; `cq08_status` checks its river and canal answers against the facts
+  (pieces on or over the unit, a documented exchange in a section of the zone, an association with a
+  pool gauge or a return statement, each without the record the rules derive from it): a facts-only
+  graph answered none_found before. `cq05_statements` also lists a statement about a section of the
+  zone that no association applies; a documented independence makes an association supported, not
+  "geometric only".
+- **pyoxigraph 0.5 and EXISTS (measured).** An EXISTS evaluates each of its triple patterns in full
+  and hash-joins them: two patterns over the reach pieces cost 0.25 s even with the zone written as a
+  constant, while the same patterns as a query, or as a sub-select that starts from the parameters,
+  run on index lookups (3 ms). The first versions took **43 s** (`cq08_status`) and **21 s**
+  (`cq05_statements`) a well, and the 9,000 new `withinExtent` triples slowed the older recharge
+  checks of `cq08_status` (0.37 s). The heavy tests are now sub-selects marked `#bind-parameters`,
+  where `src.kg.cq.bind` writes the parameters' VALUES clause as it does at the top of the query (in
+  any other engine the mark is a comment: same answers, slower). Now 0.01-0.2 s a well.
+
+### Results (release of 2026-11-06, dataset v4, main policy)
+- **D's river edges: 35 wells (24 core)**, the 32 (22 core) measured before the decisions plus the
+  three ancient-alluvium wells linked by a documented lateral exchange (HIPPO2 and the two PZ at
+  10962X, BRGM/RP-71486-FR). An eligible sign for **7 wells (5 core)**: the recent alluvium on the
+  outcrop of its unit, the ancient alluvium by documented lateral exchange. Over cover only: 18 wells
+  (16 core, mostly Pliocene): an edge without an eligible sign. Gauges used: the Agly at Estagel (18
+  influences), the Têt at Rodès (8) and at Perpignan (8), the Tech at Argelès (5) and at Le Boulou (1).
+  Confident-only selects 41 of the 43.
+- **No pool gauge: 17 wells (4 core: NYLS-1, FE1, ALENYA, MEDALU)**, associated with rivers that C's
+  gauges do not measure (the Réart, the Canterrane, the coastal streams): no river edge in D, the gap
+  reported with every D vs C result (analysis plan §14 item 16). None found: 7 wells (4 core: F2 and
+  three Corbières karst wells).
+- **Canal edges: 5 wells (4 core), 2 eligible** (C2-1 and 10915X0395/PZ: stated returns into the
+  recent alluvium); 37 wells have canals on their unit's outcrop within 5 km but no documented return
+  into it, so no edge.
+- **`cq05_status` for the recorded units:** conflicting 4 (the Têt above the Comelade: FRDG351 calls
+  the Vinça-Comelade stretch losing, BRGM measured gains in September 2017; C2-1, 10915X0395/PZ and
+  the two PZ at 10962X), supported 16, partial 39 (geometric only), unknown 1 (CARRIE, unit outside BD
+  LISA). `cq06_status`: partial 42, supported 17, unknown 1.
+- **Anchors** (`test_cq`): MILLAS C2-1, 12.0 km of the Têt on 718BP02, conflicting, an eligible edge
+  from Rodès and an eligible canal edge; MILLAS C2-2, the same 12.0 km over the alluvium covering the
+  Pliocene, an edge with an unknown sign; MEDALU at Terrats, 7.5 km of the Réart on Pliocene outcrop,
+  independence stated by FRDG243, no pool gauge.
+- **Release of 2026-11-06** (09:32 UTC): facts 469,337 triples, rule outputs 162,997, no violation (the
+  8 infos of the wells without an investigation depth); rules 211 s, total 488 s (with the CQ
+  fixture tests running alongside).
+
+### What to consider
+- **A conflicting direction does not block a sign.** By design the sign is about the stage (the flux
+  grows with the river stage whatever its direction), so C2-1's edge is eligible while its statements
+  disagree on the direction. A reviewer may ask for the conflict to block it; a Gate 3 point with the
+  use of the river signs.
+- **Over-cover edges** reach 16 core wells, mostly Pliocene, through the overlying alluvium: they can
+  carry information in the graph, never a sign in the constrained responses.
+- **Statements that apply nowhere.** SMNPR's "the Têt and its Quaternary aquifer infiltrate into the
+  Pliocene between Bouleternère and Saint-Féliu-d'Amont" and BRGM's two Boulès statements (upper
+  course infiltrating, lower course draining) delimit no located stretch, so they are listed for the
+  zones of their river and never applied. Locating their end points would make C2-2's association
+  documented; over cover its sign would still stay unknown (decision of 2026-11-06).
+- **CQ6 stays partial by design**: no command area, no local return amount; the 37 not_documented
+  wells may be served by canals whose returns no source names.
+- **The `#bind-parameters` mark** is a new query convention: a sub-select that starts from the
+  parameters must carry it (the docstring of `src/kg/cq.py`).
+- **Next:** the export (12.8), its per-well, per-relation inventory bound to this release; then the
+  two-well path to a model output (LU-6 can now report CQ5 and CQ6).
+- **Checks (2026-11-06):** `test_ontology` passes (0.6.1); `test_kg_rules` passed on the release of
+  09:08 UTC (the 09:32 release re-derived the same 162,997 triples after the label fix); the CQ
+  fixtures (sections 1-11) and the river data section (17) of `test_cq` pass on the 09:32 release.
+  **To redo at the next session:** the full `test_cq`, `test_kg_rules`, `test_kg`, `test_release`
+  and `test_exchange_evidence` on the final files (a run was in progress when the session ended;
+  two queries then gained a `documentKey` column only).

@@ -1,0 +1,50 @@
+# CQ6 · Canal supply and possible return-flow pathways to a unit in a well's zone (docs/
+# competency_questions.md §4, CQ6; task 12.7)
+#
+# Parameters  ?S  a lulcw:ReachSearchZone;  ?U  a lulcw:HydrogeologicalUnit
+# Reads       asserted facts (canal reaches and pieces, the canal intake group and its intakes, canal-
+#             return statements) and the rule outputs (lulcw:CanalUnitAssociation, applicable statements)
+# Returns     one row per canal-return statement that applies (or one row with no statement when
+#             none does): the length of canal reaches on the outcrop of ?U in ?S, the named canals
+#             among them, the intake group's members and how many have a candidate watercourse, the
+#             command area (never mapped: "not mapped"), and the statement's direction, hedging,
+#             flux, period, document, page and quote. A partial chain: intake -> canal -> [command
+#             area unknown] -> parcels [unknown] -> unit; the intake's location does not locate the
+#             fields it serves, and a diverted volume is not a recharge volume (CQ6 meaning).
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?S ?U ?lengthOnOutcropM ?canals ?intakes ?intakesWithWatercourse ?commandArea ?statement ?direction
+       ?hedging ?fluxM3s ?periodStart ?periodEnd ?document ?documentKey ?page ?quote
+WHERE {
+    ?ca a lulcw:CanalUnitAssociation ; lulcw:withinExtent ?S ; lulcw:associationUnit ?U ;
+        lulcw:lengthOnOutcropM ?lengthOnOutcropM .
+    OPTIONAL {
+        SELECT ?S ?U (GROUP_CONCAT(DISTINCT STR(?name); separator=" | ") AS ?canals)
+        WHERE {
+            ?p lulcw:withinExtent ?S ; lulcw:pieceOfReach ?r ; lulcw:piecePolygon ?poly .
+            ?r lulcw:reachNature "Canal" ; rdfs:label ?name .
+            ?poly lulcw:hasStackLayer ?l . ?l lulcw:layerOrder 1 ; lulcw:layerUnit ?U .
+            FILTER (STR(?name) != "canal")
+        }
+        GROUP BY ?S ?U
+    }
+    {
+        SELECT (COUNT(DISTINCT ?i) AS ?intakes) (COUNT(DISTINCT ?iw) AS ?intakesWithWatercourse)
+        WHERE { ?grp lulcw:intakeMember ?i . OPTIONAL { ?i lulcw:candidateWatercourse ?c . BIND (?i AS ?iw) } }
+    }
+    OPTIONAL {
+        ?ca lulcw:applicableStatement ?statement .
+        ?statement lulcw:exchangeDirection ?d ; lulcw:hedging ?h ; prov:wasDerivedFrom ?pa .
+        ?pa lulcw:inDocument ?doc ; lulcw:pageLabel ?page ; lulcw:quote ?quote .
+        ?doc rdfs:label ?document .
+        OPTIONAL { ?statement lulcw:fluxM3s ?fluxM3s . }
+        OPTIONAL { ?statement lulcw:periodStart ?periodStart . }
+        OPTIONAL { ?statement lulcw:periodEnd ?periodEnd . }
+    }
+    BIND ("not mapped" AS ?commandArea)
+    BIND (STRAFTER(STR(?doc), "/document/") AS ?documentKey)
+    BIND (STRAFTER(STR(?d), "#") AS ?direction)
+    BIND (STRAFTER(STR(?h), "#") AS ?hedging)
+}
+ORDER BY ?statement

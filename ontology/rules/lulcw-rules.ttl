@@ -22,6 +22,11 @@
 #   order 61  recharge-proxy influences, weather cell -> piezometer, through the outcrop of the
 #             unit the well is attributed to, in its search zone or in the unit-wide extent (CQ4,
 #             CQ8)
+#   order 62  river-unit associations per reach search zone (on outcrop, over cover,
+#             documented lateral) and the exchange statements that apply to them (CQ5)
+#   order 63  river influences, gauge of arm C's pool -> piezometer (CQ5, CQ8)
+#   order 64  canal-unit associations, the canal-return statements that apply, and canal
+#             influences from the plain's canal intake group (CQ6, CQ8)
 #   order 90  a well link or an influence is selected by a policy only if every unit
 #             attribution it derives from is (an unaccepted segment blocks the path); last, so
 #             that it sees every derived path (it ran at order 40 until the recharge influences)
@@ -701,6 +706,427 @@ WHERE {
 """ .
 
 #################################################################
+# CQ5: river-unit associations in each reach search zone, and the statements that apply
+#################################################################
+
+lulcwr:RiverAssociationShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/river-association> ;
+    sh:order 62 ;
+    sh:rule lulcwr:riverOnOutcrop , lulcwr:riverOverCover , lulcwr:riverCoverUnits ,
+        lulcwr:riverDocumentedLateral , lulcwr:riverApplicableStatement .
+
+# For each reach search zone, watercourse and unit that a monitoring attribution of the zone's
+# well names (any confidence: the policies select later, through the influences): the length of
+# the watercourse's reach pieces that run on polygons where the unit is at outcrop (order 1).
+# Each piece is counted once even when two attributions of the well name the same unit (the
+# DISTINCT sub-select). A geometric association, not a hydraulic connection (CQ5). Join order
+# (see the CQ4 rules): no constant object and no class pattern in the joins; the orders and the
+# role are tested by FILTERs.
+lulcwr:riverOnOutcrop a sh:SPARQLRule ;
+    sh:order 1 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?as a lulcw:RiverUnitAssociation ; lulcw:withinExtent ?z ; lulcw:associationWatercourse ?wc ;
+        lulcw:associationUnit ?u ; lulcw:associationType lulcw:OnOutcrop ; lulcw:lengthOnOutcropM ?len ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    {
+        SELECT ?z ?wc ?u (SUM(?l) AS ?len) WHERE {
+            {
+                SELECT DISTINCT ?z ?wc ?u ?p ?l WHERE {
+                    ?p lulcw:pieceOfReach ?r ; lulcw:withinExtent ?z ; lulcw:piecePolygon ?poly ;
+                       lulcw:pieceLengthM ?l .
+                    ?r lulcw:reachOf ?wc .
+                    ?z lulcw:zoneOf ?w .
+                    ?aw lulcw:attributedEntity ?w ; lulcw:role ?role ; lulcw:candidateUnit ?u .
+                    FILTER (?role = lulcw:MonitoringRole)
+                    ?poly lulcw:hasStackLayer ?ly .
+                    ?ly lulcw:layerUnit ?u ; lulcw:layerOrder ?o .
+                    FILTER (?o = 1)
+                }
+            }
+        }
+        GROUP BY ?z ?wc ?u
+    }
+    BIND (IRI(CONCAT(STR(?z), "/river/", STRAFTER(STR(?wc), "/watercourse/"), "/",
+                     STRAFTER(STR(?u), "/unit/"), "/on-outcrop")) AS ?as)
+}
+""" .
+
+# The same where the unit lies below other mapped units under the reach (order above 1): any
+# exchange with the river passes through those units (e.g. the Quaternary over the Pliocene).
+lulcwr:riverOverCover a sh:SPARQLRule ;
+    sh:order 2 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?as a lulcw:RiverUnitAssociation ; lulcw:withinExtent ?z ; lulcw:associationWatercourse ?wc ;
+        lulcw:associationUnit ?u ; lulcw:associationType lulcw:OverCover ; lulcw:lengthOverCoverM ?len ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    {
+        SELECT ?z ?wc ?u (SUM(?l) AS ?len) WHERE {
+            {
+                SELECT DISTINCT ?z ?wc ?u ?p ?l WHERE {
+                    ?p lulcw:pieceOfReach ?r ; lulcw:withinExtent ?z ; lulcw:piecePolygon ?poly ;
+                       lulcw:pieceLengthM ?l .
+                    ?r lulcw:reachOf ?wc .
+                    ?z lulcw:zoneOf ?w .
+                    ?aw lulcw:attributedEntity ?w ; lulcw:role ?role ; lulcw:candidateUnit ?u .
+                    FILTER (?role = lulcw:MonitoringRole)
+                    ?poly lulcw:hasStackLayer ?ly .
+                    ?ly lulcw:layerUnit ?u ; lulcw:layerOrder ?o .
+                    FILTER (?o > 1)
+                }
+            }
+        }
+        GROUP BY ?z ?wc ?u
+    }
+    BIND (IRI(CONCAT(STR(?z), "/river/", STRAFTER(STR(?wc), "/watercourse/"), "/",
+                     STRAFTER(STR(?u), "/unit/"), "/over-cover")) AS ?as)
+}
+""" .
+
+# The cover: the units above the associated unit in the polygons under the association's pieces.
+lulcwr:riverCoverUnits a sh:SPARQLRule ;
+    sh:order 3 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+CONSTRUCT { ?as lulcw:coverUnit ?cu . }
+WHERE {
+    ?as lulcw:derivationRule $this ; lulcw:associationType ?t ; lulcw:withinExtent ?z ;
+        lulcw:associationWatercourse ?wc ; lulcw:associationUnit ?u .
+    FILTER (?t = lulcw:OverCover)
+    ?p lulcw:withinExtent ?z ; lulcw:pieceOfReach ?r ; lulcw:piecePolygon ?poly .
+    ?r lulcw:reachOf ?wc .
+    ?poly lulcw:hasStackLayer ?ly .
+    ?ly lulcw:layerUnit ?u ; lulcw:layerOrder ?o .
+    ?poly lulcw:hasStackLayer ?ly2 .
+    ?ly2 lulcw:layerOrder ?o2 ; lulcw:layerUnit ?cu .
+    FILTER (?o2 < ?o)
+}
+""" .
+
+# A documented lateral association: no reach of the watercourse in the zone runs on or over the
+# unit, but a source documents an exchange (a direction other than no exchange or not qualified)
+# between the unit and a section that holds reach pieces of the watercourse in the zone, e.g. the
+# ancient alluvium of the Têt draining laterally to the river (BRGM/RP-71486-FR).
+lulcwr:riverDocumentedLateral a sh:SPARQLRule ;
+    sh:order 4 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?as a lulcw:RiverUnitAssociation ; lulcw:withinExtent ?z ; lulcw:associationWatercourse ?wc ;
+        lulcw:associationUnit ?u ; lulcw:associationType lulcw:DocumentedLateral ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    {
+        SELECT DISTINCT ?z ?wc ?u WHERE {
+            ?s lulcw:aboutSection ?sec ; lulcw:aboutUnit ?u ; lulcw:statedMechanism ?m ;
+               lulcw:exchangeDirection ?dir .
+            FILTER (?m = lulcw:RiverExchange
+                    && (?dir = lulcw:AquiferToSurface || ?dir = lulcw:SurfaceToAquifer
+                        || ?dir = lulcw:ExchangeEquilibrium))
+            ?p lulcw:inSection ?sec ; lulcw:withinExtent ?z ; lulcw:pieceOfReach ?r .
+            ?r lulcw:reachOf ?wc .
+            ?z lulcw:zoneOf ?w .
+            ?aw lulcw:attributedEntity ?w ; lulcw:role ?role ; lulcw:candidateUnit ?u .
+            FILTER (?role = lulcw:MonitoringRole)
+        }
+    }
+    FILTER NOT EXISTS {
+        ?b lulcw:withinExtent ?z ; lulcw:associationWatercourse ?wc ; lulcw:associationUnit ?u ;
+           lulcw:derivationRule $this .
+    }
+    BIND (IRI(CONCAT(STR(?z), "/river/", STRAFTER(STR(?wc), "/watercourse/"), "/",
+                     STRAFTER(STR(?u), "/unit/"), "/documented-lateral")) AS ?as)
+}
+""" .
+
+# The statements that apply to an association: about its unit and about a section that holds a
+# reach piece of its watercourse in its zone (a statement that does not delimit its stretch
+# applies to no zone).
+lulcwr:riverApplicableStatement a sh:SPARQLRule ;
+    sh:order 5 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+CONSTRUCT { ?as lulcw:applicableStatement ?s . }
+WHERE {
+    ?as lulcw:derivationRule $this ; lulcw:withinExtent ?z ; lulcw:associationWatercourse ?wc ;
+        lulcw:associationUnit ?u .
+    ?s lulcw:aboutUnit ?u ; lulcw:aboutSection ?sec ; lulcw:statedMechanism ?m .
+    FILTER (?m = lulcw:RiverExchange)
+    ?p lulcw:inSection ?sec ; lulcw:withinExtent ?z ; lulcw:pieceOfReach ?r .
+    ?r lulcw:reachOf ?wc .
+}
+""" .
+
+#################################################################
+# CQ5, CQ8: river influences, gauge -> piezometer
+#################################################################
+
+lulcwr:RiverInfluenceShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/river-influence> ;
+    sh:order 63 ;
+    sh:rule lulcwr:riverInfluence .
+
+# One influence per river-unit association and well attribution naming its unit, from the gauge of
+# the rule's pool (arm C's gauges: analysis plan §14 item 16) on the association's watercourse
+# that lies nearest to the zone's reach pieces of that watercourse (ties: the smaller code). The
+# driver is the gauge's weekly discharge, standing in for the river stage near the well. Where
+# river and aquifer are connected the exchange grows with the stage whatever its direction
+# (Harbaugh 2005, doi:10.3133/tm6A16), so the sign is non-decreasing on outcrop and for a
+# documented lateral exchange; it is eligible only where a source documents an exchange (a
+# direction other than no exchange or not qualified) and none says the unit is independent; over
+# cover the sign stays conditional and never eligible (the rivers meet the Quaternary, not the
+# Pliocene below it: FRDG243). An association without a pool gauge gives no influence (CQ5: a
+# documented pathway may have no usable gauge). Join order as in the CQ4 rules.
+lulcwr:riverInfluence a sh:SPARQLRule ;
+    sh:order 1 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?inf a lulcw:Influence ;
+        lulcw:driverEntity ?g ; lulcw:targetEntity ?w ;
+        lulcw:driverVariable lulcw:RiverDischarge ; lulcw:proxyFor lulcw:RiverStage ;
+        lulcw:mechanism lulcw:RiverExchange ;
+        lulcw:responseSign ?sign ;
+        lulcw:driverGroup lulcw:RiverDischargeGroup ;
+        lulcw:withinExtent ?z ;
+        lulcw:resolution lulcw:ExactUnitResolution ;
+        lulcw:confidence ?conf ;
+        lulcw:constraintEligibility ?elig ;
+        lulcw:eligibilityReason ?why ;
+        lulcw:conditions ?cond ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasDerivedFrom ?aw , ?as , ?x ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    {   # the nearest pool gauge of each association (distance zero-padded, then the code)
+        SELECT ?as (MIN(?key) AS ?best) WHERE {
+            $this lulcw:usesGaugePool ?pool .
+            ?pool lulcw:poolMember ?g0 .
+            ?g0 lulcw:onWatercourse ?wc0 ; lulcw:gaugeCode ?c0 .
+            ?as lulcw:associationWatercourse ?wc0 ; lulcw:withinExtent ?z0 .
+            ?x0 lulcw:relatedGauge ?g0 ; lulcw:withinExtent ?z0 ; lulcw:horizontalDistanceM ?d0 .
+            BIND (CONCAT(STR(100000000 + xsd:integer(ROUND(?d0))), "|", ?c0) AS ?key)
+        }
+        GROUP BY ?as
+    }
+    BIND (STRAFTER(?best, "|") AS ?code)
+    ?g lulcw:gaugeCode ?code ; lulcw:onWatercourse ?wc ; rdfs:label ?glabel .
+    ?as lulcw:associationWatercourse ?wc ; lulcw:withinExtent ?z ; lulcw:associationType ?type ;
+        lulcw:associationUnit ?u .
+    ?z lulcw:zoneOf ?w ; lulcw:zoneRadiusM ?radius .
+    ?aw lulcw:attributedEntity ?w ; lulcw:role ?role ; lulcw:candidateUnit ?u ; lulcw:confidence ?conf .
+    FILTER (?role = lulcw:MonitoringRole)
+    ?x lulcw:relatedGauge ?g ; lulcw:withinExtent ?z ; lulcw:horizontalDistanceM ?d ;
+       lulcw:alongRiverPosition ?pos .
+    ?g lulcw:hasDischargeSeries ?se .
+    ?se lulcw:observedTrainingWeeks ?nobs ; lulcw:trainingWeeks ?ntrain .
+    ?u lulcw:bdlisaCode ?ucode .
+    ?wc lulcw:bdCarthageCode ?wcode .
+    OPTIONAL { ?x lulcw:alongRiverDistanceM ?along }
+    OPTIONAL { ?g lulcw:localInfluenceCode ?infl }
+    OPTIONAL {
+        SELECT ?as (COUNT(DISTINCT ?sc) AS ?nconn) WHERE {
+            ?as lulcw:applicableStatement ?sc .
+            ?sc lulcw:exchangeDirection ?dc .
+            FILTER (?dc = lulcw:AquiferToSurface || ?dc = lulcw:SurfaceToAquifer || ?dc = lulcw:ExchangeEquilibrium)
+        }
+        GROUP BY ?as
+    }
+    OPTIONAL {
+        SELECT ?as (COUNT(DISTINCT ?sn) AS ?nno) WHERE {
+            ?as lulcw:applicableStatement ?sn .
+            ?sn lulcw:exchangeDirection ?dn .
+            FILTER (?dn = lulcw:NoExchange)
+        }
+        GROUP BY ?as
+    }
+    BIND (COALESCE(?nconn, 0) AS ?kc)
+    BIND (COALESCE(?nno, 0) AS ?kn)
+    BIND (?type = lulcw:OnOutcrop || ?type = lulcw:DocumentedLateral AS ?direct)
+    BIND (IF(?direct, lulcw:PositiveResponse, lulcw:UnknownResponse) AS ?sign)
+    BIND (IF(?direct && ?kc > 0 && ?kn = 0, lulcw:EligibleConstraint, lulcw:IneligibleConstraint) AS ?elig)
+    BIND (IF(!?direct,
+             "The river runs over the units that cover the well's unit, not on it: any exchange passes through the cover (vertical leakage), so the sign of the head response to the river stage stays conditional and never constrains a model (the rivers meet the Quaternary aquifers overlying the Pliocene: FRDG243, page 3).",
+             IF(?kn > 0,
+                "A source states that this unit is independent of the river in a section of the zone: no sign is used.",
+                IF(?kc > 0,
+                   "A source documents an exchange between this unit and a section of the zone. Where river and aquifer are connected, the exchange flux grows with the river stage whatever its direction (the MODFLOW river package, Harbaugh 2005, doi:10.3133/tm6A16), so a higher stage does not lower the head. The documented direction is a state kept with its period, not the sign. The gauge's discharge stands for the stage near the well only up to the withdrawals and inflows in between; the use of this sign as a constraint is settled at Gate 3 (analysis plan, section 14 item 16).",
+                   "No source documents an exchange between this unit and the sections of the zone: the association is geometric only, so no sign is used.")))
+          AS ?why)
+    BIND (IF(?type = lulcw:OnOutcrop, "runs on the outcrop of",
+             IF(?type = lulcw:OverCover, "runs over the units covering", "is documented to exchange laterally with")) AS ?rel)
+    BIND (IF(?pos = lulcw:UpstreamOfZone, CONCAT("upstream of the zone's reaches (", STR(xsd:integer(ROUND(?along))), " m along the river)"),
+             IF(?pos = lulcw:DownstreamOfZone, CONCAT("downstream of the zone's reaches (", STR(xsd:integer(ROUND(?along))), " m along the river)"),
+                IF(?pos = lulcw:AlongZoneStretch, "along the zone's stretch of the river", "off the main stem"))) AS ?where)
+    BIND (CONCAT("Weekly discharge of gauge ", ?code, " (", STR(?glabel), ") on watercourse ", ?wcode,
+                 ", which ", ?rel, " unit ", ?ucode, " within ", STR(xsd:integer(ROUND(?radius))), " m of the well. ",
+                 "The gauge lies ", STR(xsd:integer(ROUND(?d))), " m from the zone's reaches, ", ?where,
+                 "; its record covers ", STR(?nobs), " of the ", STR(?ntrain), " training weeks",
+                 IF(BOUND(?infl), CONCAT("; local influence code ", STR(?infl), " (Hub'Eau)"), ""), ". ",
+                 "The sign refers to an increase of the gauge's discharge with the other drivers held fixed.")
+          AS ?cond)
+    BIND (REPLACE(STR(?as), "^.*/", "") AS ?kind)
+    BIND (IRI(CONCAT("https://w3id.org/lulcw/data/influence/river/", ?kind, "/", ?code, "/to/",
+                     STRAFTER(STR(?aw), "/attribution/piezometer/"))) AS ?inf)
+}
+""" .
+
+#################################################################
+# CQ6, CQ8: canal-unit associations and canal influences
+#################################################################
+
+lulcwr:CanalInfluenceShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/canal-influence> ;
+    sh:order 64 ;
+    sh:rule lulcwr:canalOnOutcrop , lulcwr:canalApplicableStatement , lulcwr:canalInfluence .
+
+# For each reach search zone and unit that a monitoring attribution of the zone's well names: the
+# length of canal reach pieces on polygons where the unit is at outcrop. No command-area map exists
+# for the plain (CQ6): a canal crossing an outcrop is a candidate seepage and return-flow pathway,
+# not a mapped service area.
+lulcwr:canalOnOutcrop a sh:SPARQLRule ;
+    sh:order 1 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?ca a lulcw:CanalUnitAssociation ; lulcw:withinExtent ?z ; lulcw:associationUnit ?u ;
+        lulcw:lengthOnOutcropM ?len ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    {
+        SELECT ?z ?u (SUM(?l) AS ?len) WHERE {
+            {
+                SELECT DISTINCT ?z ?u ?p ?l WHERE {
+                    ?p lulcw:pieceOfReach ?r ; lulcw:withinExtent ?z ; lulcw:piecePolygon ?poly ;
+                       lulcw:pieceLengthM ?l .
+                    ?r lulcw:reachNature ?nat .
+                    FILTER (?nat = "Canal")
+                    ?z lulcw:zoneOf ?w .
+                    ?aw lulcw:attributedEntity ?w ; lulcw:role ?role ; lulcw:candidateUnit ?u .
+                    FILTER (?role = lulcw:MonitoringRole)
+                    ?poly lulcw:hasStackLayer ?ly .
+                    ?ly lulcw:layerUnit ?u ; lulcw:layerOrder ?o .
+                    FILTER (?o = 1)
+                }
+            }
+        }
+        GROUP BY ?z ?u
+    }
+    BIND (IRI(CONCAT(STR(?z), "/canal/", STRAFTER(STR(?u), "/unit/"))) AS ?ca)
+}
+""" .
+
+# Canal-return statements apply to the associations of the unit they name (they delimit no
+# stretch: the unit locates them).
+lulcwr:canalApplicableStatement a sh:SPARQLRule ;
+    sh:order 2 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+CONSTRUCT { ?ca lulcw:applicableStatement ?s . }
+WHERE {
+    ?ca lulcw:derivationRule $this ; lulcw:associationUnit ?u .
+    ?s lulcw:aboutUnit ?u ; lulcw:statedMechanism ?m .
+    FILTER (?m = lulcw:CanalReturnFlow)
+}
+""" .
+
+# One influence per canal-unit association and well attribution, from the plain's canal intake
+# group (the canal input of the models, as in arm C), where a source documents canal return flow
+# into the unit (a statement from surface water to the aquifer); none where nothing does (decided
+# by Assil on 2026-11-06, analysis plan §14 item 16). Sign: canal return raises the alluvium head;
+# eligible only with a stated (not hedged) return statement and no statement that the unit is not
+# influenced by the canals; its use as a constraint is settled at Gate 3.
+lulcwr:canalInfluence a sh:SPARQLRule ;
+    sh:order 3 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?inf a lulcw:Influence ;
+        lulcw:driverEntity ?grp ; lulcw:targetEntity ?w ;
+        lulcw:driverVariable lulcw:CanalDiversionVolume ;
+        lulcw:mechanism lulcw:CanalReturnFlow ;
+        lulcw:responseSign lulcw:PositiveResponse ;
+        lulcw:driverGroup lulcw:SummerDemand ;
+        lulcw:withinExtent ?z ;
+        lulcw:resolution lulcw:ExactUnitResolution ;
+        lulcw:confidence ?conf ;
+        lulcw:constraintEligibility ?elig ;
+        lulcw:eligibilityReason ?why ;
+        lulcw:conditions ?cond ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasDerivedFrom ?aw , ?ca ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    {
+        SELECT ?ca (COUNT(DISTINCT ?sr) AS ?nret) (COUNT(DISTINCT ?ss) AS ?nstated) WHERE {
+            ?ca lulcw:derivationRule $this ; lulcw:applicableStatement ?sr .
+            ?sr lulcw:exchangeDirection ?dr .
+            FILTER (?dr = lulcw:SurfaceToAquifer)
+            OPTIONAL { ?sr lulcw:hedging ?h . FILTER (?h = lulcw:StatedFinding) BIND (?sr AS ?ss) }
+        }
+        GROUP BY ?ca
+    }
+    ?ca lulcw:withinExtent ?z ; lulcw:associationUnit ?u ; lulcw:lengthOnOutcropM ?len .
+    ?z lulcw:zoneOf ?w ; lulcw:zoneRadiusM ?radius .
+    ?aw lulcw:attributedEntity ?w ; lulcw:role ?role ; lulcw:candidateUnit ?u ; lulcw:confidence ?conf .
+    FILTER (?role = lulcw:MonitoringRole)
+    ?grp lulcw:intakeMember ?i0 .
+    ?u lulcw:bdlisaCode ?ucode .
+    OPTIONAL {
+        SELECT ?ca (COUNT(DISTINCT ?sn) AS ?nno) WHERE {
+            ?ca lulcw:applicableStatement ?sn .
+            ?sn lulcw:exchangeDirection ?dn .
+            FILTER (?dn = lulcw:NoExchange)
+        }
+        GROUP BY ?ca
+    }
+    BIND (COALESCE(?nno, 0) AS ?kn)
+    BIND (IF(?nstated > 0 && ?kn = 0, lulcw:EligibleConstraint, lulcw:IneligibleConstraint) AS ?elig)
+    BIND (IF(?kn > 0,
+             "The sources disagree: one documents canal return flow into this unit, another finds the unit not influenced by canal water; no sign is used.",
+             IF(?nstated > 0,
+                "A source states canal return flow into this unit (canal seepage and irrigation returns), so more canal water does not lower its head. A diverted volume is not a recharge volume, and no command-area map says which parcels a canal serves (CQ6); the use of this sign as a constraint is settled at Gate 3 (analysis plan, section 14 item 16).",
+                "The canal return flow into this unit is only reported or hedged by the sources: no sign is used."))
+          AS ?why)
+    BIND (CONCAT("Weekly canal diversion volume of the plain's surface-water intakes (the canal input of the models); canal reaches run ",
+                 STR(xsd:integer(ROUND(?len))), " m on the outcrop of unit ", ?ucode, " within ",
+                 STR(xsd:integer(ROUND(?radius))), " m of the well, and ", STR(?nret),
+                 " source statement(s) document canal return flow into the unit. No command area is mapped: which parcels the canals serve, and how much of the diverted water reaches the unit, are unknown. ",
+                 "The sign refers to an increase of the diverted volume with the other drivers held fixed.")
+          AS ?cond)
+    BIND (IRI(CONCAT("https://w3id.org/lulcw/data/influence/canal/plain/to/",
+                     STRAFTER(STR(?aw), "/attribution/piezometer/"))) AS ?inf)
+}
+""" .
+
+#################################################################
 # The rules as data: descriptions and parameters (copied into the graph by the runner, which
 # adds lulcw:ruleVersion and the execution record)
 #################################################################
@@ -762,3 +1188,20 @@ WHERE {
     rdfs:label "high irrigation demand"@en ;
     rdfs:seeAlso lulcwr:assessDemand ;
     rdfs:comment "Dated category of each zone and calendar year: high irrigation demand when the main potential demand estimate reaches the threshold, below otherwise. The threshold (lulcw:demandThresholdM3) is the upper tercile of the main estimates of the training years 2015-2019, computed by src/kg/apply_rules.py from the graph: it never uses a test-period value. A potential requirement, not observed irrigation."@en .
+
+<https://w3id.org/lulcw/data/rule/river-association> a lulcw:DerivationRule ;
+    rdfs:label "river-unit association"@en ;
+    rdfs:seeAlso lulcwr:riverOnOutcrop , lulcwr:riverOverCover , lulcwr:riverCoverUnits ,
+        lulcwr:riverDocumentedLateral , lulcwr:riverApplicableStatement ;
+    rdfs:comment "For each reach search zone, watercourse and unit a monitoring attribution of the zone's well names: whether the watercourse's reach pieces in the zone run on the unit's outcrop (order 1), over the units covering it (listed), or, with neither, meet a section where a source documents an exchange with the unit (documented lateral); with the lengths and the exchange statements that apply (about the unit and a section holding a piece of the zone). A geometric or documentary association, not a hydraulic connection (CQ5)."@en .
+
+<https://w3id.org/lulcw/data/rule/river-influence> a lulcw:DerivationRule ;
+    rdfs:label "river influence"@en ;
+    rdfs:seeAlso lulcwr:riverInfluence ;
+    lulcw:usesGaugePool <https://w3id.org/lulcw/data/gauge-pool/arm-c> ;
+    rdfs:comment "A candidate river-exchange influence of a gauge on a piezometer, one per river-unit association and well attribution, from the gauge of the pool (arm C's five full-record gauges, analysis plan section 14 item 16) on the association's watercourse nearest to the zone's reach pieces. Driver: the gauge's weekly discharge, a proxy of the river stage near the well. Sign non-decreasing on outcrop and for a documented lateral exchange, eligible only where a source documents an exchange and none states independence; conditional and never eligible over cover. An association without a pool gauge gives no influence (CQ5, CQ8)."@en .
+
+<https://w3id.org/lulcw/data/rule/canal-influence> a lulcw:DerivationRule ;
+    rdfs:label "canal-unit association and canal influence"@en ;
+    rdfs:seeAlso lulcwr:canalOnOutcrop , lulcwr:canalApplicableStatement , lulcwr:canalInfluence ;
+    rdfs:comment "For each reach search zone and unit a monitoring attribution of the zone's well names: the length of canal reaches on the unit's outcrop and the canal-return statements naming the unit; then, where a statement documents canal return flow into the unit, one influence of the plain's canal intake group (the canal input of the models) on the well per attribution, sign non-decreasing, eligible only with a stated return statement and no statement that the unit is not influenced by canal water. No command-area map exists (CQ6): a diverted volume is not a recharge volume (CQ6, CQ8)."@en .

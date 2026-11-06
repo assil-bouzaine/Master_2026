@@ -1,0 +1,67 @@
+# CQ6 · Answer status for the canal pathways to a unit in a well's zone (common answer contract,
+# docs/competency_questions.md §2)
+#
+# Parameters  ?U  any IRI;  ?S  any IRI
+# Reads       asserted facts and the rule outputs of cq06_chain.rq
+# Returns     one row: ?status not_applicable (?S is not a reach search zone, or ?U is not a
+#             hydrogeological unit), unknown (?U is not described by BD LISA; or ?U is not a unit
+#             attributed to the zone's well: the rules search canals for those units only; or canal
+#             pieces of ?S run on its outcrop but no association was derived: the rule outputs are
+#             missing or stale), partial (canals cross the unit's outcrop in ?S: the chain intake ->
+#             canal -> unit is partial, since no command area is mapped and no local return amount is
+#             known; or part of the zone's canal reaches lies off the geological map, so the search is
+#             incomplete), supported (no BD TOPO canal reach runs on the unit's outcrop within ?S: a
+#             completed search, which is not "no canal influence": seepage can reach a unit from canals
+#             outside the zone); ?documented: a source reports canal return flow into the unit;
+#             ?stated: one of those reports is a stated finding (not hedged), the condition of an
+#             eligible sign; ?reason in words.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+SELECT ?U ?S ?documented ?stated ?status ?reason
+WHERE {
+    # the tests over reach pieces are sub-selects that start from the parameters (#bind-parameters,
+    # src/kg/cq.py): an EXISTS over the pieces costs 0.5 s in pyoxigraph 0.5 (cq05_status.rq)
+    OPTIONAL {   # canal pieces of a zone on the outcrop of a unit
+        SELECT DISTINCT ?S ?U (1 AS ?hitOn) WHERE {   #bind-parameters
+            ?p lulcw:withinExtent ?S ; lulcw:pieceOfReach ?r ; lulcw:piecePolygon ?poly .
+            ?r lulcw:reachNature "Canal" .
+            ?poly lulcw:hasStackLayer ?l . ?l lulcw:layerUnit ?U ; lulcw:layerOrder ?o .
+            FILTER (?o = 1)
+        }
+    }
+    OPTIONAL {   # canal pieces of a zone off the geological map
+        SELECT DISTINCT ?S (1 AS ?hitOff) WHERE {   #bind-parameters
+            ?q lulcw:withinExtent ?S ; lulcw:pieceOfReach ?r2 . ?r2 lulcw:reachNature "Canal" .
+            OPTIONAL { ?q lulcw:piecePolygon ?qp . }
+            FILTER (!BOUND(?qp))
+        }
+    }
+    BIND (EXISTS { ?S a lulcw:ReachSearchZone . } AS ?isZone)
+    BIND (EXISTS { ?U lulcw:bdlisaCode ?code . } AS ?isUnit)
+    BIND (EXISTS { ?U prov:wasDerivedFrom ?rec . } AS ?inBdlisa)
+    BIND (EXISTS { ?S lulcw:zoneOf ?w0 . ?m0 lulcw:attributedEntity ?w0 ; lulcw:role lulcw:MonitoringRole ;
+                      lulcw:candidateUnit ?U . } AS ?inScope)
+    BIND (EXISTS { ?ca a lulcw:CanalUnitAssociation ; lulcw:withinExtent ?S ; lulcw:associationUnit ?U . } AS ?found)
+    BIND (EXISTS { ?cb lulcw:withinExtent ?S ; lulcw:associationUnit ?U ; lulcw:applicableStatement ?s .
+                   ?cb a lulcw:CanalUnitAssociation . ?s lulcw:exchangeDirection lulcw:SurfaceToAquifer . } AS ?documented)
+    BIND (EXISTS { ?cc lulcw:withinExtent ?S ; lulcw:associationUnit ?U ; lulcw:applicableStatement ?s2 .
+                   ?cc a lulcw:CanalUnitAssociation .
+                   ?s2 lulcw:exchangeDirection lulcw:SurfaceToAquifer ; lulcw:hedging lulcw:StatedFinding . } AS ?stated)
+    BIND (BOUND(?hitOn) AS ?onOutcrop)
+    BIND (BOUND(?hitOff) AS ?offMap)
+    BIND (IF(!?isZone || !?isUnit, "not_applicable",
+          IF(!?inBdlisa, "unknown",
+          IF(!?inScope, "unknown",
+          IF(?onOutcrop && !?found, "unknown",
+          IF(?found || ?offMap, "partial", "supported"))))) AS ?status)
+    BIND (IF(!?isZone, "not a reach search zone of the graph",
+          IF(!?isUnit, "not a hydrogeological unit of the graph",
+          IF(!?inBdlisa, "the unit is not described by BD LISA (not in the Occitanie extract)",
+          IF(!?inScope, "not searched: the rules search canals for the units attributed to the zone's well only, and this unit is not one of them",
+          IF(?onOutcrop && !?found, "canal reaches of the zone run on the unit's outcrop but no association was derived: the rule outputs are missing or stale (run src.kg.apply_rules)",
+          IF(?found && ?stated, "canals cross the unit's outcrop and a source states canal return flow into the unit; no command area is mapped and no local return amount is known: a partial chain",
+          IF(?found && ?documented, "canals cross the unit's outcrop and a source reports canal return flow into the unit, hedged; no command area is mapped and no local return amount is known: a partial chain",
+          IF(?found, "canals cross the unit's outcrop, but no source documents canal return flow into this unit; no command area is mapped: a partial chain",
+          IF(?offMap, "no canal reach found on the unit's outcrop, but part of the zone's canal reaches lies off the geological map: the search is incomplete",
+             "no BD TOPO canal reach runs on the unit's outcrop within the zone (a completed search; canals outside the zone may still matter)"))))))))) AS ?reason)
+}

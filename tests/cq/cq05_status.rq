@@ -1,0 +1,89 @@
+# CQ5 · Answer status for the rivers associated with a unit in a well's zone (common answer
+# contract, docs/competency_questions.md §2)
+#
+# Parameters  ?U  any IRI;  ?S  any IRI
+# Reads       asserted facts and the rule outputs of cq05_associations.rq
+# Returns     one row: ?status not_applicable (?S is not a reach search zone, or ?U is not a
+#             hydrogeological unit), unknown (?U is not described by BD LISA, so no polygon can carry
+#             it; or ?U is not a unit attributed to the zone's well: the rules associate rivers with
+#             those units only, so ?U was not searched; or the zone's pieces run on or over ?U, or a
+#             source documents an exchange of ?U with a section of the zone, but no association was
+#             derived: the rule outputs are missing or stale), conflicting (applicable statements
+#             disagree: one gives an exchange, another independence, or the directions oppose; both
+#             are kept with their periods), supported (an association exists and a source documents
+#             the exchange, or states that ?U is independent of the river there; or the search found
+#             no association: no searched watercourse runs on, over or documentedly beside ?U within
+#             ?S, which is not "no river exchange"), partial (an association exists but no source
+#             qualifies the exchange there: geometric only; or part of the zone's river reaches lies off
+#             the geological map, so the search is incomplete); ?associations, the association types
+#             found; ?reason in words. The search covers the watercourses of the dataset's gauges and
+#             those the documents name, not every stream.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+SELECT ?U ?S (COALESCE(?types, "") AS ?associations) ?status ?reason
+WHERE {
+    OPTIONAL {
+        SELECT ?U ?S (GROUP_CONCAT(DISTINCT STRAFTER(STR(?t), "#"); separator=" ") AS ?types)
+               (COUNT(DISTINCT ?sc) AS ?nconn) (COUNT(DISTINCT ?sn) AS ?nno)
+               (COUNT(DISTINCT ?sa) AS ?nup) (COUNT(DISTINCT ?sb) AS ?ndown)
+        WHERE {   #bind-parameters
+            ?a lulcw:associationUnit ?U ; lulcw:withinExtent ?S ; lulcw:associationType ?t .
+            OPTIONAL { ?a lulcw:applicableStatement ?sc . ?sc lulcw:exchangeDirection ?dc .
+                       FILTER (?dc = lulcw:AquiferToSurface || ?dc = lulcw:SurfaceToAquifer || ?dc = lulcw:ExchangeEquilibrium) }
+            OPTIONAL { ?a lulcw:applicableStatement ?sn . ?sn lulcw:exchangeDirection lulcw:NoExchange . }
+            OPTIONAL { ?a lulcw:applicableStatement ?sa . ?sa lulcw:exchangeDirection lulcw:AquiferToSurface . }
+            OPTIONAL { ?a lulcw:applicableStatement ?sb . ?sb lulcw:exchangeDirection lulcw:SurfaceToAquifer . }
+        }
+        GROUP BY ?U ?S
+    }
+    # pyoxigraph 0.5 evaluates every pattern of an EXISTS in full before joining them (0.5 s over the
+    # reach pieces): the tests over reach pieces are sub-selects that start from the parameters
+    # (#bind-parameters, src/kg/cq.py), keyed by zone and unit
+    OPTIONAL {   # river pieces of a zone on or over a unit (any stack order)
+        SELECT DISTINCT ?S ?U (1 AS ?hitUnder) WHERE {   #bind-parameters
+            ?p lulcw:withinExtent ?S ; lulcw:pieceOfReach ?r ; lulcw:piecePolygon ?poly .
+            ?r lulcw:reachOf ?wc .
+            ?poly lulcw:hasStackLayer ?l . ?l lulcw:layerUnit ?U .
+        }
+    }
+    OPTIONAL {   # river pieces of a zone off the geological map (no polygon)
+        SELECT DISTINCT ?S (1 AS ?hitOff) WHERE {   #bind-parameters
+            ?q lulcw:withinExtent ?S ; lulcw:pieceOfReach ?r2 . ?r2 lulcw:reachOf ?wc2 .
+            OPTIONAL { ?q lulcw:piecePolygon ?qp . }
+            FILTER (!BOUND(?qp))
+        }
+    }
+    BIND (EXISTS { ?S a lulcw:ReachSearchZone . } AS ?isZone)
+    BIND (EXISTS { ?U lulcw:bdlisaCode ?code . } AS ?isUnit)
+    BIND (EXISTS { ?U prov:wasDerivedFrom ?rec . } AS ?inBdlisa)
+    BIND (EXISTS { ?S lulcw:zoneOf ?w0 . ?m0 lulcw:attributedEntity ?w0 ; lulcw:role lulcw:MonitoringRole ;
+                      lulcw:candidateUnit ?U . } AS ?inScope)
+    BIND (BOUND(?hitUnder) AS ?underReach)
+    BIND (EXISTS { ?s0 lulcw:aboutUnit ?U ; lulcw:aboutSection ?sec0 ; lulcw:statedMechanism lulcw:RiverExchange ;
+                       lulcw:exchangeDirection ?d0 .
+                   FILTER (?d0 = lulcw:AquiferToSurface || ?d0 = lulcw:SurfaceToAquifer || ?d0 = lulcw:ExchangeEquilibrium)
+                   ?p0 lulcw:inSection ?sec0 ; lulcw:withinExtent ?S . } AS ?lateralDue)
+    BIND (BOUND(?hitOff) AS ?offMap)
+    BIND (BOUND(?types) AS ?found)
+    BIND (COALESCE(?nconn, 0) AS ?kc)
+    BIND (COALESCE(?nno, 0) AS ?kn)
+    BIND (?kc > 0 && (?kn > 0 || (COALESCE(?nup, 0) > 0 && COALESCE(?ndown, 0) > 0)) AS ?conflict)
+    BIND (IF(!?isZone || !?isUnit, "not_applicable",
+          IF(!?inBdlisa, "unknown",
+          IF(!?inScope, "unknown",
+          IF((?underReach || ?lateralDue) && !?found, "unknown",
+          IF(?conflict, "conflicting",
+          IF(?found && (?kc > 0 || ?kn > 0), "supported",
+          IF(?found || ?offMap, "partial", "supported"))))))) AS ?status)
+    BIND (IF(!?isZone, "not a reach search zone of the graph",
+          IF(!?isUnit, "not a hydrogeological unit of the graph",
+          IF(!?inBdlisa, "the unit is not described by BD LISA (not in the Occitanie extract): no polygon can carry it",
+          IF(!?inScope, "not searched: the rules associate rivers with the units attributed to the zone's well only, and this unit is not one of them",
+          IF((?underReach || ?lateralDue) && !?found, "the zone's river pieces run on or over the unit, or a source documents its exchange with a section of the zone, but no association was derived: the rule outputs are missing or stale (run src.kg.apply_rules)",
+          IF(?conflict, "the applicable statements disagree (an exchange and independence, or opposite directions): both are kept with their periods, never collapsed into a timeless sign",
+          IF(?found && ?kc > 0, "associated, and a source documents an exchange between the unit and a section of the zone (a state with its period; cq05_statements.rq)",
+          IF(?found && ?kn > 0, "associated by geometry, and a source states that the unit is independent of the river in a section of the zone (cq05_statements.rq)",
+          IF(?found, "associated by geometry only: no source qualifies the exchange between the unit and the sections of the zone",
+          IF(?offMap, "no association found, but part of the zone's river reaches lies off the geological map: the search is incomplete",
+             "no searched watercourse (the dataset's gauged rivers and those the documents name) runs on, over or documentedly beside the unit within the zone: a completed search, not 'no river exchange'")))))))))) AS ?reason)
+}

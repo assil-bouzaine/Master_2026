@@ -648,7 +648,7 @@ gauge (no edge, reported). Canal edges for 5 wells, 2 eligible (stated returns).
 Comelade is "conflicting" (FRDG351 losing, BRGM 2017 gaining): kept, and the sign stays eligible
 (stage, not direction; a Gate 3 point). CQ6 stays a partial chain: no command areas.
 
-**Resume here:** (1) 12.8: the export with the per-well, per-relation inventory, bound to the
+**Resume here:** (0) `tests/test_kg.py` fails since the river facts: "a point off dept 66" (a new gauge or intake point outside its box? step note, last line); the other suites pass; (1) 12.8: the export with the per-well, per-relation inventory, bound to the
 graph release (per-regime depth threshold confirmed by Assil on 2026-11-06); (2) the two-well
 executable path (LU-6 → tensors → a model output → its contribution explanation; LU-6 can now
 report CQ5/CQ6), then the small twin. Writing SHACL-AF rules: no constant or one-variable class

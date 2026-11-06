@@ -1409,3 +1409,7 @@ parcel to a canal); no model experiment before the export.
   **To redo at the next session:** the full `test_cq`, `test_kg_rules`, `test_kg`, `test_release`
   and `test_exchange_evidence` on the final files (a run was in progress when the session ended;
   two queries then gained a `documentKey` column only).
+- **Suite run at the end of the session (on the final files):** `test_cq` (9 min), `test_kg_rules`,
+  `test_release`, `test_exchange_evidence` pass; **`test_kg` fails: "AssertionError: a point off dept
+  66"**, probably a new gauge or surface-intake point of `src/kg/rivers.py` outside the check's
+  département box. To fix first at the next session (decide whether the point or the check is wrong).

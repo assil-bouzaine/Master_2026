@@ -1158,3 +1158,132 @@ unit-wide extent (a) as a sensitivity row. Analysis plan §14 item 14 updated.
   per-well inventory of 12.8 reports it), while C gives every well its nearest cell.
 - **Still partial:** river exchange (CQ5) and canal return flow (CQ6) are not influences yet; for
   the Pliocene they, and the leakage the sources describe, matter more than local rain.
+
+## 2026-11-06: CQ5 and CQ6, sources and design proposal (before any CQ5 code; ❓ for Assil)
+
+### Recurring check (CLAUDE.md §7), answered before starting
+1. *Chain link advanced:* water → model (the river and canal relations of arm D, the last two
+   that analysis plan §14 item 14 takes from the graph), and land use → water through CQ6: canal
+   irrigation → return flow to the alluvium, the agricultural pathway the data can carry (review
+   response of 2026-10-25, §2 item 2).
+2. *Where dated land use enters:* unchanged: the weekly crop-thirst index (LU-4: no detectable
+   improvement on the core wells) and the graph's dated crop areas, classes and demand categories
+   (CQ7). CQ6 would tie canal irrigation to the alluvium, but without command-area maps no parcel
+   can be tied to a canal, so dated land use still reaches no model graph.
+3. *Observed / inferred / assumed / unknown:* observed: reach geometry (BD TOPO), the official
+   river water-body sections (Sandre), the gauge records (Hub'Eau), the units under each reach (BD
+   LISA stacks); documented (literature, with page): low-flow exchange qualifications per water
+   body (groundwater-body sheets, 2021) and the Têt gauging campaign of 11–13 September 2017
+   (BRGM); inferred: reach–unit associations (geometry) and gauge representativeness; assumed: a
+   gauge's discharge stands in for the river stage near a well; unknown: exchange outside the
+   documented sections and periods, canal command areas, which parcels a canal serves.
+4. *Evidence vs plan:* done today: the BD TOPO snapshot, the bounded source search below and the
+   measurements. Everything under "Proposal" is a plan.
+5. *Next model experiment:* none before the export (12.8).
+6. *Still missing from the subject:* satellite semantics (12.10, Earth Engine login),
+   explanations of real outputs (CQ10), the scenario (CQ16), the AGROVOC gold set (Assil) and
+   OntoAligner; CQ6's command areas (a data gap: request to DDTM 66 or the Chambre
+   d'agriculture).
+
+### Sources found (bounded search, 2026-11-06)
+- **BD TOPO V3 hydrography** (IGN Géoplateforme WFS; `src/ingest/bdtopo_hydro.py`, snapshot
+  2026-11-06): 48,346 reaches and 3,269 watercourses in DEPT_BBOX. Each reach carries the BD Carthage
+  code of its watercourse, the code Hub'Eau gives a gauge's river (`code_cours_eau`): the 21
+  gauged rivers of dataset v4 are all found, so a gauge meets its reaches by code, never by name.
+  2,546 reaches are canals (`nature` = Canal), with names (e.g. "Canal de Perpignan"): CQ6's
+  conveyance lines.
+- **Official river water bodies** (Sandre WFS `MasseDEau_VRAP2022`, layer
+  `MasseDEauRiviere_VRAP2022_FXX`, 193 lines in the box): the sections the sheets below qualify,
+  e.g. FRDR224 "La Têt du barrage de Vinca à la Comelade"; all 13 sections the sheets name exist.
+- **Groundwater-body characterisation sheets** (Agence de l'eau Rhône-Méditerranée-Corse, SIERM,
+  "état des connaissances 2021"), each relation stated "at the scale of the surface water body, at
+  low flow":
+  - FRDG351 "Alluvions quaternaires du Roussillon" (it lists its BD LISA V3 units: 671AB01–04,
+    718BP01–04): Têt Vinça → Comelade *pérenne perdant* (the river loses to the aquifer),
+    Comelade → sea *pérenne drainant* (it drains it); Agly Verdouble → Roboul *en équilibre*,
+    Roboul → sea *pérenne drainant*; Canterrane and Réart *temporaire drainant*; Tech Lamanère →
+    Molas and Molas → Tanyari *en équilibre*, Tanyari → sea *pérenne drainant*; Massane,
+    Riberette and the Bolès below Bouleternère: no information. Comments refine the Agly, Réart
+    and Tech by town (e.g. the Tech "in equilibrium as far as Elne, then draining").
+  - FRDG243 "Multicouche pliocène du Roussillon": Canterrane/Réart upstream *indépendant de la
+    nappe*; "the rivers are connected with the Quaternary aquifers overlying the Pliocene".
+- **BRGM/RP-71486-FR** (Ladouche & Caballero 2022; Têt between Rodès and Perpignan, differential
+  gauging and geochemistry of 11–13 September 2017, sampling points in Lambert-93): the river
+  drains the recent alluvium between Rodès (Têt-A) and T6 (Têt-D) (p. 25); groundwater adds about
+  +0.4 m³/s per reach down to Le Soler (Têt-I) (Tableau 2, p. 26), +2.1 m³/s from Rodès to Perpignan
+  with the unmeasured canal returns (p. 29); from Le Soler to Perpignan a loss of −0.15 m³/s, and
+  "the exchange could reverse in this sector, the Têt feeding the Quaternary" (pp. 30, 32); the
+  upper Boulès infiltrates entirely in summer (about 20 l/s) into the recent alluvium (p. 14), its
+  lower course drains the Quaternary (p. 24); canal losses 1.7 (right bank) and 1.2 m³/s (left)
+  into the recent alluvium, 1.9 m³/s into the ancient alluvium (right bank) (p. 29). The report
+  calls the recent alluvium 750PP02, a code absent from BD LISA V3 (genealogy table checked): it is
+  mapped to 718BP02 "Alluvions récentes de la Têt" by its name, and the mapping is stated.
+- **SMNPR**, "Présentation des nappes" (read 2026-10-27): the Têt and its Quaternary aquifer
+  infiltrate into the Pliocene upstream, between Bouleternère and Saint-Féliu-d'Amont.
+- **Canal command areas: none found** (data.gouv.fr, the préfecture 66 site, the Géoplateforme
+  WFS, Sandre). ASA perimeters exist as prefectural orders with map annexes (PDF); data.gouv.fr has
+  a test dataset for the ASA of the Castellane (Conflent, upstream), not the plain.
+- **The sources disagree on the Têt above the Comelade:** FRDG351 says "losing" (from the EVP Têt,
+  BRLi 2011: losses of about 0.5 m³/s over the year, 2 m³/s at low flow), BRGM's September 2017
+  campaign measured gains. The case of CQ5's acceptance rule ("two documented opposing directions
+  are preserved, not collapsed") occurs in the real data; both are kept, each with its period.
+
+### Measured (dataset v4, 65 wells, 5 km search zones)
+- 59 wells have a gauged watercourse within 5 km. For the alluvial wells the river runs on the
+  outcrop of their own unit (MILLAS C2-1: 12.0 km of the Têt on 718BP02); for most Pliocene wells it
+  runs over the alluvium that covers the Pliocene (MILLAS C2-2: the same 12.0 km over 718BP02); a
+  few Pliocene wells have river reaches on Pliocene outcrop (TERRATS: 7.5 km of the Réart). The two
+  ancient-alluvium core wells: the Têt is within 5 km but runs on the recent alluvium beside the
+  terrace, so the stack rule finds no association; BRGM documents a lateral contribution of the
+  ancient alluvium to the Têt below the Corneilla intake.
+- Wells that would get a river edge in D (C gives every well its 2 nearest of 5 gauges):
+
+  | gauge pool | association in the 5 km zone | wells (core) |
+  |---|---|---|
+  | C's 5 full-record gauges (Têt ×2, Agly, Tech ×2) | river on the unit's outcrop | 14 (6) |
+  | C's 5 | on the outcrop, or over the unit's cover | 32 (22) |
+  | any gauge with ≥ 2/3 of training weeks observed | on the outcrop | 26 (9) |
+  | any gauge with ≥ 2/3 | on the outcrop, or over the cover | 49 (26) |
+
+### Proposal
+- **Facts** (new `src/kg/rivers.py`, called by `build_kg`): watercourses (BD Carthage code), the
+  reaches of gauged watercourses inside the 65 search zones, the official water-body sections
+  named by the sheets, the gauges (code, position, river, local-influence class, weekly series
+  reference, training coverage), the length of each reach inside each elementary polygon and zone
+  (computed in Python, as CQ4's polygon × cell pieces), and the documented statements as
+  `lulcw:ExchangeAssertion` records from a curated table (`configs/river_exchange_evidence.csv`:
+  source, page, short quote, section, unit, direction, period or state, quantity, hedging).
+- **Rules:** a river–unit association per well zone: *on outcrop* (the unit is order 1 under the
+  reach), *over cover* (the unit lies under other units, which are listed), or *documented
+  lateral* (a source names the unit for a section with reaches in the zone); the statements that
+  apply to each association; the candidate gauges with their representativeness; then the river →
+  well influences (CQ8).
+- **The sign (for Gate 3).** Where river and aquifer are connected, the exchange flux grows with the
+  river stage in both directions (q = C (h_river − h_aquifer), the MODFLOW river package: Harbaugh
+  2005, doi:10.3133/tm6A16), so the head response to stage is non-decreasing whether the river
+  gains or loses. The documented direction is a *state*, recorded with its period; it does not set
+  the sign. Proposed: sign-eligible only *on outcrop* or *documented lateral* with a documented
+  exchange other than "independent"; *over cover* edges carry no eligible sign (leakage through the
+  cover, FRDG243). A gauge's discharge stands for stage near the well only up to the diversions in
+  between, so its use as a constraint is settled at Gate 3, as for the recharge proxies.
+- **CQ6, bounded:** command areas stay a documented gap (with the data request); facts: canal
+  lines (BD TOPO), canal intakes (BNPE, surface water), the documented canal losses and return flows
+  (BRGM, FRDG351); answers stay partial, never a local recharge amount.
+- **Questions for Assil** (❓ 1 gauge pool, ❓ 2 association types giving D edges, ❓ 3 canal edges):
+  asked on 2026-11-06; answers below.
+
+### Decisions (Assil, 2026-11-06, before any CQ5 code; all four as recommended)
+1. **Gauge pool of D's river edges: C's 5 full-record gauges** (Têt at Rodès and Perpignan, Agly
+   at Estagel, Tech at Le Boulou and Argelès). D and C differ only in which gauge connects to which
+   well; wells whose associated river has no pool gauge (the Réart) get no river edge in D, and the
+   gap is reported. CQ5 itself still answers for every gauge of dataset v4.
+2. **Associations that give D a river edge: on outcrop, over cover, and documented lateral.** An
+   *over cover* edge is labelled "via overlying units" and never carries an eligible sign.
+   Measured with the pool: 32 wells (22 core) before the documented lateral links.
+3. **Canal edges of D: C's plain canal node connects to a well** whose unit has a BD TOPO canal
+   crossing its outcrop within 5 km **and** a documented canal-return pathway (FRDG351, BRGM); the
+   sign "canal return raises the alluvium head" eligible there, its use settled at Gate 3. Command
+   areas stay a documented gap.
+4. **The per-regime depth threshold of the well links is confirmed as proposed** (analysis plan
+   §14 item 15): eligible thresholds keep ≥ 10 linked pairs with ≥ 104 shared training weeks; ties
+   (medians within 0.02) go to the looser threshold; chosen inside each regime's allowed heads.

@@ -448,3 +448,27 @@ Notes:
 - Derived: `interim/agrovoc_labels.parquet` (105,697 French and English labels: 42,082
   preferred in each language, 13,006 English and 8,527 French alternatives),
   `interim/agrovoc_broader.parquet` (42,530 `skos:broader` links between concepts).
+
+### River reaches, water bodies and cited documents (Step 12, CQ5 and CQ6, 2026-11-06)
+
+| Date | Source | Endpoint / URL | Parameters | Output | Rows | Size |
+|---|---|---|---|---|---|---|
+| 2026-11-06 | IGN, BD TOPO V3 hydrography (Licence Ouverte 2.0) | `https://data.geopf.fr/wfs/ows` (WFS 2.0.0), `BDTOPO_V3:troncon_hydrographique`, `BDTOPO_V3:cours_d_eau` | `python -m src.ingest.bdtopo_hydro`; BBOX = DEPT_BBOX (lon 1.65–3.25, lat 42.30–43.00), `SRSNAME=EPSG:2154`, `COUNT=5000` + `STARTINDEX`, `SORTBY=cleabs` | `raw/bdtopo_hydro/2026-11-06/troncon_hydrographique.parquet`, `cours_d_eau.parquet`, `release.json` | 48,346 reaches; 3,269 watercourses | 23.9 MB; 11.3 MB |
+| 2026-11-06 | Sandre, référentiel des masses d'eau, version rapportage 2022 | `https://services.sandre.eaufrance.fr/geo/MasseDEau_VRAP2022` (WFS), `sa:MasseDEauRiviere_VRAP2022_FXX` | `python -m src.ingest.sandre_water_bodies`; same BBOX, `SRSNAME=EPSG:2154`, `OUTPUTFORMAT=GPKG` (GeoJSON is refused for this layer) | `raw/sandre_water_bodies/2026-11-06/masses_eau_riviere_vrap2022.zip`, `.parquet`, `release.json` | 193 river water bodies | 0.5 MB |
+| 2026-11-06 | BRGM/RP-71486-FR (Ladouche & Caballero 2022, Dem'Eaux Roussillon #11b); Agence de l'eau RMC (SIERM) groundwater-body sheets FRDG351 and FRDG243, état des connaissances 2021 | `https://infoterre.brgm.fr/rapports/RP-71486-FR.pdf`; `https://www.rhone-mediterranee.eaufrance.fr/sites/sierm/files/underground_waterbody/FRDG351.pdf`, `.../FRDG243.pdf` | `python -m src.ingest.documents` | `raw/documents/<key>.pdf`, `documents.json` (URL, date, size, md5) | 3 documents (50, 8 and 7 pages) | 5.4 MB, 159 KB, 155 KB |
+
+- **Join keys.** A BD TOPO reach carries the BD Carthage code of its watercourse
+  (`code_du_cours_d_eau_bdcarthage`, e.g. `Y04-0400` for the Têt), which is Hub'Eau's
+  `code_cours_eau` for a gauge: the 21 gauged watercourses of dataset v4 all match (the canal
+  adducteur and the Font-Estramar resurgence have code `00000000`). Reach attributes used: `nature`
+  (2,546 canals), `persistance`, `reseau_principal_coulant`, `cpx_toponyme_de_cours_d_eau`.
+- **Water bodies.** The 13 sections that the FRDG351 and FRDG243 sheets qualify are all present
+  (FRDR211, 212, 223, 224, 232A, 232B, 234A, 234B, 235, 237A, 984, 986B, 1012); they carry no BD Carthage
+  code, so they meet the BD TOPO reaches by geometry (procedure in `src/kg/rivers.py`).
+- **Documents.** Read with `pdftotext -layout`. The statements used are curated in
+  `configs/river_exchange_evidence.csv` (printed page, short quote). BRGM's sampling points come
+  with Lambert-93 coordinates (annex, Figure A-3); the report's code 750PP02 for the recent alluvium
+  is absent from BD LISA V3 and is mapped to 718BP02 by name.
+- **Canal command areas: not found** (search of 2026-11-06: data.gouv.fr, the préfecture 66 site,
+  the Géoplateforme WFS, Sandre). The ASA perimeters exist as map annexes of prefectural orders
+  (PDF); a "test" dataset on data.gouv.fr covers the ASA of the Castellane only (Conflent).

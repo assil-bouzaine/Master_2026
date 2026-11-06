@@ -541,7 +541,7 @@ Decided by Assil after the second external review; reasons and checks in
    harder twin.
 9. §11 freeze tag and confirmation check; §12 wording.
 
-## 14. Amendments before the tag (2026-10-24 to 27)
+## 14. Amendments before the tag (2026-10-24 to 2026-11-06)
 
 After the third review (`docs/review_codex_2026-10-24.md`); verdicts and checks in
 `docs/review_codex_2026-10-24_response.md`. Items 1–4 and 9–11 were decided by Assil
@@ -742,6 +742,8 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
     - *Cartographic meaning of "exact unit".* An exact-unit attribution (CQ2, CQ8) means the
       same mapped BD LISA entity; it does not establish a common screened horizon or a
       hydraulic connection, which matters in the Pliocene multilayer.
+    - *Confirmed by Assil on 2026-11-06, before the export:* the per-regime depth threshold as
+      proposed above (minimum support, tie rule, records).
     - *Bounded domain review before the broad sweeps.* The two LU-6 wells (MILLAS C2-1, the
       alluvium; PONTEILLA NYLS-1, the Pliocene) and their recharge, abstraction and canal
       pathways go to the supervisor or a hydrogeologist (SMNPR, BRGM) for a targeted check of
@@ -769,3 +771,24 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       explanation); the small, difficult twin; then the frozen primary contrasts. CQ5 and CQ6
       get a bounded evidence search and keep documented gaps; no canal service area is
       invented to complete a diagram.
+16. **River and canal edges of arm D (CQ5, CQ6; decided by Assil on 2026-11-06, before any CQ5
+    code; sources and measurements in `docs/notes/step12_ontology.md`, 2026-11-06).**
+    - *Gauge pool:* the 5 full-record gauges of C (Têt at Rodès and Perpignan, Agly at Estagel,
+      Tech at Le Boulou and Argelès). D connects a well to the pool gauge on a watercourse the
+      graph associates with the well's unit in its 5 km zone; a well whose associated river has
+      no pool gauge (the Réart) has no river edge in D, reported with every D vs C result.
+    - *Associations giving an edge:* the river runs on the outcrop of the well's unit, or over the
+      units that cover it ("via overlying units"), or a source documents an exchange between that
+      unit and a section with reaches in the zone ("documented lateral"). Measured before the
+      decision: 32 wells (22 core) with the pool, before the documented lateral links.
+    - *Sign:* where connected, the exchange flux grows with the river stage whatever its
+      direction (q = C (h_river − h_aquifer), the MODFLOW river package, Harbaugh 2005,
+      doi:10.3133/tm6A16), so a non-decreasing head response to discharge is eligible only on
+      outcrop or documented lateral with a documented exchange that is not "independent"; over
+      cover, never. Documented directions are states kept with their period (the sources disagree
+      on the Têt above the Comelade); the use of the sign as a constraint is settled at Gate 3.
+    - *Canal edges:* no command-area map exists for the plain. C's plain canal node connects to a
+      well whose unit has a BD TOPO canal crossing its outcrop within 5 km and a documented
+      canal-return pathway into that unit (FRDG351, BRGM/RP-71486-FR); the sign "canal return
+      raises the alluvium head" is eligible there, settled at Gate 3. The command areas stay a
+      documented gap.

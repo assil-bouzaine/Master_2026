@@ -89,6 +89,11 @@ from tests.test_kg_rules import (GEO, KG, L, PROV, RADIUS, SOSA, TIME, build_fix
 MAIN, CONF_ONLY = d("policy/main"), d("policy/confident-only")
 
 
+def DATE(day):
+    """An xsd:date parameter (the requested period ?T0, ?T1 of CQ5 and CQ6)."""
+    return ox.Literal(day, datatype=ox.NamedNode(str(XSD.date)))
+
+
 def to_store(g):
     s = ox.Store()
     s.load(g.serialize(format="nt", encoding="utf-8"), format=ox.RdfFormat.N_TRIPLES)
@@ -156,7 +161,8 @@ def cq_fixture():
               (st6, L.aboutSection, d("water-body/FRDRT1")), (st6, L.aboutWatercourse, d("watercourse/WC1")),
               (st6, L.aboutUnit, u["C"]), (st6, L.unitAsNamed, Literal("unit C", lang="fr")),
               (st6, L.unitMapping, L.UnitListedBySource), (st6, L.exchangeDirection, L.NoExchange),
-              (st6, L.hedging, L.StatedFinding), (st6, L.stateDescription, Literal("low flow (fixture)", lang="en")),
+              (st6, L.hedging, L.StatedFinding), (st6, L.evidenceMethod, L.SynthesisStatement),
+              (st6, L.stateDescription, Literal("low flow (fixture)", lang="en")),
               (st6, L.evidenceKind, L.ExpertHypothesis), (st6, PROV.wasDerivedFrom, pa),
               (d("series/rivers-test/G1"), L.coverageStart, Literal("2005-01-02", datatype=XSD.date)),
               (d("series/rivers-test/G1"), L.coverageEnd, Literal("2026-10-18", datatype=XSD.date))):
@@ -353,6 +359,11 @@ def test_cq8_fixture(s):
                     ("F6", "ExactUnitResolution"): ("NegativeResponse", "EligibleConstraint", "Probable", "U", True)}, main
     assert all(v[4] for v in infl(d("policy/all-links")).values())
     assert not any(v[4] for v in infl(CONF_ONLY).values())        # every facility path is probable or less
+    con = {r["driverCode"]: (local(r["proxyReview"]), local(r["constraintApproval"]), r["constrained"])
+           for r in ask(s, "cq08_influences", W=w1, policy=MAIN)}
+    assert con == {"F1": ("AcceptedStatus", "AcceptedStatus", True), "F2": ("AcceptedStatus", "AcceptedStatus", False),
+                   "F4": ("AcceptedStatus", "AcceptedStatus", False), "F6": ("AcceptedStatus", "AcceptedStatus", True)}, con
+    # (F2: group-level, not eligible; F4: possible, not selected; the decisions accept pumping signs)
     st = one(s, "cq08_status", W=w1)
     assert (st["status"], st["drivers"], st["recharge"]) == ("partial", "PumpingDrawdown", "unknown"), st
     assert "not described by BD LISA" in st["reason"]             # W1's unit U: its outcrop is not known
@@ -429,32 +440,57 @@ def test_cq4_fixture(s, u):
           "unknown, not a negative answer")
 
 
-RZ = {k: d(f"reach-zone/{k}") for k in ("R1", "R2", "R3", "R4", "R5", "R6")}
+RZ = {k: d(f"reach-zone/{k}") for k in ("R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12")}
 
 
 def test_cq5_fixture(s, u):
     """The river cases of tests/test_kg_rules.add_rivers, plus C as a second candidate of R2 and R4
     and statement S6 (cq_fixture)."""
     got = {k: [(r["watercourseCode"], r["unitCode"], r["type"], r["lengthOnOutcropM"], r["lengthOverCoverM"],
-                r["coverUnits"], r["pieces"], r["statements"]) for r in ask(s, "cq05_associations", S=z)]
+                r["coverUnits"], r["pieces"], r["statements"], r["localizedStatements"]) for r in ask(s, "cq05_associations", S=z)]
            for k, z in RZ.items()}
-    assert got == {"R1": [("WC1", "X", "OnOutcrop", 1500.0, None, None, 1, 1)],
-                   "R2": [("WC2", "Z", "OverCover", None, 1200.0, "Y", 1, 0)],
-                   "R3": [("WC1", "B", "DocumentedLateral", None, None, None, 1, 1)],
-                   "R4": [("WC1", "X", "OnOutcrop", 900.0, None, None, 2, 0)],     # 50 m off the map not counted
-                   "R5": [("WC1", "X", "OnOutcrop", 600.0, None, None, 1, 2)],
-                   "R6": [("WC3", "A", "OnOutcrop", 1000.0, None, None, 1, 0)]}, got
+    assert got == {"R1": [("WC1", "X", "OnOutcrop", 1500.0, None, None, 1, 1, 1)],     # S1, and S7 localised
+                   "R2": [("WC2", "Z", "OverCover", None, 1200.0, "Y", 1, 0, 0)],
+                   "R3": [("WC1", "B", "DocumentedLateral", None, None, None, 1, 1, 0)],
+                   "R4": [("WC1", "X", "OnOutcrop", 900.0, None, None, 2, 0, 0)],     # 50 m off the map not counted
+                   "R5": [("WC1", "X", "OnOutcrop", 600.0, None, None, 1, 2, 0)],
+                   "R6": [("WC3", "A", "OnOutcrop", 1000.0, None, None, 1, 0, 0)],
+                   "R7": [("WC1", "X", "OnOutcrop", 500.0, None, None, 2, 1, 1)],
+                   "R8": [], "R9": [],                                              # off the map; S7 locates nothing
+                   "R10": [("WC4", "X", "OnOutcrop", 1200.0, None, None, 2, 2, 0)],
+                   "R11": [("WC4", "X", "OnOutcrop", 700.0, None, None, 1, 2, 0)],
+                   "R12": [("WC4", "X", "OnOutcrop", 700.0, None, None, 1, 2, 0)]}, got
     cases = {"X in R1": (u["X"], RZ["R1"]), "Z in R2": (u["Z"], RZ["R2"]), "C in R2": (u["C"], RZ["R2"]),
              "B in R3": (u["B"], RZ["R3"]), "X in R4": (u["X"], RZ["R4"]), "C in R4": (u["C"], RZ["R4"]),
              "X in R5": (u["X"], RZ["R5"]), "A in R6": (u["A"], RZ["R6"]), "Y in R1": (u["Y"], RZ["R1"]),
              "U in R1": (u["U"], RZ["R1"]), "a well": (d("piezometer/R1"), RZ["R1"]),
-             "an outcrop zone": (u["X"], d("outcrop-zone/W1"))}
+             "an outcrop zone": (u["X"], d("outcrop-zone/W1")),
+             "X in R7": (u["X"], RZ["R7"]), "B in R8": (u["B"], RZ["R8"]), "B in R9": (u["B"], RZ["R9"]),
+             "X in R10": (u["X"], RZ["R10"]), "X in R11": (u["X"], RZ["R11"]), "X in R12": (u["X"], RZ["R12"])}
     st = {k: one(s, "cq05_status", U=uu, S=ss) for k, (uu, ss) in cases.items()}
     assert {k: v["status"] for k, v in st.items()} == {
         "X in R1": "supported", "Z in R2": "partial", "C in R2": "supported", "B in R3": "supported",
         "X in R4": "partial", "C in R4": "partial", "X in R5": "conflicting", "A in R6": "partial",
         "Y in R1": "unknown", "U in R1": "unknown", "a well": "not_applicable",
-        "an outcrop zone": "not_applicable"}, {k: (v["status"], v["reason"]) for k, v in st.items()}
+        "an outcrop zone": "not_applicable",
+        "X in R7": "partial",            # documented (S1), but 40 m off the map: incomplete (Codex Q2)
+        "B in R8": "partial",            # nothing on the map; 60 m of river off it
+        "B in R9": "supported",          # S7 is about an aggregate holding B: no documented lateral (R1)
+        "X in R10": "supported",         # opposite states for adjacent stretches: variation (R4)
+        "X in R11": "supported",         # opposite states for one stretch in disjoint periods: variation
+        "X in R12": "conflicting"}, {k: (v["status"], v["reason"]) for k, v in st.items()}   # one undated
+    assert "contradiction under comparable conditions" in st["X in R5"]["reason"]
+    assert "unresolved" in st["X in R12"]["reason"] and "undated" in st["X in R12"]["reason"]
+    assert "variation" in st["X in R10"]["reason"] and "variation" in st["X in R11"]["reason"]
+    assert "40 m of the zone's river reaches lie off the geological map" in st["X in R7"]["reason"]
+    assert st["B in R8"]["reason"].startswith("no association found, but 60 m")
+    assert st["B in R9"]["reason"].startswith("no searched watercourse")
+    assert (st["X in R11"]["evidencePeriods"], st["X in R12"]["evidencePeriods"], st["X in R1"]["evidencePeriods"]) == \
+        ("dated", "dated and undated", "undated")
+    t2011 = one(s, "cq05_status", U=u["X"], S=RZ["R11"], T0=DATE("2010-01-01"), T1=DATE("2012-12-31"))
+    assert (t2011["status"], t2011["evidencePeriods"]) == ("supported", "dated") and "variation" not in t2011["reason"], t2011
+    t2017 = one(s, "cq05_status", U=u["X"], S=RZ["R12"], T0=DATE("2017-01-01"), T1=DATE("2017-12-31"))
+    assert t2017["status"] == "conflicting" and "unresolved" in t2017["reason"], t2017   # S11 undated still counts
     assert (st["X in R1"]["associations"], st["B in R3"]["associations"], st["C in R2"]["associations"]) == \
         ("OnOutcrop", "DocumentedLateral", "")
     assert st["C in R2"]["reason"].startswith("no searched watercourse") and "completed search" in st["C in R2"]["reason"]
@@ -466,7 +502,16 @@ def test_cq5_fixture(s, u):
         return [(local(r["statement"]), r["applies"], r["listedBecause"], r["direction"], r["hedging"])
                 for r in ask(s, "cq05_statements", S=RZ[k], U=u[unit])]
     assert stm("R1", "X") == [("S1", True, "applies", "AquiferToSurface", "StatedFinding"),
+                              ("S7", False, "localised from an aggregate", "AquiferToSurface", "StatedFinding"),
                               ("S5", False, "stretch not delimited", "SurfaceToAquifer", "StatedFinding")], stm("R1", "X")
+    assert stm("R9", "B") == [("S7", False, "section in zone", "AquiferToSurface", "StatedFinding")], stm("R9", "B")
+    subj = {local(r["statement"]): (r["subject"], r["temporalScope"], r["method"])
+            for r in ask(s, "cq05_statements", S=RZ["R12"], U=u["X"])}
+    assert subj == {"S8": ("unit", "dated", "DifferentialGauging"), "S11": ("unit", "undated", "SynthesisStatement")}, subj
+    t = {local(r["statement"]): r["temporalScope"] for r in ask(s, "cq05_statements", S=RZ["R12"], U=u["X"],
+                                                                T0=DATE("2018-01-01"), T1=DATE("2020-12-31"))}
+    assert t == {"S8": "outside the requested period", "S11": "undated"}, t
+    assert [r["subject"] for r in ask(s, "cq05_statements", S=RZ["R9"], U=u["B"])] == ["aggregate"]
     assert stm("R5", "X") == [("S3", True, "applies", "NoExchange", "StatedFinding"),     # kept side by side
                               ("S4", True, "applies", "SurfaceToAquifer", "StatedFinding"),
                               ("S5", False, "stretch not delimited", "SurfaceToAquifer", "StatedFinding")], stm("R5", "X")
@@ -501,7 +546,10 @@ def test_cq5_fixture(s, u):
           "an exchange documented (supported), only geometric (partial), independence beside an exchange "
           "(conflicting, both kept); a statement without a delimited stretch listed, never applied; the "
           "nearest pool gauge used, a nearer gauge outside the pool listed; a unit no well of the zone "
-          "monitors: not searched; off-map reaches: an incomplete search; facts without rule outputs: unknown")
+          "monitors: not searched; off-map reaches: an incomplete search, also beside a documented "
+          "association; facts without rule outputs: unknown; an aggregate statement localised on outcrop, "
+          "never a documented lateral; opposite states for adjacent stretches or disjoint periods: "
+          "variation, with an undated one: unresolved; requested periods filter dated statements")
 
 
 def test_cq6_fixture(s, u):
@@ -520,9 +568,16 @@ def test_cq6_fixture(s, u):
               local(r["statement"]), r["direction"], r["hedging"], r["document"], r["page"])
              for r in ask(s, "cq06_chain", S=RZ["R1"], U=u["X"])]
     assert chain == [(800.0, "reach k1", 1, 0, "not mapped", "C1", "SurfaceToAquifer", "StatedFinding",
+                      "test report", "1"),
+                     (800.0, "reach k1", 1, 0, "not mapped", "C3", "SurfaceToAquifer", "StatedFinding",
+                      "test report", "1"),
+                     (800.0, "reach k1", 1, 0, "not mapped", "C4", "SurfaceToAquifer", "StatedFinding",
                       "test report", "1")], chain
+    assert [(local(r["statement"]), r["subject"]) for r in ask(s, "cq06_chain", S=RZ["R1"], U=u["X"])] == \
+        [("C1", "unit"), ("C3", "aggregate, localised by the outcrop"), ("C4", "unit")]
+    assert [local(r["statement"]) for r in ask(s, "cq06_chain", S=RZ["R7"], U=u["X"])] == ["C1", "C3"]   # not C4 (R1's)
     assert [(r["lengthOnOutcropM"], local(r["statement"]), r["hedging"]) for r in ask(s, "cq06_chain", S=RZ["R6"], U=u["A"])] == \
-        [(400.0, "C2", "HedgedFinding")]
+        [(400.0, "C2", "HedgedFinding"), (400.0, "C3", "StatedFinding")]
     assert ask(s, "cq06_chain", S=RZ["R2"], U=u["Z"]) == []
     facts_only = to_store(cq_fixture()[0].g)
     st = one(facts_only, "cq06_status", U=u["X"], S=RZ["R1"])
@@ -550,7 +605,9 @@ def test_cq8_rivers_fixture(s, g):
             "R3": {"RiverExchange": ("G2", "PositiveResponse", "EligibleConstraint", *river, "B", "DocumentedLateral", "R3")},
             "R4": {"RiverExchange": ("G1", "PositiveResponse", "IneligibleConstraint", *river, "X", "OnOutcrop", "R4")},
             "R5": {"RiverExchange": ("G1", "PositiveResponse", "IneligibleConstraint", *river, "X", "OnOutcrop", "R5")},
-            "R6": {"CanalReturnFlow": ("canal-intakes:plain", "PositiveResponse", "IneligibleConstraint", *canal, "A", None, "R6")}}
+            "R6": {"CanalReturnFlow": ("canal-intakes:plain", "PositiveResponse", "IneligibleConstraint", *canal, "A", None, "R6")},
+            "R7": {"RiverExchange": ("G1", "PositiveResponse", "EligibleConstraint", *river, "X", "OnOutcrop", "R7"),
+                   "CanalReturnFlow": ("canal-intakes:plain", "PositiveResponse", "EligibleConstraint", *canal, "X", None, "R7")}}
     for k, w in want.items():
         got = infl(k)
         assert got == {m: v + ("Confident", True) for m, v in w.items()}, (k, got)
@@ -561,12 +618,26 @@ def test_cq8_rivers_fixture(s, g):
     assert "vertical leakage" in reasons[("R2", "RiverExchange")]
     assert "geometric only" in reasons[("R4", "RiverExchange")] and "independent" in reasons[("R5", "RiverExchange")]
     assert "hedged" in reasons[("R6", "CanalReturnFlow")]
-    st = {k: one(s, "cq08_status", W=d(f"piezometer/{k}")) for k in ("R1", "R2", "R3", "R4", "R5", "R6", "W7", "W1")}
+    st = {k: one(s, "cq08_status", W=d(f"piezometer/{k}"))
+          for k in ("R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "W7", "W1")}
     assert {k: (v["status"], v["river"], v["canal"]) for k, v in st.items()} == {
         "R1": ("partial", "derived", "derived"), "R2": ("partial", "derived", "none_found"),
         "R3": ("partial", "derived", "none_found"), "R4": ("partial", "derived", "none_found"),
         "R5": ("partial", "derived", "none_found"), "R6": ("partial", "no_pool_gauge", "derived"),
+        "R7": ("partial", "derived", "derived"),
+        "R8": ("partial", "unknown", "unknown"),         # only off-map reaches: never a completed negative (Codex Q1)
+        "R9": ("partial", "none_found", "none_found"),
+        "R10": ("partial", "no_pool_gauge", "none_found"),
         "W7": ("partial", "unknown", "unknown"), "W1": ("partial", "unknown", "unknown")}, st
+    assert "60 m of the zone's river reaches lie off the geological map" in st["R8"]["riverReason"]
+    assert "70 m of the zone's canal reaches lie off the geological map" in st["R8"]["canalReason"]
+    # the decision layer: river and canal signs are pending (candidate) in the fixture policies, so no
+    # eligible river or canal sign constrains a model
+    dec = {(k, local(r["mechanism"])): (r["selected"], local(r["eligibility"]), local(r["proxyReview"]),
+                                        local(r["constraintApproval"]), r["constrained"])
+           for k in ("R1", "R7") for r in ask(s, "cq08_influences", W=d(f"piezometer/{k}"), policy=MAIN)}
+    assert all(v[:2] == (True, "EligibleConstraint") and v[2:] == ("CandidateStatus", "CandidateStatus", False)
+               for v in dec.values()), dec
     assert set(st["R1"]["drivers"].split()) == {"CanalReturnFlow", "RiverExchange"}
     assert st["W7"]["riverReason"] == "the well has no reach search zone" and "BD LISA" in st["W1"]["riverReason"]
     assert "no pool gauge" in st["R6"]["riverReason"] or "none has a gauge of arm C's pool" in st["R6"]["riverReason"]
@@ -1004,8 +1075,65 @@ def _anchor_medalu(assoc, rinf, cinf, st5, st6, st8):
     assert rinf == [] and st8["river"] == "no_pool_gauge", st8
 
 
+def _anchor_hippo2(assoc, rinf, cinf, st5, st6, st8):
+    """HIPPO2 (671AB01, ancient Agly alluvium): FRDG351's table says the Agly drains the body FRDG351
+    below the Roboul; the body has eight units, so the statement locates no exchange with 671AB01, and
+    the river is neither on nor over it: no documented lateral association, no river edge (Codex review
+    of 2026-11-06, R1; before: a lateral association and an eligible sign from that statement alone)."""
+    assert not [r for r in assoc if r["type"] == "DocumentedLateral"] and rinf == [], (assoc, rinf)
+
+
+def _anchor_pz_10915(assoc, rinf, cinf, st5, st6, st8):
+    """10915X0395/PZ (718BP02, recent Têt alluvium): no lateral association with the Agly (R1); the Têt
+    runs on its outcrop, documented only for aggregates (FRDG351's FRDR223, the EVP Têt's 'aquifers',
+    BRGM's 'Quaternary formations'), so its river sign is no longer eligible; its canal edge stays
+    eligible on statements about 718BP02 itself, without BRGM's mixing measured at MILLAS C2-1 (Q3)."""
+    assert not [r for r in assoc if r["type"] == "DocumentedLateral"], assoc
+    assert _river_rows(rinf) == [("Y047403001", "PositiveResponse", "IneligibleConstraint", "OnOutcrop", "718BP02")], rinf
+    assert "only for an aggregate" in rinf[0]["eligibilityReason"], rinf[0]["eligibilityReason"]
+    assert [local(r["eligibility"]) for r in cinf] == ["EligibleConstraint"] and st6["stated"], (cinf, st6)
+
+
+def _anchor_barqua(assoc, rinf, cinf, st5, st6, st8):
+    """BARQUA (718BP01, recent Agly alluvium): the Agly on its outcrop, documented only by FRDG351's
+    body-level table (localised by the outcrop), and 32 m of the Agly in its zone off the geological
+    map: partial, no longer supported (Codex review, Q2 and R1); its sign is not eligible."""
+    assert st5["status"] == "partial" and "off the geological map" in st5["reason"], st5
+    assert [local(r["eligibility"]) for r in rinf] == ["IneligibleConstraint"], rinf
+
+
+def _anchor_rimbau(assoc, rinf, cinf, st5, st6, st8):
+    """COLLIOURE RIMBAU (699AA01): no searched watercourse on or over its unit on the mapped part of its
+    zone, but 448 m of the Massane's reaches lie off the map: an incomplete search, unknown, never a
+    completed negative (Codex review, Q1)."""
+    assert st8["river"] == "unknown" and "off the geological map" in st8["riverReason"], st8
+
+
 RIVER_ANCHORS = {"10906X0039/C2-1": _anchor_c2_1, "10906X0038/C2-2": _anchor_c2_2,
-                 "10963X0059/MEDALU": _anchor_medalu}
+                 "10963X0059/MEDALU": _anchor_medalu, "10911X0219/HIPPO2": _anchor_hippo2,
+                 "10915X0395/PZ": _anchor_pz_10915, "10912X0134/BARQUA": _anchor_barqua,
+                 "10976X0058/RIMBAU": _anchor_rimbau}
+
+
+def expected_cq05(rows, overlaps):
+    """The CQ5 status of an association from the statements cq05_statements lists (applying, or
+    localised from an aggregate), recomputed here: opposite states (opposite directions, or an exchange
+    and independence) for the same or overlapping stretches conflict when both are dated with
+    overlapping periods or one is undated; otherwise they are variation."""
+    cited = [r for r in rows if r["listedBecause"] in ("applies", "localised from an aggregate")]
+    conflict = False
+    for a in cited:
+        for b in cited:
+            up_down = a["direction"] == "AquiferToSurface" and b["direction"] == "SurfaceToAquifer"
+            indep = a["direction"] in EXCHANGE and b["direction"] == "NoExchange"
+            if not (up_down or indep):
+                continue
+            same = a["section"] == b["section"] or (a["section"], b["section"]) in overlaps
+            dated = all(r["periodStart"] and r["periodEnd"] for r in (a, b))
+            disjoint = dated and (a["periodEnd"] < b["periodStart"] or b["periodEnd"] < a["periodStart"])
+            conflict |= same and not disjoint
+    unit_level = {r["direction"] for r in cited if r["applies"]} & (EXCHANGE | {"NoExchange"})
+    return conflict, bool(unit_level)
 
 
 def test_data_rivers(store):
@@ -1027,6 +1155,19 @@ def test_data_rivers(store):
         "PREFIX lulcw: <https://w3id.org/lulcw#> PREFIX prov: <http://www.w3.org/ns/prov#> "
         "SELECT ?c WHERE { ?u lulcw:bdlisaCode ?c ; prov:wasDerivedFrom ?r }")}
     assert set(rz) == set(wells["code_bss"]), "every well has its reach search zone"
+    overlaps = {(r[0].value, r[1].value) for r in store.query(
+        "PREFIX lulcw: <https://w3id.org/lulcw#> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> "
+        "SELECT ?a ?b WHERE { ?x lulcw:overlapsSection ?y . ?x rdfs:label ?a . ?y rdfs:label ?b }")}
+    off = {}
+    for r in store.query("""PREFIX lulcw: <https://w3id.org/lulcw#>
+            SELECT ?c ?kind (SUM(?l) AS ?len) WHERE {
+              ?z a lulcw:ReachSearchZone ; lulcw:zoneOf/lulcw:bssCode ?c .
+              ?p lulcw:withinExtent ?z ; lulcw:pieceOfReach ?q ; lulcw:pieceLengthM ?l .
+              OPTIONAL { ?p lulcw:piecePolygon ?pp } FILTER (!BOUND(?pp))
+              OPTIONAL { ?q lulcw:reachOf ?wc . OPTIONAL { ?g lulcw:onWatercourse ?wc . ?pool lulcw:poolMember ?g } }
+              BIND (IF(BOUND(?pool), "pool", IF(BOUND(?wc), "river", "canal")) AS ?kind) }
+            GROUP BY ?c ?kind"""):
+        off.setdefault(r[0].value, {})[r[1].value] = float(r[2].value)
     tally = {k: Counter() for k in ("cq05", "cq06", "river", "canal")}
     gaps, answers = [], {}
     for b, code in zip(wells["code_bss"], wells["code_bdlisa"]):
@@ -1048,8 +1189,11 @@ def test_data_rivers(store):
             continue
         # CQ8: river and canal statuses from the influences and the associations
         canal_rows = [r for r in ask(store, "cq06_chain", S=rz[b], U=unit[code])]
-        want_r = "derived" if rinf else ("no_pool_gauge" if assoc else "none_found")
+        o = off.get(b, {})
+        want_r = ("derived" if rinf else ("unknown" if "pool" in o else "no_pool_gauge") if assoc
+                  else ("unknown" if o.keys() & {"pool", "river"} else "none_found"))
         assert st8["river"] == want_r and all(r["driverCode"] in pool for r in rinf), (b, st8["river"], want_r)
+        assert st8["canal"] != "none_found" or "canal" not in o, (b, "a canal search with off-map reaches")
         if want_r == "no_pool_gauge":
             gaps.append(b)
         used = {r["gaugeCode"] for r in ask(store, "cq05_gauges", S=rz[b]) if r["used"]}
@@ -1062,12 +1206,12 @@ def test_data_rivers(store):
         for k, v in mine.items():
             assert abs(v - want[k]) <= max(5.0, 0.002 * want[k]), (b, k, v, want[k])
         st5 = one(store, "cq05_status", U=unit[code], S=rz[b])
-        app = {r["direction"] for r in ask(store, "cq05_statements", S=rz[b], U=unit[code]) if r["applies"]}
+        conflict, documented = expected_cq05(ask(store, "cq05_statements", S=rz[b], U=unit[code]), overlaps)
         found = any(r["unitCode"] == code for r in assoc)
-        conflict = bool(app & EXCHANGE) and ("NoExchange" in app or {"AquiferToSurface", "SurfaceToAquifer"} <= app)
         if found:
-            want5 = "conflicting" if conflict else ("supported" if app & (EXCHANGE | {"NoExchange"}) else "partial")
-            assert st5["status"] == want5, (b, st5, app)
+            off_map = bool(o.keys() & {"pool", "river"})
+            want5 = "conflicting" if conflict else ("supported" if documented and not off_map else "partial")
+            assert st5["status"] == want5, (b, st5, want5)
         else:
             assert st5["status"] == "supported" or (st5["status"] == "partial" and "off the geological map" in st5["reason"]), (b, st5)
         tally["cq05"][st5["status"]] += 1
@@ -1083,11 +1227,19 @@ def test_data_rivers(store):
         else:
             assert st6["status"] == "supported" or (st6["status"] == "partial" and "off the geological map" in st6["reason"]), (b, st6)
         ret = [r for r in canal_rows if r["direction"] == "SurfaceToAquifer"]
-        assert st6["documented"] == bool(ret) and st6["stated"] == any(r["hedging"] == "StatedFinding" for r in ret), (b, st6)
+        own = [r for r in ret if r["subject"] == "unit"]
+        assert (st6["documented"], st6["stated"], st6["documentedForAggregate"]) == \
+            (bool(own), any(r["hedging"] == "StatedFinding" for r in own), len(own) < len(ret)), (b, st6)
+        assert all(r["measuredAt"] in (None, b) for r in canal_rows), (b, "a measurement made at another well")
         mine_c = [r for r in cinf if r["viaCode"] == code]
         assert bool(mine_c) == bool(ret), (b, "a canal influence exactly where a return is documented")
         assert all((local(r["eligibility"]) == "EligibleConstraint") ==
                    (st6["stated"] and not any(x["direction"] == "NoExchange" for x in canal_rows)) for r in mine_c), b
+        # river signs: eligible only with a statement about the unit itself (never an aggregate alone)
+        for r in rinf:
+            if local(r["eligibility"]) == "EligibleConstraint":
+                rows5 = ask(store, "cq05_statements", S=rz[b], U=unit[code])
+                assert any(x["applies"] and x["subject"] == "unit" and x["direction"] in EXCHANGE for x in rows5), (b, r)
         tally["cq06"][st6["status"]] += 1
         answers[b] = (assoc, rinf, cinf, st5, st6, st8)
     for b, check in RIVER_ANCHORS.items():

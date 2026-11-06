@@ -13,8 +13,12 @@
 #             constraint eligibility and its reason, the conditions, the path (the facility's and the
 #             well's attributions, the shared unit or group, or the unit whose outcrop the cell
 #             covers, or the unit a river or canal association names, with the association's type),
-#             the pathways the influence omits, and whether ?policy accepts the path (every
-#             attribution selected; a missing or unaccepted segment blocks it). A sign is a directional
+#             the pathways the influence omits, whether ?policy accepts the path (every
+#             attribution selected; a missing or unaccepted segment blocks it), the policy's decision
+#             for the mechanism (?proxyReview: is the driver an adequate stand-in; ?constraintApproval:
+#             do eligible signs constrain a model; candidate means pending), and ?constrained: the sign
+#             constrains a model under ?policy only when the path is selected, the influence is
+#             eligible and both decisions are accepted (Codex review of 2026-11-06, R2). A sign is a directional
 #             response to a stated input change with the other drivers held fixed, not a weekly
 #             correlation nor measured causality; an absent path is not proof of no influence
 #             (cq08_status.rq says which drivers were searched).
@@ -23,6 +27,7 @@ PREFIX prov: <http://www.w3.org/ns/prov#>
 SELECT ?W ?policy ?influence ?driverCode ?driverVariable ?proxyFor ?mechanism ?responseSign ?driverGroup
        ?distanceM ?extent ?cellWeight ?resolution ?confidence ?eligibility ?eligibilityReason ?conditions
        ?driverAttribution ?wellAttribution ?via ?viaCode ?associationType ?omittedPathways ?selected
+       ?proxyReview ?constraintApproval ?constrained
 WHERE {
     ?influence a lulcw:Influence ; lulcw:targetEntity ?W ; lulcw:driverEntity ?driver ;
         lulcw:driverVariable ?driverVariable ; lulcw:mechanism ?mechanism ;
@@ -70,6 +75,13 @@ WHERE {
                                      CONCAT("canal-intakes:", STRAFTER(STR(?driver), "/canal-intakes/")),
                                      STRAFTER(STR(?driver), "/weather-cell/"))) AS ?driverCode)
     BIND (STRAFTER(STR(?atype), "#") AS ?associationType)
+    OPTIONAL {   # the policy's decision for the influence's mechanism
+        ?dec lulcw:decisionMechanism ?dm ; lulcw:proxyReview ?proxyReview ; lulcw:constraintApproval ?constraintApproval .
+        ?policy lulcw:constraintDecision ?dec .
+        FILTER (?dm = ?mechanism)
+    }
     BIND (EXISTS { ?influence lulcw:selectedUnder ?policy . } AS ?selected)
+    BIND (?selected && ?eligibility = lulcw:EligibleConstraint && BOUND(?proxyReview)
+          && ?proxyReview = lulcw:AcceptedStatus && ?constraintApproval = lulcw:AcceptedStatus AS ?constrained)
 }
 ORDER BY ?mechanism ?distanceM ?driverCode ?resolution

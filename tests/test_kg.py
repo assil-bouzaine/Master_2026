@@ -19,7 +19,12 @@ from the source tables with pandas, not taken from the builder (docs/competency_
    candidate is probable); a probable rule-based candidate is measured on its use.
 6. Annual records: the declared volume per year and use equals the BNPE snapshot, in total
    and inside the plain's facility extent (CQ12's denominator); one result per record.
-7. The typing rule never gives a unit two disjoint types; the BD LISA stacks are kept whole.
+7. The typing rule never gives a unit two disjoint types; the BD LISA stacks are kept whole; every
+   geometry is Lambert-93 WKT that Shapely parses, inside the département box (points, lines and
+   polygons), and every point is written POINT(x y), the form the CQ2 distance queries parse as
+   text (Codex review of 2026-11-06, S1: the gauges were written "POINT (x y)" and the old regex
+   blamed their coordinates); fixtures of both forms, an out-of-box point and broken WKT check the
+   checker; the invalid polygons BD LISA publishes are counted, not refused.
 8. Negative controls: an undeclared property and an exact-unit link upgraded to probable,
    inserted on purpose, make checks 1 and 5 fail.
 9. Text: no literal holds a control character (an encoding error; a deliberate U+0085 is
@@ -33,6 +38,7 @@ import numpy as np
 import pandas as pd
 import pyoxigraph as ox
 import rdflib
+import shapely
 from rdflib.namespace import OWL, RDF, RDFS
 
 from src.config import DATASET, DATASET_DIR, INTERIM, PROCESSED, RAW, ROOT
@@ -279,11 +285,47 @@ def test_units(store):
         ?p lulcw:hasStackLayer ?l . ?l lulcw:layerOrder ?o } GROUP BY ?p""")
     assert ((s["lo"] == 1) & (s["hi"] == s["n"])).all(), "a stack with missing orders"
     wkt = rows(store, "SELECT ?w WHERE { ?g geo:asWKT ?w }")["w"]
-    assert wkt.str.startswith("<http://www.opengis.net/def/crs/EPSG/0/2154> ").all()
-    xy = wkt[wkt.str.contains("POINT")].str.extract(r"POINT\(([\d.]+) ([\d.]+)\)").astype(float)
-    assert xy[0].between(5.5e5, 7.5e5).all() and xy[1].between(6.0e6, 6.3e6).all(), "a point off dept 66"
+    good = (f"{EPSG}POINT(600000.0 6150000.0)", f"{EPSG}LINESTRING(600000 6150000, 601000 6150000)")
+    for w, why in ((f"{EPSG}POINT (600000.0 6150000.0)", "not written POINT(x y)"),
+                   (f"{EPSG}POINT(900000.0 6150000.0)", "outside the département box"),
+                   (f"{EPSG}POINT(600000.0", "not WKT"), ("POINT(600000.0 6150000.0)", "not Lambert-93")):
+        assert any(why in e for e in wkt_problems([w])), (w, wkt_problems([w]))
+    assert not wkt_problems(good), wkt_problems(good)
+    problems = wkt_problems(wkt)
+    assert not problems, f"{len(problems)} unusable geometries, e.g. {problems[:3]}"
+    invalid = sum(not shapely.from_wkt(w[len(EPSG):]).is_valid for w in wkt)
     print(f"  7. {len(t)} units typed by the written rule, none twice; {len(s)} stacks complete; "
-          f"{len(wkt)} geometries in EPSG:2154")
+          f"{len(wkt)} geometries: Lambert-93 WKT, parsed, inside the département box, every point POINT(x y) "
+          f"({invalid} polygons invalid as BD LISA publishes them)")
+
+
+EPSG = "<http://www.opengis.net/def/crs/EPSG/0/2154> "
+DEPT_BOX_L93 = (5.5e5, 6.0e6, 7.5e5, 6.3e6)       # minx, miny, maxx, maxy, around dept 66
+
+
+def wkt_problems(literals, box=DEPT_BOX_L93):
+    """Why WKT literals of the graph are unusable (empty when none is): not Lambert-93, not WKT,
+    empty, outside the box, or a point not written POINT(x y)."""
+    out = []
+    for w in literals:
+        if not w.startswith(EPSG):
+            out.append(f"not Lambert-93: {w[:70]}")
+            continue
+        body = w[len(EPSG):]
+        try:
+            g = shapely.from_wkt(body)
+        except shapely.errors.GEOSException:
+            out.append(f"not WKT: {body[:70]}")
+            continue
+        if g is None or g.is_empty:
+            out.append(f"empty: {body[:70]}")
+            continue
+        x0, y0, x1, y1 = g.bounds
+        if x0 < box[0] or y0 < box[1] or x1 > box[2] or y1 > box[3]:
+            out.append(f"outside the département box: {body[:70]}")
+        if g.geom_type == "Point" and not re.fullmatch(r"POINT\(-?[\d.]+ -?[\d.]+\)", body):
+            out.append(f"a point not written POINT(x y), the form the CQ2 queries parse: {body[:70]}")
+    return out
 
 
 def main():

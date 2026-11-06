@@ -1,21 +1,27 @@
 # CQ6 · Canal supply and possible return-flow pathways to a unit in a well's zone (docs/
 # competency_questions.md §4, CQ6; task 12.7)
 #
-# Parameters  ?S  a lulcw:ReachSearchZone;  ?U  a lulcw:HydrogeologicalUnit
+# Parameters  ?S  a lulcw:ReachSearchZone;  ?U  a lulcw:HydrogeologicalUnit;  optional ?T0, ?T1
+#             xsd:date, a requested period
 # Reads       asserted facts (canal reaches and pieces, the canal intake group and its intakes, canal-
-#             return statements) and the rule outputs (lulcw:CanalUnitAssociation, applicable statements)
-# Returns     one row per canal-return statement that applies (or one row with no statement when
-#             none does): the length of canal reaches on the outcrop of ?U in ?S, the named canals
-#             among them, the intake group's members and how many have a candidate watercourse, the
-#             command area (never mapped: "not mapped"), and the statement's direction, hedging,
-#             flux, period, document, page and quote. A partial chain: intake -> canal -> [command
+#             return statements) and the rule outputs (lulcw:CanalUnitAssociation, applicable and
+#             localised statements)
+# Returns     one row per canal-return statement that applies to ?U itself (?subject "unit"; a
+#             measurement at a site only in that site's zone) or is localised to it from an aggregate
+#             (?subject "aggregate, localised by the outcrop": documented at the aggregate's scale), or
+#             one row with no statement when none does: the length of canal reaches on the outcrop of
+#             ?U in ?S, the named canals among them, the intake group's members and how many have a
+#             candidate watercourse, the command area (never mapped: "not mapped"), and the
+#             statement's direction, temporal scope (undated; dated; or within or outside ?T0-?T1),
+#             hedging, method, site of measurement, flux, period, document, page and quote. A partial chain: intake -> canal -> [command
 #             area unknown] -> parcels [unknown] -> unit; the intake's location does not locate the
 #             fields it serves, and a diverted volume is not a recharge volume (CQ6 meaning).
 PREFIX lulcw: <https://w3id.org/lulcw#>
 PREFIX prov: <http://www.w3.org/ns/prov#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-SELECT ?S ?U ?lengthOnOutcropM ?canals ?intakes ?intakesWithWatercourse ?commandArea ?statement ?direction
-       ?hedging ?fluxM3s ?periodStart ?periodEnd ?document ?documentKey ?page ?quote
+SELECT ?S ?U ?lengthOnOutcropM ?canals ?intakes ?intakesWithWatercourse ?commandArea ?statement ?subject
+       ?direction ?temporalScope ?hedging ?method ?measuredAt ?fluxM3s ?periodStart ?periodEnd ?document
+       ?documentKey ?page ?quote
 WHERE {
     ?ca a lulcw:CanalUnitAssociation ; lulcw:withinExtent ?S ; lulcw:associationUnit ?U ;
         lulcw:lengthOnOutcropM ?lengthOnOutcropM .
@@ -33,16 +39,24 @@ WHERE {
         SELECT (COUNT(DISTINCT ?i) AS ?intakes) (COUNT(DISTINCT ?iw) AS ?intakesWithWatercourse)
         WHERE { ?grp lulcw:intakeMember ?i . OPTIONAL { ?i lulcw:candidateWatercourse ?c . BIND (?i AS ?iw) } }
     }
-    OPTIONAL {
-        ?ca lulcw:applicableStatement ?statement .
-        ?statement lulcw:exchangeDirection ?d ; lulcw:hedging ?h ; prov:wasDerivedFrom ?pa .
+    OPTIONAL {   # about ?U itself (applicable) or about an aggregate holding ?U (localised by the outcrop)
+        ?ca lulcw:applicableStatement|lulcw:localizedStatement ?statement .
+        ?statement lulcw:exchangeDirection ?d ; lulcw:hedging ?h ; lulcw:evidenceMethod ?me ; prov:wasDerivedFrom ?pa .
         ?pa lulcw:inDocument ?doc ; lulcw:pageLabel ?page ; lulcw:quote ?quote .
         ?doc rdfs:label ?document .
         OPTIONAL { ?statement lulcw:fluxM3s ?fluxM3s . }
         OPTIONAL { ?statement lulcw:periodStart ?periodStart . }
         OPTIONAL { ?statement lulcw:periodEnd ?periodEnd . }
+        OPTIONAL { ?statement lulcw:measuredAt ?site . ?site lulcw:bssCode ?measuredAt . }
     }
     BIND ("not mapped" AS ?commandArea)
+    BIND (IF(!BOUND(?statement), ?none,
+             IF(EXISTS { ?statement lulcw:aboutUnit ?U }, "unit", "aggregate, localised by the outcrop")) AS ?subject)
+    BIND (IF(!BOUND(?statement), ?none, IF(!BOUND(?periodStart) && !BOUND(?periodEnd), "undated",
+          IF(!BOUND(?T0) && !BOUND(?T1), "dated",
+          IF((BOUND(?T1) && BOUND(?periodStart) && ?periodStart > ?T1) || (BOUND(?T0) && BOUND(?periodEnd) && ?periodEnd < ?T0),
+             "outside the requested period", "within the requested period")))) AS ?temporalScope)
+    BIND (STRAFTER(STR(?me), "#") AS ?method)
     BIND (STRAFTER(STR(?doc), "/document/") AS ?documentKey)
     BIND (STRAFTER(STR(?d), "#") AS ?direction)
     BIND (STRAFTER(STR(?h), "#") AS ?hedging)

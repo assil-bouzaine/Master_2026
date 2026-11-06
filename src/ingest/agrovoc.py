@@ -29,7 +29,7 @@ from email.utils import parsedate_to_datetime
 
 import pandas as pd
 
-from src.config import INTERIM, RAW
+from src.config import INTERIM, RAW, ROOT
 from src.web import TIMEOUT, make_session
 
 URL = "https://agrovoc.fao.org/latestAgrovoc/agrovoc_core.nt.zip"
@@ -174,7 +174,13 @@ def main():
         if not have:
             print(f"no snapshot; online: {online}")
         return
-    d = have[-1] if have else download(session)
+    pinned = json.loads((ROOT / "configs" / "snapshots.json").read_text()).get("agrovoc")
+    d = OUT / pinned if pinned else (have[-1] if have else download(session))
+    if pinned and d not in have:
+        raise SystemExit(f"pinned AGROVOC snapshot {pinned} missing (configs/snapshots.json); "
+                         f"available: {[x.name for x in have]}")
+    if have and have[-1].name > d.name:
+        print(f"note: newer AGROVOC snapshot {have[-1].name} not used (pinned {d.name})")
     names = check(d)
     info = json.loads((d / "release.json").read_text())
     print(f"snapshot {d.name}: {info['content_length'] / 1e6:.1f} MB, md5 {info['md5']}, {names}")

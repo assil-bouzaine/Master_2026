@@ -7,6 +7,13 @@ Each document is stored once under data/raw/documents/<key>.<pdf|html> with its 
 size and md5 in documents.json. The statements taken from them live in configs/exchange_evidence.csv,
 with the printed page and a short quote (tests/test_exchange_evidence.py finds every quote on its page);
 the PDFs are read only with pdftotext and the web page as text, never executed.
+
+Interrupted runs (Codex review of 2026-11-06, S2): a file is written under a temporary name and
+renamed when complete, and the index is saved after each document, so a failure leaves only complete
+files that the index describes. A stored copy without an index entry (an index lost or written by
+an older version of this script) gets no guessed date: it is fetched again and compared, and
+recorded with the date of that fetch and a note; a copy that differs from the source is refused
+(delete it to replace it). Tested by tests/test_documents.py.
 """
 import hashlib
 import json
@@ -41,29 +48,58 @@ DOCS = {
 }
 
 
-def main():
-    OUT.mkdir(parents=True, exist_ok=True)
-    index = OUT / "documents.json"
+def fetch(session, key, d, kind):
+    r = session.get(d["url"], timeout=TIMEOUT)
+    r.raise_for_status()
+    if kind == "pdf":
+        assert r.content[:5] == b"%PDF-", f"{key}: not a PDF"
+    else:
+        assert b"<html" in r.content[:2000].lower(), f"{key}: not an HTML page"
+    return r.content
+
+
+def save(path, content):
+    """Write under a temporary name, then rename: an interrupted write leaves no partial file."""
+    tmp = path.with_name(path.name + ".part")
+    tmp.write_bytes(content)
+    tmp.replace(path)
+
+
+def main(out=OUT, docs=DOCS, session=None):
+    out.mkdir(parents=True, exist_ok=True)
+    index = out / "documents.json"
     log = json.loads(index.read_text()) if index.exists() else {}
-    session = make_session()
-    for key, d in DOCS.items():
+    session = session or make_session()
+    today = date.today().isoformat()
+
+    def save_index():
+        save(index, json.dumps(log, indent=1, ensure_ascii=False).encode("utf-8"))
+
+    for key, d in docs.items():
         kind = d.get("kind", "pdf")
-        f = OUT / f"{key}.{kind}"
+        f = out / f"{key}.{kind}"
         if not f.exists():
-            r = session.get(d["url"], timeout=TIMEOUT)
-            r.raise_for_status()
-            if kind == "pdf":
-                assert r.content[:5] == b"%PDF-", f"{key}: not a PDF"
-            else:
-                assert b"<html" in r.content[:2000].lower(), f"{key}: not an HTML page"
-            f.write_bytes(r.content)
-            log[key] = {**d, "file": f.name, "retrieved": date.today().isoformat()}
+            save(f, fetch(session, key, d, kind))
+            log[key] = {**d, "file": f.name, "retrieved": today}
+            save_index()
+        elif key not in log:
+            # a stored copy the index does not describe: its first retrieval date is unknown, so it
+            # is fetched again and compared instead of being dated by guess
+            new = fetch(session, key, d, kind)
+            if hashlib.md5(new).hexdigest() != hashlib.md5(f.read_bytes()).hexdigest():
+                raise RuntimeError(f"{key}: {f} has no entry in {index.name} and differs from the source; "
+                                   "delete it to download the current version")
+            log[key] = {**d, "file": f.name, "retrieved": today,
+                        "note": f"stored copy found without an index entry; fetched again on {today} and "
+                                "identical, so dated by that fetch (its first retrieval date is unknown)"}
+            save_index()
         md5 = hashlib.md5(f.read_bytes()).hexdigest()
-        if "md5" in log.get(key, {}):
+        if "md5" in log[key]:
             assert log[key]["md5"] == md5, f"{key}: the stored copy changed"
         log[key].update(bytes=f.stat().st_size, md5=md5)
         print(f"{key}: {f.stat().st_size:,} bytes, md5 {md5}")
-    index.write_text(json.dumps(log, indent=1, ensure_ascii=False))
+    save_index()
+    return log
 
 
 if __name__ == "__main__":

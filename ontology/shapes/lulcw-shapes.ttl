@@ -1016,7 +1016,10 @@ lulcwsh:ExchangeStatementShape a sh:NodeShape ;
     sh:targetClass lulcw:ExchangeStatement ;
     sh:property [ sh:path lulcw:statedMechanism ; sh:minCount 1 ; sh:maxCount 1 ;
           sh:in ( lulcw:RiverExchange lulcw:CanalReturnFlow ) ] ,
-        [ sh:path lulcw:aboutUnit ; sh:minCount 1 ; sh:class lulcw:HydrogeologicalUnit ] ,
+        [ sh:path lulcw:aboutUnit ; sh:class lulcw:HydrogeologicalUnit ] ,
+        [ sh:path lulcw:aggregateMemberUnit ; sh:class lulcw:HydrogeologicalUnit ] ,
+        [ sh:path lulcw:aboutGroundwaterBody ; sh:maxCount 1 ; sh:class lulcw:GroundwaterBody ] ,
+        [ sh:path lulcw:evidenceMethod ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:EvidenceMethod ] ,
         [ sh:path lulcw:aboutSection ; sh:maxCount 1 ; sh:class lulcw:RiverSection ] ,
         [ sh:path lulcw:aboutWatercourse ; sh:class lulcw:Watercourse ] ,
         [ sh:path lulcw:unitAsNamed ; sh:minCount 1 ; sh:maxCount 1 ] ,
@@ -1035,7 +1038,62 @@ SELECT $this WHERE { $this lulcw:periodStart ?a ; lulcw:periodEnd ?b . FILTER (?
         sh:message "a canal-return statement names a river section (canal statements are located by their units)" ;
         sh:prefixes <https://w3id.org/lulcw/shapes> ;
         sh:select """
-SELECT $this WHERE { $this lulcw:statedMechanism lulcw:CanalReturnFlow ; lulcw:aboutSection ?s . }""" ] .
+SELECT $this WHERE { $this lulcw:statedMechanism lulcw:CanalReturnFlow ; lulcw:aboutSection ?s . }""" ] , [
+        sh:message "a statement is about no unit, about units both itself and as an aggregate, or about an aggregate of fewer than two units (Codex review of 2026-11-06, R1)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT DISTINCT $this WHERE {
+    $this lulcw:statedMechanism ?m .
+    OPTIONAL { $this lulcw:aboutUnit ?u1 }
+    OPTIONAL { $this lulcw:aggregateMemberUnit ?a1 }
+    OPTIONAL { $this lulcw:aggregateMemberUnit ?a2 . FILTER (?a2 != ?a1) }
+    FILTER ((!BOUND(?u1) && !BOUND(?a1)) || (BOUND(?u1) && BOUND(?a1)) || (BOUND(?a1) && !BOUND(?a2)))
+}""" ] , [
+        sh:message "a statement measured at a site is not about a unit itself" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE { $this lulcw:measuredAt ?site . FILTER NOT EXISTS { $this lulcw:aboutUnit ?u } }""" ] .
+
+# The statements an association cites: an applicable one is about the association's unit itself, of
+# the association's mechanism, and, when measured at a site, the site is the zone's well (Codex review
+# of 2026-11-06, Q3); a localised one is about an aggregate holding the unit, on a river association
+# on outcrop with pieces of its section on the unit's outcrop in the zone, or on a canal association
+# (canals on the outcrop), never over cover or lateral (R1).
+lulcwsh:ApplicableStatementShape a sh:NodeShape ;
+    sh:targetSubjectsOf lulcw:applicableStatement ;
+    sh:sparql [
+        sh:message "an applicable statement is not about the association's unit itself, is of another mechanism, or was measured at a site outside the association's zone" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT DISTINCT $this ?value WHERE {
+    $this lulcw:applicableStatement ?value ; lulcw:associationUnit ?u ; lulcw:withinExtent ?z .
+    OPTIONAL { $this lulcw:associationWatercourse ?wc }
+    FILTER (NOT EXISTS { ?value lulcw:aboutUnit ?u }
+            || (BOUND(?wc) && NOT EXISTS { ?value lulcw:statedMechanism lulcw:RiverExchange })
+            || (!BOUND(?wc) && NOT EXISTS { ?value lulcw:statedMechanism lulcw:CanalReturnFlow })
+            || EXISTS { ?value lulcw:measuredAt ?site . FILTER NOT EXISTS { ?z lulcw:zoneOf ?site } })
+}""" ] .
+
+lulcwsh:LocalizedStatementShape a sh:NodeShape ;
+    sh:targetSubjectsOf lulcw:localizedStatement ;
+    sh:sparql [
+        sh:message "a localised statement is not about an aggregate holding the association's unit, is of another mechanism, sits on a river association not on outcrop, or no piece of its section in the zone runs on the unit's outcrop" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT DISTINCT $this ?value WHERE {
+    $this lulcw:localizedStatement ?value ; lulcw:associationUnit ?u ; lulcw:withinExtent ?z .
+    OPTIONAL { $this lulcw:associationWatercourse ?wc ; lulcw:associationType ?t }
+    FILTER (NOT EXISTS { ?value lulcw:aggregateMemberUnit ?u }
+            || (BOUND(?wc) && (?t != lulcw:OnOutcrop || NOT EXISTS { ?value lulcw:statedMechanism lulcw:RiverExchange }
+                || NOT EXISTS { ?value lulcw:aboutSection ?sec .
+                                ?p lulcw:inSection ?sec ; lulcw:withinExtent ?z ; lulcw:pieceOfReach ?r ;
+                                   lulcw:piecePolygon ?poly .
+                                ?r lulcw:reachOf ?wc .
+                                ?poly lulcw:hasStackLayer ?ly .
+                                ?ly lulcw:layerUnit ?u ; lulcw:layerOrder ?o .
+                                FILTER (?o = 1) }))
+            || (!BOUND(?wc) && NOT EXISTS { ?value lulcw:statedMechanism lulcw:CanalReturnFlow }))
+}""" ] .
 
 lulcwsh:SurfaceWaterIntakeShape a sh:NodeShape ;
     sh:targetClass lulcw:SurfaceWaterIntake ;
@@ -1061,6 +1119,7 @@ lulcwsh:RiverUnitAssociationShape a sh:NodeShape ;
         [ sh:path lulcw:associationUnit ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:HydrogeologicalUnit ] ,
         [ sh:path lulcw:associationType ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:AssociationType ] ,
         [ sh:path lulcw:applicableStatement ; sh:class lulcw:ExchangeStatement ] ,
+        [ sh:path lulcw:localizedStatement ; sh:class lulcw:ExchangeStatement ] ,
         [ sh:path lulcw:derivationRule ; sh:minCount 1 ; sh:maxCount 1 ] ;
     sh:sparql [
         sh:message "an association lacks the length or the cover its type requires, or carries another type's" ;
@@ -1098,6 +1157,7 @@ lulcwsh:CanalUnitAssociationShape a sh:NodeShape ;
         [ sh:path lulcw:associationUnit ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:HydrogeologicalUnit ] ,
         [ sh:path lulcw:lengthOnOutcropM ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minExclusive 0 ] ,
         [ sh:path lulcw:applicableStatement ; sh:class lulcw:ExchangeStatement ] ,
+        [ sh:path lulcw:localizedStatement ; sh:class lulcw:ExchangeStatement ] ,
         [ sh:path lulcw:derivationRule ; sh:minCount 1 ; sh:maxCount 1 ] .
 
 # River and canal influences: their evidence paths and signs.
@@ -1138,7 +1198,7 @@ SELECT $this WHERE {
     ?as lulcw:associationUnit ?u .
     FILTER (NOT EXISTS { ?as lulcw:applicableStatement ?s . ?s lulcw:exchangeDirection ?d .
                          FILTER (?d = lulcw:AquiferToSurface || ?d = lulcw:SurfaceToAquifer || ?d = lulcw:ExchangeEquilibrium) }
-            || EXISTS { ?as lulcw:applicableStatement ?n . ?n lulcw:exchangeDirection lulcw:NoExchange . })
+            || EXISTS { ?as lulcw:applicableStatement|lulcw:localizedStatement ?n . ?n lulcw:exchangeDirection lulcw:NoExchange . })
 }""" ] , [
         sh:message "an eligible canal influence rests on no stated canal-return statement" ;
         sh:prefixes <https://w3id.org/lulcw/shapes> ;
@@ -1159,7 +1219,7 @@ SELECT $this WHERE {
     FILTER (NOT EXISTS {
         $this prov:wasDerivedFrom ?aw , ?ca .
         ?aw lulcw:attributedEntity ?w ; lulcw:role lulcw:MonitoringRole ; lulcw:candidateUnit ?u .
-        ?ca lulcw:withinExtent ?z ; lulcw:associationUnit ?u ; lulcw:applicableStatement ?s .
+        ?ca lulcw:withinExtent ?z ; lulcw:associationUnit ?u ; lulcw:applicableStatement|lulcw:localizedStatement ?s .
         ?s lulcw:exchangeDirection lulcw:SurfaceToAquifer .
         ?z lulcw:zoneOf ?w .
     } || NOT EXISTS { ?grp lulcw:intakeMember ?i . })
@@ -1193,6 +1253,22 @@ SELECT DISTINCT $this ?value WHERE {
     FILTER (?o = 1)
     FILTER NOT EXISTS { ?a lulcw:derivationRule $this ; lulcw:withinExtent ?z ; lulcw:associationWatercourse ?wc ;
                         lulcw:associationUnit ?u ; lulcw:associationType lulcw:OnOutcrop . }
+}""" ] , [
+        sh:message "an aggregate statement about a section whose pieces in the zone run on the outcrop of a member unit is not localised to that on-outcrop association" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT DISTINCT $this ?value WHERE {
+    ?value lulcw:derivationRule $this ; lulcw:associationType ?t ; lulcw:withinExtent ?z ;
+           lulcw:associationWatercourse ?wc ; lulcw:associationUnit ?u .
+    FILTER (?t = lulcw:OnOutcrop)
+    ?s lulcw:aggregateMemberUnit ?u ; lulcw:aboutSection ?sec ; lulcw:statedMechanism ?m .
+    FILTER (?m = lulcw:RiverExchange)
+    ?p lulcw:inSection ?sec ; lulcw:withinExtent ?z ; lulcw:pieceOfReach ?r ; lulcw:piecePolygon ?poly .
+    ?r lulcw:reachOf ?wc .
+    ?poly lulcw:hasStackLayer ?ly .
+    ?ly lulcw:layerUnit ?u ; lulcw:layerOrder ?o .
+    FILTER (?o = 1)
+    FILTER NOT EXISTS { ?value lulcw:localizedStatement ?s }
 }""" ] .
 
 lulcwsh:RiverInfluenceKeyShape a sh:NodeShape ;
@@ -1231,10 +1307,58 @@ lulcwsh:CanalInfluenceKeyShape a sh:NodeShape ;
         sh:select """
 SELECT DISTINCT $this ?value WHERE {
     ?value lulcw:derivationRule $this ; lulcw:associationUnit ?u ; lulcw:withinExtent ?z ;
-           lulcw:applicableStatement ?s .
+           lulcw:applicableStatement|lulcw:localizedStatement ?s .
     ?s lulcw:exchangeDirection lulcw:SurfaceToAquifer .
     ?z lulcw:zoneOf ?w .
     ?aw lulcw:attributedEntity ?w ; lulcw:role ?role ; lulcw:candidateUnit ?u .
     FILTER (?role = lulcw:MonitoringRole)
     FILTER NOT EXISTS { ?i prov:wasDerivedFrom ?value , ?aw ; lulcw:mechanism lulcw:CanalReturnFlow . }
+}""" ] , [
+        sh:message "a canal-return statement about an aggregate holding the unit of a canal association is not localised to it" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT DISTINCT $this ?value WHERE {
+    ?value lulcw:derivationRule $this ; lulcw:associationUnit ?u .
+    ?s lulcw:aggregateMemberUnit ?u ; lulcw:statedMechanism ?m .
+    FILTER (?m = lulcw:CanalReturnFlow)
+    FILTER NOT EXISTS { ?value lulcw:localizedStatement ?s }
+}""" ] .
+
+#################################################################
+# Constraint decisions of the export policies (Codex review of 2026-11-06, R2)
+#################################################################
+
+lulcwsh:ConstraintDecisionShape a sh:NodeShape ;
+    sh:targetClass lulcw:ConstraintDecision ;
+    sh:property [ sh:path lulcw:decisionMechanism ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:Mechanism ] ,
+        [ sh:path lulcw:proxyReview ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:in ( lulcw:CandidateStatus lulcw:AcceptedStatus lulcw:RejectedStatus ) ] ,
+        [ sh:path lulcw:constraintApproval ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:in ( lulcw:CandidateStatus lulcw:AcceptedStatus lulcw:RejectedStatus ) ] ,
+        [ sh:path lulcw:decisionBasis ; sh:minCount 1 ] ,
+        [ sh:path [ sh:inversePath lulcw:constraintDecision ] ; sh:minCount 1 ; sh:class lulcw:ExportPolicy ] ;
+    sh:sparql [
+        sh:message "a constraint is approved although its driver is not accepted as a proxy" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE { $this lulcw:constraintApproval ?a ; lulcw:proxyReview ?p .
+                     FILTER (?a = lulcw:AcceptedStatus && ?p != lulcw:AcceptedStatus) }""" ] .
+
+lulcwsh:ExportPolicyDecisionShape a sh:NodeShape ;
+    sh:targetClass lulcw:ExportPolicy ;
+    sh:sparql [
+        sh:message "the policy has no constraint decision for a mechanism of the graph's influences" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT DISTINCT $this ?value WHERE {
+    ?i lulcw:mechanism ?value ; lulcw:targetEntity ?w .
+    FILTER NOT EXISTS { $this lulcw:constraintDecision ?d . ?d lulcw:decisionMechanism ?value . }
+}""" ] , [
+        sh:message "the policy has two constraint decisions for one mechanism" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT DISTINCT $this ?value WHERE {
+    $this lulcw:constraintDecision ?d1 , ?d2 .
+    ?d1 lulcw:decisionMechanism ?value . ?d2 lulcw:decisionMechanism ?value .
+    FILTER (?d1 != ?d2)
 }""" ] .

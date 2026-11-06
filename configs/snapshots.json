@@ -1,0 +1,6 @@
+{
+ "_comment": "The dated raw snapshots the graph and its tests read (data/raw/<name>/<date>). Pinned so that a new download never changes a build silently: a newer snapshot is reported and ignored until its date is entered here (Codex review of 2026-11-06, publication checklist).",
+ "bdtopo_hydro": "2026-11-06",
+ "sandre_water_bodies": "2026-11-06",
+ "agrovoc": "2026-10-26"
+}

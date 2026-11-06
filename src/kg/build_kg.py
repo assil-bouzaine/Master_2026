@@ -55,6 +55,8 @@ Choices
   no harmonisation: those are model inputs, kept in parquet), with its acquisition mode as
   sosa:usedProcedure (direct measurement, indirect measurement, flat-rate volume).
 """
+import csv
+import hashlib
 import json
 import math
 import subprocess
@@ -179,12 +181,35 @@ class KG:
         self.add(owner, GEO.hasGeometry, geom)
 
 
-def git_version(paths=("src/kg", "ontology")):
-    head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True,
-                          cwd=ROOT).stdout.strip()
-    dirty = subprocess.run(["git", "status", "--porcelain", "--", *paths], capture_output=True,
-                           text=True, cwd=ROOT).stdout.strip()
-    return head + ("+uncommitted" if dirty else "")
+def git_version(paths=("src/kg", "ontology", "configs")):
+    """The commit of `paths`, and, when they hold uncommitted changes, the SHA-256 (first 12 hex)
+    of those changes (the diff against HEAD and every untracked file), so that a graph built from
+    a working tree names the exact code (Codex review of 2026-11-06: "+uncommitted" alone did not)."""
+    run = lambda *a: subprocess.run(["git", *a], capture_output=True, cwd=ROOT).stdout  # noqa: E731
+    head = run("rev-parse", "--short", "HEAD").decode().strip()
+    if not run("status", "--porcelain", "--", *paths).strip():
+        return head
+    h = hashlib.sha256(run("diff", "HEAD", "--", *paths))
+    for f in sorted(run("ls-files", "--others", "--exclude-standard", "--", *paths).decode().split()):
+        h.update(f.encode() + b"\0" + (ROOT / f).read_bytes())
+    return f"{head}+uncommitted-{h.hexdigest()[:12]}"
+
+
+INPUT_FILES = ("configs/exchange_evidence.csv", "configs/constraint_decisions.csv", "configs/snapshots.json",
+               "configs/lu_crop_classes.csv", "data/raw/documents/documents.json",
+               "data/raw/bdtopo_hydro/{bdtopo_hydro}/release.json",
+               "data/raw/sandre_water_bodies/{sandre_water_bodies}/release.json")
+
+
+def input_hashes():
+    """SHA-256 of the configuration and snapshot manifests the facts are built from (the pinned
+    snapshot manifests carry their own file checksums)."""
+    pins = json.loads((ROOT / "configs" / "snapshots.json").read_text())
+    out = {}
+    for f in INPUT_FILES:
+        path = ROOT / f.format(**pins)
+        out[str(path.relative_to(ROOT))] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return out
 
 
 def file_date(path):
@@ -675,6 +700,7 @@ def annual_records(kg, rel, d):
 
 
 def policies(kg):
+    decisions = constraint_decisions(kg)
     admits = {"main": (L.Confident, L.Probable), "confident-only": (L.Confident,),
               "all-links": (L.Confident, L.Probable, L.Possible)}
     for key, label, text in (
@@ -693,6 +719,30 @@ def policies(kg):
         kg.add(p, L.ruleVersion, Literal("2026-10-24"))
         for c in admits[key]:   # read by the selection rule of task 12.6 (ontology/rules/)
             kg.add(p, L.admitsConfidence, c)
+        for dec in decisions:
+            kg.add(p, L.constraintDecision, dec)
+
+
+STATUS = {"candidate": L.CandidateStatus, "accepted": L.AcceptedStatus, "rejected": L.RejectedStatus}
+
+
+def constraint_decisions(kg, path=ROOT / "configs" / "constraint_decisions.csv"):
+    """The export policies' decisions about the response signs of each mechanism (Codex review of
+    2026-11-06, R2): the pathway evidence is the influences' eligibility; whether the driver is an
+    adequate proxy, and whether eligible signs constrain a model, are decided here, with their
+    basis. A candidate (pending) decision constrains nothing."""
+    out = []
+    with open(path, encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            n = kg.node(iri("constraint-decision", r["mechanism"]), L.ConstraintDecision,
+                        f"constraint decision: {r['mechanism']}", "en")
+            kg.add(n, L.decisionMechanism, getattr(L, r["mechanism"]))
+            kg.add(n, L.proxyReview, STATUS[r["proxy_review"]])
+            kg.add(n, L.constraintApproval, STATUS[r["constraint_approval"]])
+            kg.add(n, L.decisionBasis, Literal(f"Proxy review: {r['proxy_basis']}", lang="en"))
+            kg.add(n, L.decisionBasis, Literal(f"Approval: {r['approval_basis']}", lang="en"))
+            out.append(n)
+    return out
 
 
 # --------------------------------------------------------------------------------- main
@@ -819,7 +869,7 @@ def main():
         "piezometers_without_polygon": int(w_cp.isna().sum()),
         "facilities_without_polygon": int(f_cp.isna().sum()),
         "land_use": land, "crop_demand_code_version": versions["crop"], "forcing": forc,
-        "rivers_and_canals": river,
+        "rivers_and_canals": river, "inputs_sha256": input_hashes(),
     }
     (OUT / f"lulcw_kg_{DATASET}_summary.json").write_text(json.dumps(summary, indent=1,
                                                                      ensure_ascii=False))

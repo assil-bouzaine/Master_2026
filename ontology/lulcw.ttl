@@ -19,9 +19,9 @@
 # M2 = square metre, M3 = cubic metre) and are stated in each definition.
 
 <https://w3id.org/lulcw> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/0.6.1> ;
-    owl:versionInfo "0.6.1" ;
-    owl:priorVersion <https://w3id.org/lulcw/0.6.0> ;
+    owl:versionIRI <https://w3id.org/lulcw/0.7.0> ;
+    owl:versionInfo "0.7.0" ;
+    owl:priorVersion <https://w3id.org/lulcw/0.6.1> ;
     dcterms:title "LULC-Water bridging module"@en , "Module de liaison LULC-Water"@fr ;
     dcterms:description "Bridging module of the LULC-Water network of ontologies (SAVE Water, PRIMA): wells, abstraction facilities, hydrogeological units and the qualified, evidence-carrying assertions (unit attributions, stratigraphic relations, well links, influences, annual abstraction accounting) that structure, constrain and explain a groundwater-level model of the Roussillon multilayer aquifer."@en ,
         "Module de liaison du réseau d'ontologies LULC-Water (SAVE Water, PRIMA) : piézomètres, ouvrages de prélèvement, entités hydrogéologiques et assertions qualifiées, porteuses de preuves (attributions à une entité, relations stratigraphiques, liens entre piézomètres, influences, bilans annuels des prélèvements), qui structurent, contraignent et expliquent un modèle des niveaux piézométriques de l'aquifère multicouche du Roussillon."@fr ;
@@ -37,7 +37,8 @@
         "0.4.0 (2026-10-26, CQ4): recharge-related forcing: SAFRAN weather cells, the mapped outcrop of units inside reference extents, polygon-cell intersection areas, outcrop coverage and cell weights; WellZone generalises the crop demand zone, so zoneOf and zoneRadiusM also serve the outcrop search zone; observable property SoilDrainage; the mapped outcrop area of each unit, so that a reference extent states how much of the unit it clips."@en ,
         "0.5.0 (2026-10-27, CQ4 and CQ8): recharge-proxy influences: the observable property GroundwaterRecharge, which no input of the graph measures; proxyFor, so that an influence states what its driver stands in for; omitsPathway, so that it names the pathways it does not represent; the mechanisms LateralInflow and VerticalLeakage; the driver group RechargeProxies; withinExtent also serves influences, and appliesInExtent names the fixed extents a rule derives in."@en,
         "0.6.0 (2026-11-06, CQ5 and CQ6): rivers, gauges and canals: watercourses, BD TOPO reaches (river and canal), reach search zones and the pieces of reaches over elementary polygons, river sections and WFD river water bodies, gauges with their discharge series, gauge pools and gauge-zone relations; documents, passages and exchange statements read from them (mechanism, direction, hedging, how the source names the unit); derived river-unit and canal-unit associations; surface-water intakes and the canal intake group; the observable property RiverStage."@en ,
-        "0.6.1 (2026-11-06, CQ5, CQ6 and CQ8 rules): the driver group RiverDischargeGroup (river stage proxies) for the river influences; measuredAt, the site of the measurement behind an exchange statement; SurfaceWaterIntake is a geo:Feature, no longer an AbstractionFacility, whose instances are the groundwater facilities that carry unit attributions (CQ2); SummerDemand includes the canal diversion volumes."@en ;
+        "0.6.1 (2026-11-06, CQ5, CQ6 and CQ8 rules): the driver group RiverDischargeGroup (river stage proxies) for the river influences; measuredAt, the site of the measurement behind an exchange statement; SurfaceWaterIntake is a geo:Feature, no longer an AbstractionFacility, whose instances are the groundwater facilities that carry unit attributions (CQ2); SummerDemand includes the canal diversion volumes."@en ,
+        "0.7.0 (2026-11-06, Codex review of that day): an exchange statement is about a unit itself (aboutUnit) or about an aggregate of units (aggregateMemberUnit, aboutGroundwaterBody), so membership of a groundwater body never stands for evidence about each member; localizedStatement, the separate inference that localises an aggregate statement to the unit on whose outcrop the river or canal runs; evidenceMethod (differential gauging, geochemical tracing, water balance, synthesis), separate from hedging; overlapsSection, so that only statements about the same stretch can contradict each other; ConstraintDecision, the decision of an export policy about the signs of one mechanism (proxy review and approval, with their basis), separate from the evidence layer of constraintEligibility; Piezometer covers the few monitoring points that are springs (the GWML2 alignment 0.2.0 makes it a close match of GW_Well, no longer a subclass)."@en ;
     owl:imports <https://w3id.org/lulcw/imports/sosa> , <https://w3id.org/lulcw/imports/prov> ,
         <https://w3id.org/lulcw/imports/time> , <https://w3id.org/lulcw/imports/skos> ,
         <https://w3id.org/lulcw/imports/geo> .
@@ -85,13 +86,18 @@ lulcw:ExportPolicy a owl:Class ;
     rdfs:label "export policy"@en , "politique d'export"@fr ;
     skos:definition "A named, versioned selection policy deciding which qualified assertions become model inputs or graph edges, e.g. confident and probable pump-to-unit links for the main runs. Changing the policy changes the selection, never the stored evidence."@en .
 
+lulcw:ConstraintDecision a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "constraint decision"@en , "décision de contrainte"@fr ;
+    skos:definition "The decision of an export policy about the response signs of one mechanism: whether its driver was reviewed as an adequate stand-in for what the mechanism responds to (proxy review), and whether the eligible signs of the mechanism constrain the model (approval), each with its basis. A sign constrains a model only when its influence is selected by the policy, eligible by its pathway evidence (lulcw:constraintEligibility), and the decision for its mechanism accepts both the proxy and the constraint; a candidate (pending) decision constrains nothing."@en .
+
 #################################################################
 # Wells, stations and series
 #################################################################
 
 lulcw:Piezometer a owl:Class ;
     rdfs:label "piezometer"@en , "piézomètre"@fr ;
-    skos:definition "A borehole used to measure groundwater head, identified by its BSS code: the physical well, distinct from the monitoring station it hosts and from the observations made there."@en .
+    skos:definition "A groundwater-level monitoring point identified by its BSS code: the physical point, usually a borehole, in a few cases a spring (e.g. Fontestramar), distinct from the monitoring station it hosts and from the observations made there."@en .
 
 lulcw:MonitoringStation a owl:Class ;
     rdfs:label "groundwater-level monitoring station"@en , "station de mesure piézométrique"@fr ;
@@ -464,7 +470,7 @@ lulcw:ConstraintEligibilityScheme a skos:ConceptScheme ;
 lulcw:EligibleConstraint a lulcw:ConstraintEligibility ; skos:inScheme lulcw:ConstraintEligibilityScheme ; skos:topConceptOf lulcw:ConstraintEligibilityScheme ;
     skos:prefLabel "eligible"@en , "éligible"@fr ;
     rdfs:label "eligible"@en , "éligible"@fr ;
-    skos:definition "Every segment of the pathway is resolved at the resolution its mechanism requires (for pumping drawdown: the exact unit on both sides), and the sign, variable and conditions are supported. The constraint is applied only under a policy that selects every segment."@en .
+    skos:definition "Every segment of the pathway is resolved at the resolution its mechanism requires (for pumping drawdown: the exact unit on both sides; for river exchange and canal return flow: a statement about the unit itself, not about an aggregate it belongs to), and the sign, variable and conditions are supported. The constraint is applied only under a policy that selects every segment and accepts its mechanism's constraint decision."@en .
 lulcw:IneligibleConstraint a lulcw:ConstraintEligibility ; skos:inScheme lulcw:ConstraintEligibilityScheme ; skos:topConceptOf lulcw:ConstraintEligibilityScheme ;
     skos:prefLabel "not eligible"@en , "non éligible"@fr ;
     rdfs:label "not eligible"@en , "non éligible"@fr ;
@@ -733,7 +739,7 @@ lulcw:driverGroup a owl:ObjectProperty ;
 lulcw:constraintEligibility a owl:ObjectProperty ;
     rdfs:domain lulcw:Influence ; rdfs:range lulcw:ConstraintEligibility ;
     rdfs:label "has constraint eligibility"@en , "a pour éligibilité à la contrainte"@fr ;
-    skos:definition "Whether the evidence of an influence allows its response sign to constrain a model. An eligible influence is constrained only under a policy that selects it, i.e. one that selects every segment of its pathway."@en .
+    skos:definition "Whether the evidence of an influence allows its response sign to constrain a model: the evidence layer only. An eligible influence is constrained only under a policy that selects it (every segment of its pathway) and whose decision for its mechanism accepts both the driver as a proxy and the constraint (lulcw:ConstraintDecision)."@en .
 
 lulcw:proxyFor a owl:ObjectProperty , owl:FunctionalProperty ;
     rdfs:domain lulcw:Influence ; rdfs:range sosa:ObservableProperty ;
@@ -880,6 +886,25 @@ lulcw:conditions a owl:DatatypeProperty ; rdfs:range xsd:string ;
 lulcw:eligibilityReason a owl:DatatypeProperty ; rdfs:range xsd:string ;
     rdfs:label "eligibility reason"@en , "motif d'éligibilité"@fr ;
     skos:definition "Why an influence is or is not eligible to constrain a model."@en .
+lulcw:constraintDecision a owl:ObjectProperty ;
+    rdfs:domain lulcw:ExportPolicy ; rdfs:range lulcw:ConstraintDecision ;
+    rdfs:label "has constraint decision"@en , "a pour décision de contrainte"@fr ;
+    skos:definition "A constraint decision of the policy, one per mechanism; a mechanism without one constrains nothing under the policy."@en .
+lulcw:decisionMechanism a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ConstraintDecision ; rdfs:range lulcw:Mechanism ;
+    rdfs:label "decision mechanism"@en , "mécanisme de la décision"@fr ;
+    skos:definition "The mechanism whose influences the constraint decision is about."@en .
+lulcw:proxyReview a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ConstraintDecision ; rdfs:range lulcw:AssessmentStatus ;
+    rdfs:label "proxy review"@en , "examen du substitut"@fr ;
+    skos:definition "Whether the driver of the mechanism's influences was reviewed as an adequate stand-in for what the mechanism responds to (e.g. a remote gauge's discharge for the river stage near a well, the plain's summed canal diversions for local canal seepage): candidate (not reviewed), accepted or rejected."@en .
+lulcw:constraintApproval a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ConstraintDecision ; rdfs:range lulcw:AssessmentStatus ;
+    rdfs:label "constraint approval"@en , "approbation de la contrainte"@fr ;
+    skos:definition "Whether the policy applies the eligible response signs of the mechanism as model constraints: candidate (pending), accepted or rejected."@en .
+lulcw:decisionBasis a owl:DatatypeProperty ; rdfs:range xsd:string ;
+    rdfs:label "decision basis"@en , "fondement de la décision"@fr ;
+    skos:definition "Who decided, when, and where the decision is recorded; or what a pending decision waits for."@en .
 lulcw:allocationWeight a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:double ;
     rdfs:label "allocation weight"@en , "poids de répartition"@fr ;
     skos:definition "Share, between 0 and 1, of an annual record's volume given to the allocated unit or group."@en .
@@ -1216,12 +1241,12 @@ lulcw:DocumentPassage a owl:Class ;
 lulcw:ExchangeStatement a owl:Class ;
     rdfs:subClassOf prov:Entity ;
     rdfs:label "exchange statement"@en , "énoncé d'échange"@fr ;
-    skos:definition "A statement read from a document about water exchange between surface water (a river section, a watercourse or the canals) and one or more hydrogeological units: its mechanism, direction, state or period, quantity, hedging, how the source names the unit, and the passage it comes from. The graph records what the source says, at the scale the source says it; it is not a measured effect, and statements that disagree are kept side by side."@en .
+    skos:definition "A statement read from a document about water exchange between surface water (a river section, a watercourse or the canals) and hydrogeological units: its mechanism, direction, state or period, quantity, hedging, method, how the source names its subject, and the passage it comes from. The subject is a unit itself (lulcw:aboutUnit) or an aggregate of units (lulcw:aggregateMemberUnit, and lulcw:aboutGroundwaterBody when the source states a WFD body). The graph records what the source says, at the scale the source says it; it is not a measured effect, and statements that disagree are kept side by side."@en .
 
 lulcw:RiverUnitAssociation a owl:Class ;
     rdfs:subClassOf prov:Entity ;
     rdfs:label "river-unit association"@en , "association cours d'eau-entité"@fr ;
-    skos:definition "Derived by a rule, for one reach search zone, one watercourse and the unit a well is attributed to: whether reaches of the watercourse in the zone run on the unit's outcrop, over the units that cover it (listed), or meet a section where a source documents an exchange with the unit (documented lateral); with the lengths and the statements that apply. A geometric or documentary association, not proof of hydraulic connection (CQ5)."@en .
+    skos:definition "Derived by a rule, for one reach search zone, one watercourse and the unit a well is attributed to: whether reaches of the watercourse in the zone run on the unit's outcrop, over the units that cover it (listed), or meet a section where a source documents an exchange with the unit itself (documented lateral); with the lengths, the statements about the unit that apply and, on outcrop, the aggregate statements localised to it. A geometric or documentary association, not proof of hydraulic connection (CQ5)."@en .
 
 lulcw:CanalUnitAssociation a owl:Class ;
     rdfs:subClassOf prov:Entity ;
@@ -1258,7 +1283,7 @@ lulcw:OverCover a lulcw:AssociationType ; skos:inScheme lulcw:AssociationTypeSch
 lulcw:DocumentedLateral a lulcw:AssociationType ; skos:inScheme lulcw:AssociationTypeScheme ; skos:topConceptOf lulcw:AssociationTypeScheme ;
     skos:prefLabel "documented lateral"@en , "latéral documenté"@fr ;
     rdfs:label "documented lateral"@en , "latéral documenté"@fr ;
-    skos:definition "No reach of the zone runs on or over the unit, but a source documents an exchange between the unit and a section that has reaches in the zone (e.g. an alluvial terrace draining laterally to the river)."@en .
+    skos:definition "No reach of the zone runs on or over the unit, but a source documents an exchange between the unit itself and a section that has reaches in the zone (e.g. an alluvial terrace draining laterally to the river). A statement about an aggregate of units (a groundwater body, a group of formations) never makes one: membership does not locate the exchange."@en .
 
 lulcw:ExchangeDirection a owl:Class ; rdfs:subClassOf skos:Concept ;
     rdfs:label "exchange direction"@en , "sens de l'échange"@fr ;
@@ -1301,6 +1326,29 @@ lulcw:HedgedFinding a lulcw:Hedging ; skos:inScheme lulcw:HedgingScheme ; skos:t
     skos:prefLabel "hedged"@en , "conditionnel"@fr ;
     rdfs:label "hedged"@en , "conditionnel"@fr ;
     skos:definition "The source hedges the finding (conditional, 'could', 'seems') or reports another study's result."@en .
+
+lulcw:EvidenceMethod a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "evidence method"@en , "méthode de la preuve"@fr ;
+    skos:definition "How the finding behind an exchange statement was obtained, as far as its source says. Separate from the hedging (how assertively the source words it) and from any confidence: assertive wording is not evidence calibration."@en .
+lulcw:EvidenceMethodScheme a skos:ConceptScheme ;
+    rdfs:label "evidence methods"@en , "méthodes de preuve"@fr ;
+    skos:definition "Values of lulcw:EvidenceMethod."@en .
+lulcw:DifferentialGauging a lulcw:EvidenceMethod ; skos:inScheme lulcw:EvidenceMethodScheme ; skos:topConceptOf lulcw:EvidenceMethodScheme ;
+    skos:prefLabel "differential gauging"@en , "jaugeages différentiels"@fr ;
+    rdfs:label "differential gauging"@en , "jaugeages différentiels"@fr ;
+    skos:definition "Discharge measured at successive points of a river or canal and differenced: the exchange is the measured gain or loss between them (a canal's loss also includes the water it delivers to parcels and secondary networks)."@en .
+lulcw:GeochemicalTracing a lulcw:EvidenceMethod ; skos:inScheme lulcw:EvidenceMethodScheme ; skos:topConceptOf lulcw:EvidenceMethodScheme ;
+    skos:prefLabel "geochemical tracing"@en , "traçage géochimique"@fr ;
+    rdfs:label "geochemical tracing"@en , "traçage géochimique"@fr ;
+    skos:definition "Chemical or isotopic signatures of the waters and their mixing proportions between end-members, alone or combined with a measured discharge."@en .
+lulcw:WaterBalanceEstimate a lulcw:EvidenceMethod ; skos:inScheme lulcw:EvidenceMethodScheme ; skos:topConceptOf lulcw:EvidenceMethodScheme ;
+    skos:prefLabel "water balance"@en , "bilan hydrologique"@fr ;
+    rdfs:label "water balance"@en , "bilan hydrologique"@fr ;
+    skos:definition "Inferred from a water balance or a volume study (inputs minus outputs), possibly as reported by another document."@en .
+lulcw:SynthesisStatement a lulcw:EvidenceMethod ; skos:inScheme lulcw:EvidenceMethodScheme ; skos:topConceptOf lulcw:EvidenceMethodScheme ;
+    skos:prefLabel "synthesis"@en , "synthèse"@fr ;
+    rdfs:label "synthesis"@en , "synthèse"@fr ;
+    skos:definition "A qualification in a synthesis or characterisation document (an agency's groundwater-body sheet, a syndicate's description) that does not state the method behind it."@en .
 
 lulcw:UnitMapping a owl:Class ; rdfs:subClassOf skos:Concept ;
     rdfs:label "unit mapping"@en , "correspondance d'entité"@fr ;
@@ -1396,6 +1444,10 @@ lulcw:aboutSection a owl:ObjectProperty ;
     rdfs:domain lulcw:ExchangeStatement ; rdfs:range lulcw:RiverSection ;
     rdfs:label "about section"@en , "porte sur le secteur"@fr ;
     skos:definition "The river section an exchange statement is about, when the source delimits it."@en .
+lulcw:overlapsSection a owl:ObjectProperty , owl:SymmetricProperty ;
+    rdfs:domain lulcw:RiverSection ; rdfs:range lulcw:RiverSection ;
+    rdfs:label "overlaps section"@en , "chevauche le secteur"@fr ;
+    skos:definition "Two different sections of the same watercourse whose lines run together over at least 500 metres within the section tolerance (src/kg/rivers.py): statements about them describe, at least in part, the same stretch. Adjacent sections that only meet at a junction do not overlap."@en .
 lulcw:aboutWatercourse a owl:ObjectProperty ;
     rdfs:domain lulcw:ExchangeStatement ; rdfs:range lulcw:Watercourse ;
     rdfs:label "about watercourse"@en , "porte sur le cours d'eau"@fr ;
@@ -1403,7 +1455,15 @@ lulcw:aboutWatercourse a owl:ObjectProperty ;
 lulcw:aboutUnit a owl:ObjectProperty ;
     rdfs:domain lulcw:ExchangeStatement ; rdfs:range lulcw:HydrogeologicalUnit ;
     rdfs:label "about unit"@en , "porte sur l'entité"@fr ;
-    skos:definition "A hydrogeological unit an exchange statement is about, as identified by lulcw:unitMapping."@en .
+    skos:definition "A hydrogeological unit an exchange statement is about itself, as identified by lulcw:unitMapping: the source names this unit (a formation or a code mapped to exactly this unit, or a groundwater body made of this unit alone). A statement about an aggregate of several units uses lulcw:aggregateMemberUnit instead."@en .
+lulcw:aggregateMemberUnit a owl:ObjectProperty ;
+    rdfs:domain lulcw:ExchangeStatement ; rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "aggregate member unit"@en , "entité membre de l'agrégat"@fr ;
+    skos:definition "A unit that belongs to the aggregate an exchange statement is about (a groundwater body of several units, or a group the source names, such as 'the Quaternary formations'). Membership does not say that this unit takes part in the exchange: the statement is localised to the unit only by a separate, stated inference (lulcw:localizedStatement), never by membership alone."@en .
+lulcw:aboutGroundwaterBody a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ExchangeStatement ; rdfs:range lulcw:GroundwaterBody ;
+    rdfs:label "about groundwater body"@en , "porte sur la masse d'eau souterraine"@fr ;
+    skos:definition "The WFD groundwater body an exchange statement is about, when the source states the exchange at that scale (e.g. a characterisation sheet's table of river exchanges)."@en .
 lulcw:unitMapping a owl:ObjectProperty , owl:FunctionalProperty ;
     rdfs:domain lulcw:ExchangeStatement ; rdfs:range lulcw:UnitMapping ;
     rdfs:label "has unit mapping"@en , "a pour correspondance d'entité"@fr ;
@@ -1416,6 +1476,10 @@ lulcw:hedging a owl:ObjectProperty , owl:FunctionalProperty ;
     rdfs:domain lulcw:ExchangeStatement ; rdfs:range lulcw:Hedging ;
     rdfs:label "has hedging"@en , "a pour modalité"@fr ;
     skos:definition "Whether the source states or hedges the finding."@en .
+lulcw:evidenceMethod a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ExchangeStatement ; rdfs:range lulcw:EvidenceMethod ;
+    rdfs:label "has evidence method"@en , "a pour méthode de preuve"@fr ;
+    skos:definition "How the source obtained the finding (differential gauging, geochemical tracing, water balance, or a synthesis that does not say)."@en .
 lulcw:associationType a owl:ObjectProperty , owl:FunctionalProperty ;
     rdfs:domain lulcw:RiverUnitAssociation ; rdfs:range lulcw:AssociationType ;
     rdfs:label "has association type"@en , "a pour type d'association"@fr ;
@@ -1435,7 +1499,11 @@ lulcw:coverUnit a owl:ObjectProperty ;
 lulcw:applicableStatement a owl:ObjectProperty ;
     rdfs:range lulcw:ExchangeStatement ;
     rdfs:label "applicable statement"@en , "énoncé applicable"@fr ;
-    skos:definition "An exchange statement about the association's unit and about a section that holds reach pieces of the association's zone and watercourse (for a canal-unit association: a canal-return statement naming the unit)."@en .
+    skos:definition "An exchange statement about the association's unit itself (lulcw:aboutUnit) and about a section that holds reach pieces of the association's zone and watercourse (for a canal-unit association: a canal-return statement naming the unit). A statement measured at a site (lulcw:measuredAt) applies only to the associations of that site's zone. Statements about an aggregate are never applicable; see lulcw:localizedStatement."@en .
+lulcw:localizedStatement a owl:ObjectProperty ;
+    rdfs:range lulcw:ExchangeStatement ;
+    rdfs:label "localised aggregate statement"@en , "énoncé d'agrégat localisé"@fr ;
+    skos:definition "Derived by a rule: a statement about an aggregate that the association's unit belongs to (lulcw:aggregateMemberUnit), localised to the unit because the association's river reaches (about a section that holds pieces of them in the zone) or canal reaches run on the unit's outcrop, where the unit is the member in contact with the surface water. A separate inference from lulcw:applicableStatement: it documents the exchange at the aggregate's scale and makes no response sign eligible until the localisation is reviewed (Gate 3)."@en .
 lulcw:candidateWatercourse a owl:ObjectProperty , owl:FunctionalProperty ;
     rdfs:domain lulcw:SurfaceWaterIntake ; rdfs:range lulcw:Watercourse ;
     rdfs:label "candidate watercourse"@en , "cours d'eau candidat"@fr ;
@@ -1443,7 +1511,7 @@ lulcw:candidateWatercourse a owl:ObjectProperty , owl:FunctionalProperty ;
 lulcw:measuredAt a owl:ObjectProperty ;
     rdfs:domain lulcw:ExchangeStatement ; rdfs:range geo:Feature ;
     rdfs:label "measured at"@en , "mesuré au point"@fr ;
-    skos:definition "The site (e.g. a piezometer) where the measurement behind an exchange statement was made, when the source names one."@en .
+    skos:definition "The site (e.g. a piezometer) where the measurement behind an exchange statement was made, when the source names one. The statement is evidence at that site: it applies only to the associations of the site's own zone, and another well of the same unit does not inherit it."@en .
 lulcw:intakeMember a owl:ObjectProperty ;
     rdfs:domain lulcw:CanalIntakeGroup ; rdfs:range lulcw:SurfaceWaterIntake ;
     rdfs:label "intake member"@en , "prise membre"@fr ;

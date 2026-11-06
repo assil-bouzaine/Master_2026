@@ -18,8 +18,14 @@
    OBO conventions that gate 3 replaces (one label per language is not "multiple labels"; the
    definitions are skos:definition, not IAO:0000115). The reused W3C and OGC vocabularies are
    not reported on: their own label conventions are not ours to change.
+8. Alignment ledger (ontology/alignments/ledger.csv; Codex review of 2026-11-06, R3): every
+   alignment axiom between a lulcw term and a reused one has a row with status "asserted" (and every
+   such row is in its module); a "rejected" correspondence is in no file; an "upstream" statement is
+   in its import, as the source states it; HermiT infers every "required" subsumption and none of the
+   "forbidden" ones (a close match must not hide a subclass path).
 The OOPS! pitfall scan is a web service and is run separately (docs/notes/step12_ontology.md).
 """
+import csv
 import re
 import shutil
 import subprocess
@@ -158,6 +164,69 @@ def test_report():
     print(f"  7. ROBOT report on lulcw.ttl: no ERROR ({len(rows)} INFO/WARN rows)")
 
 
+LEDGER = ONTO / "alignments" / "ledger.csv"
+MODULES = {"gwml2-hyfo": "alignments/lulcw-gwml2-hyfo.ttl", "sweet": "alignments/lulcw-sweet.ttl",
+           "hyf": "alignments/lulcw-hyf.ttl", "hyf-import": "imports/hyf_terms.ttl"}
+ALIGN = (RDFS.subClassOf, RDFS.subPropertyOf, SKOS.closeMatch, SKOS.exactMatch, SKOS.broader,
+         OWL.equivalentClass, OWL.equivalentProperty)
+
+
+def ledger():
+    """Ledger rows with subject, relation and object as IRIs."""
+    ns = {"lulcw": L, "gwml2": "http://gwml2.org/def/gwml2#", "hyfo": "http://hyfo.spatialai.org/v1/hyfo#",
+          "sohydro": "http://sweetontology.net/realmHydro/", "hyf": "https://www.opengis.net/def/schema/hy_features/hyf/",
+          "rdfs": str(RDFS), "skos": str(SKOS), "owl": str(OWL)}
+    def iri(c):
+        p, local = c.split(":", 1)
+        return rdflib.URIRef(ns[p] + local)
+    with open(LEDGER, encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    for r in rows:
+        r["triple"] = (iri(r["subject"]), iri(r["relation"]), iri(r["object"]))
+    return rows
+
+
+def test_ledger():
+    rows = ledger()
+    assert {r["status"] for r in rows} <= {"asserted", "rejected", "derived", "upstream"}
+    assert all(r["entailment"] in ("", "required", "forbidden") for r in rows)
+    graphs = {m: rdflib.Graph().parse(ONTO / f) for m, f in MODULES.items()}
+    own = {(m, t) for m in ("gwml2-hyfo", "sweet", "hyf") for t in graphs[m]
+           if t[1] in ALIGN and str(t[0]).startswith(L) and not str(t[2]).startswith(L)}
+    listed = {(r["module"], r["triple"]) for r in rows if r["status"] == "asserted"}
+    assert own == listed, f"alignment axioms without an asserted ledger row: {sorted(own - listed)}; " \
+                          f"asserted rows not in their module: {sorted(listed - own)}"
+    for r in rows:
+        anywhere = any(r["triple"] in g for g in graphs.values())
+        if r["status"] == "rejected":
+            assert not anywhere, f"a rejected correspondence is asserted: {r['subject']} {r['relation']} {r['object']}"
+        if r["status"] == "upstream":
+            assert r["triple"] in graphs[r["module"]], f"upstream statement missing: {r['subject']} {r['relation']} {r['object']}"
+    print(f"  8a. alignment ledger: {len(listed)} asserted correspondences = the alignment modules; "
+          f"{sum(r['status'] == 'rejected' for r in rows)} rejected ones asserted nowhere; upstream statements as stated")
+    if not (ROBOT.exists() and shutil.which("java")):
+        return
+    with tempfile.TemporaryDirectory() as d:
+        out = Path(d) / "inferred.ttl"
+        rc, log = robot("reason", "--input", ONTO / "lulcw-meta.ttl", "--reasoner", "HermiT",
+                        "--axiom-generators", "SubClass", "--include-indirect", "true",
+                        "--remove-redundant-subclass-axioms", "false", "--output", out)
+        assert rc == 0, log
+        inf = rdflib.Graph().parse(out)
+    bad = []
+    for r in rows:
+        s, _, o = r["triple"]
+        held = (s, RDFS.subClassOf, o) in inf
+        if r["entailment"] == "required" and not held:
+            bad.append(f"not inferred: {r['subject']} subClassOf {r['object']}")
+        if r["entailment"] == "forbidden" and held:
+            bad.append(f"inferred although forbidden: {r['subject']} subClassOf {r['object']}")
+    assert not bad, "\n".join(bad)
+    n_req = sum(r["entailment"] == "required" for r in rows)
+    n_forb = sum(r["entailment"] == "forbidden" for r in rows)
+    print(f"  8b. HermiT: the {n_req} required subsumptions hold, none of the {n_forb} forbidden ones")
+
+
 def main():
     cat = catalog()
     core = rdflib.Graph().parse(cat["https://w3id.org/lulcw"])
@@ -167,10 +236,12 @@ def main():
     test_declarations(core, cat)
     if not (ROBOT.exists() and shutil.which("java")):
         print("  5-7 skipped: Java or tools/robot.jar missing (docs/notes/step12_ontology.md)")
+        test_ledger()
         return
     test_reasoners()
     test_negative_control()
     test_report()
+    test_ledger()
     print("test_ontology: all checks passed")
 
 

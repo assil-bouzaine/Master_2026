@@ -1413,3 +1413,110 @@ parcel to a canal); no model experiment before the export.
   `test_release`, `test_exchange_evidence` pass; **`test_kg` fails: "AssertionError: a point off dept
   66"**, probably a new gauge or surface-intake point of `src/kg/rivers.py` outside the check's
   département box. To fix first at the next session (decide whether the point or the check is wrong).
+
+## 2026-11-06 (afternoon): the Codex review of the day answered
+
+Review `docs/review_codex_2026-11-06.md` (moved from the root, unchanged); verdicts, checks and what
+was done point by point in `docs/review_codex_2026-11-06_response.md`. Assil: "check it out and if
+there's something concerning or good adapt it, otherwise continue". Every point held; none was
+rejected.
+
+### Recurring check (CLAUDE.md §7)
+1. *Chain link advanced:* none new; the water → model link of the morning (D's river and canal
+   edges) is corrected: what the sources say about which unit, where and when.
+2. *Where dated land use enters:* unchanged (the crop-thirst index, LU-4; CQ7's dated areas); no
+   command area ties a parcel to a canal.
+3. *Observed / inferred / assumed / unknown:* observed: the passages and their documents; now also
+   recorded: each statement's subject (a unit, or an aggregate of units), its method and its
+   period; inferred: the localisation of an aggregate statement to the unit on whose outcrop the
+   river runs (a separate, labelled inference, never evidence about the unit), the section
+   overlaps; assumed: a remote gauge's discharge and the plain's summed canal diversions as proxies
+   (now explicit, pending review); unknown: everything off the geological map (no longer a
+   negative answer).
+4. *Evidence vs plan:* done and tested below; the Gate 3 questions are plans.
+5. *Next model experiment:* none before the export (12.8).
+6. *Still missing from the subject:* unchanged from the morning (12.10, CQ10, CQ16, the AGROVOC
+   gold set, OntoAligner, command areas).
+
+### What was done
+- **S1, the failing graph test.** The 45 gauges were written `POINT (x y)` by Shapely, every other
+  point `POINT(x y)`; the old regex turned them into NaN and blamed the coordinates. Gauges are now
+  written by the graph's `point()` helper. `test_kg` check 7 parses every geometry with Shapely:
+  Lambert-93, inside the département box (lines and polygons too, no longer points only), points in
+  the form the CQ2 queries parse as text; four fixtures check the checker. 16 BD LISA multipolygons
+  are invalid as published: counted, not refused.
+- **S2, documents.** `src/ingest/documents.py` writes atomically and saves its index after each
+  document; a stored copy without an entry is fetched again and compared, never dated by guess.
+  `tests/test_documents.py`.
+- **R1, aggregates.** Nineteen of the 32 statements are about an aggregate: FRDG351's table (14
+  rows, the body's eight units), the EVP's "aquifères", BRGM's "Quaternary groundwater (poles P1
+  and P2)" (water end-members, not units: report p. 23), "formations du Quaternaire", "aquifère
+  quaternaire", SMNPR's "nappes quaternaires" and the EVP Agly's "nappe alluviale". The CSV records
+  `subject`, `groundwater_body` and `method`; the graph writes `aboutUnit` only for a statement
+  about the unit itself and `aggregateMemberUnit` (with `aboutGroundwaterBody` for FRDG351 and
+  FRDG243) otherwise. Rules: a documented lateral association needs a statement about the unit
+  itself; an aggregate statement is localised to an on-outcrop association when pieces of its
+  section run on the unit's outcrop (`localizedStatement`, order 6; canals order 3), documents the
+  exchange at the aggregate's scale and makes no sign eligible. `test_exchange_evidence` gate 6
+  checks every subject against its sheet's own unit list.
+- **Q3, measurements at a site:** applicable only in that site's zone (river and canal rules,
+  shapes, the stale checks of CQ5 and CQ8).
+- **Q1, Q2, incomplete searches:** reaches off the map turn CQ8's `none_found` (and
+  `no_pool_gauge`, when a pool-gauged river is off the map) into `unknown`, and a documented CQ5
+  answer into `partial`, with the off-map length.
+- **R4, conflicts and periods.** `lulcw:overlapsSection` (lines running together over at least
+  500 m within 100 m; 14 pairs, all on the Têt: FRDR224 and FRDR223 do not overlap each other, nor
+  do BRGM's adjacent stretches); a conflict needs opposite states for the same or overlapping
+  stretches, both dated with overlapping periods (contradiction) or one undated (unresolved);
+  otherwise variation. CQ5 and CQ6 take an optional requested period. `evidenceMethod`: 5
+  differential gauging, 7 geochemical tracing, 4 water balance, 16 synthesis.
+- **R2, constraint decisions.** `lulcw:ConstraintDecision` per mechanism and policy
+  (`configs/constraint_decisions.csv`): pumping accepted (CLAUDE.md §3), recharge, river and canal
+  pending; `cq08_influences` returns `proxyReview`, `constraintApproval` and `constrained`.
+- **R3, alignments.** `RiverReach` closeMatch `HY_FlowPath` instead of every reach ⊑ HY_FlowPath;
+  the HY_Features import keeps the source's `skos:broader`; the new ledger
+  (`ontology/alignments/ledger.csv`, 25 rows) and `test_ontology` gate 8 (HermiT: 8 required
+  subsumptions hold, none of 13 forbidden ones). The ledger's counterexample check found a second
+  faulty axiom: `Piezometer ⊑ GW_Well`, but the network's monitoring points include springs
+  (Fontestramar, Source de la Tirounère, Source Sainte-Cécile, Source Clots de Rhodes): a close
+  match now, and the class definition names the springs.
+- **Release identity.** `git_version` hashes the uncommitted changes; the facts summary records the
+  hashes of the configuration files and snapshot manifests; `configs/snapshots.json` pins the
+  snapshots the graph and its tests read.
+- Ontology **0.7.0**; analysis plan §14 item 17 (the decisions and the ❓ for Gate 3).
+
+### Results (release rebuilt 14:28–14:43 local time, dataset v4, main policy)
+- Facts 469,450 triples (+113), rule outputs 162,922 (−75), no SHACL violation (the 8 infos of the
+  wells without an investigation depth); rules 186 s, validation 413 s.
+- **Documented lateral links 4 → 2**: HIPPO2 and 10915X0395/PZ lost their link to the Agly, which
+  rested on FRDG351's table alone; the two 10962X PZ keep theirs (BRGM: "the ancient alluvium pole",
+  671AB02 itself). **River edges 35 → 34 wells (23 core)**: HIPPO2 had no other.
+- **Eligible river signs 7 → 3 wells (2 core)**: MILLAS C2-1 (BRGM: the Têt drains the recent
+  alluvium between Rodès and T6), CORBERE and 10962X0075/PZ (BRGM, ancient alluvium). BARQUA (Agly),
+  10915X0395/PZ (Têt) and 10972X0094/111111 (Tech) keep their edges but only aggregate statements
+  document them (FRDG351's rows, the EVP Têt, BRGM's "Quaternary formations"): ineligible, with
+  that reason, until Gate 3 decides whether outcrop localisation suffices.
+- Canal edges unchanged (5 wells, 4 core, 2 eligible); 10915X0395/PZ no longer cites BRGM's mixing
+  measured at C2-1 and stays eligible on the statements about 718BP02 itself.
+- Statements: 41 applications to the unit itself (69 before, aggregates included) and 15
+  localisations from an aggregate.
+- **CQ5**: conflicting 4 → 2 (C2-1 and 10915X0395/PZ: undated FRDG351 or EVP statements against
+  BRGM's 2017 campaign on overlapping stretches, "unresolved"), supported 16 → 15, partial 39 → 42
+  (BARQUA and the other wells with 32 m of the Agly off the map), unknown 1. **CQ8 river**: unknown
+  6 → 7 (COLLIOURE RIMBAU, 448 m of the Massane off the map; before a "completed" none_found);
+  HIPPO2 is now a completed none_found.
+- No recharge, river or canal sign is constrained under any policy before Gate 3
+  (`cq08_influences.constrained`); pumping signs are, where eligible and selected.
+
+### What to consider
+- **Fewer eligible river signs** (3 wells). The physics is unchanged; what changed is that body-level
+  wording no longer counts as evidence about a unit. If Gate 3 accepts outcrop localisation, three
+  wells come back (BARQUA, 10915X0395/PZ, 111111); a domain reviewer can settle each case by reading
+  FRDG351's table with the map.
+- **The constraint layer defaults to off.** RQ2's "hard" arm will constrain pumping signs only until
+  Gate 3 approves other mechanisms; the analysis plan's soft/hard comparison should say which
+  mechanisms each run constrains.
+- **The alignment ledger** is the place where a correspondence is argued; a new alignment axiom
+  without a ledger row now fails `test_ontology`.
+- **Next:** unchanged: the export (12.8) with its per-well, per-relation inventory and the proposed
+  path-aggregation rule (analysis plan §14 item 17), then the two-well path.

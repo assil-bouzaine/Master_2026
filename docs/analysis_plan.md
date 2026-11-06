@@ -798,3 +798,74 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       18 (16 core); associated rivers without a pool gauge for 17 wells (4 core), none found for 7
       (4 core). Canal edges for 5 wells (4 core), 2 eligible (stated returns into the recent
       alluvium). The export (12.8) reads them from the graph.
+    - *Corrected the same afternoon (item 17; release rebuilt 14:28–14:43):* two of the four
+      documented lateral links rested on FRDG351's body-level table alone and are gone (HIPPO2,
+      10915X0395/PZ on the Agly): river edges for **34 wells (23 core)**; an eligible sign for **3
+      wells (2 core: MILLAS C2-1, CORBERE; and 10962X0075/PZ)**, each on a BRGM statement about the
+      unit itself; BARQUA, 10915X0395/PZ (Têt) and 10972X0094/111111 keep their edges, documented
+      only for an aggregate (❓ item 17). Over cover only, the gauge gaps and the canal edges are
+      unchanged.
+17. **After the Codex review of 2026-11-06 (`docs/review_codex_2026-11-06.md`; verdicts and checks in
+    `docs/review_codex_2026-11-06_response.md`): evidence scope, incomplete searches and constraint
+    decisions. Points marked ❓ are for Assil at Gate 3; the rest makes the graph say what its
+    sources say.**
+    - *Subject of a statement (R1):* a statement is about a unit itself, or about an aggregate (a
+      groundwater body of several units, or a group the source names: "the Quaternary
+      formations"). Membership never stands for evidence about each member: an aggregate
+      statement makes no documented lateral association and no eligible sign. On outcrop it is
+      localised to the unit in contact with the river (a separate, stated inference, kept for
+      CQ5 and the explanations). Item 16's "documented lateral" therefore reads "an exchange
+      documented for the unit itself". ❓ May a body-level statement localised by the outcrop make
+      a river sign eligible? It concerns BARQUA (Agly), 10915X0395/PZ (Têt) and 10972X0094/111111
+      (Tech), whose only sources are FRDG351's table, the EVP Têt and BRGM's "Quaternary
+      formations".
+    - *Measurements at a site (Q3):* a statement measured at a well (BRGM's mixing proportions at
+      MILLAS C2-1) applies only in that well's zone.
+    - *Constraint decisions (R2):* a sign constrains a model only when three layers accept it: the
+      influence's eligibility (its pathway evidence, derived by the rules), the proxy review (is
+      the driver an adequate stand-in for what the mechanism responds to) and the approval. The
+      graph records the last two per mechanism and export policy (`lulcw:ConstraintDecision`, from
+      `configs/constraint_decisions.csv`): pumping accepted (CLAUDE.md §3); recharge, river and
+      canal pending, so none of their signs constrains a model before Gate 3 (default off).
+      ❓ Proxy adequacy of (a) a pool gauge's weekly discharge for the river stage near the well
+      (diversions, regulation and intervening reaches in between; a gauge downstream of the zone
+      is a proxy, not a cause), (b) the plain's summed canal diversions (181 intakes) for the water
+      reaching one unit's outcrop, (c) effective rainfall for recharge (item 15); and, where hard
+      constraints stay off, whether a declared soft-prior sensitivity is run.
+    - *Conflicts and periods (R4):* opposite states conflict only for the same or overlapping
+      stretches (`lulcw:overlapsSection`: lines running together over at least 500 m), when both
+      are dated with overlapping periods (a contradiction under comparable conditions) or one is
+      undated (comparability unresolved); opposite states for different stretches or disjoint
+      periods are variation. CQ5 and CQ6 take an optional requested period, report undated
+      evidence as such, and an influence states that its evidence serves as one static hypothesis
+      for every modelled week.
+    - *Evidence method (R4):* each statement records how its finding was obtained (differential
+      gauging, geochemical tracing, water balance, or a synthesis that does not say), separate from
+      its hedging. ❓ The canal eligibility rule uses the source's wording ("stated"); a method
+      criterion (measured or traced) could replace it, since wording is not calibration. Both give
+      the same eligible canal edges today.
+    - *Incomplete searches (Q1, Q2):* reaches off the geological map make a negative CQ8 answer
+      (none_found, no_pool_gauge) unknown and a documented CQ5 answer partial.
+    - *Alignments (R3):* `HydrographicReach ⊑ HY_FlowPath` withdrawn (river reaches: a close
+      match; canal reaches realise no catchment); HY_River's `skos:broader` kept as the source
+      states it; `Piezometer ⊑ GW_Well` withdrawn as well, found by the ledger's counterexample
+      check (some monitoring points are springs: a close match). The ledger
+      (`ontology/alignments/ledger.csv`) lists every correspondence, the rejected ones included,
+      with the required and forbidden entailments HermiT checks (test_ontology gate 8).
+    - *Release identity:* code versions carry the hash of uncommitted changes, the facts summary
+      the hashes of the configuration and snapshot manifests, and the raw snapshots are pinned
+      (`configs/snapshots.json`).
+    - *Export (12.8), proposed, ❓ to confirm before scoring:* when several evidence paths join one
+      driver to one well for one relation (two candidate units, or two associations), the export
+      makes one edge, lists the paths, never multiplies the input, and gives the edge an eligible
+      sign only if every selected path gives that same eligible sign (pumping already counts each
+      facility once per well, item 14). The per-well, per-relation inventory comes before any arm
+      is scored, and the raw D vs C contrast is reported as a contrast of whole connection policies
+      (item 15).
+    - *Alignment benchmark (12.9):* candidate recall@k is reported apart from matching accuracy;
+      joint target-and-relation correctness beside target accuracy and relation accuracy; strict
+      and alternative-target scores and no-match errors visible; near-duplicate crop labels across
+      the development and evaluation codes are audited and reported without changing the frozen
+      split; the blind second annotations and their adjudication are kept, and the 30-code
+      subset's agreement is not generalised to all 198 codes; the result is named an
+      "RPG-to-AGROVOC concept and code alignment benchmark".

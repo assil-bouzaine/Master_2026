@@ -12,12 +12,14 @@
 #             known; or part of the zone's canal reaches lies off the geological map, so the search is
 #             incomplete), supported (no BD TOPO canal reach runs on the unit's outcrop within ?S: a
 #             completed search, which is not "no canal influence": seepage can reach a unit from canals
-#             outside the zone); ?documented: a source reports canal return flow into the unit;
+#             outside the zone); ?documented: a source reports canal return flow into the unit itself;
 #             ?stated: one of those reports is a stated finding (not hedged), the condition of an
-#             eligible sign; ?reason in words.
+#             eligible sign; ?documentedForAggregate: a source reports it only for an aggregate the
+#             unit belongs to (e.g. "the Agly alluvial aquifer"), localised by the canals on the
+#             unit's outcrop, which makes no sign eligible; ?reason in words.
 PREFIX lulcw: <https://w3id.org/lulcw#>
 PREFIX prov: <http://www.w3.org/ns/prov#>
-SELECT ?U ?S ?documented ?stated ?status ?reason
+SELECT ?U ?S ?documented ?stated ?documentedForAggregate ?status ?reason
 WHERE {
     # the tests over reach pieces are sub-selects that start from the parameters (#bind-parameters,
     # src/kg/cq.py): an EXISTS over the pieces costs 0.5 s in pyoxigraph 0.5 (cq05_status.rq)
@@ -47,6 +49,8 @@ WHERE {
     BIND (EXISTS { ?cc lulcw:withinExtent ?S ; lulcw:associationUnit ?U ; lulcw:applicableStatement ?s2 .
                    ?cc a lulcw:CanalUnitAssociation .
                    ?s2 lulcw:exchangeDirection lulcw:SurfaceToAquifer ; lulcw:hedging lulcw:StatedFinding . } AS ?stated)
+    BIND (EXISTS { ?cd lulcw:withinExtent ?S ; lulcw:associationUnit ?U ; lulcw:localizedStatement ?s3 .
+                   ?cd a lulcw:CanalUnitAssociation . ?s3 lulcw:exchangeDirection lulcw:SurfaceToAquifer . } AS ?documentedForAggregate)
     BIND (BOUND(?hitOn) AS ?onOutcrop)
     BIND (BOUND(?hitOff) AS ?offMap)
     BIND (IF(!?isZone || !?isUnit, "not_applicable",
@@ -61,7 +65,8 @@ WHERE {
           IF(?onOutcrop && !?found, "canal reaches of the zone run on the unit's outcrop but no association was derived: the rule outputs are missing or stale (run src.kg.apply_rules)",
           IF(?found && ?stated, "canals cross the unit's outcrop and a source states canal return flow into the unit; no command area is mapped and no local return amount is known: a partial chain",
           IF(?found && ?documented, "canals cross the unit's outcrop and a source reports canal return flow into the unit, hedged; no command area is mapped and no local return amount is known: a partial chain",
+          IF(?found && ?documentedForAggregate, "canals cross the unit's outcrop and a source reports canal return flow into an aggregate the unit belongs to (localised by the canals on its outcrop), not into the unit itself; no command area is mapped: a partial chain",
           IF(?found, "canals cross the unit's outcrop, but no source documents canal return flow into this unit; no command area is mapped: a partial chain",
           IF(?offMap, "no canal reach found on the unit's outcrop, but part of the zone's canal reaches lies off the geological map: the search is incomplete",
-             "no BD TOPO canal reach runs on the unit's outcrop within the zone (a completed search; canals outside the zone may still matter)"))))))))) AS ?reason)
+             "no BD TOPO canal reach runs on the unit's outcrop within the zone (a completed search; canals outside the zone may still matter)")))))))))) AS ?reason)
 }

@@ -15,25 +15,32 @@
 #             sensitivity may still connect the well), unknown (no search zone, a unit outside BD LISA,
 #             or outcrop of the unit in the zone without a derived influence: the rule outputs are
 #             missing or stale), not_applicable; ?river: derived (a river influence), no_pool_gauge
-#             (rivers are associated with the well's unit in its zone but none has a gauge of the pool),
-#             none_found (a completed search of the zone's reaches: no searched watercourse runs on,
-#             over or documentedly beside the unit), unknown (a unit outside BD LISA, no reach search
-#             zone, or river pieces on or over the unit, a documented exchange in a section of the
-#             zone, or an association with a pool gauge, without the association or influence the
-#             rules derive from them: the rule outputs are missing or stale); ?canal: derived,
-#             not_documented (canals cross the unit's outcrop but no source documents return flow into
-#             it), none_found (no canal on the unit's outcrop in the zone), unknown (as for ?river,
-#             with canal pieces on the unit's outcrop or an association with a return statement);
+#             (rivers are associated with the well's unit in its zone but none has a gauge of the pool,
+#             and no reach of a pool-gauged watercourse lies off the map), none_found (a completed
+#             search of the zone's reaches: no searched watercourse runs on, over or documentedly
+#             beside the unit, and no river reach of the zone lies off the geological map), unknown (a
+#             unit outside BD LISA, no reach search zone, river reaches of the zone off the geological
+#             map where the answer would be negative: an incomplete search, never a completed negative
+#             (Codex review of 2026-11-06, Q1), or river pieces on or over the unit, a documented
+#             exchange in a section of the zone, or an association with a pool gauge, without the
+#             association or influence the rules derive from them: the rule outputs are missing or
+#             stale); ?canal: derived, not_documented (canals cross the unit's outcrop but no source
+#             documents return flow into it), none_found (no canal on the unit's outcrop in the zone
+#             and no canal reach of the zone off the map), unknown (as for ?river, with canal pieces
+#             on the unit's outcrop, an association with a return statement, or canal reaches off the
+#             map);
 #             ?reason, ?riverReason and ?canalReason in words.
 # A negative recharge answer needs a completed search, never the mere absence of an influence
 # (Codex review of 2026-10-26, §1; cq04_status.rq gives the same answer per unit).
 PREFIX lulcw: <https://w3id.org/lulcw#>
 PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 SELECT ?W (COALESCE(?d, "") AS ?drivers)
        (IF(!?isWell, "not_applicable", IF(!?hasUnit || !?allDescribed || !?riverSearched || ?riverStale, "unknown",
-         IF(?riverInf, "derived", IF(?riverAssoc, "no_pool_gauge", "none_found")))) AS ?river)
+         IF(?riverInf, "derived", IF(?riverAssoc, IF(?riverOffPool, "unknown", "no_pool_gauge"),
+            IF(?riverOff, "unknown", "none_found"))))) AS ?river)
        (IF(!?isWell, "not_applicable", IF(!?hasUnit || !?allDescribed || !?riverSearched || ?canalStale, "unknown",
-         IF(?canalInf, "derived", IF(?canalAssoc, "not_documented", "none_found")))) AS ?canal)
+         IF(?canalInf, "derived", IF(?canalAssoc, "not_documented", IF(?canalOff, "unknown", "none_found"))))) AS ?canal)
        (IF(!?isWell, "not a piezometer of the graph",
          IF(!?hasUnit, "no unit is attributed to the well, so no river can be associated with it",
          IF(!?allDescribed, "a unit attributed to the well is not described by BD LISA: no polygon can carry it, so its rivers cannot be searched",
@@ -41,8 +48,10 @@ SELECT ?W (COALESCE(?d, "") AS ?drivers)
          IF(?riverStale, "river pieces of the zone run on or over the well's unit, a source documents its exchange with a section of the zone, or an association has a pool gauge, but the association or influence the rules derive from them is missing: the rule outputs are missing or stale (run src.kg.apply_rules)",
          IF(?riverInf && ?riverNoPool, "river influences derived from the gauges of arm C's pool; other rivers associated with the well's unit have no pool gauge and give no influence (cq05_gauges.rq)",
          IF(?riverInf, "river influences derived from the gauges of arm C's pool (driver: weekly discharge, a proxy of the river stage near the well)",
+         IF(?riverAssoc && ?riverOffPool, CONCAT("rivers are associated with the well's unit in its zone, none with a gauge of arm C's pool, but ", STR(xsd:integer(ROUND(?offPoolLength))), " m of a pool-gauged watercourse in the zone lie off the geological map: an incomplete search, not a reported gap"),
          IF(?riverAssoc, "rivers are associated with the well's unit in its zone, but none has a gauge of arm C's pool: no influence, a reported gap (cq05_gauges.rq)",
-            "no searched watercourse (the dataset's gauged rivers and those the documents name) runs on, over or documentedly beside the well's unit in its zone: a completed search, not 'no river exchange'")))))))) AS ?riverReason)
+         IF(?riverOff, CONCAT("no searched watercourse runs on, over or documentedly beside the well's unit on the mapped part of its zone, but ", STR(xsd:integer(ROUND(?offRiverLength))), " m of the zone's river reaches lie off the geological map: an incomplete search, not a completed negative"),
+            "no searched watercourse (the dataset's gauged rivers and those the documents name) runs on, over or documentedly beside the well's unit in its zone: a completed search, not 'no river exchange'")))))))))) AS ?riverReason)
        (IF(!?isWell, "not a piezometer of the graph",
          IF(!?hasUnit, "no unit is attributed to the well, so no canal pathway can be stated",
          IF(!?allDescribed, "a unit attributed to the well is not described by BD LISA: its outcrop is not known",
@@ -50,7 +59,8 @@ SELECT ?W (COALESCE(?d, "") AS ?drivers)
          IF(?canalStale, "canal pieces of the zone run on the outcrop of the well's unit, or a canal association has a return statement, but the association or influence the rules derive from them is missing: the rule outputs are missing or stale (run src.kg.apply_rules)",
          IF(?canalInf, "canals cross the outcrop of the well's unit in its zone and a source reports canal return flow into the unit: an influence of the plain's canal intakes (sign eligible only for a stated finding); no command area is mapped",
          IF(?canalAssoc, "canals cross the outcrop of the well's unit in its zone, but no source documents canal return flow into it: no influence (analysis plan, section 14 item 16)",
-            "no BD TOPO canal reach runs on the outcrop of the well's unit in its zone (a completed search; canals outside the zone may still matter)"))))))) AS ?canalReason)
+         IF(?canalOff, CONCAT("no canal reach runs on the outcrop of the well's unit on the mapped part of its zone, but ", STR(xsd:integer(ROUND(?offCanalLength))), " m of the zone's canal reaches lie off the geological map: an incomplete search"),
+            "no BD TOPO canal reach runs on the outcrop of the well's unit in its zone (a completed search; canals outside the zone may still matter)")))))))) AS ?canalReason)
        (IF(!?isWell, "not_applicable", IF(!?hasUnit, "unknown", "partial")) AS ?status)
        (IF(!?isWell, "not_applicable",
          IF(!?hasUnit, "unknown",
@@ -94,10 +104,45 @@ WHERE {
                 lulcw:aboutSection ?sec5 .
             FILTER (?mech5 = lulcw:RiverExchange
                     && (?d5 = lulcw:AquiferToSurface || ?d5 = lulcw:SurfaceToAquifer || ?d5 = lulcw:ExchangeEquilibrium))
+            OPTIONAL { ?s5 lulcw:measuredAt ?site5 . }
+            FILTER (!BOUND(?site5) || ?site5 = ?W)
             ?p5 lulcw:inSection ?sec5 ; lulcw:withinExtent ?r2 ; lulcw:pieceOfReach ?q5 .
             ?q5 lulcw:reachOf ?wc5 .
             MINUS { ?a5 lulcw:withinExtent ?r2 ; lulcw:associationWatercourse ?wc5 ; lulcw:associationUnit ?u5 . }
         }
+    }
+    OPTIONAL {   # river pieces of W's zone off the geological map (no polygon), and their length
+        SELECT ?W (SUM(?lo) AS ?offRiverLength) WHERE {   #bind-parameters
+            ?ro lulcw:zoneOf ?W ; a lulcw:ReachSearchZone .
+            ?po lulcw:withinExtent ?ro ; lulcw:pieceOfReach ?qo ; lulcw:pieceLengthM ?lo .
+            ?qo lulcw:reachOf ?wco .
+            OPTIONAL { ?po lulcw:piecePolygon ?ppo . }
+            FILTER (!BOUND(?ppo))
+        }
+        GROUP BY ?W
+    }
+    OPTIONAL {   # the part of them on watercourses with a gauge of the pool
+        SELECT ?W (SUM(?lp) AS ?offPoolLength) WHERE {   #bind-parameters
+            ?rp lulcw:zoneOf ?W ; a lulcw:ReachSearchZone .
+            ?pp lulcw:withinExtent ?rp ; lulcw:pieceOfReach ?qp ; lulcw:pieceLengthM ?lp .
+            ?qp lulcw:reachOf ?wcp .
+            ?gp lulcw:onWatercourse ?wcp .
+            ?poolp lulcw:poolMember ?gp .
+            OPTIONAL { ?pp lulcw:piecePolygon ?ppp . }
+            FILTER (!BOUND(?ppp))
+        }
+        GROUP BY ?W
+    }
+    OPTIONAL {   # canal pieces of W's zone off the geological map
+        SELECT ?W (SUM(?lc) AS ?offCanalLength) WHERE {   #bind-parameters
+            ?rc lulcw:zoneOf ?W ; a lulcw:ReachSearchZone .
+            ?pc lulcw:withinExtent ?rc ; lulcw:pieceOfReach ?qc ; lulcw:pieceLengthM ?lc .
+            ?qc lulcw:reachNature ?nc .
+            FILTER (?nc = "Canal")
+            OPTIONAL { ?pc lulcw:piecePolygon ?ppc . }
+            FILTER (!BOUND(?ppc))
+        }
+        GROUP BY ?W
     }
     OPTIONAL {   # canal pieces of W's zone on the outcrop of a unit attributed to W, without their association
         SELECT DISTINCT ?W (1 AS ?stale4) WHERE {   #bind-parameters
@@ -149,11 +194,14 @@ WHERE {
                    ?pool6 lulcw:poolMember ?g6 . ?g6 lulcw:onWatercourse ?wc6 .
                    FILTER NOT EXISTS { ?i6 prov:wasDerivedFrom ?a6 ; lulcw:mechanism lulcw:RiverExchange . } } AS ?riverStale3)
     BIND (EXISTS { ?r8 lulcw:zoneOf ?W ; a lulcw:ReachSearchZone .
-                   ?a8 lulcw:withinExtent ?r8 ; a lulcw:CanalUnitAssociation ; lulcw:applicableStatement ?s8 .
+                   ?a8 lulcw:withinExtent ?r8 ; a lulcw:CanalUnitAssociation ; lulcw:applicableStatement|lulcw:localizedStatement ?s8 .
                    ?s8 lulcw:exchangeDirection lulcw:SurfaceToAquifer .
                    FILTER NOT EXISTS { ?i8 prov:wasDerivedFrom ?a8 ; lulcw:mechanism lulcw:CanalReturnFlow . } } AS ?canalStale2)
     BIND (BOUND(?stale1) || BOUND(?stale2) || ?riverStale3 AS ?riverStale)
     BIND (BOUND(?stale4) || ?canalStale2 AS ?canalStale)
+    BIND (BOUND(?offRiverLength) && ?offRiverLength > 0 AS ?riverOff)
+    BIND (BOUND(?offPoolLength) && ?offPoolLength > 0 AS ?riverOffPool)
+    BIND (BOUND(?offCanalLength) && ?offCanalLength > 0 AS ?canalOff)
     BIND (EXISTS { ?m lulcw:attributedEntity ?W ; lulcw:role lulcw:MonitoringRole ;
                       lulcw:candidateUnit ?u . } AS ?hasUnit)
     BIND (BOUND(?hitLocal) AS ?localRecharge)

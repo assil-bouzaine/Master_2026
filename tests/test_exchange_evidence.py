@@ -13,6 +13,11 @@
    in the Sandre snapshot; enumerations have their allowed values; a between-points or water-body
    statement names its section, a watercourse statement its watercourse.
 5. Negative controls: a quote changed by one word, or a right quote on a wrong page, is refused.
+6. Subjects (Codex review of 2026-11-06, R1): a statement about a groundwater body lists exactly the
+   BD LISA units its sheet lists, and stands for a single unit ("subject" unit) only when the sheet
+   lists that unit alone; an aggregate names at least two units; a statement measured at a site is
+   about a unit; a sheet's table of river exchanges is never read as unit-level evidence about each
+   member (negative control: the FRDR224 row rewritten as a unit statement is refused).
 """
 import csv
 import html
@@ -34,7 +39,10 @@ ENUM = {"mechanism": {"RiverExchange", "CanalReturnFlow"},
         "unit_mapping": {"listed_by_source", "by_name"},
         "direction": {"aquifer_to_surface", "surface_to_aquifer", "equilibrium", "no_exchange",
                       "not_qualified"},
-        "hedging": {"stated", "hedged"}}
+        "hedging": {"stated", "hedged"},
+        "subject": {"unit", "aggregate"},
+        "method": {"differential_gauging", "geochemical_tracing", "water_balance", "synthesis"}}
+SHEETS = {"FRDG351": "sierm-frdg351", "FRDG243": "sierm-frdg243"}
 
 
 def norm(s):
@@ -111,10 +119,11 @@ def test_points():
 
 def test_codes():
     tme = set(pyogrio.read_dataframe(GPKG, layer="TME", read_geometry=False)["codeeh"])
-    snap = sorted((RAW / "bdtopo_hydro").glob("????-??-??"))[-1]
+    from src.kg.rivers import snapshot
+    snap = snapshot("bdtopo_hydro")      # pinned in configs/snapshots.json
     wc = set(pd.read_parquet(snap / "troncon_hydrographique.parquet",
                              columns=["code_du_cours_d_eau_bdcarthage"])["code_du_cours_d_eau_bdcarthage"].dropna())
-    sw = sorted((RAW / "sandre_water_bodies").glob("????-??-??"))[-1]
+    sw = snapshot("sandre_water_bodies")
     wb = {c.upper() for c in pd.read_parquet(sw / "masses_eau_riviere_vrap2022.parquet",
                                              columns=["CdEuMasseDEau"])["CdEuMasseDEau"]}
     ids = [r["id"] for r in rows()]
@@ -145,10 +154,61 @@ def test_negative_controls():
     print("  5. negative controls: a changed word and a wrong page are refused")
 
 
+def sheet_units(doc):
+    """The BD LISA codes a groundwater-body sheet lists (its 'Code BDLISA' table, page 1)."""
+    index = json.loads((DOCS / "documents.json").read_text())
+    out = subprocess.run(["pdftotext", "-layout", "-f", "1", "-l", "1", str(DOCS / index[doc]["file"]), "-"],
+                         capture_output=True, text=True, check=True).stdout.splitlines()
+    i = next(k for k, line in enumerate(out) if "Code BDLISA" in line)
+    codes = []
+    for line in out[i + 1:]:
+        m = re.match(r"\s*(\d{3}[A-Z]{2}\d{2})\s", line)
+        if m:
+            codes.append(m.group(1))
+        elif line.strip():
+            break
+    return codes
+
+
+def subject_errors(r, listed):
+    """Why a statement's subject is not entailed by its source (empty if it is)."""
+    units = [u for u in r["units"].split(";") if u]
+    err = []
+    if r["subject"] == "aggregate" and len(units) < 2:
+        err.append("an aggregate names fewer than two units")
+    if r["measured_at"] and r["subject"] != "unit":
+        err.append("a measurement at a site is about a unit")
+    body = r["groundwater_body"]
+    if body and r["document"] != SHEETS[body]:
+        err.append(f"names body {body} but cites {r['document']}")
+    sheet = next((b for b, d in SHEETS.items() if d == r["document"]), None)
+    if body or (sheet and r["unit_mapping"] == "listed_by_source"):
+        own = listed[body or sheet]
+        if set(units) != set(own):
+            err.append(f"units {units} differ from the units the {body or sheet} sheet lists {own}")
+        if r["subject"] == "unit" and len(own) != 1:
+            err.append(f"a statement about {body or sheet}'s {len(own)} units read as about each unit")
+    return err
+
+
+def test_subjects():
+    listed = {b: sheet_units(doc) for b, doc in SHEETS.items()}
+    assert len(listed["FRDG351"]) == 8 and listed["FRDG243"] == ["671AA00"], listed
+    bad = [f"{r['id']}: {e}" for r in rows() for e in subject_errors(r, listed)]
+    assert not bad, "\n".join(bad)
+    promoted = {**next(x for x in rows() if x["id"] == "frdg351-frdr224"), "subject": "unit"}
+    assert subject_errors(promoted, listed), "the body-to-unit promotion passed"
+    n_agg = sum(r["subject"] == "aggregate" for r in rows())
+    print(f"  6. subjects: {n_agg} aggregate statements, each with its members; body statements list "
+          f"their sheet's units (FRDG351: {len(listed['FRDG351'])}, FRDG243: {listed['FRDG243'][0]} alone); "
+          "a body statement read as unit evidence is refused")
+
+
 if __name__ == "__main__":
     test_documents()
     test_quotes()
     test_points()
     test_codes()
     test_negative_controls()
+    test_subjects()
     print("test_exchange_evidence: all checks passed")

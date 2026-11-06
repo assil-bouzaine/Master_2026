@@ -46,7 +46,7 @@ Rules for the relations:
 
 | `lulcw:` class | Meaning (source data) | Reuse / alignment | CQ |
 |---|---|---|---|
-| `Piezometer` | Hub'Eau monitoring well (`code_bss`, `bss_id`) | ⊑ `gwml2:GW_Well`; closeMatch `hyfo:WaterWell` | 1, 11, 13 |
+| `Piezometer` | Hub'Eau monitoring point (`code_bss`, `bss_id`): a borehole, in a few cases a spring | closeMatch `gwml2:GW_Well` and `hyfo:WaterWell` (⊑ `GW_Well` until 2026-11-06, withdrawn: the springs of the network, e.g. Fontestramar, are not drilled wells; `ontology/alignments/ledger.csv`) | 1, 11, 13 |
 | `AbstractionFacility` (was `AbstractionPoint`; + `Intake`) | BNPE reporting ouvrage (`code_ouvrage`); distinguish facility from individual intakes/boreholes when the source does | groundwater well subclass only with supporting type evidence; a name is a clue, not proof | 2, 12 |
 | `HydrogeologicalUnit` (working name `AquiferUnit` until 0.1.0) | A BD LISA hydrogeological entity, including non-aquifer units | ⊑ `gwml2:GW_HydrogeoUnit`; do not make every instance a `GW_Aquifer` | 1, 3, 4 |
 | `AlluvialAquifer` | recent and ancient alluvium (`718BP0x`, `671AB0x`) | ⊑ `HydrogeologicalUnit`, ⊑ `gwml2:GW_Aquifer`; local confinement assessed separately | 3, 5, 14 |
@@ -311,8 +311,10 @@ distance and depth thresholds are chosen on the training period in 12.5–12.8.
 | File | Content |
 |---|---|
 | `ontology/lulcw.ttl` | the bridging module: 191 terms for the six MUST CQs and the common answer contract |
-| `ontology/alignments/lulcw-gwml2-hyfo.ttl` | `Piezometer` ⊑ `GW_Well` (closeMatch `hyfo:WaterWell`); `MonitoringStation` ⊑ `GW_MonitoringSite`; `hostedBy` ⊑ `gwMonitoringHost`; units ⊑ `GW_HydrogeoUnit`, `GW_Aquifer`, `GW_AquiferSystem`; `monitors`, `pumpsFrom` ⊑ `hyfo:tapsAquifer` |
+| `ontology/alignments/lulcw-gwml2-hyfo.ttl` | `Piezometer` closeMatch `GW_Well` and `hyfo:WaterWell` (0.2.0, 2026-11-06; ⊑ `GW_Well` in 0.1.0); `MonitoringStation` ⊑ `GW_MonitoringSite`; `hostedBy` ⊑ `gwMonitoringHost`; units ⊑ `GW_HydrogeoUnit`, `GW_Aquifer`, `GW_AquiferSystem`; `monitors`, `pumpsFrom` ⊑ `hyfo:tapsAquifer` |
 | `ontology/alignments/lulcw-sweet.ttl` | closeMatch only: alluvial, karst and multilayer units → `Aquifer`; confining unit → `Aquitard` |
+| `ontology/alignments/lulcw-hyf.ttl` | `Watercourse` ⊑ `hyf:HY_River`; `RiverReach` closeMatch `hyf:HY_FlowPath` (0.2.0, 2026-11-06: no reach is a HY_FlowPath, canal reaches realise no catchment) |
+| `ontology/alignments/ledger.csv` | every correspondence, rejected ones included: relation, status, definition comparison, counterexample considered, date checked, reviewer, and the required or forbidden subsumption HermiT checks (`tests/test_ontology.py` gate 8; Codex review of 2026-11-06, R3) |
 | `ontology/imports/*_terms.ttl` | local copies of the reused terms (ROBOT MIREOT; `src/kg/build_imports.py`) |
 | `ontology/lulcw-meta.ttl`, `catalog-v001.xml` | the network's entry point; import IRIs → local files |
 | `ontology/report_profile.txt` | ROBOT report rules used as a gate |

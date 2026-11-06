@@ -19,7 +19,14 @@
                 training weeks; arm C's gauge pool (src/models/features.py); one gauge-zone relation
                 per gauge and zone where the gauge's watercourse has pieces
   statements    configs/exchange_evidence.csv (checked against the documents by
-                tests/test_exchange_evidence.py): documents, passages, exchange statements
+                tests/test_exchange_evidence.py): documents, passages, exchange statements. A
+                statement is about a unit itself (lulcw:aboutUnit) or about an aggregate of units
+                (lulcw:aggregateMemberUnit; lulcw:aboutGroundwaterBody when the source states a WFD
+                body): membership of an aggregate is never written as evidence about each member
+                (Codex review of 2026-11-06, R1); each states its method (lulcw:evidenceMethod)
+  overlaps      two sections of one watercourse overlap when at least SECTION_OVERLAP_M of one's
+                line lies within SECTION_TOL_M of the other's (lulcw:overlapsSection): only
+                statements about overlapping or identical sections can contradict each other
   canals        the plain's surface-water intakes behind the canal input of the models
                 (src/dataset/pumping.py canal_series), each with its candidate watercourse (nearest
                 reach within INTAKE_SNAP_M), and their group with its weekly series
@@ -35,7 +42,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 from rdflib import Literal
-from rdflib.namespace import RDFS, XSD
+from rdflib.namespace import RDF, RDFS, XSD
 from shapely import to_wkt
 from shapely.geometry import Point
 from shapely.ops import linemerge, substring
@@ -46,6 +53,7 @@ ZONE_M = 5000.0
 MIN_LENGTH_M = 1.0
 SECTION_TOL_M = 100.0
 SECTION_SHARE = 0.5
+SECTION_OVERLAP_M = 500.0
 STEM_SNAP_M = 200.0
 INTAKE_SNAP_M = 500.0
 EVIDENCE = ROOT / "configs" / "exchange_evidence.csv"
@@ -59,12 +67,21 @@ DIRECTION = {"aquifer_to_surface": "AquiferToSurface", "surface_to_aquifer": "Su
              "not_qualified": "NotQualified"}
 HEDGING = {"stated": "StatedFinding", "hedged": "HedgedFinding"}
 MAPPING = {"listed_by_source": "UnitListedBySource", "by_name": "UnitMappedByName"}
+METHOD = {"differential_gauging": "DifferentialGauging", "geochemical_tracing": "GeochemicalTracing",
+          "water_balance": "WaterBalanceEstimate", "synthesis": "SynthesisStatement"}
+SNAPSHOTS = ROOT / "configs" / "snapshots.json"
 
 
 def snapshot(name):
-    done = sorted(d for d in (RAW / name).glob("????-??-??") if (d / "release.json").exists())
-    assert done, f"no snapshot in data/raw/{name}: run its ingest script"
-    return done[-1]
+    """The pinned snapshot of data/raw/<name> (configs/snapshots.json); a newer one is reported and
+    ignored until its date is pinned, so a download never changes a build silently."""
+    day = json.loads(SNAPSHOTS.read_text())[name]
+    d = RAW / name / day
+    assert (d / "release.json").exists(), f"pinned snapshot {d} missing: run its ingest script or pin another date"
+    newer = sorted(x.name for x in (RAW / name).glob("????-??-??") if x.name > day and (x / "release.json").exists())
+    if newer:
+        print(f"note: data/raw/{name} has newer snapshots {newer}, not used (pinned {day} in {SNAPSHOTS.name})")
+    return d
 
 
 def statements():
@@ -75,6 +92,22 @@ def statements():
 def statement_units():
     """BD LISA codes the statements name (the graph describes them, build_kg's `extra`)."""
     return {u for r in statements() for u in r["units"].split(";") if u}
+
+
+def section_overlaps(sections):
+    """{(a, b)} of different sections sharing a watercourse whose lines run together over at least
+    SECTION_OVERLAP_M (within SECTION_TOL_M), both orders."""
+    out = set()
+    keys = sorted(sections)
+    for i, a in enumerate(keys):
+        for b in keys[i + 1:]:
+            (_, ga, ca, *_), (_, gb, cb, *_) = sections[a], sections[b]
+            if not set(ca) & set(cb):
+                continue
+            run = min(ga.intersection(gb.buffer(SECTION_TOL_M)).length, gb.intersection(ga.buffer(SECTION_TOL_M)).length)
+            if run >= SECTION_OVERLAP_M:
+                out |= {(a, b), (b, a)}
+    return out
 
 
 def main_stem(reaches, code):
@@ -317,6 +350,9 @@ def add(kg, rel, ctx, unit, wells_iri, versions, plain_points):
             kg.add(n, L.sectionOf, wc[c])
         geom(n, "section", s, g)
         sec[s] = n
+    overlaps = section_overlaps(secs)
+    for a, b in overlaps:
+        kg.add(sec[a], L.overlapsSection, sec[b])
 
     # zones and pieces
     zone = {}
@@ -353,9 +389,8 @@ def add(kg, rel, ctx, unit, wells_iri, versions, plain_points):
     for g in ctx.gauges.itertuples():
         n = kg.node(iri("gauge", g.code_station), L.RiverGauge, g.libelle_station, "fr")
         kg.add(n, L.gaugeCode, Literal(g.code_station))
-        kg.add(n, GEO.hasGeometry, iri("geometry", "gauge", g.code_station))
-        kg.node(iri("geometry", "gauge", g.code_station), GEO.Geometry)
-        kg.add(iri("geometry", "gauge", g.code_station), GEO.asWKT, wkt(g.geometry))
+        # POINT(x y), the form of every point of the graph (the CQ2 distance queries parse it)
+        kg.point(n, "gauge", g.code_station, g.geometry.x, g.geometry.y)
         if g.code_cours_eau in wc:
             kg.add(n, L.onWatercourse, wc[g.code_cours_eau])
             line = ctx.stem[g.code_cours_eau][0]
@@ -443,8 +478,15 @@ def add(kg, rel, ctx, unit, wells_iri, versions, plain_points):
             kg.add(s, L.aboutSection, sec[r["section"].upper() if r["section_kind"] == "water_body" else r["section"]])
         for c in [c for c in r["watercourses"].split(";") if c]:
             kg.add(s, L.aboutWatercourse, wc[c])
-        for u in [u for u in r["units"].split(";") if u]:
-            kg.add(s, L.aboutUnit, unit[u])
+        units = [u for u in r["units"].split(";") if u]
+        assert r["subject"] in ("unit", "aggregate") and (r["subject"] == "unit" or len(units) > 1), r["id"]
+        for u in units:
+            kg.add(s, L.aboutUnit if r["subject"] == "unit" else L.aggregateMemberUnit, unit[u])
+        if r["groundwater_body"]:
+            body = iri("groundwater-body", r["groundwater_body"].removeprefix("FR"))
+            assert (body, RDF.type, L.GroundwaterBody) in kg.g, f"{r['id']}: no groundwater body {body}"
+            kg.add(s, L.aboutGroundwaterBody, body)
+        kg.add(s, L.evidenceMethod, getattr(L, METHOD[r["method"]]))
         kg.add(s, L.unitAsNamed, Literal(r["unit_as_named"], lang="fr"))
         kg.add(s, L.unitMapping, getattr(L, MAPPING[r["unit_mapping"]]))
         kg.add(s, L.exchangeDirection, getattr(L, DIRECTION[r["direction"]]))
@@ -458,6 +500,7 @@ def add(kg, rel, ctx, unit, wells_iri, versions, plain_points):
         if r["flux_unc_m3s"]:
             kg.add(s, L.fluxUncertaintyM3s, dbl(float(r["flux_unc_m3s"])))
         if r["measured_at"]:
+            assert r["subject"] == "unit", f"{r['id']}: a measurement at a site is about a unit"
             hit = [k for k, w in zip(ctx.keys, ctx.wells["code_bss"]) if w == r["measured_at"]]
             assert hit, f"{r['id']}: measured_at {r['measured_at']} is not a well of the dataset"
             kg.add(s, L.measuredAt, wells_iri[hit[0]])
@@ -503,6 +546,8 @@ def add(kg, rel, ctx, unit, wells_iri, versions, plain_points):
             "reach_pieces": n_pieces, "pieces_off_map": int(ctx.pieces["codepoly"].isna().sum()),
             "sections": {"water_bodies": sum(k == "water_body" for k, *_ in secs.values()),
                          "between_points": sum(k == "between_points" for k, *_ in secs.values())},
+            "section_overlaps": len(overlaps) // 2,
             "gauges": len(gauge), "gauge_zone_relations": n_rel, "statements": len(ctx.st),
+            "aggregate_statements": sum(r["subject"] == "aggregate" for r in ctx.st),
             "surface_intakes": len(members), "intakes_with_candidate_watercourse": n_cand,
             "polygons_met_by_pieces": len(ctx.polygons)}

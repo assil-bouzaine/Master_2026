@@ -10,10 +10,11 @@
 # a term is an ogc FeatureType and a skos:Concept (HY_FlowPath and HY_CatchmentRealization are
 # also owl:Class). The pages were read on 2026-11-06 and are kept, with their sha256, in
 # data/raw/vocab/sources.json (src/kg/build_imports.py, HYF_PAGES). Copied here by hand: the IRIs,
-# labels and the first sentence of each definition exactly as listed, and the hierarchy: the
-# rdfs:subClassOf the source states for HY_FlowPath, and, for HY_River, the source's skos:broader
-# HY_WaterBody rendered as rdfs:subClassOf (our reading, stated here). Every term has the status
-# "experimental" on the server.
+# labels and the first sentence of each definition exactly as listed, and the hierarchy exactly as
+# the source states it: rdfs:subClassOf for HY_FlowPath, skos:broader for HY_River. Upstream
+# statements only: no SKOS relation is turned into an OWL axiom here (until 2026-11-06 this file
+# rendered HY_River's skos:broader as rdfs:subClassOf, a local commitment that nothing needed;
+# Codex review of 2026-11-06, R3). Every term has the status "experimental" on the server.
 
 <https://w3id.org/lulcw/imports/hyf> a owl:Ontology ;
     dcterms:title "HY_Features terms reused by LULC-Water"@en ;
@@ -32,7 +33,7 @@ hyf:HY_WaterBody a owl:Class ;
     rdfs:isDefinedBy <https://www.opengis.net/def/schema/hy_features/hyf/HY_WaterBody> .
 
 hyf:HY_River a owl:Class ;
-    rdfs:subClassOf hyf:HY_WaterBody ;
+    skos:broader hyf:HY_WaterBody ;
     rdfs:label "HY_Stream"@en ;
     skos:definition "The HY_River feature type defines the existence of body of surface water, participating in a hydrographic network, special due to its property to permanently or temporarily flow."@en ;
     rdfs:isDefinedBy <https://www.opengis.net/def/schema/hy_features/hyf/HY_River> .

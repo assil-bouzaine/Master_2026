@@ -1,28 +1,37 @@
 # CQ5 · Documented exchange between a unit and the rivers of a well's zone (CQ5, task 12.7)
 #
-# Parameters  ?S  a lulcw:ReachSearchZone;  ?U  a lulcw:HydrogeologicalUnit
+# Parameters  ?S  a lulcw:ReachSearchZone;  ?U  a lulcw:HydrogeologicalUnit;  optional ?T0, ?T1
+#             xsd:date, a requested period
 # Reads       asserted facts (lulcw:ExchangeStatement, documents and passages, sections) and the rule
-#             outputs (lulcw:applicableStatement)
-# Returns     one row per river-exchange statement about ?U that applies in ?S (it is about a section
-#             holding reach pieces of an association of ?U in ?S: ?applies true, ?listedBecause
-#             "applies"), or is about a section holding reach pieces in ?S while no association of ?U
-#             applies it (?listedBecause "section in zone": e.g. a documented independence for a unit
-#             the reaches neither run on nor over), or concerns a watercourse with reaches in ?S
-#             without delimiting its stretch (?listedBecause "stretch not delimited"); the last two
-#             have ?applies false: listed, never applied; with the direction at the state or period
-#             the source gives, the hedging, how the source names the unit and how it was mapped, the
-#             flux, the document (title and key), its page and the quote. Opposing directions are kept side by side, never collapsed
-#             into a timeless sign (CQ5 acceptance); a direction is a state, not the sign of a head
-#             response.
+#             outputs (lulcw:applicableStatement, lulcw:localizedStatement)
+# Returns     one row per river-exchange statement about ?U itself, or about an aggregate ?U belongs to
+#             (?subject "unit" or "aggregate", with the WFD groundwater body when the source states
+#             one), that applies in ?S (about ?U itself and a section holding reach pieces of an
+#             association of ?U in ?S: ?applies true, ?listedBecause "applies"), or is localised to an
+#             on-outcrop association of ?U from an aggregate (?listedBecause "localised from an
+#             aggregate": documented at the aggregate's scale, not for ?U itself), or is about a section
+#             holding reach pieces in ?S while no association of ?U cites it (?listedBecause "section in
+#             zone": e.g. a documented independence for a unit the reaches neither run on nor over, or
+#             an aggregate statement that nothing locates), or concerns a watercourse with reaches in
+#             ?S without delimiting its stretch (?listedBecause "stretch not delimited"); all but the
+#             first have ?applies false; with the direction at the state or period the source gives,
+#             ?temporalScope (undated; dated; or, with ?T0-?T1, within or outside the requested period),
+#             the hedging, the method (differential gauging, geochemical tracing, water balance,
+#             synthesis), how the source names its subject and how the units were mapped, the site of
+#             the measurement if any, the flux, the document (title and key), its page and the quote.
+#             Opposing directions are kept side by side, never collapsed into a timeless sign (CQ5
+#             acceptance); a direction is a state, not the sign of a head response.
 PREFIX lulcw: <https://w3id.org/lulcw#>
 PREFIX prov: <http://www.w3.org/ns/prov#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX dcterms: <http://purl.org/dc/terms/>
-SELECT ?S ?U ?statement ?applies ?listedBecause ?section ?direction ?hedging ?state ?periodStart ?periodEnd ?fluxM3s
-       ?unitAsNamed ?unitMapping ?document ?documentKey ?page ?quote
+SELECT ?S ?U ?statement ?applies ?listedBecause ?subject ?groundwaterBody ?section ?direction ?temporalScope
+       ?hedging ?method ?state ?periodStart ?periodEnd ?fluxM3s ?unitAsNamed ?unitMapping ?measuredAt
+       ?document ?documentKey ?page ?quote
 WHERE {
-    ?statement a lulcw:ExchangeStatement ; lulcw:aboutUnit ?U ; lulcw:statedMechanism lulcw:RiverExchange ;
-        lulcw:exchangeDirection ?d ; lulcw:hedging ?h ; lulcw:stateDescription ?state ;
+    ?statement a lulcw:ExchangeStatement ; lulcw:aboutUnit|lulcw:aggregateMemberUnit ?U ;
+        lulcw:statedMechanism lulcw:RiverExchange ;
+        lulcw:exchangeDirection ?d ; lulcw:hedging ?h ; lulcw:evidenceMethod ?me ; lulcw:stateDescription ?state ;
         lulcw:unitAsNamed ?unitAsNamed ; lulcw:unitMapping ?m ; prov:wasDerivedFrom ?pa .
     ?pa lulcw:inDocument ?doc ; lulcw:pageLabel ?page ; lulcw:quote ?quote .
     ?doc rdfs:label ?document .
@@ -30,11 +39,19 @@ WHERE {
     OPTIONAL { ?statement lulcw:periodStart ?periodStart . }
     OPTIONAL { ?statement lulcw:periodEnd ?periodEnd . }
     OPTIONAL { ?statement lulcw:fluxM3s ?fluxM3s . }
+    OPTIONAL { ?statement lulcw:aboutUnit ?su . FILTER (?su = ?U) }
+    OPTIONAL { ?statement lulcw:aboutGroundwaterBody ?gb . ?gb lulcw:groundwaterBodyCode ?groundwaterBody . }
+    OPTIONAL { ?statement lulcw:measuredAt ?site . ?site lulcw:bssCode ?measuredAt . }
     # sub-selects that start from the parameters (#bind-parameters, src/kg/cq.py), keyed by statement:
     # an EXISTS over the reach pieces costs 0.5 s a statement in pyoxigraph 0.5 (the first version: 21 s)
     OPTIONAL {   # the statement applies to an association of ?U in ?S
         SELECT DISTINCT ?statement ?S ?U (1 AS ?hitApplies) WHERE {   #bind-parameters
             ?a lulcw:applicableStatement ?statement ; lulcw:withinExtent ?S ; lulcw:associationUnit ?U .
+        }
+    }
+    OPTIONAL {   # an aggregate statement localised to an on-outcrop association of ?U in ?S
+        SELECT DISTINCT ?statement ?S ?U (1 AS ?hitLocal) WHERE {   #bind-parameters
+            ?a lulcw:localizedStatement ?statement ; lulcw:withinExtent ?S ; lulcw:associationUnit ?U .
         }
     }
     OPTIONAL {   # its section holds reach pieces of ?S
@@ -52,11 +69,19 @@ WHERE {
     }
     BIND (BOUND(?hitApplies) AS ?applies)
     BIND (BOUND(?hitZone) AS ?inZone)
-    FILTER (?applies || ?inZone || BOUND(?hitNear))
-    BIND (IF(?applies, "applies", IF(?inZone, "section in zone", "stretch not delimited")) AS ?listedBecause)
+    FILTER (?applies || BOUND(?hitLocal) || ?inZone || BOUND(?hitNear))
+    BIND (IF(?applies, "applies", IF(BOUND(?hitLocal), "localised from an aggregate",
+          IF(?inZone, "section in zone", "stretch not delimited"))) AS ?listedBecause)
+    BIND (IF(?applies, 0, IF(BOUND(?hitLocal), 1, IF(?inZone, 2, 3))) AS ?rank)
+    BIND (IF(BOUND(?su), "unit", "aggregate") AS ?subject)
+    BIND (IF(!BOUND(?periodStart) && !BOUND(?periodEnd), "undated",
+          IF(!BOUND(?T0) && !BOUND(?T1), "dated",
+          IF((BOUND(?T1) && BOUND(?periodStart) && ?periodStart > ?T1) || (BOUND(?T0) && BOUND(?periodEnd) && ?periodEnd < ?T0),
+             "outside the requested period", "within the requested period"))) AS ?temporalScope)
+    BIND (STRAFTER(STR(?me), "#") AS ?method)
     BIND (STRAFTER(STR(?doc), "/document/") AS ?documentKey)
     BIND (STRAFTER(STR(?d), "#") AS ?direction)
     BIND (STRAFTER(STR(?h), "#") AS ?hedging)
     BIND (STRAFTER(STR(?m), "#") AS ?unitMapping)
 }
-ORDER BY DESC(?applies) ?section ?statement
+ORDER BY ?rank ?section ?statement

@@ -1,38 +1,86 @@
 # CQ5 · Answer status for the rivers associated with a unit in a well's zone (common answer
 # contract, docs/competency_questions.md §2)
 #
-# Parameters  ?U  any IRI;  ?S  any IRI
+# Parameters  ?U  any IRI;  ?S  any IRI;  optional ?T0, ?T1  xsd:date, the requested period (a dated
+#             statement outside it is not counted; an undated one always is, and is reported as such)
 # Reads       asserted facts and the rule outputs of cq05_associations.rq
 # Returns     one row: ?status not_applicable (?S is not a reach search zone, or ?U is not a
 #             hydrogeological unit), unknown (?U is not described by BD LISA, so no polygon can carry
 #             it; or ?U is not a unit attributed to the zone's well: the rules associate rivers with
 #             those units only, so ?U was not searched; or the zone's pieces run on or over ?U, or a
-#             source documents an exchange of ?U with a section of the zone, but no association was
-#             derived: the rule outputs are missing or stale), conflicting (applicable statements
-#             disagree: one gives an exchange, another independence, or the directions oppose; both
-#             are kept with their periods), supported (an association exists and a source documents
-#             the exchange, or states that ?U is independent of the river there; or the search found
-#             no association: no searched watercourse runs on, over or documentedly beside ?U within
-#             ?S, which is not "no river exchange"), partial (an association exists but no source
-#             qualifies the exchange there: geometric only; or part of the zone's river reaches lies off
-#             the geological map, so the search is incomplete); ?associations, the association types
-#             found; ?reason in words. The search covers the watercourses of the dataset's gauges and
-#             those the documents name, not every stream.
+#             source documents an exchange of ?U itself with a section of the zone, but no association
+#             was derived: the rule outputs are missing or stale), conflicting (two statements that
+#             apply to ?U give opposite states, an exchange and independence or opposite directions,
+#             for the same or overlapping stretches: both dated with overlapping periods, a
+#             contradiction under comparable conditions; or one undated, so whether they describe
+#             comparable conditions is unresolved; both are kept with their periods), supported (an
+#             association exists, the search is complete, and a source documents the exchange of ?U
+#             itself, or states that ?U is independent of the river there; opposite states for
+#             different stretches or for disjoint periods are variation, not a conflict; or the search
+#             found no association: no searched watercourse runs on, over or documentedly beside ?U
+#             within ?S, which is not "no river exchange"), partial (an association exists but no
+#             source qualifies the exchange of ?U itself: geometric only, or documented only for an
+#             aggregate ?U belongs to, localised by its outcrop; or part of the zone's river reaches
+#             lies off the geological map, so the search is incomplete, even where an association is
+#             documented: Codex review of 2026-11-06, Q2); ?associations, the association types
+#             found; ?evidencePeriods, whether the counted statements are dated, undated or both;
+#             ?reason in words. The search covers the watercourses of the dataset's gauges and those
+#             the documents name, not every stream.
 PREFIX lulcw: <https://w3id.org/lulcw#>
 PREFIX prov: <http://www.w3.org/ns/prov#>
-SELECT ?U ?S (COALESCE(?types, "") AS ?associations) ?status ?reason
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT ?U ?S (COALESCE(?types, "") AS ?associations) ?evidencePeriods ?status ?reason
 WHERE {
-    OPTIONAL {
+    OPTIONAL {   # the associations of ?U in ?S, and the statements that apply in the requested period
         SELECT ?U ?S (GROUP_CONCAT(DISTINCT STRAFTER(STR(?t), "#"); separator=" ") AS ?types)
-               (COUNT(DISTINCT ?sc) AS ?nconn) (COUNT(DISTINCT ?sn) AS ?nno)
-               (COUNT(DISTINCT ?sa) AS ?nup) (COUNT(DISTINCT ?sb) AS ?ndown)
+               (COUNT(DISTINCT ?sc) AS ?nconn) (COUNT(DISTINCT ?sn) AS ?nno) (COUNT(DISTINCT ?sl) AS ?nloc)
+               (COUNT(DISTINCT ?sd) AS ?ndated) (COUNT(DISTINCT ?sx) AS ?nundated)
         WHERE {   #bind-parameters
             ?a lulcw:associationUnit ?U ; lulcw:withinExtent ?S ; lulcw:associationType ?t .
-            OPTIONAL { ?a lulcw:applicableStatement ?sc . ?sc lulcw:exchangeDirection ?dc .
-                       FILTER (?dc = lulcw:AquiferToSurface || ?dc = lulcw:SurfaceToAquifer || ?dc = lulcw:ExchangeEquilibrium) }
-            OPTIONAL { ?a lulcw:applicableStatement ?sn . ?sn lulcw:exchangeDirection lulcw:NoExchange . }
-            OPTIONAL { ?a lulcw:applicableStatement ?sa . ?sa lulcw:exchangeDirection lulcw:AquiferToSurface . }
-            OPTIONAL { ?a lulcw:applicableStatement ?sb . ?sb lulcw:exchangeDirection lulcw:SurfaceToAquifer . }
+            OPTIONAL {   # about ?U itself
+                ?a lulcw:applicableStatement ?s1 . ?s1 lulcw:exchangeDirection ?d1 .
+                OPTIONAL { ?s1 lulcw:periodStart ?b1 . }
+                OPTIONAL { ?s1 lulcw:periodEnd ?e1 . }
+                FILTER ((!BOUND(?T1) || !BOUND(?b1) || ?b1 <= ?T1) && (!BOUND(?T0) || !BOUND(?e1) || ?e1 >= ?T0))
+                BIND (?d1 = lulcw:AquiferToSurface || ?d1 = lulcw:SurfaceToAquifer || ?d1 = lulcw:ExchangeEquilibrium AS ?x1)
+                BIND (IF(?x1, ?s1, ?none) AS ?sc)
+                BIND (IF(?d1 = lulcw:NoExchange, ?s1, ?none) AS ?sn)
+                BIND (IF((?x1 || ?d1 = lulcw:NoExchange) && BOUND(?b1), ?s1, ?none) AS ?sd)
+                BIND (IF((?x1 || ?d1 = lulcw:NoExchange) && !BOUND(?b1), ?s1, ?none) AS ?sx)
+            }
+            OPTIONAL {   # about an aggregate ?U belongs to, localised by its outcrop
+                ?a lulcw:localizedStatement ?s2 . ?s2 lulcw:exchangeDirection ?d2 .
+                OPTIONAL { ?s2 lulcw:periodStart ?b2 . }
+                OPTIONAL { ?s2 lulcw:periodEnd ?e2 . }
+                FILTER ((!BOUND(?T1) || !BOUND(?b2) || ?b2 <= ?T1) && (!BOUND(?T0) || !BOUND(?e2) || ?e2 >= ?T0))
+                BIND (IF(?d2 = lulcw:AquiferToSurface || ?d2 = lulcw:SurfaceToAquifer || ?d2 = lulcw:ExchangeEquilibrium
+                         || ?d2 = lulcw:NoExchange, ?s2, ?none) AS ?sl)
+            }
+        }
+        GROUP BY ?U ?S
+    }
+    OPTIONAL {   # opposite states in the statements that apply (about ?U itself or localised), in the period
+        SELECT ?U ?S (COUNT(*) AS ?npairs) (SUM(?contra) AS ?ncontra) (SUM(?unres) AS ?nunres)
+        WHERE {   #bind-parameters
+            ?a lulcw:associationUnit ?U ; lulcw:withinExtent ?S ;
+               lulcw:applicableStatement|lulcw:localizedStatement ?p1 , ?p2 .
+            ?p1 lulcw:exchangeDirection ?q1 ; lulcw:aboutSection ?x1 .
+            ?p2 lulcw:exchangeDirection ?q2 ; lulcw:aboutSection ?x2 .
+            FILTER ((?q1 = lulcw:AquiferToSurface && ?q2 = lulcw:SurfaceToAquifer)
+                    || (?q2 = lulcw:NoExchange && (?q1 = lulcw:AquiferToSurface || ?q1 = lulcw:SurfaceToAquifer
+                                                   || ?q1 = lulcw:ExchangeEquilibrium)))
+            OPTIONAL { ?p1 lulcw:periodStart ?f1 . }
+            OPTIONAL { ?p1 lulcw:periodEnd ?g1 . }
+            OPTIONAL { ?p2 lulcw:periodStart ?f2 . }
+            OPTIONAL { ?p2 lulcw:periodEnd ?g2 . }
+            OPTIONAL { ?x1 lulcw:overlapsSection ?xo . FILTER (?xo = ?x2) }
+            FILTER ((!BOUND(?T1) || !BOUND(?f1) || ?f1 <= ?T1) && (!BOUND(?T0) || !BOUND(?g1) || ?g1 >= ?T0)
+                    && (!BOUND(?T1) || !BOUND(?f2) || ?f2 <= ?T1) && (!BOUND(?T0) || !BOUND(?g2) || ?g2 >= ?T0))
+            BIND (?x1 = ?x2 || BOUND(?xo) AS ?same)
+            BIND (BOUND(?f1) && BOUND(?g1) && BOUND(?f2) && BOUND(?g2) AS ?dated)
+            BIND (?dated && (?g1 < ?f2 || ?g2 < ?f1) AS ?disjoint)
+            BIND (IF(?same && ?dated && !?disjoint, 1, 0) AS ?contra)
+            BIND (IF(?same && !?dated, 1, 0) AS ?unres)
         }
         GROUP BY ?U ?S
     }
@@ -46,12 +94,13 @@ WHERE {
             ?poly lulcw:hasStackLayer ?l . ?l lulcw:layerUnit ?U .
         }
     }
-    OPTIONAL {   # river pieces of a zone off the geological map (no polygon)
-        SELECT DISTINCT ?S (1 AS ?hitOff) WHERE {   #bind-parameters
-            ?q lulcw:withinExtent ?S ; lulcw:pieceOfReach ?r2 . ?r2 lulcw:reachOf ?wc2 .
+    OPTIONAL {   # river pieces of a zone off the geological map (no polygon), and their length
+        SELECT ?S (SUM(?ql) AS ?offLength) WHERE {   #bind-parameters
+            ?q lulcw:withinExtent ?S ; lulcw:pieceOfReach ?r2 ; lulcw:pieceLengthM ?ql . ?r2 lulcw:reachOf ?wc2 .
             OPTIONAL { ?q lulcw:piecePolygon ?qp . }
             FILTER (!BOUND(?qp))
         }
+        GROUP BY ?S
     }
     BIND (EXISTS { ?S a lulcw:ReachSearchZone . } AS ?isZone)
     BIND (EXISTS { ?U lulcw:bdlisaCode ?code . } AS ?isUnit)
@@ -62,28 +111,40 @@ WHERE {
     BIND (EXISTS { ?s0 lulcw:aboutUnit ?U ; lulcw:aboutSection ?sec0 ; lulcw:statedMechanism lulcw:RiverExchange ;
                        lulcw:exchangeDirection ?d0 .
                    FILTER (?d0 = lulcw:AquiferToSurface || ?d0 = lulcw:SurfaceToAquifer || ?d0 = lulcw:ExchangeEquilibrium)
+                   FILTER NOT EXISTS { ?s0 lulcw:measuredAt ?site0 . FILTER NOT EXISTS { ?S lulcw:zoneOf ?site0 } }
                    ?p0 lulcw:inSection ?sec0 ; lulcw:withinExtent ?S . } AS ?lateralDue)
-    BIND (BOUND(?hitOff) AS ?offMap)
+    BIND (BOUND(?offLength) && ?offLength > 0 AS ?offMap)
     BIND (BOUND(?types) AS ?found)
     BIND (COALESCE(?nconn, 0) AS ?kc)
     BIND (COALESCE(?nno, 0) AS ?kn)
-    BIND (?kc > 0 && (?kn > 0 || (COALESCE(?nup, 0) > 0 && COALESCE(?ndown, 0) > 0)) AS ?conflict)
+    BIND (COALESCE(?nloc, 0) AS ?kl)
+    BIND (COALESCE(?ncontra, 0) > 0 AS ?contradiction)
+    BIND (COALESCE(?nunres, 0) > 0 AS ?unresolved)
+    BIND (COALESCE(?npairs, 0) > 0 && !?contradiction && !?unresolved AS ?varying)
+    BIND (COALESCE(?ndated, 0) AS ?kd)
+    BIND (COALESCE(?nundated, 0) AS ?ku)
+    BIND (IF(?kd > 0 && ?ku > 0, "dated and undated", IF(?kd > 0, "dated", IF(?ku > 0, "undated", ""))) AS ?evidencePeriods)
+    BIND (IF(?offMap, CONCAT(STR(xsd:integer(ROUND(?offLength))), " m of the zone's river reaches lie off the geological map"), "") AS ?offWhat)
+    BIND (IF(?offMap, CONCAT("; ", ?offWhat, ", so the search is incomplete"), "") AS ?offText)
     BIND (IF(!?isZone || !?isUnit, "not_applicable",
           IF(!?inBdlisa, "unknown",
           IF(!?inScope, "unknown",
           IF((?underReach || ?lateralDue) && !?found, "unknown",
-          IF(?conflict, "conflicting",
-          IF(?found && (?kc > 0 || ?kn > 0), "supported",
+          IF(?contradiction || ?unresolved, "conflicting",
+          IF(?found && (?kc > 0 || ?kn > 0) && !?offMap, "supported",
           IF(?found || ?offMap, "partial", "supported"))))))) AS ?status)
     BIND (IF(!?isZone, "not a reach search zone of the graph",
           IF(!?isUnit, "not a hydrogeological unit of the graph",
           IF(!?inBdlisa, "the unit is not described by BD LISA (not in the Occitanie extract): no polygon can carry it",
           IF(!?inScope, "not searched: the rules associate rivers with the units attributed to the zone's well only, and this unit is not one of them",
           IF((?underReach || ?lateralDue) && !?found, "the zone's river pieces run on or over the unit, or a source documents its exchange with a section of the zone, but no association was derived: the rule outputs are missing or stale (run src.kg.apply_rules)",
-          IF(?conflict, "the applicable statements disagree (an exchange and independence, or opposite directions): both are kept with their periods, never collapsed into a timeless sign",
-          IF(?found && ?kc > 0, "associated, and a source documents an exchange between the unit and a section of the zone (a state with its period; cq05_statements.rq)",
-          IF(?found && ?kn > 0, "associated by geometry, and a source states that the unit is independent of the river in a section of the zone (cq05_statements.rq)",
-          IF(?found, "associated by geometry only: no source qualifies the exchange between the unit and the sections of the zone",
-          IF(?offMap, "no association found, but part of the zone's river reaches lies off the geological map: the search is incomplete",
-             "no searched watercourse (the dataset's gauged rivers and those the documents name) runs on, over or documentedly beside the unit within the zone: a completed search, not 'no river exchange'")))))))))) AS ?reason)
+          IF(?contradiction, CONCAT("statements about the same stretch give opposite states for overlapping dated periods: a contradiction under comparable conditions; both are kept with their periods, never collapsed into a timeless sign (cq05_statements.rq)", ?offText),
+          IF(?unresolved, CONCAT("statements about the same stretch give opposite states and at least one is undated, so whether they describe comparable conditions is unresolved; both are kept with their periods, never collapsed into a timeless sign (cq05_statements.rq)", ?offText),
+          IF(?found && ?kc > 0, CONCAT("associated, and a source documents an exchange between the unit itself and a section of the zone (a state with its period; cq05_statements.rq)",
+                                       IF(?varying, "; the sources give opposite states for different stretches or for disjoint periods: variation, not a contradiction", ""), ?offText),
+          IF(?found && ?kn > 0, CONCAT("associated by geometry, and a source states that the unit is independent of the river in a section of the zone (cq05_statements.rq)", ?offText),
+          IF(?found && ?kl > 0, CONCAT("associated by geometry; a source documents the exchange only for an aggregate the unit belongs to (a groundwater body or a group of formations), localised to the unit by its outcrop, not for the unit itself", ?offText),
+          IF(?found, CONCAT("associated by geometry only: no source qualifies the exchange between the unit and the sections of the zone", ?offText),
+          IF(?offMap, CONCAT("no association found, but ", ?offWhat, ": the search is incomplete"),
+             "no searched watercourse (the dataset's gauged rivers and those the documents name) runs on, over or documentedly beside the unit within the zone: a completed search, not 'no river exchange'")))))))))))) AS ?reason)
 }

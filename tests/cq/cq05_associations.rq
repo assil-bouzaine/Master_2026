@@ -8,15 +8,17 @@
 #             association type (on outcrop: the river runs on the unit's outcrop; over cover: it runs
 #             over the units that cover it, listed in ?coverUnits; documented lateral: a source
 #             documents an exchange between the unit and a section of the zone), the lengths, the
-#             number of reach pieces of the watercourse in ?S, and the number of exchange statements
-#             that apply (cq05_statements.rq lists them). An association is geometric or documentary:
+#             number of reach pieces of the watercourse in ?S, the number of exchange statements
+#             about the unit itself that apply, and the number of statements about an aggregate the
+#             unit belongs to that are localised to it by the outcrop (?localizedStatements; documented
+#             at the aggregate's scale, not for the unit; cq05_statements.rq lists both). An association is geometric or documentary:
 #             a shared river name, a spatial intersection and a demonstrated hydraulic connection are
 #             different assertions (CQ5 meaning); the search covers the watercourses of the dataset's
 #             gauges and those the documents name, not every stream (cq05_status.rq).
 PREFIX lulcw: <https://w3id.org/lulcw#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 SELECT ?S ?association ?watercourseCode ?watercourseName ?unitCode ?type ?lengthOnOutcropM
-       ?lengthOverCoverM ?coverUnits ?pieces ?statements
+       ?lengthOverCoverM ?coverUnits ?pieces ?statements ?localizedStatements
 WHERE {
     ?association a lulcw:RiverUnitAssociation ; lulcw:withinExtent ?S ;
         lulcw:associationWatercourse ?wc ; lulcw:associationUnit ?u ; lulcw:associationType ?t .
@@ -35,11 +37,17 @@ WHERE {
         GROUP BY ?association
     }
     OPTIONAL {
+        SELECT ?association (COUNT(DISTINCT ?l) AS ?nloc)
+        WHERE { ?association lulcw:localizedStatement ?l . }
+        GROUP BY ?association
+    }
+    OPTIONAL {
         SELECT ?S ?wc (COUNT(DISTINCT ?p) AS ?pieces)
         WHERE { ?p lulcw:withinExtent ?S ; lulcw:pieceOfReach ?r . ?r lulcw:reachOf ?wc . }
         GROUP BY ?S ?wc
     }
     BIND (COALESCE(?nst, 0) AS ?statements)
+    BIND (COALESCE(?nloc, 0) AS ?localizedStatements)
     BIND (STRAFTER(STR(?t), "#") AS ?type)
 }
 ORDER BY ?watercourseCode ?unitCode ?type

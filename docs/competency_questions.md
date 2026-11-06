@@ -298,6 +298,16 @@ for the requested period?
   off the map, unknown for a unit not searched (not attributed to the zone's well) or when
   rule outputs are missing; a completed search with no association is supported, never
   "no river exchange".
+  *Revised the same afternoon (Codex review of 2026-11-06; analysis plan §14 item 17):* a
+  statement is about the unit itself or about an aggregate (a groundwater body, "the Quaternary
+  formations"); an aggregate never makes a documented lateral association or an eligible sign,
+  and on outcrop it is localised to the unit as a separate inference (`localizedStatement`,
+  listed as "localised from an aggregate"); a measurement at a well applies in that well's zone
+  only; a conflict needs opposite states for the same or overlapping stretches (`overlapsSection`)
+  with overlapping dated periods (a contradiction) or an undated statement (unresolved), other
+  opposite states are variation; reaches off the map make even a documented answer partial; an
+  optional requested period (`?T0`, `?T1`) filters dated statements, and undated evidence is
+  reported as such; each statement states its method.
 - **Acceptance:** the Têt name may associate `718BP02` with a river, but cannot alone
   produce a signed recharge constraint. A gauge on the same river but outside the
   relevant reach remains a labelled proxy candidate. Two documented opposing exchange
@@ -327,6 +337,11 @@ irrigation return flow reaching U?
   `cq06_chain` returns intake group → canals on the outcrop → [command area not mapped] →
   unit, with the statements, never a local return amount. Command areas remain a documented
   data gap (none found on data.gouv.fr, the prefecture site, the Géoplateforme or Sandre).
+  *Revised the same afternoon:* the chain lists canal returns documented for the unit itself and,
+  apart, those documented for an aggregate it belongs to (e.g. "the Agly alluvial aquifer"),
+  which make no sign eligible; a return measured at a well (BRGM's mixing at MILLAS C2-1) applies
+  to that well only; an optional requested period; a canal search with reaches off the map is
+  incomplete (CQ8 `unknown`).
 - **Acceptance:** synthetic areas supplied by two intakes keep distinct supply chains;
   an overlapping parcel is not counted twice without an allocation rule. With only an
   intake record, return a partial chain and no local recharge amount or hard sign.

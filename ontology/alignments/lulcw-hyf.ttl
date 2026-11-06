@@ -2,6 +2,7 @@
 @prefix owl:     <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix hyf:     <https://www.opengis.net/def/schema/hy_features/hyf/> .
 
@@ -9,15 +10,22 @@
 # definitions copied in imports/hyf_terms.ttl:
 # - a watercourse identified by its BD Carthage code is "a body of surface water, participating
 #   in a hydrographic network, [that] permanently or temporarily flow[s]" (HY_River);
-# - a BD TOPO reach between two nodes of the network is a path connecting an inflow and an outflow
-#   (HY_FlowPath), canal reaches included (the network holds them).
+# - a BD TOPO reach is a mapped segment of the network between two nodes. HY_FlowPath "realizes a
+#   catchment specifically as a path connecting the inflow and outflow of the catchment it
+#   realizes": a natural river reach can be read as the flowpath of its incremental catchment (the
+#   hydrofabric reading), but the graph holds no catchment, and a canal reach realises none (it
+#   conveys diverted water across catchments). So river reaches are a close match of HY_FlowPath,
+#   canal reaches are not matched, and no reach is declared a HY_FlowPath (0.1.0 asserted
+#   HydrographicReach subClassOf HY_FlowPath for every reach, canals included: withdrawn after the
+#   Codex review of 2026-11-06, R3). Each correspondence, and those rejected, is in ledger.csv.
 # A WFD river water body is a management delimitation, not a water body in the HY_Features sense,
 # so lulcw:SurfaceWaterBody is not aligned.
 
 <https://w3id.org/lulcw/alignments/hyf> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/alignments/hyf/0.1.0> ;
+    owl:versionIRI <https://w3id.org/lulcw/alignments/hyf/0.2.0> ;
+    owl:priorVersion <https://w3id.org/lulcw/alignments/hyf/0.1.0> ;
     dcterms:title "Alignment of LULC-Water to HY_Features"@en , "Alignement de LULC-Water sur HY_Features"@fr ;
-    dcterms:description "Subclass axioms linking the lulcw watercourse and reach classes to HY_Features (OGC 14-111), asserted only where they hold for every instance."@en ;
+    dcterms:description "Correspondences between the lulcw watercourse and reach classes and HY_Features (OGC 14-111): a subclass axiom only where it holds for every instance (watercourses), a close match otherwise (river reaches)."@en ;
     dcterms:created "2026-11-06"^^xsd:date ;
     dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
     owl:imports <https://w3id.org/lulcw> , <https://w3id.org/lulcw/imports/hyf> .
@@ -28,4 +36,4 @@ dcterms:created a owl:AnnotationProperty .
 dcterms:license a owl:AnnotationProperty .
 
 lulcw:Watercourse rdfs:subClassOf hyf:HY_River .
-lulcw:HydrographicReach rdfs:subClassOf hyf:HY_FlowPath .
+lulcw:RiverReach skos:closeMatch hyf:HY_FlowPath .

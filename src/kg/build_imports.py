@@ -11,6 +11,10 @@ their declarations, labels, definitions and hierarchy, but not their domain or r
 That keeps the imports small and keeps HermiT away from xsd:date ranges (OWL-Time), which it
 rejects. The GWML2/HyFO terms have no source file (docs/ontology_design.md §1): their extract,
 ontology/imports/gwml2_hyfo_terms.ttl, is written by hand from the SAWGraph documentation.
+HY_Features (OGC 14-111) has no OWL file either: the OGC definitions server returns one SKOS page
+per term (FeatureType and skos:Concept; HY_FlowPath also owl:Class). Those pages are downloaded and
+logged here (HYF_PAGES, checked 2026-11-06), and ontology/imports/hyf_terms.ttl is written by hand
+from them.
 """
 import hashlib
 import json
@@ -64,6 +68,11 @@ SOURCES = {
                                                    "Aquitard", "WaterTable")]
               + [SWEET + "matrWater/Groundwater"]),
 }
+
+
+HYF = "https://www.opengis.net/def/schema/hy_features/hyf/"
+HYF_PAGES = {f"hyf_{t}.ttl": HYF + t for t in ("HY_WaterBody", "HY_River", "HY_FlowPath",
+                                               "HY_CatchmentRealization")}
 
 
 def download(name, url, accept, log):
@@ -121,6 +130,9 @@ def main():
             download(f, url, accept, log)
         log_file.write_text(json.dumps(log, indent=1, sort_keys=True))
         extract(name, files, terms, log)
+    for f, url in HYF_PAGES.items():       # provenance of the hand-written hyf_terms.ttl
+        download(f, url, "text/turtle", log)
+    log_file.write_text(json.dumps(log, indent=1, sort_keys=True))
 
 
 if __name__ == "__main__":

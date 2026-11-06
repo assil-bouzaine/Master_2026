@@ -1,0 +1,31 @@
+@prefix lulcw:   <https://w3id.org/lulcw#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix hyf:     <https://www.opengis.net/def/schema/hy_features/hyf/> .
+
+# Alignment of the lulcw river terms (0.6.0, CQ5) to HY_Features, checked against the
+# definitions copied in imports/hyf_terms.ttl:
+# - a watercourse identified by its BD Carthage code is "a body of surface water, participating
+#   in a hydrographic network, [that] permanently or temporarily flow[s]" (HY_River);
+# - a BD TOPO reach between two nodes of the network is a path connecting an inflow and an outflow
+#   (HY_FlowPath), canal reaches included (the network holds them).
+# A WFD river water body is a management delimitation, not a water body in the HY_Features sense,
+# so lulcw:SurfaceWaterBody is not aligned.
+
+<https://w3id.org/lulcw/alignments/hyf> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/lulcw/alignments/hyf/0.1.0> ;
+    dcterms:title "Alignment of LULC-Water to HY_Features"@en , "Alignement de LULC-Water sur HY_Features"@fr ;
+    dcterms:description "Subclass axioms linking the lulcw watercourse and reach classes to HY_Features (OGC 14-111), asserted only where they hold for every instance."@en ;
+    dcterms:created "2026-11-06"^^xsd:date ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    owl:imports <https://w3id.org/lulcw> , <https://w3id.org/lulcw/imports/hyf> .
+
+dcterms:title a owl:AnnotationProperty .
+dcterms:description a owl:AnnotationProperty .
+dcterms:created a owl:AnnotationProperty .
+dcterms:license a owl:AnnotationProperty .
+
+lulcw:Watercourse rdfs:subClassOf hyf:HY_River .
+lulcw:HydrographicReach rdfs:subClassOf hyf:HY_FlowPath .

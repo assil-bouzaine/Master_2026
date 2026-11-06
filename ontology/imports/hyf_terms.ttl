@@ -1,0 +1,49 @@
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix hyf:     <https://www.opengis.net/def/schema/hy_features/hyf/> .
+
+# Local copy of the HY_Features terms that LULC-Water reuses (OGC 14-111, the hyf application
+# schema). OGC publishes no OWL file: its definitions server returns one page per term, in which
+# a term is an ogc FeatureType and a skos:Concept (HY_FlowPath and HY_CatchmentRealization are
+# also owl:Class). The pages were read on 2026-11-06 and are kept, with their sha256, in
+# data/raw/vocab/sources.json (src/kg/build_imports.py, HYF_PAGES). Copied here by hand: the IRIs,
+# labels and the first sentence of each definition exactly as listed, and the hierarchy: the
+# rdfs:subClassOf the source states for HY_FlowPath, and, for HY_River, the source's skos:broader
+# HY_WaterBody rendered as rdfs:subClassOf (our reading, stated here). Every term has the status
+# "experimental" on the server.
+
+<https://w3id.org/lulcw/imports/hyf> a owl:Ontology ;
+    dcterms:title "HY_Features terms reused by LULC-Water"@en ;
+    dcterms:source <https://www.opengis.net/def/schema/hy_features/hyf/> ;
+    dcterms:created "2026-11-06"^^xsd:date ;
+    rdfs:comment "Copied from the OGC definitions server on 2026-11-06 (one page per term). HY_Features: OGC 14-111r6, https://docs.ogc.org/is/14-111r6/14-111r6.html."@en .
+
+dcterms:title a owl:AnnotationProperty .
+dcterms:source a owl:AnnotationProperty .
+dcterms:created a owl:AnnotationProperty .
+skos:definition a owl:AnnotationProperty .
+
+hyf:HY_WaterBody a owl:Class ;
+    rdfs:label "HY_WaterBody" ;
+    skos:definition "The HY_WaterBody feature type specializes the general HY_HydroFeature class. A waterbody is part of the hydrographic network and is either standing in a depression or flowing in a channel, which are parts of the channel network." ;
+    rdfs:isDefinedBy <https://www.opengis.net/def/schema/hy_features/hyf/HY_WaterBody> .
+
+hyf:HY_River a owl:Class ;
+    rdfs:subClassOf hyf:HY_WaterBody ;
+    rdfs:label "HY_Stream"@en ;
+    skos:definition "The HY_River feature type defines the existence of body of surface water, participating in a hydrographic network, special due to its property to permanently or temporarily flow."@en ;
+    rdfs:isDefinedBy <https://www.opengis.net/def/schema/hy_features/hyf/HY_River> .
+
+hyf:HY_CatchmentRealization a owl:Class ;
+    rdfs:label "HY_CatchmentRealization" ;
+    skos:definition "The HY_CatchmentRealization feature type (Figure 34) is based on the idea that there are multiple hydrology-specific perspectives of the holistic catchment concept that are used to describe a catchment as a unit of study shared across sub-domains and studies." ;
+    rdfs:isDefinedBy <https://www.opengis.net/def/schema/hy_features/hyf/HY_CatchmentRealization> .
+
+hyf:HY_FlowPath a owl:Class ;
+    rdfs:subClassOf hyf:HY_CatchmentRealization ;
+    rdfs:label "HY_FlowPath" ;
+    skos:definition "The HY_Flowpath feature type realizes a catchment specifically as a path connecting the inflow and outflow of the catchment it realizes." ;
+    rdfs:isDefinedBy <https://www.opengis.net/def/schema/hy_features/hyf/HY_FlowPath> .

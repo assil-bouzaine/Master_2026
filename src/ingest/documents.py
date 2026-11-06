@@ -3,9 +3,10 @@ kept as dated local copies so that every curated statement points at the exact f
 
     python -m src.ingest.documents      # downloads the missing ones; later runs only check them
 
-Each document is stored once under data/raw/documents/<key>.pdf with its URL, retrieval date, size
-and md5 in documents.json. The statements taken from them live in configs/river_exchange_evidence.csv,
-with the printed page and a short quote; the PDFs are read only with pdftotext, never executed.
+Each document is stored once under data/raw/documents/<key>.<pdf|html> with its URL, retrieval date,
+size and md5 in documents.json. The statements taken from them live in configs/exchange_evidence.csv,
+with the printed page and a short quote (tests/test_exchange_evidence.py finds every quote on its page);
+the PDFs are read only with pdftotext and the web page as text, never executed.
 """
 import hashlib
 import json
@@ -26,6 +27,12 @@ DOCS = {
         "title": "Agence de l'eau Rhône Méditerranée Corse, fiche de caractérisation de la masse "
                  "d'eau souterraine FRDG351 'Alluvions quaternaires du Roussillon', état des "
                  "connaissances 2021 (printed 01/12/2021)."},
+    "smnpr-fonctionnement-des-nappes": {
+        "url": "https://nappes-roussillon.fr/en-pratique/fonctionnement-des-nappes/",
+        "kind": "html",
+        "title": "Syndicat mixte pour la protection et la gestion des nappes souterraines de la plaine du "
+                 "Roussillon (SMNPR), 'Présentation des nappes' (web page; first read 2026-10-27, stored "
+                 "2026-11-06)."},
     "sierm-frdg243": {
         "url": "https://www.rhone-mediterranee.eaufrance.fr/sites/sierm/files/underground_waterbody/FRDG243.pdf",
         "title": "Agence de l'eau Rhône Méditerranée Corse, fiche de caractérisation de la masse "
@@ -40,11 +47,15 @@ def main():
     log = json.loads(index.read_text()) if index.exists() else {}
     session = make_session()
     for key, d in DOCS.items():
-        f = OUT / f"{key}.pdf"
+        kind = d.get("kind", "pdf")
+        f = OUT / f"{key}.{kind}"
         if not f.exists():
             r = session.get(d["url"], timeout=TIMEOUT)
             r.raise_for_status()
-            assert r.content[:5] == b"%PDF-", f"{key}: not a PDF"
+            if kind == "pdf":
+                assert r.content[:5] == b"%PDF-", f"{key}: not a PDF"
+            else:
+                assert b"<html" in r.content[:2000].lower(), f"{key}: not an HTML page"
             f.write_bytes(r.content)
             log[key] = {**d, "file": f.name, "retrieved": date.today().isoformat()}
         md5 = hashlib.md5(f.read_bytes()).hexdigest()

@@ -6,8 +6,10 @@
     <uri name="https://w3id.org/lulcw/meta" uri="lulcw-meta.ttl"/>
     <uri name="https://w3id.org/lulcw/alignments/gwml2-hyfo" uri="alignments/lulcw-gwml2-hyfo.ttl"/>
     <uri name="https://w3id.org/lulcw/alignments/sweet" uri="alignments/lulcw-sweet.ttl"/>
+    <uri name="https://w3id.org/lulcw/alignments/hyf" uri="alignments/lulcw-hyf.ttl"/>
     <uri name="https://w3id.org/lulcw/imports/gwml2-hyfo" uri="imports/gwml2_hyfo_terms.ttl"/>
     <uri name="https://w3id.org/lulcw/imports/sweet" uri="imports/sweet_terms.ttl"/>
+    <uri name="https://w3id.org/lulcw/imports/hyf" uri="imports/hyf_terms.ttl"/>
     <uri name="https://w3id.org/lulcw/imports/sosa" uri="imports/sosa_terms.ttl"/>
     <uri name="https://w3id.org/lulcw/imports/prov" uri="imports/prov_terms.ttl"/>
     <uri name="https://w3id.org/lulcw/imports/time" uri="imports/time_terms.ttl"/>

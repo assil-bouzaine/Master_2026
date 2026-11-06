@@ -19,9 +19,9 @@
 # M2 = square metre, M3 = cubic metre) and are stated in each definition.
 
 <https://w3id.org/lulcw> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/0.5.0> ;
-    owl:versionInfo "0.5.0" ;
-    owl:priorVersion <https://w3id.org/lulcw/0.4.0> ;
+    owl:versionIRI <https://w3id.org/lulcw/0.6.0> ;
+    owl:versionInfo "0.6.0" ;
+    owl:priorVersion <https://w3id.org/lulcw/0.5.0> ;
     dcterms:title "LULC-Water bridging module"@en , "Module de liaison LULC-Water"@fr ;
     dcterms:description "Bridging module of the LULC-Water network of ontologies (SAVE Water, PRIMA): wells, abstraction facilities, hydrogeological units and the qualified, evidence-carrying assertions (unit attributions, stratigraphic relations, well links, influences, annual abstraction accounting) that structure, constrain and explain a groundwater-level model of the Roussillon multilayer aquifer."@en ,
         "Module de liaison du réseau d'ontologies LULC-Water (SAVE Water, PRIMA) : piézomètres, ouvrages de prélèvement, entités hydrogéologiques et assertions qualifiées, porteuses de preuves (attributions à une entité, relations stratigraphiques, liens entre piézomètres, influences, bilans annuels des prélèvements), qui structurent, contraignent et expliquent un modèle des niveaux piézométriques de l'aquifère multicouche du Roussillon."@fr ;
@@ -35,7 +35,8 @@
         "0.2.0 (2026-10-25, task 12.6): admitsConfidence and searchRadiusM, so that export policies and spatial rules carry their parameters as data; constraint eligibility defined from the evidence of the pathway, applied only under a policy that selects every segment. The SHACL shapes and SHACL-AF rules are in ontology/shapes/ and ontology/rules/."@en ,
         "0.3.0 (2026-10-25, task 12.6, CQ7): land use and crops: RPG crop codes, crop classes with their FAO-56 parameters and irrigation assumptions, crop demand zones, clipped crop areas per RPG year, potential irrigation demand estimates and their dated categories."@en ,
         "0.4.0 (2026-10-26, CQ4): recharge-related forcing: SAFRAN weather cells, the mapped outcrop of units inside reference extents, polygon-cell intersection areas, outcrop coverage and cell weights; WellZone generalises the crop demand zone, so zoneOf and zoneRadiusM also serve the outcrop search zone; observable property SoilDrainage; the mapped outcrop area of each unit, so that a reference extent states how much of the unit it clips."@en ,
-        "0.5.0 (2026-10-27, CQ4 and CQ8): recharge-proxy influences: the observable property GroundwaterRecharge, which no input of the graph measures; proxyFor, so that an influence states what its driver stands in for; omitsPathway, so that it names the pathways it does not represent; the mechanisms LateralInflow and VerticalLeakage; the driver group RechargeProxies; withinExtent also serves influences, and appliesInExtent names the fixed extents a rule derives in."@en ;
+        "0.5.0 (2026-10-27, CQ4 and CQ8): recharge-proxy influences: the observable property GroundwaterRecharge, which no input of the graph measures; proxyFor, so that an influence states what its driver stands in for; omitsPathway, so that it names the pathways it does not represent; the mechanisms LateralInflow and VerticalLeakage; the driver group RechargeProxies; withinExtent also serves influences, and appliesInExtent names the fixed extents a rule derives in."@en,
+        "0.6.0 (2026-11-06, CQ5 and CQ6): rivers, gauges and canals: watercourses, BD TOPO reaches (river and canal), reach search zones and the pieces of reaches over elementary polygons, river sections and WFD river water bodies, gauges with their discharge series, gauge pools and gauge-zone relations; documents, passages and exchange statements read from them (mechanism, direction, hedging, how the source names the unit); derived river-unit and canal-unit associations; surface-water intakes and the canal intake group; the observable property RiverStage."@en ;
     owl:imports <https://w3id.org/lulcw/imports/sosa> , <https://w3id.org/lulcw/imports/prov> ,
         <https://w3id.org/lulcw/imports/time> , <https://w3id.org/lulcw/imports/skos> ,
         <https://w3id.org/lulcw/imports/geo> .
@@ -1140,3 +1141,399 @@ lulcw:mappedOutcropAreaM2 a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs
 lulcw:cellWeight a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:CellWeight ; rdfs:range xsd:double ;
     rdfs:label "cell weight value"@en , "valeur du poids de la maille"@fr ;
     skos:definition "Covered outcrop area inside the cell divided by the covered outcrop area of the coverage, between 0 and 1 (renormalised over the covered area)."@en .
+
+#################################################################
+# Rivers, gauges and canals (0.6.0, CQ5 and CQ6): reaches, their parts over the units, the
+# documented exchanges read from the literature, and the gauges that stand in for a river
+#################################################################
+
+lulcw:Watercourse a owl:Class ;
+    rdfs:label "watercourse"@en , "cours d'eau"@fr ;
+    skos:definition "A river identified by its BD Carthage code (Sandre), e.g. Y04-0400 for the Têt; its reaches are the BD TOPO reaches that carry this code, and a gauge belongs to it through the same code."@en .
+
+lulcw:HydrographicReach a owl:Class ;
+    rdfs:subClassOf geo:Feature ;
+    rdfs:label "hydrographic reach"@en , "tronçon hydrographique"@fr ;
+    skos:definition "One reach of the BD TOPO hydrographic network between two of its nodes, with its geometry and nature (natural flow, canal, reservoir ...): a mapped line, not a statement about its exchange with groundwater."@en .
+
+lulcw:RiverReach a owl:Class ;
+    rdfs:subClassOf lulcw:HydrographicReach ;
+    rdfs:label "river reach"@en , "tronçon de cours d'eau"@fr ;
+    skos:definition "A hydrographic reach that carries the BD Carthage code of a watercourse."@en .
+
+lulcw:CanalReach a owl:Class ;
+    rdfs:subClassOf lulcw:HydrographicReach ;
+    rdfs:label "canal reach"@en , "tronçon de canal"@fr ;
+    skos:definition "A hydrographic reach whose BD TOPO nature is canal: a mapped conveyance line. Which parcels a canal serves is not mapped here (no command-area map exists for the plain, CQ6)."@en .
+
+lulcw:ReachSearchZone a owl:Class ;
+    rdfs:subClassOf lulcw:WellZone ;
+    rdfs:label "reach search zone"@en , "zone de recherche des tronçons"@fr ;
+    skos:definition "The area within a fixed horizontal radius of a piezometer (5 km here, the radius of the pumping influences) inside which river and canal reaches are intersected with the elementary polygons of the geological release: a reference extent for river and canal inputs, not a capture zone or a hydraulic limit."@en .
+
+lulcw:ReachPiece a owl:Class ;
+    rdfs:label "reach piece"@en , "portion de tronçon"@fr ;
+    skos:definition "The part of one hydrographic reach that lies inside one reach search zone and one elementary polygon, with its length in metres, computed outside OWL (GeoPandas, Lambert-93); it carries the river sections it lies in. The geometric support of river-unit and canal-unit associations, not a statement about exchange."@en .
+
+lulcw:RiverSection a owl:Class ;
+    rdfs:subClassOf geo:Feature ;
+    rdfs:label "river section"@en , "secteur de cours d'eau"@fr ;
+    skos:definition "A delimited stretch of one or more watercourses that a statement is about: a river water body of the Water Framework Directive, or the stretch between two points a source locates."@en .
+
+lulcw:SurfaceWaterBody a owl:Class ;
+    rdfs:subClassOf lulcw:RiverSection ;
+    rdfs:label "river water body"@en , "masse d'eau cours d'eau"@fr ;
+    skos:definition "A river water body of the Water Framework Directive (Sandre référentiel, 2022 reporting), identified by its European code (e.g. FRDR224): a management unit delimiting stretches of watercourses, the scale at which the groundwater-body sheets qualify river-aquifer exchanges."@en .
+
+lulcw:RiverGauge a owl:Class ;
+    rdfs:subClassOf sosa:Platform ;
+    rdfs:label "river gauge"@en , "station hydrométrique"@fr ;
+    skos:definition "A hydrometric station of the Hub'Eau référentiel, identified by its station code, with its position, its watercourse and its discharge series: it measures at its own site, not along a whole river or for a whole unit."@en .
+
+lulcw:GaugeZoneRelation a owl:Class ;
+    rdfs:label "gauge-zone relation"@en , "relation station-zone"@fr ;
+    skos:definition "For one gauge and one reach search zone in which the gauge's watercourse has reach pieces: the horizontal distance from the gauge to the nearest of those pieces and the gauge's position along the watercourse's main stem relative to them, computed outside OWL. Describes how well the gauge can represent the river near the well; not a hydraulic statement."@en .
+
+lulcw:GaugePool a owl:Class ;
+    rdfs:label "gauge pool"@en , "ensemble de stations"@fr ;
+    skos:definition "A named set of gauges that a rule may connect to wells, e.g. the five full-record gauges of arm C's distance rule, which arm D also draws from (analysis plan §14 item 16)."@en .
+
+lulcw:Document a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "document"@en , "document"@fr ;
+    skos:definition "A published report or sheet that statements of the graph are read from, kept as a dated local copy with its checksum."@en .
+
+lulcw:DocumentPassage a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "document passage"@en , "passage de document"@fr ;
+    skos:definition "A located passage of a document: its printed page (or sheet page) and a short verbatim quote."@en .
+
+lulcw:ExchangeStatement a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "exchange statement"@en , "énoncé d'échange"@fr ;
+    skos:definition "A statement read from a document about water exchange between surface water (a river section, a watercourse or the canals) and one or more hydrogeological units: its mechanism, direction, state or period, quantity, hedging, how the source names the unit, and the passage it comes from. The graph records what the source says, at the scale the source says it; it is not a measured effect, and statements that disagree are kept side by side."@en .
+
+lulcw:RiverUnitAssociation a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "river-unit association"@en , "association cours d'eau-entité"@fr ;
+    skos:definition "Derived by a rule, for one reach search zone, one watercourse and the unit a well is attributed to: whether reaches of the watercourse in the zone run on the unit's outcrop, over the units that cover it (listed), or meet a section where a source documents an exchange with the unit (documented lateral); with the lengths and the statements that apply. A geometric or documentary association, not proof of hydraulic connection (CQ5)."@en .
+
+lulcw:CanalUnitAssociation a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "canal-unit association"@en , "association canal-entité"@fr ;
+    skos:definition "Derived by a rule, for one reach search zone and the unit a well is attributed to: the length of canal reaches in the zone that run on the unit's outcrop, and the canal-return statements that name the unit. A canal crossing an outcrop is a candidate seepage or return-flow pathway, not a mapped service area and not a recharge amount (CQ6)."@en .
+
+lulcw:SurfaceWaterIntake a owl:Class ;
+    rdfs:subClassOf lulcw:AbstractionFacility ;
+    rdfs:label "surface-water intake"@en , "prise d'eau superficielle"@fr ;
+    skos:definition "An abstraction facility of the BNPE that withdraws surface water for irrigation or to feed a canal; where its water goes is not recorded."@en .
+
+lulcw:CanalIntakeGroup a owl:Class ;
+    rdfs:label "canal intake group"@en , "ensemble des prises des canaux"@fr ;
+    skos:definition "The surface-water irrigation and canal intakes of the plain taken together, whose declared volumes, spread weekly, form the canal input of the models (src/dataset/pumping.py canal_series); the series is kept outside the graph. A diverted volume, not a recharge volume."@en .
+
+lulcw:RiverStage a sosa:ObservableProperty ;
+    rdfs:label "river stage"@en , "hauteur d'eau de la rivière"@fr ;
+    skos:definition "Water level of a river at a reach. Not observed in this graph: the weekly discharge of a gauge stands in for it near the gauge, through the gauge's rating curve and up to the withdrawals and inflows between the gauge and the reach."@en .
+
+lulcw:AssociationType a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "association type"@en , "type d'association"@fr ;
+    skos:definition "How the surface water of a reach search zone relates to a unit: on its outcrop, over the units covering it, or through a documented lateral exchange."@en .
+lulcw:AssociationTypeScheme a skos:ConceptScheme ;
+    rdfs:label "association types"@en , "types d'association"@fr ;
+    skos:definition "Values of lulcw:AssociationType."@en .
+lulcw:OnOutcrop a lulcw:AssociationType ; skos:inScheme lulcw:AssociationTypeScheme ; skos:topConceptOf lulcw:AssociationTypeScheme ;
+    skos:prefLabel "on outcrop"@en , "sur l'affleurement"@fr ;
+    rdfs:label "on outcrop"@en , "sur l'affleurement"@fr ;
+    skos:definition "Reaches of the zone run on polygons where the unit is mapped at outcrop (order 1): direct contact is possible."@en .
+lulcw:OverCover a lulcw:AssociationType ; skos:inScheme lulcw:AssociationTypeScheme ; skos:topConceptOf lulcw:AssociationTypeScheme ;
+    skos:prefLabel "over cover"@en , "sur la couverture"@fr ;
+    rdfs:label "over cover"@en , "sur la couverture"@fr ;
+    skos:definition "Reaches of the zone run on polygons where the unit lies below other mapped units (listed as the cover): any exchange passes through the cover, e.g. leakage from the Quaternary into the Pliocene."@en .
+lulcw:DocumentedLateral a lulcw:AssociationType ; skos:inScheme lulcw:AssociationTypeScheme ; skos:topConceptOf lulcw:AssociationTypeScheme ;
+    skos:prefLabel "documented lateral"@en , "latéral documenté"@fr ;
+    rdfs:label "documented lateral"@en , "latéral documenté"@fr ;
+    skos:definition "No reach of the zone runs on or over the unit, but a source documents an exchange between the unit and a section that has reaches in the zone (e.g. an alluvial terrace draining laterally to the river)."@en .
+
+lulcw:ExchangeDirection a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "exchange direction"@en , "sens de l'échange"@fr ;
+    skos:definition "Direction of a documented exchange between surface water and a unit, at the state or period the source states; a state, not a timeless property, and not the sign of a head response."@en .
+lulcw:ExchangeDirectionScheme a skos:ConceptScheme ;
+    rdfs:label "exchange directions"@en , "sens d'échange"@fr ;
+    skos:definition "Values of lulcw:ExchangeDirection."@en .
+lulcw:AquiferToSurface a lulcw:ExchangeDirection ; skos:inScheme lulcw:ExchangeDirectionScheme ; skos:topConceptOf lulcw:ExchangeDirectionScheme ;
+    skos:prefLabel "from the aquifer to surface water"@en , "de la nappe vers les eaux de surface"@fr ;
+    rdfs:label "from the aquifer to surface water"@en , "de la nappe vers les eaux de surface"@fr ;
+    skos:definition "The surface water gains from the unit: a draining (gaining) river, 'drainant' in the groundwater-body sheets."@en .
+lulcw:SurfaceToAquifer a lulcw:ExchangeDirection ; skos:inScheme lulcw:ExchangeDirectionScheme ; skos:topConceptOf lulcw:ExchangeDirectionScheme ;
+    skos:prefLabel "from surface water to the aquifer"@en , "des eaux de surface vers la nappe"@fr ;
+    rdfs:label "from surface water to the aquifer"@en , "des eaux de surface vers la nappe"@fr ;
+    skos:definition "The unit gains from the surface water: a losing river ('perdant'), canal seepage or irrigation return flow."@en .
+lulcw:ExchangeEquilibrium a lulcw:ExchangeDirection ; skos:inScheme lulcw:ExchangeDirectionScheme ; skos:topConceptOf lulcw:ExchangeDirectionScheme ;
+    skos:prefLabel "in equilibrium"@en , "en équilibre"@fr ;
+    rdfs:label "in equilibrium"@en , "en équilibre"@fr ;
+    skos:definition "River and unit are connected and their exchange is balanced at the stated scale ('en équilibre')."@en .
+lulcw:NoExchange a lulcw:ExchangeDirection ; skos:inScheme lulcw:ExchangeDirectionScheme ; skos:topConceptOf lulcw:ExchangeDirectionScheme ;
+    skos:prefLabel "no exchange"@en , "pas d'échange"@fr ;
+    rdfs:label "no exchange"@en , "pas d'échange"@fr ;
+    skos:definition "The source states that the surface water is independent of the unit, or that the unit does not seem influenced by it."@en .
+lulcw:NotQualified a lulcw:ExchangeDirection ; skos:inScheme lulcw:ExchangeDirectionScheme ; skos:topConceptOf lulcw:ExchangeDirectionScheme ;
+    skos:prefLabel "not qualified"@en , "non qualifié"@fr ;
+    rdfs:label "not qualified"@en , "non qualifié"@fr ;
+    skos:definition "The source names the section but gives no information on the exchange ('pas d'information / non qualifiable')."@en .
+
+lulcw:Hedging a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "hedging"@en , "modalité"@fr ;
+    skos:definition "Whether a source states a finding or hedges it (conditional mood, 'could', 'seems', reported speech)."@en .
+lulcw:HedgingScheme a skos:ConceptScheme ;
+    rdfs:label "hedging levels"@en , "modalités"@fr ;
+    skos:definition "Values of lulcw:Hedging."@en .
+lulcw:StatedFinding a lulcw:Hedging ; skos:inScheme lulcw:HedgingScheme ; skos:topConceptOf lulcw:HedgingScheme ;
+    skos:prefLabel "stated"@en , "affirmé"@fr ;
+    rdfs:label "stated"@en , "affirmé"@fr ;
+    skos:definition "The source states the finding without qualification."@en .
+lulcw:HedgedFinding a lulcw:Hedging ; skos:inScheme lulcw:HedgingScheme ; skos:topConceptOf lulcw:HedgingScheme ;
+    skos:prefLabel "hedged"@en , "conditionnel"@fr ;
+    rdfs:label "hedged"@en , "conditionnel"@fr ;
+    skos:definition "The source hedges the finding (conditional, 'could', 'seems') or reports another study's result."@en .
+
+lulcw:UnitMapping a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "unit mapping"@en , "correspondance d'entité"@fr ;
+    skos:definition "How the units a statement is about were identified in the graph's BD LISA release."@en .
+lulcw:UnitMappingScheme a skos:ConceptScheme ;
+    rdfs:label "unit mappings"@en , "correspondances d'entité"@fr ;
+    skos:definition "Values of lulcw:UnitMapping."@en .
+lulcw:UnitListedBySource a lulcw:UnitMapping ; skos:inScheme lulcw:UnitMappingScheme ; skos:topConceptOf lulcw:UnitMappingScheme ;
+    skos:prefLabel "listed by the source"@en , "listée par la source"@fr ;
+    rdfs:label "listed by the source"@en , "listée par la source"@fr ;
+    skos:definition "The source itself lists the BD LISA V3 codes (e.g. a groundwater-body sheet lists the units of its body)."@en .
+lulcw:UnitMappedByName a lulcw:UnitMapping ; skos:inScheme lulcw:UnitMappingScheme ; skos:topConceptOf lulcw:UnitMappingScheme ;
+    skos:prefLabel "mapped by name"@en , "par le nom"@fr ;
+    rdfs:label "mapped by name"@en , "par le nom"@fr ;
+    skos:definition "The source names the unit in words or with a code absent from the release (e.g. 750PP02), and the graph maps it to BD LISA V3 units by that name; the mapping is a judgement, stated as such."@en .
+
+lulcw:AlongRiverPosition a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "position along the river"@en , "position le long du cours d'eau"@fr ;
+    skos:definition "Position of a gauge along its watercourse's main stem relative to the reach pieces of a zone."@en .
+lulcw:AlongRiverPositionScheme a skos:ConceptScheme ;
+    rdfs:label "positions along the river"@en , "positions le long du cours d'eau"@fr ;
+    skos:definition "Values of lulcw:AlongRiverPosition."@en .
+lulcw:UpstreamOfZone a lulcw:AlongRiverPosition ; skos:inScheme lulcw:AlongRiverPositionScheme ; skos:topConceptOf lulcw:AlongRiverPositionScheme ;
+    skos:prefLabel "upstream of the zone"@en , "en amont de la zone"@fr ;
+    rdfs:label "upstream of the zone"@en , "en amont de la zone"@fr ;
+    skos:definition "The gauge lies on the main stem upstream of every main-stem piece of the zone: withdrawals and inflows in between are not in its record."@en .
+lulcw:DownstreamOfZone a lulcw:AlongRiverPosition ; skos:inScheme lulcw:AlongRiverPositionScheme ; skos:topConceptOf lulcw:AlongRiverPositionScheme ;
+    skos:prefLabel "downstream of the zone"@en , "en aval de la zone"@fr ;
+    rdfs:label "downstream of the zone"@en , "en aval de la zone"@fr ;
+    skos:definition "The gauge lies on the main stem downstream of every main-stem piece of the zone: its record also holds what joins or leaves the river in between."@en .
+lulcw:AlongZoneStretch a lulcw:AlongRiverPosition ; skos:inScheme lulcw:AlongRiverPositionScheme ; skos:topConceptOf lulcw:AlongRiverPositionScheme ;
+    skos:prefLabel "along the zone's stretch"@en , "le long du secteur de la zone"@fr ;
+    rdfs:label "along the zone's stretch"@en , "le long du secteur de la zone"@fr ;
+    skos:definition "The gauge lies on the main stem between the most upstream and the most downstream main-stem pieces of the zone."@en .
+lulcw:OffMainStem a lulcw:AlongRiverPosition ; skos:inScheme lulcw:AlongRiverPositionScheme ; skos:topConceptOf lulcw:AlongRiverPositionScheme ;
+    skos:prefLabel "off the main stem"@en , "hors du cours principal"@fr ;
+    rdfs:label "off the main stem"@en , "hors du cours principal"@fr ;
+    skos:definition "The gauge or the zone's pieces are not on the main stem (more than the snapping tolerance from it): no upstream or downstream relation is stated."@en .
+
+lulcw:reachOf a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:RiverReach ; rdfs:range lulcw:Watercourse ;
+    rdfs:label "reach of"@en , "tronçon de"@fr ;
+    skos:definition "The watercourse whose BD Carthage code a river reach carries."@en .
+lulcw:pieceOfReach a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ReachPiece ; rdfs:range lulcw:HydrographicReach ;
+    rdfs:label "piece of reach"@en , "portion du tronçon"@fr ;
+    skos:definition "The hydrographic reach a reach piece is a part of."@en .
+lulcw:piecePolygon a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ReachPiece ; rdfs:range lulcw:ElementaryPolygon ;
+    rdfs:label "piece polygon"@en , "polygone de la portion"@fr ;
+    skos:definition "The elementary polygon a reach piece lies in; absent for a piece outside every polygon of the geological release."@en .
+lulcw:inSection a owl:ObjectProperty ;
+    rdfs:range lulcw:RiverSection ;
+    rdfs:label "in section"@en , "dans le secteur"@fr ;
+    skos:definition "A river section that a reach piece or a gauge lies in: at least half of the piece's length (for a gauge, its point) within the matching tolerance of the section's line (src/kg/rivers.py)."@en .
+lulcw:sectionOf a owl:ObjectProperty ;
+    rdfs:domain lulcw:RiverSection ; rdfs:range lulcw:Watercourse ;
+    rdfs:label "section of"@en , "secteur de"@fr ;
+    skos:definition "A watercourse a river section is a stretch of (a water body may hold stretches of several)."@en .
+lulcw:onWatercourse a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:RiverGauge ; rdfs:range lulcw:Watercourse ;
+    rdfs:label "on watercourse"@en , "sur le cours d'eau"@fr ;
+    skos:definition "The watercourse a gauge measures, by the BD Carthage code Hub'Eau gives it."@en .
+lulcw:hasDischargeSeries a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:RiverGauge ; rdfs:range lulcw:ObservationSeries ;
+    rdfs:label "has discharge series"@en , "a pour série de débits"@fr ;
+    skos:definition "Links a gauge to its weekly discharge series kept outside the graph."@en .
+lulcw:relatedGauge a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:GaugeZoneRelation ; rdfs:range lulcw:RiverGauge ;
+    rdfs:label "related gauge"@en , "station concernée"@fr ;
+    skos:definition "The gauge a gauge-zone relation is about."@en .
+lulcw:alongRiverPosition a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:GaugeZoneRelation ; rdfs:range lulcw:AlongRiverPosition ;
+    rdfs:label "has position along the river"@en , "a pour position le long du cours d'eau"@fr ;
+    skos:definition "Where the gauge lies along the main stem relative to the zone's main-stem pieces."@en .
+lulcw:poolMember a owl:ObjectProperty ;
+    rdfs:domain lulcw:GaugePool ; rdfs:range lulcw:RiverGauge ;
+    rdfs:label "pool member"@en , "station de l'ensemble"@fr ;
+    skos:definition "A gauge that belongs to a gauge pool."@en .
+lulcw:usesGaugePool a owl:ObjectProperty ;
+    rdfs:domain lulcw:DerivationRule ; rdfs:range lulcw:GaugePool ;
+    rdfs:label "uses gauge pool"@en , "utilise l'ensemble de stations"@fr ;
+    skos:definition "The gauge pool a rule draws the gauges it connects from."@en .
+lulcw:inDocument a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:DocumentPassage ; rdfs:range lulcw:Document ;
+    rdfs:label "in document"@en , "dans le document"@fr ;
+    skos:definition "The document a passage is taken from."@en .
+lulcw:statedMechanism a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ExchangeStatement ; rdfs:range lulcw:Mechanism ;
+    rdfs:label "stated mechanism"@en , "mécanisme énoncé"@fr ;
+    skos:definition "The mechanism an exchange statement is about (river exchange, canal return flow, vertical leakage)."@en .
+lulcw:aboutSection a owl:ObjectProperty ;
+    rdfs:domain lulcw:ExchangeStatement ; rdfs:range lulcw:RiverSection ;
+    rdfs:label "about section"@en , "porte sur le secteur"@fr ;
+    skos:definition "The river section an exchange statement is about, when the source delimits it."@en .
+lulcw:aboutWatercourse a owl:ObjectProperty ;
+    rdfs:domain lulcw:ExchangeStatement ; rdfs:range lulcw:Watercourse ;
+    rdfs:label "about watercourse"@en , "porte sur le cours d'eau"@fr ;
+    skos:definition "The watercourse an exchange statement is about. Without lulcw:aboutSection, the source does not delimit the stretch, and the statement is listed for the watercourse but never applied to a zone."@en .
+lulcw:aboutUnit a owl:ObjectProperty ;
+    rdfs:domain lulcw:ExchangeStatement ; rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "about unit"@en , "porte sur l'entité"@fr ;
+    skos:definition "A hydrogeological unit an exchange statement is about, as identified by lulcw:unitMapping."@en .
+lulcw:unitMapping a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ExchangeStatement ; rdfs:range lulcw:UnitMapping ;
+    rdfs:label "has unit mapping"@en , "a pour correspondance d'entité"@fr ;
+    skos:definition "How the statement's units were identified in the BD LISA release."@en .
+lulcw:exchangeDirection a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ExchangeStatement ; rdfs:range lulcw:ExchangeDirection ;
+    rdfs:label "has exchange direction"@en , "a pour sens d'échange"@fr ;
+    skos:definition "The direction the statement gives, at its state or period."@en .
+lulcw:hedging a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ExchangeStatement ; rdfs:range lulcw:Hedging ;
+    rdfs:label "has hedging"@en , "a pour modalité"@fr ;
+    skos:definition "Whether the source states or hedges the finding."@en .
+lulcw:associationType a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:RiverUnitAssociation ; rdfs:range lulcw:AssociationType ;
+    rdfs:label "has association type"@en , "a pour type d'association"@fr ;
+    skos:definition "How the watercourse relates to the unit in the zone."@en .
+lulcw:associationWatercourse a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:RiverUnitAssociation ; rdfs:range lulcw:Watercourse ;
+    rdfs:label "associated watercourse"@en , "cours d'eau associé"@fr ;
+    skos:definition "The watercourse of a river-unit association."@en .
+lulcw:associationUnit a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "associated unit"@en , "entité associée"@fr ;
+    skos:definition "The unit (the one the well is attributed to) of a river-unit or canal-unit association."@en .
+lulcw:coverUnit a owl:ObjectProperty ;
+    rdfs:domain lulcw:RiverUnitAssociation ; rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "cover unit"@en , "entité de couverture"@fr ;
+    skos:definition "A unit mapped above the associated unit under the reaches of an over-cover association: exchange with the river passes through it."@en .
+lulcw:applicableStatement a owl:ObjectProperty ;
+    rdfs:range lulcw:ExchangeStatement ;
+    rdfs:label "applicable statement"@en , "énoncé applicable"@fr ;
+    skos:definition "An exchange statement about the association's unit and about a section that holds reach pieces of the association's zone and watercourse (for a canal-unit association: a canal-return statement naming the unit)."@en .
+lulcw:candidateWatercourse a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:SurfaceWaterIntake ; rdfs:range lulcw:Watercourse ;
+    rdfs:label "candidate watercourse"@en , "cours d'eau candidat"@fr ;
+    skos:definition "The watercourse nearest to an intake's declared position within the matching tolerance: the river it probably draws from, a geometric candidate, not a declared source."@en .
+lulcw:intakeMember a owl:ObjectProperty ;
+    rdfs:domain lulcw:CanalIntakeGroup ; rdfs:range lulcw:SurfaceWaterIntake ;
+    rdfs:label "intake member"@en , "prise membre"@fr ;
+    skos:definition "An intake whose declared volume is part of a canal intake group's series."@en .
+lulcw:hasVolumeSeries a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:CanalIntakeGroup ; rdfs:range lulcw:ObservationSeries ;
+    rdfs:label "has volume series"@en , "a pour série de volumes"@fr ;
+    skos:definition "Links a canal intake group to its weekly volume series kept outside the graph."@en .
+
+lulcw:bdCarthageCode a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:string ;
+    rdfs:label "BD Carthage code"@en , "code BD Carthage"@fr ;
+    skos:definition "The Sandre generic code of a watercourse (BD Carthage), e.g. Y04-0400."@en .
+lulcw:bdtopoId a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:string ;
+    rdfs:label "BD TOPO identifier"@en , "identifiant BD TOPO"@fr ;
+    skos:definition "The BD TOPO identifier (cleabs) of a hydrographic reach."@en .
+lulcw:reachNature a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:HydrographicReach ; rdfs:range xsd:string ;
+    rdfs:label "reach nature"@en , "nature du tronçon"@fr ;
+    skos:definition "The BD TOPO nature of a reach, as recorded (e.g. 'Ecoulement naturel', 'Canal', 'Retenue-barrage')."@en .
+lulcw:onMainNetwork a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:HydrographicReach ; rdfs:range xsd:boolean ;
+    rdfs:label "on main flowing network"@en , "sur le réseau principal coulant"@fr ;
+    skos:definition "BD TOPO's flag reseau_principal_coulant: the reach belongs to the main flowing network."@en .
+lulcw:onMainStem a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:RiverReach ; rdfs:range xsd:boolean ;
+    rdfs:label "on main stem"@en , "sur le cours principal"@fr ;
+    skos:definition "The reach belongs to the main stem computed for its watercourse (src/kg/rivers.py): the longest path of the watercourse's flow network, main-network reaches first."@en .
+lulcw:persistence a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:HydrographicReach ; rdfs:range xsd:string ;
+    rdfs:label "persistence"@en , "persistance"@fr ;
+    skos:definition "BD TOPO's persistence of the flow in a reach, as recorded (e.g. 'Permanent', 'Intermittent')."@en .
+lulcw:chainageFromM a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:double ;
+    rdfs:label "chainage from (m)"@en , "abscisse de début (m)"@fr ;
+    skos:definition "Distance in metres along the watercourse's main stem, from its upstream end, of the upstream end of a main-stem reach or of a river section."@en .
+lulcw:chainageToM a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:double ;
+    rdfs:label "chainage to (m)"@en , "abscisse de fin (m)"@fr ;
+    skos:definition "Distance in metres along the watercourse's main stem, from its upstream end, of the downstream end of a main-stem reach or of a river section."@en .
+lulcw:chainageM a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:double ;
+    rdfs:label "chainage (m)"@en , "abscisse (m)"@fr ;
+    skos:definition "Distance in metres along the watercourse's main stem, from its upstream end, of the point of the stem nearest to a gauge."@en .
+lulcw:offsetFromStemM a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:double ;
+    rdfs:label "offset from the main stem (m)"@en , "distance au cours principal (m)"@fr ;
+    skos:definition "Horizontal distance in metres from a gauge to its watercourse's main stem."@en .
+lulcw:mainStemLengthM a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:Watercourse ; rdfs:range xsd:double ;
+    rdfs:label "main stem length (m)"@en , "longueur du cours principal (m)"@fr ;
+    skos:definition "Length in metres of the computed main stem of a watercourse inside the département box of the BD TOPO extract."@en .
+lulcw:pieceLengthM a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:ReachPiece ; rdfs:range xsd:double ;
+    rdfs:label "piece length (m)"@en , "longueur de la portion (m)"@fr ;
+    skos:definition "Length in metres of a reach piece (Lambert-93)."@en .
+lulcw:wfdCode a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:SurfaceWaterBody ; rdfs:range xsd:string ;
+    rdfs:label "WFD water-body code"@en , "code européen de masse d'eau"@fr ;
+    skos:definition "European code of a WFD water body (CdEuMasseDEau), e.g. FRDR224."@en .
+lulcw:gaugeCode a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:RiverGauge ; rdfs:range xsd:string ;
+    rdfs:label "gauge code"@en , "code de la station"@fr ;
+    skos:definition "Hub'Eau hydrometric station code (code_station), e.g. Y047403001."@en .
+lulcw:localInfluenceCode a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:RiverGauge ; rdfs:range xsd:integer ;
+    rdfs:label "local influence code"@en , "code d'influence locale"@fr ;
+    skos:definition "The Hub'Eau code for how strongly local works and withdrawals influence the flow at the station (influence_locale_station), as recorded; its labels are the producer's, and a missing code stays missing."@en .
+lulcw:localInfluenceComment a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:RiverGauge ; rdfs:range xsd:string ;
+    rdfs:label "local influence comment"@en , "commentaire sur l'influence locale"@fr ;
+    skos:definition "The producer's comment on the local influences at a station, as recorded (e.g. dam releases and canal withdrawals upstream)."@en .
+lulcw:observedTrainingWeeks a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:ObservationSeries ; rdfs:range xsd:integer ;
+    rdfs:label "observed training weeks"@en , "semaines observées de l'apprentissage"@fr ;
+    skos:definition "Number of weeks of the training period (2005 to 2019) with an observed value in a series; the model inputs fill the others outside the graph."@en .
+lulcw:trainingWeeks a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:ObservationSeries ; rdfs:range xsd:integer ;
+    rdfs:label "training weeks"@en , "semaines de l'apprentissage"@fr ;
+    skos:definition "Number of weeks of the training period (2005 to 2019) in the dataset's weekly calendar, the denominator of lulcw:observedTrainingWeeks."@en .
+lulcw:alongRiverDistanceM a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:GaugeZoneRelation ; rdfs:range xsd:double ;
+    rdfs:label "distance along the river (m)"@en , "distance le long du cours d'eau (m)"@fr ;
+    skos:definition "Distance in metres along the main stem from a gauge to the nearest main-stem piece of the zone (0 when the gauge lies along the zone's stretch)."@en .
+lulcw:sourceUrl a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:anyURI ;
+    rdfs:label "source URL"@en , "URL de la source"@fr ;
+    skos:definition "The address a document or release was retrieved from."@en .
+lulcw:md5 a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:string ;
+    rdfs:label "MD5 checksum"@en , "somme MD5"@fr ;
+    skos:definition "MD5 checksum of the local copy of a document, in hexadecimal."@en .
+lulcw:pageLabel a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:DocumentPassage ; rdfs:range xsd:string ;
+    rdfs:label "page"@en , "page"@fr ;
+    skos:definition "The printed page (or sheet page) of a passage, as the document numbers it."@en .
+lulcw:quote a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:DocumentPassage ; rdfs:range xsd:string ;
+    rdfs:label "quote"@en , "citation"@fr ;
+    skos:definition "A short verbatim quote of the passage, in the document's language."@en .
+lulcw:unitAsNamed a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:ExchangeStatement ; rdfs:range xsd:string ;
+    rdfs:label "unit as named"@en , "entité telle que nommée"@fr ;
+    skos:definition "How the source names the unit or groundwater body the statement is about, verbatim."@en .
+lulcw:stateDescription a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:ExchangeStatement ; rdfs:range xsd:string ;
+    rdfs:label "state described"@en , "état décrit"@fr ;
+    skos:definition "The hydrological state or scale the statement holds for, in words (e.g. 'low flow, at the scale of the water body'; 'irrigation season, 11-13 September 2017')."@en .
+lulcw:periodStart a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:date ;
+    rdfs:label "period start"@en , "début de la période"@fr ;
+    skos:definition "First day of the period a dated statement observed (an xsd:date literal); absent for a statement about a typical state."@en .
+lulcw:periodEnd a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:date ;
+    rdfs:label "period end"@en , "fin de la période"@fr ;
+    skos:definition "Last day of the period a dated statement observed (an xsd:date literal)."@en .
+lulcw:fluxM3s a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:ExchangeStatement ; rdfs:range xsd:double ;
+    rdfs:label "flux (m³/s)"@en , "flux (m³/s)"@fr ;
+    skos:definition "The exchange flux the statement gives, in cubic metres per second, positive in the stated direction."@en .
+lulcw:fluxUncertaintyM3s a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:ExchangeStatement ; rdfs:range xsd:double ;
+    rdfs:label "flux uncertainty (m³/s)"@en , "incertitude du flux (m³/s)"@fr ;
+    skos:definition "The plus-or-minus uncertainty the source gives for the flux, in cubic metres per second."@en .
+lulcw:lengthOnOutcropM a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:double ;
+    rdfs:label "length on outcrop (m)"@en , "longueur sur l'affleurement (m)"@fr ;
+    skos:definition "Total length in metres of the association's reach pieces that run on polygons where its unit is at outcrop."@en .
+lulcw:lengthOverCoverM a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:RiverUnitAssociation ; rdfs:range xsd:double ;
+    rdfs:label "length over cover (m)"@en , "longueur sur la couverture (m)"@fr ;
+    skos:definition "Total length in metres of the association's reach pieces that run on polygons where its unit lies below other units."@en .

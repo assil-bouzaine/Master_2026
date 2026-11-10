@@ -31,6 +31,7 @@ explains the whole project with pictures (open it in a browser).
 | 12c | Review and strengthen all 16 competency questions | documentation complete (2026-10-24); query/fixture implementation remains Phase 3 work | [step12c_competency_review.md](step12c_competency_review.md) |
 | 12d | Land-use thread after the Codex subject-alignment review: annual RPG 2015–2025, harmonised crop classes with FAO-56 Kc, pre-registered land-use test | in progress (2026-10-25: annual RPG on the département extent, crop classes, crop-thirst index with placebo, pumping reconstruction (3), size and registration checks, land-use test coded; second Codex review answered: run identity, frozen variant, snapshot check; the land-use test (LU-4) pushed to Kaggle on 2026-10-25 evening with same-machine control runs; LU-4 scored on 2026-10-26: no detectable information from the crop-thirst index, main contrast on vs none chosen before the pull) | [step12d_land_use.md](step12d_land_use.md) |
 | 12 | Phase 3: ontology and knowledge graph | in progress (six MUST CQs approved; all 16 contracts revised; 12.3 attribution done; 12.4 ontology module 0.1.0 with quality gates; 12.5 knowledge graph filled from the tables, ontology 0.1.1, 2026-10-24; 12.6 rules and shape checks for the layer, well and pump links, ontology 0.2.0, then land use inside the graph (crop codes, classes, clipped areas, demand estimates, dated high-demand categories), ontology 0.3.0, 2026-10-25; validation 26 min → 134 s and doubles stored exactly, 2026-10-26; 12.7 CQ queries: 7 of the 9 MUST (CQ1, 2, 3, 7, 8, 11, 12) with status queries, fixtures and source-table oracles, 2026-10-26; CQ4 (weather cells over each unit's outcrop), graph releases, exact paired support and the Codex review of 2026-10-26 answered, 2026-10-27; CQ4 increment 2: recharge proxies as influences (cell → well, effective rainfall standing in for recharge, the omitted pathways named), ontology 0.5.0, 2026-10-27; CQ5 and CQ6: rivers, gauges, canals and quoted exchange statements, river and canal influences for arm D (35 wells with a river edge, 5 with a canal edge), ontology 0.6.1, 2026-11-06) | [step12_ontology.md](step12_ontology.md) |
+| 13 | Review of 2026-11-10; model ladder, rungs 1–2 (response superposition for all wells, signs by construction) | code and tests done 2026-11-10; runs on Kaggle, not pulled yet | [step13_ladder.md](step13_ladder.md) |
 
 Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 
@@ -38,6 +39,11 @@ Steps 2–3 of the roadmap (reading/literature) are not part of this rebuild.
 
 | Term | Meaning |
 |---|---|
+| Equifinality | Many different parameter sets fit the same data equally well. The fit cannot tell them apart, so what the model says outside the fitted period depends on which one the optimiser happened to find. |
+| Model ladder | The main model built in steps, each adding one ingredient (joint fitting, sharing by aquifer group, knowledge-graph features, routing, message passing), so that each comparison has one explanation. |
+| Partial pooling | Each well has its own parameters, pulled towards the average of its group. Between "every well alone" and "one model for all". |
+| Log RMSE ratio | log(error of model a / error of model b) for one well. Negative means a is better; −0.05 is about 5 % less error. The primary measure of a contrast since 2026-11-10. |
+| Same-arm band | The difference between two halves of the same model's training runs. It shows how much of a difference training noise alone produces. |
 | **Piezometer** | A borehole used only to measure the water-table level (not to pump). Our target variable comes from these. |
 | **Nappe / aquifer** | Underground rock or sediment layer that stores and transmits water. |
 | **BSS code** | Banque du Sous-Sol identifier, the national ID of every French borehole (e.g. `BSS002LXXX`). |

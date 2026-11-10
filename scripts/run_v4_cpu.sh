@@ -37,6 +37,19 @@ for s in $STEPS; do
                   $PY -m src.models.tune --model lstm --final-only --land-use placebo &&
                   $PY -m src.models.tune --model lstm --final-only --land-use wide &&
                   $PY -m src.models.tune --model lstm --final-only --land-use frozen ;;
+    ladder)       # rungs 1-2 of the model ladder (analysis plan §14 item 18): 10 starts each,
+                  # four runs at a time, one thread per run
+                  ( export PFE_THREADS=1; R="$PY -m src.models.response"
+                    $R --mode free --run resp_free &
+                    $R --mode shared --run resp_shared &
+                    $R --mode pooled --lam 0.01 --run resp_pooled_l001 &
+                    $R --mode pooled --lam 0.1 --run resp_pooled_l01 &
+                    wait
+                    $R --mode pooled --lam 1 --run resp_pooled_l1 &
+                    $R --mode pooled --lam 10 --run resp_pooled_l10 &
+                    $R --mode free --amax 104 --kernel-weeks 520 --run resp_free_a104 &   # sensitivity
+                    $R --mode free --recharge pe --run resp_free_pe &                     # sensitivity
+                    wait ) ;;
     final:*)      $PY -m src.models.tune --model "${s#final:}" --final-only ;;   # v3 choice
     regimes:*)    $PY -m src.models.regimes --model "${s#regimes:}" ;;
     *)            echo "unknown step $s" ;;

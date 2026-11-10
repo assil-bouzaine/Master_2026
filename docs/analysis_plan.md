@@ -541,7 +541,7 @@ Decided by Assil after the second external review; reasons and checks in
    harder twin.
 9. §11 freeze tag and confirmation check; §12 wording.
 
-## 14. Amendments before the tag (2026-10-24 to 2026-11-06)
+## 14. Amendments before the tag (2026-10-24 to 2026-11-10)
 
 After the third review (`docs/review_codex_2026-10-24.md`); verdicts and checks in
 `docs/review_codex_2026-10-24_response.md`. Items 1–4 and 9–11 were decided by Assil
@@ -869,3 +869,69 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       split; the blind second annotations and their adjudication are kept, and the 30-code
       subset's agreement is not generalised to all 198 codes; the result is named an
       "RPG-to-AGROVOC concept and code alignment benchmark".
+18. **After the review of 2026-11-10 (`fable_review.md`; read-only checks on the saved v4 tables, its
+    Appendix A). Assil, the same day, after Claude listed five recommended decisions and proposed to
+    leave the others for Gate 3: "okay start working and u have the permission to do anything". Claude
+    reads this as the approval of the five points below (Claude's reading; Assil may still change any
+    of them before the tag). No Phase 4 result exists; everything here is fixed before the first ladder
+    run is scored.**
+    - *Why.* (a) The same tuned model trained on other seeds moves the median paired drought ΔNSE
+      by up to 0.12 (two seeds per side; about 0.03 typical and 0.08 at worst for five per side, by
+      extrapolation), which is larger than the effects measured so far (land use +0.016 and +0.001,
+      machine −0.032). (b) With 14 clusters, a uniform gain must reach about 0.05–0.10 NSE to be
+      detected between two arms of one backbone, and 0.25–0.5 if the arms differ as much as today's
+      two graph models. (c) ΔNSE and Δskill have the same sign in every well (the same MSE
+      difference under two scalings). (d) In the Pastas multistart the recharge parameters are stable
+      across starts while the pumping and canal responses are not (time scales differing tenfold, at
+      the 27-year bound), and a well's training NSE says little about its drought NSE (rank
+      correlation across starts 0.19): the superposition structure is not identified per well.
+    - *Primary effect measure of the Phase 4 contrasts (§1, §6, §10).* For each contrast, the
+      per-well **log(RMSE_a / RMSE_b) in the drought phase** on the same well-weeks (negative: a is
+      better): median, cluster-bootstrap interval, cluster sign-flip test. Median NSE, skill, KGE''
+      and RMSE of each model stay in every table as descriptions. The Holm families of §10 become
+      RQ1 = {B vs A, D vs C} and RQ2 = {soft vs none, hard vs none}, one test each (two per
+      family instead of four). The baseline report keeps its NSE and skill tests (exploratory,
+      already published in the notes). ❓ Gate 3: the smallest effect of interest (proposed: a
+      median RMSE reduction of 5 %, log ratio −0.05), so that a contrast is reported as detected,
+      compatible with no effect larger than the interval's end, or undecided.
+    - *Seed controls (§6).* The primary arms use **10 seeds**. Each primary contrast is shown with
+      its **same-arm band**: the distribution of the contrast statistic between random disjoint
+      5-seed means of one arm (both arms, pooled). A difference inside the band is reported as
+      not distinguishable from training noise, whatever its p-value. The arms of a contrast are
+      trained on one machine type.
+    - *Model ladder (§10; refines the experiment contract of 2026-10-24, does not replace arms A–F).*
+      The hybrid is built in rungs, each adding one ingredient: (1) the response superposition for
+      all wells together, per-well parameters, signs by construction, bounded kernels
+      (`src/models/response.py`, mode free); (2) partial pooling towards the aquifer group (mode
+      pooled, penalty λ), with one response per group as the other end (mode shared);
+      (3) parameters predicted from static and KG features, no message passing (control 1 of §10);
+      (4) stresses routed by the KG edges or by the distance rule on the same model: **the primary
+      form of D vs C**; (5) message passing over the well links, secondary. Each rung with and
+      without the bounded residual once it exists. ❓ Gate 3 confirms rungs 3–5 and the routing
+      contrast as primary.
+    - *Rungs 1–2, protocol (fixed 2026-11-10, before any run).* Inputs of the Pastas reference
+      (weather of the well's cell, seasonal drinking-water pumping within 3 km, plain canal volume),
+      weekly. Gamma kernels on 312 weeks, scale a in (0.5, 52) weeks, shape n in (0.5, 3), gains
+      signed by softplus, evaporation factor in (0, 1.5); loss = mean over wells of MSE / sd² on
+      training weeks; Adam, learning rate 0.05, at most 4,000 steps, early stopping on the median
+      validation NSE of the core wells (checked every 20 steps, patience 15 checks); 10 starts
+      (seeds 0–9; starting values drawn around the defaults, sd 0.5 on the unconstrained scale).
+      Runs: free, shared, pooled with λ in {0.01, 0.1, 1, 10}; the pooled run reported is the one
+      with the best validation median NSE of its 10-start mean. Two sensitivity runs of the free
+      mode: a up to 104 weeks on 520 weeks; SIM2 effective rainfall instead of rain − f·ETP.
+      Reported for every run and for the Pastas multistart beside it: drought and validation scores
+      of the mean prediction and of the single starts; **stability across starts**: per core well,
+      the range of the drought NSE; per parameter, (max − min) / |median|; per stress, the sd across
+      starts of the mean contribution over the drought phase, in units of the well's training sd.
+      Label: exploratory (development benchmark), like every baseline result.
+    - *The twin's role (§10).* Besides RQ3, the twin carries RQ1–RQ2 with power: C against D, and
+      constraints off / soft / hard, over many synthetic worlds that vary the between-year pumping
+      signal against the noise, the share of wrong pump links given to the learner and the share of
+      unattributed pumping; the real data are placed on that map. The dials and the grid are
+      written here before any real-data arm is scored (to add with the twin's design).
+    - *Ontology.* Feature-frozen at 0.7.x: only what the export (12.8) needs, the INSPIRE alignment
+      file and defect fixes. CQ9, 13, 14, 16 stay minimal fixtures or future work (to state at Gate 3).
+    - *Left for Gate 3 (not approved):* the pumping structure of `fable_review.md` §6.2, the Pastas
+      sensitivity rows (recharge only, capped time scales, start chosen on validation: post hoc),
+      EuroCrops as a second alignment benchmark, text extraction scored against the 32 curated
+      statements, Chronos-2 and the forecast task in the thesis only, a time-reversed second test.

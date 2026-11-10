@@ -1576,3 +1576,93 @@ rejected.
   release; the HeteroData adapter where PyG is installed, i.e. on Colab or Kaggle), the per-regime
   depth threshold from each regime's training heads, the equivalence test against pandas, and a
   fixed-weight forward pass compared between the two.
+
+## 2026-11-10: the INSPIRE alignment; 12.8, step 2: the export and its equivalence test
+
+### Recurring check (CLAUDE.md §7)
+1. *Chain link advanced:* knowledge → model. The graph's answers are now tables a model can load.
+2. *Dated land use:* none in these tables (no command areas; the crop-demand index is a per-well
+   feature, not an edge).
+3. *Observed / inferred / assumed / unknown:* every D edge is a selected influence of the release
+   (inferred by the rules from recorded attributions and maps); the distance weights are assumed and
+   the same in both arms; a well without a documented link has no edge (unknown stays unknown).
+4. *Evidence vs plan:* the tables and their test exist; no model has read them yet.
+5. *Next model experiment:* rung 4 of the ladder (the response model with pumping routed by C's or by
+   D's edges), on the twin first.
+6. *Missing from the subject:* unchanged; INSPIRE is now covered for hydrogeology, HILUCS not yet.
+
+### What was done
+
+**INSPIRE alignment** (the subject names INSPIRE; allowed under the feature freeze, analysis plan §14
+item 18). INSPIRE publishes its hydrogeology concepts as register items, not as an OWL ontology, so
+the local copy `ontology/imports/inspire_terms.ttl` is written by hand: each concept keeps its
+register IRI and its definition, read on 2026-11-10 from `<id>/<name>.en.json` (status Valid; a
+made-up name returns 404). `ontology/alignments/lulcw-inspire.ttl` holds six close matches:
+
+| lulcw class | INSPIRE feature concept | Why only a close match |
+|---|---|---|
+| `HydrogeologicalUnit` | `HydrogeologicalUnit` | ours is one national reference at one level |
+| `AlluvialAquifer`, `KarstAquifer` | `Aquifer` | INSPIRE requires usable extraction; karst is not a "layer" |
+| `MultilayerAquiferSystem` | `AquiferSystem` | BD LISA maps the Pliocene as one entity, not as its aquifers and aquitards |
+| `ConfiningUnit` | `Aquiclude` | "mapped as impermeable" is a map statement |
+| `GroundwaterBody` | `GroundWaterBody` | a WFD body is a management unit, not always hydraulically isolated |
+
+Three correspondences are recorded as **rejected** in the ledger: the confining unit as an
+`Aquitard` (that is BD LISA's semi-permeable nature 6), the multilayer system as a plain `Aquifer`,
+and `AbstractionFacility` as an `ActiveWell` (surface intakes are facilities too). `test_ontology`
+passes with 15 modules (22 asserted correspondences, 9 rejected). Adding a module changes the
+release's identity, so the rules and the validation were run again (release of 2026-11-10 10:14 UTC,
+no violation; `test_release`, `test_inventory` pass). HILUCS is a mapping of the crop classes, which
+are data: it belongs to `src/kg/landuse.py`, still to do.
+
+**The export** (`src/kg/export.py` → `data/processed/kg/export_v4_main/`): `nodes.parquet` (2,227
+nodes: 65 wells, 2,077 groundwater facilities, 79 weather cells, 5 gauges, 1 canal node),
+`edges_C.parquet`, `edges_D.parquet`, `manifest.json` (the release's hashes, the policy, the code
+version, counts, the core wells without each relation).
+
+| relation | arm C (distance rules) | arm D (knowledge graph, main policy) |
+|---|---|---|
+| pumping | 22,350 edges: every groundwater facility within 10 km, 65 wells | 434 edges, 43 wells (24 core); 416 eligible and constrained |
+| unattributed pumping | — | 6,136 facility-well pairs within 5 km: the explicit "unattributed" input |
+| recharge | 65: each well's own weather cell | 193 edges with outcrop weights, 54 wells (27 core); unit-wide sensitivity 960 edges, 59 wells |
+| river | 130: the 2 nearest pool gauges | 38 edges, 34 wells (23 core); 3 eligible, none constrained |
+| canal | 50: the wells of the plain | 5 edges, 5 wells (4 core); 2 eligible |
+| well links | 254 (3 nearest, symmetric) | 94 (same unit within 5 km), with their depth difference |
+
+The same functions of distance weight the edges in both arms (pumping exp(−d / 5 km), well links
+exp(−d / σ)), so the arms differ in which edges exist, not in how an edge is weighted. Several
+evidence paths between one driver and one well make one edge (it happens for three wells' river
+edges); it is eligible or constrained only if every path is.
+
+**The equivalence test** (`tests/test_export.py`, about 2 minutes). D's edge list is obtained three
+other ways and agrees each time: from the inventory (1,724 edges, the same sources, eligibility and
+depth-threshold counts); from whole-graph queries written in the test (195 well-relation pairs);
+and from **pandas rules on the source tables**, never on the graph's answers: the 416 exact-unit
+pumping edges from the attribution table and the BNPE points (distances within 0.5 m), the 1,153
+recharge edges with their weights from GeoPandas on BD LISA and the SAFRAN grid, and the unattributed
+pairs. Arm C is recomputed by brute force. River and canal edges rest on curated documents; their
+source-level oracle stays `tests.test_kg_rules.test_data_rivers`.
+
+### What the numbers mean
+
+- **The equivalence holds**, as the plan expected: plain tables with the same rules give the same
+  edges. The ontology is therefore credited with traceability, consistency and reuse, and any
+  accuracy gain with the knowledge itself.
+- **How much pumping the knowledge routes.** For a core well, the facilities D connects carry a
+  median **31 %** of the groundwater volume declared within 5 km (2012–2019 means); 9 of the 33 core
+  wells get none (the 6 karst wells among them); Pliocene wells 43 %, recent alluvium 3 %. Pooled
+  over the core wells: 51 Mm³/yr attributed against 99 unattributed. **All of the attributed volume
+  is drinking water** (36.9 Mm³/yr over the distinct facilities; irrigation 0), which is the
+  measured form of the 2026-10-24 decision to centre the story on drinking-water pressure.
+- **C sees far more than D.** C connects a median 14–19 Mm³/yr within 10 km to a well; D about 2
+  attributed, plus the unattributed input within 5 km. A D vs C result is a contrast of two whole
+  connection policies (item 15), and this table must be shown beside it.
+
+### What to consider
+- Not done in this step: the tensors (node features over time), the per-regime depth threshold, the
+  fixed-weight forward pass compared between the two derivations, arms E and F (drawn from these
+  tables when the arms run), the PyG `HeteroData` adapter (where PyG is installed).
+- The distance weights are a modelling assumption shared by the arms; a sensitivity without weights
+  is cheap once rung 4 exists.
+- `scripts/kaggle_cpu.py pull` downloads every earlier run again each time (over 1,400 small files
+  before it reaches the new ones): worth restricting the kernel's output to what is new.

@@ -528,6 +528,42 @@ notebooks/       exploration only; anything that matters moves into src/
 
 ### ▶ Where we are (read this first in a new session)
 
+**2026-11-10: Fable review adopted in part; the model ladder started. START HERE.**
+Review: `fable_review.md` (repository root; read-only checks on the saved v4 tables). Assil the same
+day: "okay start working and u have the permission to do anything" (Codex is not working on the
+repository for now). Read as the approval of five points, written as analysis plan §14 **item 18**
+(the rest waits for Gate 3):
+1. ontology **feature-frozen at 0.7.x** (only what the export needs, the INSPIRE alignment file, fixes);
+2. the **model ladder**: rungs 1–2 = `src/models/response.py` (free / pooled / shared), then
+   parameters from KG features, then routing C vs D (the primary form of D vs C), then message passing;
+3. primary effect measure of Phase 4 = per-well **log RMSE ratio** in the drought (NSE and skill stay
+   as descriptions; two tests per Holm family);
+4. **10 seeds** for the primary arms and a same-arm band beside every primary contrast;
+5. the **twin carries RQ1–RQ2** (a map over pumping signal, wrong links, unattributed share), besides RQ3.
+
+State at the end of the session of 2026-11-10 (update this list when it changes):
+- Everything is committed and **pushed** (origin was 109 commits behind until that day).
+- **Kaggle kernel `assilbouzaine/pfe-v4-cpu`, steps `ladder`** (pushed 2026-11-10): 8 runs × 10 starts
+  (`resp_free`, `resp_shared`, `resp_pooled_l001/_l01/_l1/_l10`, `resp_free_a104`, `resp_free_pe`).
+  When it has finished: `.venv/bin/python scripts/kaggle_cpu.py status`, then `pull` (copies to
+  `results/v4/resp_*` and scores), then `PFE_DATASET=v4 .venv/bin/python -m src.analysis.ladder_report`
+  → `docs/results_ladder_v4.md`. If the kernel stopped at its budget, `push --steps "ladder"` again
+  (finished starts are skipped).
+- `python -m tests.test_response` passes (kernels, causality, exact decomposition, signs, sharing,
+  recovery on a toy set).
+- 30 open-access papers are in `Articles/to_read/` (gitignored). Still to get, by Assil (paywall or
+  blocked download): Schorpp 2023, Shapoori 2015, Brodaric 2018, Bazzi 2019, the Lanini abstract
+  (HAL), Chu 2026, Jeong 2026 and the others of the list given in the session.
+- Step note: `docs/notes/step13_ladder.md`.
+
+**Next, in order:** (1) pull and report the ladder; choose the pooled λ on validation; (2) the export
+proper (12.8: node and edge tables of C–F, equivalence test) and a two-well path through
+`response.py` with KG routing (rung 4); (3) the small twin with its dials (write them into the
+analysis plan first); (4) INSPIRE alignment file + ledger rows, OOPS!, term-usage audit;
+(5) `paper/` skeleton. **Assil:** the three e-mails (`docs/supervisor_questions.md` §4–6), the Earth
+Engine registration, the w3id redirect request, the Drive download of Colab session 2, the paywalled
+papers; the Gate 3 points of item 18.
+
 **2026-10-23, 16:30: second external review (codex) adopted.** Review in
 `docs/review_codex_2026-10-23.md`; Claude checked every number in it against
 the data (all confirmed). Assil decided the same day:

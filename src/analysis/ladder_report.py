@@ -31,11 +31,17 @@ RUNS = {"resp_free": "free (per-well parameters)",
         "resp_pooled_l1": "pooled, λ = 1", "resp_pooled_l10": "pooled, λ = 10",
         "resp_shared": "shared (one response per aquifer group)",
         "resp_free_a104": "free, time scale up to 104 weeks (sensitivity)",
-        "resp_free_pe": "free, SIM2 effective rainfall as recharge (sensitivity)"}
+        "resp_free_pe": "free, SIM2 effective rainfall as recharge (sensitivity)",
+        "resp_free_split": "free, permanent + seasonal pumping (sensitivity)",
+        "resp_pooled_split": "pooled (chosen λ), permanent + seasonal pumping (sensitivity)"}
+# Caballero & Ladouche 2015 (doi:10.5194/hessd-12-10109-2015), Table 1: mean transit time of the
+# recharge response (days) at two of our core wells; maximum response to seasonal pumping 75 days
+# after pumping starts (analysis plan §14 item 18, comparator fixed before any result was read)
+BRGM = {"10908X0263/FIGUER": ("Perpignan", 89), "10972X0137/PONT": ("Argelès", 220)}
+BRGM_PUMP_DAYS = 75
 REFERENCE = "pastas_seasonal_canal_trainobs_beststart"
 PASTAS_STARTS = [f"pastas_seasonal_canal_trainobs_start{k}" for k in range(10)]
 COMPARE = {REFERENCE: "Pastas reference", "lstm_tuned": "LSTM tuned (5 seeds)"}
-STRESSES = ("recharge", "pumping", "canal")
 N_BAND = 200
 
 
@@ -115,15 +121,33 @@ def response_stability(run, core, sd_train):
     for f in sorted((RESULTS / run).glob("contrib_seed_*.parquet")):
         c = pd.read_parquet(f)
         c = c[(c["week"] >= a) & (c["week"] <= b) & c["code_bss"].isin(core)]
-        means[int(f.stem.split("_")[-1])] = c.groupby("code_bss")[list(STRESSES)].mean()
+        names = [k for k in c.columns if k not in ("code_bss", "week")]
+        means[int(f.stem.split("_")[-1])] = c.groupby("code_bss")[names].mean()
     if len(means) > 1:
-        for s in STRESSES:
+        for s in names:
             t = pd.DataFrame({k: v[s] for k, v in means.items()}).div(sd_train, axis=0)
             out[f"contribution {s}: size"] = t.mean(1).abs().median()
             out[f"contribution {s}: sd over starts"] = t.std(1).median()
             out[f"contribution {s}: wells with sd < half the size"] = float(
                 (t.std(1) < 0.5 * t.mean(1).abs()).mean())
     return out
+
+
+def comparator(run):
+    """Per BRGM well: learned mean lag of the recharge response and lag of the largest weight of
+    the (seasonal) pumping response, in days: median [min, max] over the starts."""
+    rows = []
+    params = [pd.read_csv(f).set_index("code_bss") for f in sorted((RESULTS / run).glob("params_seed_*.csv"))]
+    pump = "pumping_seasonal" if "a_pumping_seasonal_wk" in params[0] else "pumping"
+    q = lambda v: (float(np.median(v)), float(np.min(v)), float(np.max(v)))  # noqa: E731
+    for code, (place, tm) in BRGM.items():
+        if code not in params[0].index:
+            continue
+        lag = [7 * p.loc[code, "mean_lag_recharge_wk"] for p in params]
+        peak = [7 * max((p.loc[code, f"n_{pump}"] - 1) * p.loc[code, f"a_{pump}_wk"], 0.0) for p in params]
+        rows.append((f"{RUNS[run]}, {place}", {"recharge mean lag, days": q(lag), "BRGM mean transit, days": tm,
+                                               "pumping peak lag, days": q(peak), "BRGM, days": BRGM_PUMP_DAYS}))
+    return rows
 
 
 def nse_range(per_start):
@@ -145,6 +169,8 @@ def contrast(ma, mb, wells):
 
 
 def fmt(v, nd=2):
+    if isinstance(v, tuple) and len(v) == 3:
+        return f"{fmt(v[0], nd)} [{fmt(v[1], nd)}, {fmt(v[2], nd)}]"
     if isinstance(v, tuple):
         return "[" + ", ".join(fmt(x, nd) for x in v) + "]"
     if isinstance(v, (int, np.integer)):
@@ -168,7 +194,7 @@ def main():
     present = [r for r in RUNS if (RESULTS / r / "predictions.parquet").exists()]
     if not present:
         raise SystemExit(f"no response run in {RESULTS}: pull the Kaggle kernel first")
-    scores, stab, contrasts, bands, mean_m = [], [], [], [], {}
+    scores, stab, contrasts, bands, mean_m, comp = [], [], [], [], {}, []
     for run in present:
         m = pd.read_csv(RESULTS / run / "metrics_per_well.csv")
         mean_m[run] = m
@@ -181,11 +207,13 @@ def main():
         stab.append((RUNS[run], nse_range(per_start) | response_stability(run, core, sd_train)))
         lo, hi, mx = band(frames, obs, wells, rng)
         bands.append((RUNS[run], {"band 2.5 %": lo, "band 97.5 %": hi, "largest |value|": mx}))
+        comp += comparator(run)
     pooled = [r for r in present if r.startswith("resp_pooled")]
     chosen = max(pooled, key=lambda r: per_well(mean_m[r], "validation").median()) if pooled else None
     ref_m = {r: pd.read_csv(RESULTS / r / "metrics_per_well.csv") for r in COMPARE
              if (RESULTS / r / "metrics_per_well.csv").exists()}
-    for run in [r for r in ("resp_free", chosen, "resp_shared") if r in present]:
+    for run in [r for r in ("resp_free", chosen, "resp_shared", "resp_free_split", "resp_pooled_split")
+                if r in present]:
         for ref, label in COMPARE.items():
             if ref in ref_m:
                 contrasts.append((f"{RUNS[run]} vs {label}", contrast(mean_m[run], ref_m[ref], wells)))
@@ -227,15 +255,21 @@ def main():
          "the starts. Spread of a parameter = (max − min) / |median| over the starts, median over "
          "wells. A stable model has small values.\n",
          table(stab + pastas_rows,
-               ["per-well drought NSE range over starts (median)", "spread gain_recharge",
-                "spread a_recharge_wk", "spread f", "spread gain_pumping", "spread a_pumping_wk",
-                "spread gain_canal", "spread a_canal_wk"]),
+               ["per-well drought NSE range over starts (median)"]
+               + list(dict.fromkeys(k for _, r in stab + pastas_rows for k in r
+                                    if k.startswith("spread ") and not k.startswith("spread n_")))),
          "\n### Contributions in the drought phase\n\nMean contribution of each stress over the drought "
          "weeks, in units of the well's training sd: its size (|mean over starts|) and its sd over the "
          "starts, medians over the core wells; and the share of wells whose sd is under half the size "
          "(a contribution that keeps its size whatever the start).\n",
-         table(stab, [f"contribution {s}: {k}" for s in STRESSES
-                      for k in ("size", "sd over starts", "wells with sd < half the size")]),
+         table(stab, list(dict.fromkeys(k for _, r in stab for k in r if k.startswith("contribution ")))),
+         "\n## Learned response times beside BRGM's (two core wells)\n\nCaballero & Ladouche 2015 "
+         "(doi:10.5194/hessd-12-10109-2015, Table 1) fitted a transfer model with measured monthly "
+         "pumping (1998–2007) at these two wells: mean transit time of the recharge response, and the "
+         "maximum response to seasonal pumping 75 days after pumping starts. Ours: median [min, max] "
+         "over the starts. A comparison with a published model, not with a measurement.\n",
+         table(comp, ["recharge mean lag, days", "BRGM mean transit, days", "pumping peak lag, days",
+                      "BRGM, days"], nd=0),
          "\n## Contrasts (primary effect measure of item 18)\n\nPer core well, log(RMSE_a / RMSE_b) in "
          "the drought phase; negative = a better. Interval = cluster bootstrap, p = cluster sign-flip "
          "(14 cells of 10 km), not adjusted: these contrasts are exploratory.\n",

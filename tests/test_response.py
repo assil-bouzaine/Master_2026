@@ -25,13 +25,15 @@ def toy_inputs(N=6, T=160, K=40, seed=0):
     X = {"rain": rng.gamma(0.4, 3.0, (N, T + K - 1)), "ETP": 1.5 + rng.random((N, T + K - 1)),
          "PE": rng.normal(0.3, 2.0, (N, T + K - 1)), "pump_gw": rng.gamma(2.0, 0.3, (N, T + K - 1)),
          "canal": np.repeat(rng.random((1, T + K - 1)), N, 0)}
+    X["pump_pp"] = np.repeat(X["pump_gw"].min(1, keepdims=True), T + K - 1, 1)
+    X["pump_sp"] = X["pump_gw"] - X["pump_pp"]
     return {k: v.astype(np.float32) for k, v in X.items()}
 
 
-def model(N=6, K=40, mode="free", seed=0, init_sd=1.0):
+def model(N=6, K=40, mode="free", seed=0, init_sd=1.0, pumping="sum"):
     g = torch.Generator().manual_seed(seed)
     return R.ResponseModel(np.arange(N) % 2, 2, mode, kernel_weeks=K, amax=20.0, init_sd=init_sd,
-                           generator=g)
+                           generator=g, pumping=pumping)
 
 
 def tt(X):
@@ -100,6 +102,44 @@ def test_signs():
                     else:
                         assert (sign * d >= -1e-5).all(), (name, kind, recharge, (sign * d).min())
                         assert (sign * d).max() > 0, (name, kind, recharge)
+
+
+def test_split_pumping():
+    """--pumping split: two pumping stresses, both with non-positive gains, each acting alone;
+    and panel_arrays' permanent part is constant within a calendar year, the two parts add up."""
+    N, T, K = 6, 160, 40
+    net, X = model(N, K, pumping="split", init_sd=1.5), toy_inputs(N, T, K)
+    assert net.names == ("recharge", "pumping_permanent", "pumping_seasonal", "canal")
+    gain = net.parameters_physical()[0]
+    assert (gain[:, 1] <= 0).all() and (gain[:, 2] <= 0).all()
+    with torch.no_grad():
+        base = net(tt(X)).numpy()
+        assert torch.allclose(net(tt(X)), net.d[:, None] + net.contributions(tt(X)).sum(1), atol=1e-5)
+    for name in ("pump_pp", "pump_sp"):
+        X2 = {k: v.copy() for k, v in X.items()}
+        X2[name][:, 70:] += 1.0
+        with torch.no_grad():
+            d = net(tt(X2)).numpy() - base
+        assert (d <= 1e-5).all() and d.min() < 0, name
+    X2 = {k: v.copy() for k, v in X.items()}
+    X2["pump_gw"] += 5.0                                  # the sum is not an input in this mode
+    with torch.no_grad():
+        assert np.abs(net(tt(X2)).numpy() - base).max() == 0.0
+    import pandas as pd
+    weeks = pd.date_range("2010-01-03", periods=120, freq="W")
+    rng = np.random.default_rng(0)
+    P = pd.DataFrame({"code_bss": np.repeat(["a", "b"], 120), "week": np.tile(weeks, 2),
+                      "split": "train", "core": True, "group": "g", "head": 1.0, "mu": 1.0, "sd": 1.0,
+                      "rain": 1.0, "ETP": 1.0, "PE": 0.0, "canal": 0.0,
+                      "pump_gw": rng.gamma(2.0, 50.0, 240)})
+    d = R.panel_arrays(P, kernel_weeks=10)
+    pp, sp, tot = (d["X"][k][:, 9:] for k in ("pump_pp", "pump_sp", "pump_gw"))
+    for y in (2010, 2011):
+        m = weeks.year == y
+        assert np.ptp(pp[:, m], axis=1).max() < 1e-6, "the permanent part moves within a year"
+        winter = m & np.isin(weeks.month, R.WINTER_MONTHS)
+        assert np.allclose(pp[:, m][:, 0], tot[:, winter].mean(1), atol=1e-5)
+    assert (sp >= 0).all() and np.allclose(sp, np.clip(tot - pp, 0, None), atol=1e-5)
 
 
 def test_sharing():

@@ -142,6 +142,29 @@ def test_split_pumping():
     assert (sp >= 0).all() and np.allclose(sp, np.clip(tot - pp, 0, None), atol=1e-5)
 
 
+def test_gain_units():
+    """--gain-units sd: the same raw parameters give contributions scaled by each well's sd, the
+    signs still hold, and a shared model then gives every well of a group the same response in
+    units of its own sd."""
+    N, K = 6, 40
+    scale = np.array([0.05, 0.1, 0.5, 1.0, 2.0, 5.0], dtype=np.float32)
+    g = torch.Generator().manual_seed(4)
+    a = R.ResponseModel(np.arange(N) % 2, 2, "shared", kernel_weeks=K, amax=20.0, init_sd=1.0, generator=g)
+    g = torch.Generator().manual_seed(4)
+    b = R.ResponseModel(np.arange(N) % 2, 2, "shared", kernel_weeks=K, amax=20.0, init_sd=1.0, generator=g,
+                        gain_scale=scale)
+    X = toy_inputs(N, 120, K)
+    with torch.no_grad():
+        ca, cb = a.contributions(tt(X)).numpy(), b.contributions(tt(X)).numpy()
+        gain = b.parameters_physical()[0].numpy()
+    assert np.allclose(cb, ca * scale[:, None, None], rtol=1e-5, atol=1e-7)
+    assert (gain[:, 0] >= 0).all() and (gain[:, 1] <= 0).all()
+    rel = gain / scale[:, None]
+    for grp in (0, 1):
+        m = np.arange(N) % 2 == grp
+        assert np.allclose(rel[m], rel[m][:1], rtol=1e-5)
+
+
 def test_sharing():
     net = model(mode="shared")
     assert not net.delta.requires_grad and net.delta.abs().sum().item() == 0.0

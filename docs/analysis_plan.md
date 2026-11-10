@@ -940,6 +940,21 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       constant within a year) and a *seasonal* part (the rest, not below 0), each with its own
       response and a non-positive gain; run in the free mode and in the pooled mode with the λ
       chosen above (`--pumping split`).
+    - *First results of rungs 1–2 (2026-11-10, `docs/results_ladder_v4.md`; exploratory) and the
+      follow-ups they led to, defined after those results were read and labelled so.* Read: the free
+      mode is better than the Pastas reference in the drought (median log RMSE ratio −0.15, interval
+      [−0.28, −0.06], outside its same-arm band of ±0.07) and worse than the tuned LSTM (+0.10); a
+      well's drought NSE still moves by a median 1.17 between starts, as in Pastas; pooling towards
+      the five aquifer groups steadies it (0.44 at λ = 0.1) and costs accuracy; one response per
+      group is poor (validation 0.11). Early stopping ends most starts after 140–330 steps, so the
+      spread over starts may partly be "stopped near the starting values". **Follow-up runs**
+      (step `ladder2`, 10 starts each; none replaces a run above): (a) *diagnostic:* free and
+      pooled λ = 0.1 trained for a fixed 3,000 steps without early stopping: if the spread over
+      starts stays, it is several optima; if it shrinks, it was the stopping; (b) the permanent +
+      seasonal pumping sensitivity defined above, free and pooled λ = 0.01; (c) *sharing in each
+      well's own units:* gains in units of the well's training sd (`--gain-units sd`), pooled with
+      λ in {0.01, 0.1, 1} and shared, because the heads of one group swing by centimetres at some
+      wells and metres at others. Reported in the same tables, in their own block.
     - *The twin's role (§10).* Besides RQ3, the twin carries RQ1–RQ2 with power: C against D, and
       constraints off / soft / hard, over many synthetic worlds that vary the between-year pumping
       signal against the noise, the share of wrong pump links given to the learner and the share of

@@ -50,6 +50,18 @@ for s in $STEPS; do
                     $R --mode free --amax 104 --kernel-weeks 520 --run resp_free_a104 &   # sensitivity
                     $R --mode free --recharge pe --run resp_free_pe &                     # sensitivity
                     wait ) ;;
+    ladder2)      # follow-ups of the first ladder results (analysis plan §14 item 18, 2026-11-10)
+                  ( export PFE_THREADS=1; R="$PY -m src.models.response"
+                    $R --mode free --fixed-steps 3000 --run resp_free_conv &                 # diagnostic
+                    $R --mode pooled --lam 0.1 --fixed-steps 3000 --run resp_pooled_l01_conv &
+                    $R --mode free --pumping split --run resp_free_split &                   # sensitivity
+                    $R --mode pooled --lam 0.01 --pumping split --run resp_pooled_split &
+                    wait
+                    $R --mode pooled --lam 0.01 --gain-units sd --run resp_pooled_sd_l001 &
+                    $R --mode pooled --lam 0.1 --gain-units sd --run resp_pooled_sd_l01 &
+                    $R --mode pooled --lam 1 --gain-units sd --run resp_pooled_sd_l1 &
+                    $R --mode shared --gain-units sd --run resp_shared_sd &
+                    wait ) ;;
     final:*)      $PY -m src.models.tune --model "${s#final:}" --final-only ;;   # v3 choice
     regimes:*)    $PY -m src.models.regimes --model "${s#regimes:}" ;;
     *)            echo "unknown step $s" ;;

@@ -36,6 +36,12 @@ doi:10.1111/gwat.12925), but written in PyTorch and fitted for every well at onc
   and October-December, constant within a year) and a seasonal part (the rest, not below 0),
   each with its own response and a non-positive gain. The permanent part only varies between
   years, which is the variation pumping effects may be claimed from (analysis plan §8).
+- --gain-units sd (follow-up of 2026-11-10): the gains are in units of each well's training sd
+  instead of metres, so that pooled or shared gains mean "the same share of the well's own
+  swing" (heads swing by centimetres at some wells and by metres at others; sharing gains in
+  metres within an aquifer group was poor). The saved gains and contributions stay in metres.
+- --fixed-steps N (diagnostic): no early stopping, N steps for every start: separates "starts
+  stopped early at different places" from "several optima" when reading the spread over starts.
 - Weeks before the first forcing week (2000) are filled with each input's training mean,
   as Pastas does.
 
@@ -111,7 +117,7 @@ class ResponseModel(nn.Module):
     """head anomaly (m) = d + sum of signed gains times kernel-smoothed stresses."""
 
     def __init__(self, group_of, n_groups, mode="free", kernel_weeks=KERNEL_WEEKS, amax=A_MAX,
-                 recharge="linear", init_sd=0.0, generator=None, pumping="sum"):
+                 recharge="linear", init_sd=0.0, generator=None, pumping="sum", gain_scale=None):
         super().__init__()
         if mode not in ("free", "pooled", "shared"):
             raise ValueError(mode)
@@ -119,6 +125,9 @@ class ResponseModel(nn.Module):
         self.names = STRESS_SETS[pumping]
         self.register_buffer("group_of", torch.as_tensor(group_of, dtype=torch.long))
         self.register_buffer("lag", torch.arange(self.K, dtype=torch.float32) + 0.5)
+        # metres per unit of gain: 1 (gains in metres) or the well's training sd (--gain-units sd)
+        self.register_buffer("gain_scale", torch.ones(len(group_of)) if gain_scale is None
+                             else torch.as_tensor(gain_scale, dtype=torch.float32))
         N, R = len(group_of), len(self.names)
         a0 = torch.tensor([_logit((math.log(INIT["a"].get(s, INIT["a_other"])) - math.log(A_MIN))
                                   / (math.log(self.amax) - math.log(A_MIN))) for s in self.names])
@@ -140,7 +149,7 @@ class ResponseModel(nn.Module):
         """gain (N, R) signed, m per unit stress; a (N, R) weeks; n (N, R); f (N,)."""
         p, R = self.raw(), len(self.names)
         sign = p.new_tensor([SIGN[s] for s in self.names])
-        gain = sign * Fn.softplus(p[:, :R])
+        gain = sign * Fn.softplus(p[:, :R]) * self.gain_scale[:, None]
         a = torch.exp(math.log(A_MIN) + torch.sigmoid(p[:, R:2 * R])
                       * (math.log(self.amax) - math.log(A_MIN)))
         n = N_MIN + torch.sigmoid(p[:, 2 * R:3 * R]) * (N_MAX - N_MIN)
@@ -211,7 +220,8 @@ def panel_arrays(P, kernel_weeks=KERNEL_WEEKS):
 
 def train_seed(seed, data, mode, lam=0.0, steps=4000, lr=0.05, patience=15, eval_every=20,
                kernel_weeks=KERNEL_WEEKS, amax=A_MAX, recharge="linear", init_sd=0.5,
-               train_mask=None, es_wells=None, fixed_steps=None, state_out=None, pumping="sum"):
+               train_mask=None, es_wells=None, fixed_steps=None, state_out=None, pumping="sum",
+               gain_units="m"):
     """One start. Returns (model, best validation median NSE, best step)."""
     torch.manual_seed(seed)
     torch.set_num_threads(int(os.environ.get("PFE_THREADS", 4)))
@@ -227,7 +237,8 @@ def train_seed(seed, data, mode, lam=0.0, steps=4000, lr=0.05, patience=15, eval
     wgt = torch.from_numpy((wgt / max((obs.sum(1) > 0).sum(), 1)).astype(np.float32))
     es_core = core & (es_wells[:, None] if es_wells is not None else True)
     net = ResponseModel(data["group_of"], len(data["groups"]), mode, kernel_weeks, amax, recharge,
-                        init_sd=init_sd, generator=gen, pumping=pumping)
+                        init_sd=init_sd, generator=gen, pumping=pumping,
+                        gain_scale=sd_safe[:, 0] if gain_units == "sd" else None)
     opt = torch.optim.Adam([p for p in net.parameters() if p.requires_grad], lr=lr)
     best, best_state, best_step, bad = -np.inf, None, 0, 0
     n_steps = fixed_steps or steps
@@ -253,8 +264,10 @@ def train_seed(seed, data, mode, lam=0.0, steps=4000, lr=0.05, patience=15, eval
                 break
     if best_state is not None:
         net.load_state_dict(best_state)
-    else:
-        best, best_step = float("nan"), n_steps
+    else:                                   # fixed number of steps: the last step, scored once
+        with torch.no_grad():
+            pz = (net(X).numpy() / sd_safe).astype(np.float32)
+        best, best_step = median_nse(pz, head, split, es_core, mu, sd_safe, head), n_steps
     print(f"    seed {seed}: step {best_step} of {step}, loss {loss.item():.4f}, "
           f"val median NSE {best:.3f} ({time.time() - t0:.0f}s)", flush=True)
     if state_out is not None:
@@ -298,6 +311,10 @@ def main():
                     help="linear: rain - f * ETP (as Pastas); pe: SIM2 effective rainfall")
     ap.add_argument("--pumping", choices=["sum", "split"], default="sum",
                     help="split: a permanent and a seasonal pumping stress (sensitivity)")
+    ap.add_argument("--gain-units", choices=["m", "sd"], default="m",
+                    help="sd: gains in units of each well's training sd (for pooling and sharing)")
+    ap.add_argument("--fixed-steps", type=int, default=None,
+                    help="diagnostic: this many steps for every start, no early stopping")
     ap.add_argument("--fold", type=int, default=None, help="leave-wells-out fold (0-4)")
     ap.add_argument("--train-start", default=None, help="shorter training period (regime R3)")
     ap.add_argument("--refit-from", default=None, help="refit on train+validation (steps of run)")
@@ -309,6 +326,11 @@ def main():
     if pumping == "sum":          # the default leaves the fingerprints of earlier runs unchanged
         del args.pumping
     names = STRESS_SETS[pumping]
+    gain_units, fixed_steps = args.gain_units, args.fixed_steps
+    if gain_units == "m":
+        del args.gain_units
+    if fixed_steps is None:
+        del args.fixed_steps
     P = build_panel(train_start=args.train_start)
     P = P[P["mu"].notna()]
     data = panel_arrays(P, args.kernel_weeks)
@@ -327,13 +349,13 @@ def main():
         path = out / f"seed_{s}.parquet"
         if cached_seed(path, fp):
             continue
-        fixed = refit_epochs(args.refit_from, s) if args.refit_from else None
+        fixed = refit_epochs(args.refit_from, s) if args.refit_from else fixed_steps
         state = {}
         net, best, best_step = train_seed(s, data, args.mode, args.lam, args.steps, args.lr,
                                           kernel_weeks=args.kernel_weeks, amax=args.amax,
                                           recharge=args.recharge, train_mask=train_mask,
                                           es_wells=keep, fixed_steps=fixed, state_out=state,
-                                          pumping=pumping)
+                                          pumping=pumping, gain_units=gain_units)
         pz, contrib, params = seed_outputs(net, data)
         contrib.to_parquet(out / f"contrib_seed_{s}.parquet", index=False)
         params.to_csv(out / f"params_seed_{s}.csv", index=False)

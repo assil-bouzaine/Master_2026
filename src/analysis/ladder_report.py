@@ -33,7 +33,15 @@ RUNS = {"resp_free": "free (per-well parameters)",
         "resp_free_a104": "free, time scale up to 104 weeks (sensitivity)",
         "resp_free_pe": "free, SIM2 effective rainfall as recharge (sensitivity)",
         "resp_free_split": "free, permanent + seasonal pumping (sensitivity)",
-        "resp_pooled_split": "pooled (chosen λ), permanent + seasonal pumping (sensitivity)"}
+        "resp_pooled_split": "pooled λ = 0.01, permanent + seasonal pumping (sensitivity)",
+        "resp_free_conv": "free, 3,000 steps without early stopping (diagnostic)",
+        "resp_pooled_l01_conv": "pooled λ = 0.1, 3,000 steps without early stopping (diagnostic)",
+        "resp_pooled_sd_l001": "pooled λ = 0.01, gains in units of the well's sd",
+        "resp_pooled_sd_l01": "pooled λ = 0.1, gains in units of the well's sd",
+        "resp_pooled_sd_l1": "pooled λ = 1, gains in units of the well's sd",
+        "resp_shared_sd": "shared, gains in units of the well's sd"}
+GRID = ("resp_pooled_l001", "resp_pooled_l01", "resp_pooled_l1", "resp_pooled_l10")   # the pooled choice
+FIRST = ("resp_free", *GRID, "resp_shared", "resp_free_a104", "resp_free_pe")           # runs fixed in advance
 # Caballero & Ladouche 2015 (doi:10.5194/hessd-12-10109-2015), Table 1: mean transit time of the
 # recharge response (days) at two of our core wells; maximum response to seasonal pumping 75 days
 # after pumping starts (analysis plan §14 item 18, comparator fixed before any result was read)
@@ -208,18 +216,22 @@ def main():
         lo, hi, mx = band(frames, obs, wells, rng)
         bands.append((RUNS[run], {"band 2.5 %": lo, "band 97.5 %": hi, "largest |value|": mx}))
         comp += comparator(run)
-    pooled = [r for r in present if r.startswith("resp_pooled")]
+    pooled = [r for r in present if r in GRID]
     chosen = max(pooled, key=lambda r: per_well(mean_m[r], "validation").median()) if pooled else None
     ref_m = {r: pd.read_csv(RESULTS / r / "metrics_per_well.csv") for r in COMPARE
              if (RESULTS / r / "metrics_per_well.csv").exists()}
-    for run in [r for r in ("resp_free", chosen, "resp_shared", "resp_free_split", "resp_pooled_split")
-                if r in present]:
+    for run in [r for r in ("resp_free", chosen, "resp_shared") if r in present]:
         for ref, label in COMPARE.items():
             if ref in ref_m:
                 contrasts.append((f"{RUNS[run]} vs {label}", contrast(mean_m[run], ref_m[ref], wells)))
-    if chosen and "resp_free" in present:
-        contrasts.append((f"{RUNS[chosen]} vs {RUNS['resp_free']}",
-                          contrast(mean_m[chosen], mean_m["resp_free"], wells)))
+    if "resp_free" in present:
+        for run in [r for r in present if r != "resp_free" and (r == chosen or r not in GRID + ("resp_shared",))]:
+            contrasts.append((f"{RUNS[run]} vs {RUNS['resp_free']}",
+                              contrast(mean_m[run], mean_m["resp_free"], wells)))
+        for run in [r for r in present if r not in FIRST]:
+            for ref, label in COMPARE.items():
+                if ref in ref_m:
+                    contrasts.append((f"{RUNS[run]} vs {label}", contrast(mean_m[run], ref_m[ref], wells)))
     # the Pastas multistart beside it
     pstarts = {k: per_well(pd.read_csv(RESULTS / r / "metrics_per_well.csv"))
                for k, r in enumerate(PASTAS_STARTS) if (RESULTS / r / "metrics_per_well.csv").exists()}
@@ -245,7 +257,9 @@ def main():
          "hand. Response superposition for all wells together (`src/models/response.py`), protocol in "
          "`docs/analysis_plan.md` §14 item 18. Core wells. **Exploratory (development benchmark).** "
          "Every row of a response run is the mean prediction over its starts unless it says single "
-         "start.\n",
+         "start. The runs named sensitivity were fixed before any result; those named diagnostic, "
+         "permanent + seasonal or \"in units of the well's sd\" are follow-ups defined after the first "
+         "results were read (analysis plan §14 item 18).\n",
          "## Scores\n\nMedians over the core wells. RMSE in metres.\n",
          table(scores, ["NSE val", "NSE drought", "skill drought", "RMSE drought",
                         "single start, drought NSE: mean", "single start, drought NSE: sd", "starts",

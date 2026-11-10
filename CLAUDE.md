@@ -541,48 +541,41 @@ repository for now). Read as the approval of five points, written as analysis pl
 4. **10 seeds** for the primary arms and a same-arm band beside every primary contrast;
 5. the **twin carries RQ1–RQ2** (a map over pumping signal, wrong links, unattributed share), besides RQ3.
 
-State at the end of the session of 2026-11-10 (update this list when it changes):
+State on 2026-11-10, evening (update this list when it changes):
 - Everything is committed and **pushed** (origin was 109 commits behind until that day).
-- **Kaggle kernel `assilbouzaine/pfe-v4-cpu`, steps `ladder`** (pushed 2026-11-10): 8 runs × 10 starts
-  (`resp_free`, `resp_shared`, `resp_pooled_l001/_l01/_l1/_l10`, `resp_free_a104`, `resp_free_pe`).
-  When it has finished: `.venv/bin/python scripts/kaggle_cpu.py status`, then `pull` (copies to
-  `results/v4/resp_*` and scores), then `PFE_DATASET=v4 .venv/bin/python -m src.analysis.ladder_report`
-  → `docs/results_ladder_v4.md`. If the kernel stopped at its budget, `push --steps "ladder"` again
-  (finished starts are skipped).
-- `python -m tests.test_response` passes (kernels, causality, exact decomposition, signs, sharing,
-  recovery on a toy set).
+- **Ladder rungs 1–2** (`src/models/response.py`: free / pooled / shared; `--pumping split` = permanent +
+  seasonal pumping, a sensitivity): `python -m tests.test_response` passes. Kaggle kernel
+  `assilbouzaine/pfe-v4-cpu`, steps `ladder` (8 runs × 10 starts), finished on 2026-11-10; results and
+  their reading: `docs/results_ladder_v4.md` and the step note `docs/notes/step13_ladder.md` (last
+  section). Report: `PFE_DATASET=v4 .venv/bin/python -m src.analysis.ladder_report`.
+- **INSPIRE alignment** (`ontology/alignments/lulcw-inspire.ttl`, `imports/inspire_terms.ttl`, 9 ledger
+  rows, meta 0.3.0; 15 modules, `tests.test_ontology` passes). **Graph release rebuilt 2026-11-10
+  10:14 UTC**, no violation; `test_release`, `test_inventory` pass.
+- **12.8 step 2 done:** `src/kg/export.py` → `data/processed/kg/export_v4_main/` (nodes, `edges_C`,
+  `edges_D`, manifest bound to the release); `python -m tests.test_export` (≈ 2 min) passes: D's edges =
+  the inventory = whole-graph queries = **pandas rules on the source tables** (416 exact-unit pumping
+  edges, 1,153 recharge edges with weights). D routes a median 31 % of a core well's groundwater volume
+  within 5 km (9 core wells none; all of it drinking water). Step note: `step12_ontology.md`, last section.
+- **Term-usage audit:** `python -m src.kg.term_usage` → `docs/ontology_term_usage.md` (384 terms: 310 used
+  by the released data, 19 only by rules/shapes/queries, 32 only by axioms, 23 by nothing).
+- **Caballero & Ladouche 2015** (doi:10.5194/hessd-12-10109-2015) read: BRGM's transfer model of the
+  Roussillon Pliocene at two of our core wells (FIGUER, PONT), with seasonal and permanent pumping; in
+  the comparison table, the reading list, analysis plan item 18 (comparator and `--pumping split`
+  sensitivity fixed before the ladder results were read). **It used monthly Pliocene pumping volumes
+  1998–2007 (Terrasson et al. 2014): add that series to the data request e-mail.**
 - 30 open-access papers are in `Articles/to_read/` (gitignored). Still to get, by Assil (paywall or
   blocked download): Schorpp 2023, Shapoori 2015, Brodaric 2018, Bazzi 2019, the Lanini abstract
-  (HAL), Chu 2026, Jeong 2026 and the others of the list given in the session.
-- Step note: `docs/notes/step13_ladder.md`.
-- **Session cut by the usage limit on 2026-11-10; state at that moment:**
-  - Kaggle kernel: assilbouzaine/pfe-v4-cpu has status "KernelWorkerStatus.RUNNING" (pushed with steps `ladder`; pull when complete).
-  - **INSPIRE alignment added** (`ontology/alignments/lulcw-inspire.ttl`, `imports/inspire_terms.ttl`, 9 ledger
-    rows, meta 0.3.0; `python -m tests.test_ontology` passes, 15 modules). Adding a module makes the graph
-    release stale: `PFE_DATASET=v4 python -m src.kg.apply_rules` then `python -m src.kg.inventory` were
-    started in the background (release file present at the cut: NO: rerun both).
-    Before relying on the graph: `python -m tests.test_release`, `tests.test_inventory`, `tests.test_cq`.
-  - **Caballero & Ladouche 2015 read** (doi:10.5194/hessd-12-10109-2015, `Articles/to_read/`): it IS the
-    Roussillon Pliocene, a BRGM transfer model ΔH = recharge + seasonal pumping (SP) + permanent pumping (PP)
-    + Têt river, for two of our core wells (10908X0263/FIGUER Perpignan, 10972X0137/PONT Argelès). Its Table 1:
-    impulse-response length 520 / 300 days, mean transit 220 / 89 days, SP maximum 75 days after pumping
-    starts, PP trend about −0.3 m per decade, Têt contribution +0.2 to +0.8 m at Perpignan; Nash 0.82–0.85
-    (validation 0.66–0.71) **with monthly pumping volumes 1998–2007** (Terrasson et al. 2014). To do: (a) a
-    row in `docs/literature/comparison_table.md` and the reading list (CORE); (b) cite it as the source of
-    the kernel bounds in `src/models/response.py` and analysis plan item 18; (c) use its Table 1 as an
-    independent comparator for the learned responses at those two wells (RQ3/RQ4); (d) an option in
-    `response.py` splitting pumping into a flat (PP) and a seasonal (SP) stress, its domain precedent for
-    `fable_review.md` §6.2 (still a Gate 3 point); (e) add to the data request e-mail: the monthly
-    Pliocene pumping series 1998–2007 held by BRGM / SMNPR.
-  - Not done yet: step-note section and explainer update for the INSPIRE alignment and this reading.
+  (HAL), Chu 2026, Jeong 2026, Feng 2022 and the others of the list given in the session.
 
-**Next, in order:** (1) pull and report the ladder; choose the pooled λ on validation; (2) the export
-proper (12.8: node and edge tables of C–F, equivalence test) and a two-well path through
-`response.py` with KG routing (rung 4); (3) the small twin with its dials (write them into the
-analysis plan first); (4) INSPIRE alignment file + ledger rows, OOPS!, term-usage audit;
-(5) `paper/` skeleton. **Assil:** the three e-mails (`docs/supervisor_questions.md` §4–6), the Earth
-Engine registration, the w3id redirect request, the Drive download of Colab session 2, the paywalled
-papers; the Gate 3 points of item 18.
+**Next, in order:** (1) the tensors of arms C and D from the export tables (per-arm stresses per well,
+the per-regime depth threshold, a fixed-weight forward pass compared between the two derivations) and
+**rung 4**: `response.py` with pumping, recharge, river and canal routed by C's or D's edges, first on
+two wells (MILLAS C2-1, PONTEILLA NYLS-1), then all; (2) the small twin with its dials (write them into
+the analysis plan first); (3) HILUCS mapping of the crop classes in `src/kg/landuse.py` (facts, so a
+rebuild), OOPS!; (4) `paper/` skeleton; (5) the explainer (`docs/explainer/`) has not been updated for
+the decisions of 2026-11-10. **Assil:** the three e-mails (`docs/supervisor_questions.md` §4–6; add
+the monthly Pliocene pumping 1998–2007), the Earth Engine registration, the w3id redirect request, the
+Drive download of Colab session 2, the paywalled papers; the Gate 3 points of item 18.
 
 **2026-10-23, 16:30: second external review (codex) adopted.** Review in
 `docs/review_codex_2026-10-23.md`; Claude checked every number in it against

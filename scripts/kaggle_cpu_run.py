@@ -33,6 +33,8 @@ PINS = Path(os.environ.get("PIN_TARGET", "/tmp/pins"))
 RESULTS = CODE / "results" / "v4"
 OUT = WORK / "results_cpu" / "v4"
 LOG = WORK / "run_kaggle_cpu.log"
+STATE = Path(os.environ.get("PFE_STATE", "/tmp/pfe_state"))   # earlier results, kept out of the output
+T0 = time.time()                                             # reset after restore(): see save()
 DEADLINE = time.time() + BUDGET_H * 3600
 CHECKED = ["numpy", "pandas", "pyarrow", "scipy", "lightgbm", "pastas", "numba", "llvmlite",
            "matplotlib", "geopandas", "shapely", "pyproj"]    # import names = pin names
@@ -60,11 +62,13 @@ def unpack():
 
 
 def restore():
-    """Results of earlier pushes (state.zip, or its extracted results_cpu/v4) -> RESULTS."""
+    """Results of earlier pushes (state.zip, or its extracted results_cpu/v4) -> RESULTS. They are
+    unpacked outside the output folder (since 2026-11-10): a session's output holds only the runs it
+    touched (save()), so a pull no longer downloads every earlier run again (1,400 files, 90 min)."""
     for z in INPUT.rglob("state.zip"):
         with zipfile.ZipFile(z) as f:
-            f.extractall(WORK)
-    for d in [OUT, *INPUT.rglob("results_cpu/v4")]:
+            f.extractall(STATE)
+    for d in [STATE / "results_cpu" / "v4", *INPUT.rglob("results_cpu/v4")]:
         if d.is_dir() and any(d.iterdir()):
             shutil.copytree(d, RESULTS, dirs_exist_ok=True)
             log(f"restored earlier results from {d}")
@@ -116,8 +120,14 @@ def ealstm_ok(env):
 
 
 def save():
-    """RESULTS -> OUT, without the feature caches (they are in the bundle)."""
-    shutil.copytree(RESULTS, OUT, dirs_exist_ok=True, ignore=shutil.ignore_patterns("_cache"))
+    """The runs of RESULTS with a file written since the session started -> OUT (not the feature
+    caches, which are in the bundle, nor the restored runs this session did not touch)."""
+    for d in sorted(p for p in RESULTS.iterdir() if p.is_dir() and p.name != "_cache"):
+        if any(f.stat().st_mtime > T0 for f in d.rglob("*") if f.is_file()):
+            shutil.copytree(d, OUT / d.name, dirs_exist_ok=True)
+    for f in RESULTS.glob("*.*"):
+        if f.is_file() and f.stat().st_mtime > T0:
+            shutil.copy2(f, OUT / f.name)
 
 
 def sync_loop(stop):
@@ -145,8 +155,10 @@ def run(steps, env):
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
+    global T0
     unpack()
     restore()
+    T0 = time.time()
     install()
     env = dict(os.environ, PY=sys.executable, PYTHONPATH=pythonpath(), PYTHONIOENCODING="utf-8",
                PYTHONUNBUFFERED="1", JOBS=str(len(os.sched_getaffinity(0))))

@@ -25,6 +25,8 @@ def toy_inputs(N=6, T=160, K=40, seed=0):
     X = {"rain": rng.gamma(0.4, 3.0, (N, T + K - 1)), "ETP": 1.5 + rng.random((N, T + K - 1)),
          "PE": rng.normal(0.3, 2.0, (N, T + K - 1)), "pump_gw": rng.gamma(2.0, 0.3, (N, T + K - 1)),
          "canal": np.repeat(rng.random((1, T + K - 1)), N, 0)}
+    X["pump_un"] = rng.gamma(2.0, 0.2, (N, T + K - 1))
+    X["river"] = 1.0 + rng.random((N, T + K - 1))
     X["pump_pp"] = np.repeat(X["pump_gw"].min(1, keepdims=True), T + K - 1, 1)
     X["pump_sp"] = X["pump_gw"] - X["pump_pp"]
     return {k: v.astype(np.float32) for k, v in X.items()}
@@ -140,6 +142,37 @@ def test_split_pumping():
         winter = m & np.isin(weeks.month, R.WINTER_MONTHS)
         assert np.allclose(pp[:, m][:, 0], tot[:, winter].mean(1), atol=1e-5)
     assert (sp >= 0).all() and np.allclose(sp, np.clip(tot - pp, 0, None), atol=1e-5)
+
+
+def test_arm_stresses_and_signs():
+    """--arm: five stresses; under "structure" every one has its sign through the whole path; under
+    "approved" only pumping keeps a built-in sign and the other gains may be of either sign."""
+    N, T, K = 6, 160, 40
+    X = toy_inputs(N, T, K)
+    g = torch.Generator().manual_seed(2)
+    net = R.ResponseModel(np.arange(N) % 2, 2, "free", kernel_weeks=K, amax=20.0, init_sd=1.5, generator=g,
+                          pumping="arm")
+    assert net.names == ("recharge", "pumping", "pumping_unattributed", "river", "canal")
+    with torch.no_grad():
+        base = net(tt(X)).numpy()
+    for name, sign in (("rain", 1), ("ETP", -1), ("pump_gw", -1), ("pump_un", -1), ("river", 1), ("canal", 1)):
+        X2 = {k: v.copy() for k, v in X.items()}
+        X2[name][:, 60:] += 1.0
+        with torch.no_grad():
+            d = net(tt(X2)).numpy() - base
+        assert (sign * d >= -1e-5).all() and (sign * d).max() > 0, name
+    g = torch.Generator().manual_seed(2)
+    free = R.ResponseModel(np.arange(N) % 2, 2, "free", kernel_weeks=K, amax=20.0, init_sd=1.5, generator=g,
+                           pumping="arm", signs="approved")
+    with torch.no_grad():                      # raw gains of both signs for every stress
+        free.group_mean[:, :5] = 0.0
+        free.delta[:, :5] = torch.tensor([-2.0, -0.5, 0.5, 2.0, -1.0, 1.0])[:, None]
+    gain = free.parameters_physical()[0].detach().numpy()
+    assert (gain[:, 1] <= 0).all(), "the approved pumping sign must hold"
+    for r in (0, 2, 3, 4):                     # a free gain is the raw number itself
+        assert np.allclose(gain[:, r], [-2.0, -0.5, 0.5, 2.0, -1.0, 1.0]), free.names[r]
+    with torch.no_grad():
+        assert torch.allclose(free(tt(X)), free.d[:, None] + free.contributions(tt(X)).sum(1), atol=1e-5)
 
 
 def test_gain_units():

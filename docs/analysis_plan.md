@@ -924,6 +924,22 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       the range of the drought NSE; per parameter, (max − min) / |median|; per stress, the sd across
       starts of the mean contribution over the drought phase, in units of the well's training sd.
       Label: exploratory (development benchmark), like every baseline result.
+    - *Added 2026-11-10 after the runs were launched and before any of their results was read
+      (Caballero & Ladouche 2015, doi:10.5194/hessd-12-10109-2015, read that day).* BRGM's transfer
+      model of two of our core wells finds impulse responses of 520 days (10972X0137/PONT, Argelès)
+      and 300 days (10908X0263/FIGUER, Perpignan), mean transit times of 220 and 89 days, the
+      maximum response to seasonal pumping 75 days after it starts. The bounds of the rungs (scale
+      up to 52 weeks, weights over 312 weeks) are therefore wider than any published response of this
+      aquifer; that paper is their source. **Independent comparator, fixed now:** at those two wells
+      the ladder report gives, per start, the mean lag of the learned recharge response beside 220
+      and 89 days, and the week of the largest weight of the pumping response beside 75 days. It is a
+      comparison with a published model that used measured monthly pumping (1998–2007), not with a
+      measurement. **Sensitivity defined now (❓ Gate 3 decides whether it becomes the main
+      structure, `fable_review.md` §6.2):** pumping split as in that paper into a *permanent* part
+      (per well and calendar year, the mean weekly pumping of January–March and October–December:
+      constant within a year) and a *seasonal* part (the rest, not below 0), each with its own
+      response and a non-positive gain; run in the free mode and in the pooled mode with the λ
+      chosen above (`--pumping split`).
     - *The twin's role (§10).* Besides RQ3, the twin carries RQ1–RQ2 with power: C against D, and
       constraints off / soft / hard, over many synthetic worlds that vary the between-year pumping
       signal against the noise, the share of wrong pump links given to the learner and the share of

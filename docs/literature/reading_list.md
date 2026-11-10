@@ -186,6 +186,26 @@ swapped for the journal version).
 | Jeong, Lee, Lee, Mbarki, Kim, Moon, Seo, Park & Jeong, *A physically interpretable transfer learning framework for improved generalization of data-driven groundwater level prediction*, *Water Research* 304, 126321, 2026, **doi:10.1016/j.watres.2026.126321** | **CORE** (positioning) | GRU + 1D convolution pretrained on 62 wells, transferred with 1–3 years of target-well data (leave-one-well-out); the abstract confirms the review: convolution-kernel weights agree with independently estimated residence times, and transfer similarity weights follow residence time and vadose-zone permeability (PubMed, PMID 42361754, read 2026-10-25). The closest precedent for our explanation checks. Full text still to read. |
 | Roberts et al., *Cross-validation strategies for data with temporal, spatial, hierarchical, or phylogenetic structure*, *Ecography* 40(8), 913–929, 2017, **doi:10.1111/ecog.02881** | CITE | Why held-out sites must be blocked in space. Cited for the grouped leave-wells-out folds of dataset v4. |
 
+### Added 2026-11-10 (review of that day, `fable_review.md` §9; Crossref and arXiv records checked that day)
+
+| Reference | Verdict | Why |
+|---|---|---|
+| Caballero & Ladouche, *Impact of climate change on groundwater in a confined Mediterranean aquifer*, *HESS Discussions* 12, 2015, **doi:10.5194/hessd-12-10109-2015** | **CORE** (read in full 2026-11-10) | A BRGM transfer model of the Roussillon Pliocene for two of our core wells, with seasonal and permanent pumping, recharge and the Têt; response times and contributions in its Table 1. Row in the comparison table. |
+| Shapoori, Peterson, Western & Costelloe, *Decomposing groundwater head variations into meteorological and pumping components: a synthetic study*, *Hydrogeology Journal* 23, 2015, **doi:10.1007/s10040-015-1269-7** | CORE (to get: paywalled) | A synthetic test of separating pumping from climate with transfer-function models: the precedent of the twin. |
+| Beven, *A manifesto for the equifinality thesis*, *J. Hydrol.* 320, 2006, **doi:10.1016/j.jhydrol.2005.07.007** | CITE | Names what the Pastas multistart shows: many parameter sets fit equally well. |
+| Feng, Liu, Lawson & Shen, *Differentiable, learnable, regionalized process-based models…*, *WRR* 58, 2022, **doi:10.1029/2022WR032404** | CORE (to get) | The model family of the hybrid (parameters of a process model learned for all sites). |
+| von Rueden et al., *Informed Machine Learning*, *IEEE TKDE* 2021, **doi:10.1109/TKDE.2021.3079836** (arXiv:1903.12394, in `Articles/to_read/`) | CITE | Taxonomy that places knowledge graphs among the knowledge sources of informed ML: positioning. |
+| Karpatne et al., *Theory-Guided Data Science*, *IEEE TKDE* 29, 2017, **doi:10.1109/TKDE.2017.2720168** (arXiv:1612.08544) | CITE | Origin of the knowledge-guided line in the geosciences. |
+| Nearing et al., *What Role Does Hydrological Science Play in the Age of Machine Learning?*, *WRR* 57, 2021, **doi:10.1029/2020WR028091** | CITE | Frames RQ1. |
+| Hoedt et al., *MC-LSTM: Mass-Conserving LSTM*, **arXiv:2101.05186** | CITE | A physical property enforced by construction in a hydrological network. |
+| Wunsch, Liesch & Broda, *Deep learning shows declining groundwater levels in Germany until 2100…*, *Nat. Commun.* 13, 2022, **doi:10.1038/s41467-022-28770-2** | CITE | Head simulation from meteorological inputs only. |
+| Chidepudi et al., *A wavelet-assisted deep learning approach for simulating groundwater levels affected by low-frequency variability*, *STOTEN* 865, 2023, **doi:10.1016/j.scitotenv.2022.161035**; Baulon et al., *HESS* 26, 2022, **doi:10.5194/hess-26-2829-2022** | CITE | Multi-annual variability of French groundwater levels: the hard part of simulation. |
+| Zaadnoordijk et al., *Automated Time Series Modeling for Piezometers in the National Database of the Netherlands*, *Groundwater* 57, 2018, **doi:10.1111/gwat.12819** | CITE | Acceptance checks for automated transfer-function models. |
+| Bouthillier et al., *Accounting for Variance in Machine Learning Benchmarks*, **arXiv:2103.03098**; Lakens, *Equivalence Tests*, *SPPS* 8, 2017, **doi:10.1177/1948550617697177** | CITE | Seed variance in comparisons; smallest effect of interest. |
+| Adebayo et al., *Sanity Checks for Saliency Maps*, **arXiv:1810.03292** | CITE | Randomisation checks for explanations (RQ4). |
+| Schneider et al., *EuroCrops*, *Sci. Data* 10, 2023, **doi:10.1038/s41597-023-02517-0**; Bazzi et al., *Mapping Irrigated Areas Using Sentinel-1 Time Series in Catalonia*, *Remote Sens.* 11, 2019, **doi:10.3390/rs11151836** | CITE | An external crop-code mapping for the alignment experiment (Gate 3); irrigation mapping by radar (SO2). |
+| Poveda-Villalón et al., *LOT: An industrial oriented ontology engineering framework*, *EAAI* 111, 2022, **doi:10.1016/j.engappai.2022.104755**; Janowicz et al., *KnowWhereGraph*, *AI Magazine* 43, 2022, **doi:10.1002/aaai.12043** | CITE | Ontology methodology; the reference geo-knowledge-graph. |
+
 ## 3. Reading order (about 3 weeks, alongside Phase 1)
 
 1. Taccari 2024 → Wu 2025 (E3) → Heudorfer 2024 → Pastas 2019. This is how our

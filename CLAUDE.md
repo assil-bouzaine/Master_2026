@@ -555,6 +555,26 @@ State at the end of the session of 2026-11-10 (update this list when it changes)
   blocked download): Schorpp 2023, Shapoori 2015, Brodaric 2018, Bazzi 2019, the Lanini abstract
   (HAL), Chu 2026, Jeong 2026 and the others of the list given in the session.
 - Step note: `docs/notes/step13_ladder.md`.
+- **Session cut by the usage limit on 2026-11-10; state at that moment:**
+  - Kaggle kernel: assilbouzaine/pfe-v4-cpu has status "KernelWorkerStatus.RUNNING" (pushed with steps `ladder`; pull when complete).
+  - **INSPIRE alignment added** (`ontology/alignments/lulcw-inspire.ttl`, `imports/inspire_terms.ttl`, 9 ledger
+    rows, meta 0.3.0; `python -m tests.test_ontology` passes, 15 modules). Adding a module makes the graph
+    release stale: `PFE_DATASET=v4 python -m src.kg.apply_rules` then `python -m src.kg.inventory` were
+    started in the background (release file present at the cut: NO: rerun both).
+    Before relying on the graph: `python -m tests.test_release`, `tests.test_inventory`, `tests.test_cq`.
+  - **Caballero & Ladouche 2015 read** (doi:10.5194/hessd-12-10109-2015, `Articles/to_read/`): it IS the
+    Roussillon Pliocene, a BRGM transfer model ΔH = recharge + seasonal pumping (SP) + permanent pumping (PP)
+    + Têt river, for two of our core wells (10908X0263/FIGUER Perpignan, 10972X0137/PONT Argelès). Its Table 1:
+    impulse-response length 520 / 300 days, mean transit 220 / 89 days, SP maximum 75 days after pumping
+    starts, PP trend about −0.3 m per decade, Têt contribution +0.2 to +0.8 m at Perpignan; Nash 0.82–0.85
+    (validation 0.66–0.71) **with monthly pumping volumes 1998–2007** (Terrasson et al. 2014). To do: (a) a
+    row in `docs/literature/comparison_table.md` and the reading list (CORE); (b) cite it as the source of
+    the kernel bounds in `src/models/response.py` and analysis plan item 18; (c) use its Table 1 as an
+    independent comparator for the learned responses at those two wells (RQ3/RQ4); (d) an option in
+    `response.py` splitting pumping into a flat (PP) and a seasonal (SP) stress, its domain precedent for
+    `fable_review.md` §6.2 (still a Gate 3 point); (e) add to the data request e-mail: the monthly
+    Pliocene pumping series 1998–2007 held by BRGM / SMNPR.
+  - Not done yet: step-note section and explainer update for the INSPIRE alignment and this reading.
 
 **Next, in order:** (1) pull and report the ladder; choose the pooled λ on validation; (2) the export
 proper (12.8: node and edge tables of C–F, equivalence test) and a two-well path through

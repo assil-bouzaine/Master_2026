@@ -9,16 +9,17 @@
 # to local files); the quality gates in tests/test_ontology.py run on it.
 
 <https://w3id.org/lulcw/meta> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/meta/0.2.0> ;
-    owl:versionInfo "0.2.0" ;
+    owl:versionIRI <https://w3id.org/lulcw/meta/0.3.0> ;
+    owl:versionInfo "0.3.0" ;
     dcterms:title "LULC-Water meta-ontology"@en , "Méta-ontologie LULC-Water"@fr ;
-    dcterms:description "Network of the LULC-Water bridging module with GWML2 and HyFO (SAWGraph's OWL rendering), SWEET, HY_Features, SOSA, PROV-O, OWL-Time, SKOS and GeoSPARQL, linked by alignment modules rather than merged."@en ,
-        "Réseau formé du module de liaison LULC-Water, de GWML2 et HyFO (rendu OWL de SAWGraph), de SWEET, HY_Features, SOSA, PROV-O, OWL-Time, SKOS et GeoSPARQL, reliés par des modules d'alignement plutôt que fusionnés."@fr ;
+    dcterms:description "Network of the LULC-Water bridging module with GWML2 and HyFO (SAWGraph's OWL rendering), SWEET, INSPIRE feature concepts, HY_Features, SOSA, PROV-O, OWL-Time, SKOS and GeoSPARQL, linked by alignment modules rather than merged."@en ,
+        "Réseau formé du module de liaison LULC-Water, de GWML2 et HyFO (rendu OWL de SAWGraph), de SWEET, des concepts d'objets INSPIRE, de HY_Features, SOSA, PROV-O, OWL-Time, SKOS et GeoSPARQL, reliés par des modules d'alignement plutôt que fusionnés."@fr ;
     dcterms:creator "Assil Bouzaine" ;
     dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
     dcterms:created "2026-10-24"^^xsd:date ;
     owl:imports <https://w3id.org/lulcw> , <https://w3id.org/lulcw/alignments/gwml2-hyfo> ,
-        <https://w3id.org/lulcw/alignments/sweet> , <https://w3id.org/lulcw/alignments/hyf> .
+        <https://w3id.org/lulcw/alignments/sweet> , <https://w3id.org/lulcw/alignments/hyf> ,
+        <https://w3id.org/lulcw/alignments/inspire> .
 
 dcterms:title a owl:AnnotationProperty .
 dcterms:description a owl:AnnotationProperty .

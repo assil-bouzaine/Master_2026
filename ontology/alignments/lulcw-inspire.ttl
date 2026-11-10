@@ -1,0 +1,34 @@
+@prefix lulcw:   <https://w3id.org/lulcw#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix inspirefc: <http://inspire.ec.europa.eu/featureconcept/> .
+
+# Alignment of the lulcw module to INSPIRE (the subject names it): the hydrogeology feature
+# concepts of the theme Geology, whose data model follows GWML2. INSPIRE feature concepts are
+# register items, not OWL classes: only skos:closeMatch, no subclass or equivalence. Each
+# correspondence, the rejected ones included, is in ledger.csv with the two definitions compared.
+# Land use (HILUCS) is a mapping of the crop classes, which are data: it belongs to the facts
+# (src/kg/landuse.py), not to this file.
+
+<https://w3id.org/lulcw/alignments/inspire> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/lulcw/alignments/inspire/0.1.0> ;
+    dcterms:title "Alignment of LULC-Water to INSPIRE feature concepts"@en ,
+        "Alignement de LULC-Water sur les concepts d'objets INSPIRE"@fr ;
+    dcterms:description "Close-match links from lulcw hydrogeological classes to the INSPIRE feature concepts of hydrogeology; no subclass or equivalence is asserted."@en ;
+    dcterms:created "2026-11-10"^^xsd:date ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    owl:imports <https://w3id.org/lulcw> , <https://w3id.org/lulcw/imports/inspire> .
+
+lulcw:HydrogeologicalUnit skos:closeMatch inspirefc:HydrogeologicalUnit .
+lulcw:AlluvialAquifer skos:closeMatch inspirefc:Aquifer .
+lulcw:KarstAquifer skos:closeMatch inspirefc:Aquifer .
+lulcw:MultilayerAquiferSystem skos:closeMatch inspirefc:AquiferSystem .
+lulcw:ConfiningUnit skos:closeMatch inspirefc:Aquiclude .
+lulcw:GroundwaterBody skos:closeMatch inspirefc:GroundWaterBody .
+
+dcterms:title a owl:AnnotationProperty .
+dcterms:description a owl:AnnotationProperty .
+dcterms:created a owl:AnnotationProperty .
+dcterms:license a owl:AnnotationProperty .

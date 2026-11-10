@@ -1,0 +1,53 @@
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix inspirefc: <http://inspire.ec.europa.eu/featureconcept/> .
+
+# Local copies of the INSPIRE feature concepts LULC-Water aligns to (theme Geology, hydrogeology
+# part). INSPIRE publishes them as register items, not as an OWL ontology, so this file is written
+# by hand: each concept keeps its register IRI (the "id" of its record) and its definition,
+# copied verbatim from <id>/<name>.en.json on 2026-11-10 (status "Valid" for every one; a made-up
+# name returns 404). The alignment axioms are in alignments/lulcw-inspire.ttl.
+
+<https://w3id.org/lulcw/imports/inspire> a owl:Ontology ;
+    rdfs:comment "Hand-written copies (IRI, label, definition) of the INSPIRE feature concepts LULC-Water aligns to, from the INSPIRE feature concept dictionary (http://inspire.ec.europa.eu/featureconcept), retrieved 2026-11-10." .
+
+skos:prefLabel a owl:AnnotationProperty .
+skos:definition a owl:AnnotationProperty .
+rdfs:isDefinedBy a owl:AnnotationProperty .
+
+inspirefc:HydrogeologicalUnit a owl:NamedIndividual ;
+    skos:prefLabel "Hydrogeological Unit"@en ;
+    skos:definition "A part of the lithosphere with distinctive parameters for water storage and conduction."@en ;
+    rdfs:isDefinedBy <http://inspire.ec.europa.eu/featureconcept> .
+
+inspirefc:Aquifer a owl:NamedIndividual ;
+    skos:prefLabel "Aquifer"@en ;
+    skos:definition "A wet underground layer of water-bearing permeable rock or unconsolidated materials (gravel, sand, silt, or clay) from which groundwater can be usefully extracted using a water well."@en ;
+    rdfs:isDefinedBy <http://inspire.ec.europa.eu/featureconcept> .
+
+inspirefc:AquiferSystem a owl:NamedIndividual ;
+    skos:prefLabel "Aquifer System"@en ;
+    skos:definition "A collection of aquifers and aquitards, which together constitute the environment of groundwater - \"communicating vessels\", that are filled or can be filled with water."@en ;
+    rdfs:isDefinedBy <http://inspire.ec.europa.eu/featureconcept> .
+
+inspirefc:Aquitard a owl:NamedIndividual ;
+    skos:prefLabel "Aquitard"@en ;
+    skos:definition "A saturated, but poorly permeable bed that impedes groundwater movement."@en ;
+    rdfs:isDefinedBy <http://inspire.ec.europa.eu/featureconcept> .
+
+inspirefc:Aquiclude a owl:NamedIndividual ;
+    skos:prefLabel "Aquiclude"@en ;
+    skos:definition "An impermeable body of rock or stratum of sediment that acts as a barrier to the flow of groundwater."@en ;
+    rdfs:isDefinedBy <http://inspire.ec.europa.eu/featureconcept> .
+
+inspirefc:GroundWaterBody a owl:NamedIndividual ;
+    skos:prefLabel "Groundwater Body"@en ;
+    skos:definition "A distinct volume of groundwater within an aquifer or system of aquifers, which is hydraulically isolated from nearby groundwater bodies."@en ;
+    rdfs:isDefinedBy <http://inspire.ec.europa.eu/featureconcept> .
+
+inspirefc:ActiveWell a owl:NamedIndividual ;
+    skos:prefLabel "Active Well"@en ;
+    skos:definition "A well influencing the groundwater resources of the aquifer."@en ;
+    rdfs:isDefinedBy <http://inspire.ec.europa.eu/featureconcept> .
+

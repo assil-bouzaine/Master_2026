@@ -32,6 +32,7 @@ probability. See the [review note](notes/step12c_competency_review.md).
 | `hyf:` | `https://www.opengis.net/def/schema/hy_features/hyf/` | rivers | prefix checked (SAWGraph); **class names to check** in the hyf Turtle |
 | HILUCS | `http://inspire.ec.europa.eu/codelist/HILUCSValue` | land use | scheme checked (redirects to EU Vocabularies); **value IRIs to check** |
 | `agrovoc:` | `http://aims.fao.org/aos/agrovoc/` | crops | concept IRIs found while building the gold set |
+| `inspirefc:` | `http://inspire.ec.europa.eu/featureconcept/` | INSPIRE feature concepts of hydrogeology (register items, not OWL classes): HydrogeologicalUnit, Aquifer, AquiferSystem, Aquitard, Aquiclude, GroundWaterBody, ActiveWell | checked 2026-11-10: each record read (`<id>/<name>.en.json`, status Valid), a made-up name returns 404; local copies in `ontology/imports/inspire_terms.ttl` |
 
 GWML2 itself has no official OWL (OGC 16-032r2 is UML + GML/XML; Brodaric et
 al. 2018, doi:10.1007/s10040-018-1747-9). We therefore cite the standard and
@@ -314,6 +315,7 @@ distance and depth thresholds are chosen on the training period in 12.5–12.8.
 | `ontology/alignments/lulcw-gwml2-hyfo.ttl` | `Piezometer` closeMatch `GW_Well` and `hyfo:WaterWell` (0.2.0, 2026-11-06; ⊑ `GW_Well` in 0.1.0); `MonitoringStation` ⊑ `GW_MonitoringSite`; `hostedBy` ⊑ `gwMonitoringHost`; units ⊑ `GW_HydrogeoUnit`, `GW_Aquifer`, `GW_AquiferSystem`; `monitors`, `pumpsFrom` ⊑ `hyfo:tapsAquifer` |
 | `ontology/alignments/lulcw-sweet.ttl` | closeMatch only: alluvial, karst and multilayer units → `Aquifer`; confining unit → `Aquitard` |
 | `ontology/alignments/lulcw-hyf.ttl` | `Watercourse` ⊑ `hyf:HY_River`; `RiverReach` closeMatch `hyf:HY_FlowPath` (0.2.0, 2026-11-06: no reach is a HY_FlowPath, canal reaches realise no catchment) |
+| `ontology/alignments/lulcw-inspire.ttl` | added 2026-11-10 (the subject names INSPIRE; allowed under the feature freeze of analysis plan §14 item 18): closeMatch only, units → `HydrogeologicalUnit`, alluvial and karst units → `Aquifer`, the multilayer system → `AquiferSystem`, the confining unit → `Aquiclude` (not `Aquitard`: that is BD LISA's semi-permeable nature 6), the groundwater body → `GroundWaterBody`; `AbstractionFacility` → `ActiveWell` rejected (surface intakes are facilities). HILUCS is a mapping of the crop classes, which are data: to add in `src/kg/landuse.py`, not here |
 | `ontology/alignments/ledger.csv` | every correspondence, rejected ones included: relation, status, definition comparison, counterexample considered, date checked, reviewer, and the required or forbidden subsumption HermiT checks (`tests/test_ontology.py` gate 8; Codex review of 2026-11-06, R3) |
 | `ontology/imports/*_terms.ttl` | local copies of the reused terms (ROBOT MIREOT; `src/kg/build_imports.py`) |
 | `ontology/lulcw-meta.ttl`, `catalog-v001.xml` | the network's entry point; import IRIs → local files |

@@ -609,7 +609,7 @@ twin: grid and slices on Kaggle (see above), then the map and its reading, then 
 open points of items 15–19 in one place: ✅ drafted, `docs/gate3_decisions.md`); (3) ✅ HILUCS mapping;
 ✅ OOPS! (ontology 0.7.1); (4) `paper/` skeleton; (5) ✅ explainer updated for
 10–16 November (refresh it with the twin's map). **Assil:** the three e-mails (`docs/supervisor_questions.md` §4–6; add
-the monthly Pliocene pumping 1998–2007), the Earth Engine registration, the w3id redirect request, the
+the monthly Pliocene pumping 1998–2007), the Earth Engine registration, the w3id redirect request (files and steps ready: `docs/w3id/README.md`), the
 Drive download of Colab session 2, the paywalled papers; the Gate 3 points of item 18.
 
 **2026-10-23, 16:30: second external review (codex) adopted.** Review in

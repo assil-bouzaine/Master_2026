@@ -164,5 +164,5 @@ SAVE Water may have rules on releasing project outputs before publication. *Reco
   2014, used by Caballero & Ladouche 2015): monthly volumes would separate pumping from weather inside
   a year, which annual totals cannot (`docs/supervisor_questions.md` §4–6).
 - The w3id.org redirect: until it exists, tools that load the ontology fail on its imports (OOPS!
-  did, 2026-11-16).
+  did, 2026-11-16). The pull request is ready to open from Assil's account: `docs/w3id/README.md`.
 - The Earth Engine account (satellite rule, task 12.10).

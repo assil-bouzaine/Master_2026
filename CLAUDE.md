@@ -528,23 +528,31 @@ notebooks/       exploration only; anything that matters moves into src/
 
 ### ▶ Where we are (read this first in a new session)
 
-**2026-11-16: ladder follow-ups read; the twin built, its pilot on Kaggle. START HERE.**
+**2026-11-16: ladder follow-ups read; the twin built and piloted; its grid on Kaggle; HILUCS done. START HERE.**
 - **Ladder follow-ups (`ladder2`) pulled and read** (`docs/results_ladder_v4.md`; analysis plan §14
-  item 18, last results paragraph; step note `step13_ladder.md`, last section). **Correction of
-  2026-11-10:** the free mode's gain over Pastas depends on early stopping (converged: log RMSE ratio
-  −0.03 instead of −0.15); converged, per-well pumping and canal responses stay unidentified; pooled
-  λ = 0.1 converged is identified (every parameter agrees between starts) at the level of Pastas.
-  Permanent + seasonal pumping: no gain. The main model's fitting protocol is now a Gate 3 point,
-  informed by the twin.
-- **Twin** (`src/models/twin.py`, `tests/test_twin.py` passes, ≈ 3 min): design amended before any
-  world (item 19, amendment of 2026-11-16: oracle arm T; ε moves the truth, arms C and D stay the
-  export's tables; slice G; π on contribution variances; converged pooled learner in the pilot).
-  **Pilot pushed to Kaggle on 2026-11-16 ≈ 12:55 CET** (kernel version 9, step `twin_pilot`: base cell,
-  worlds 0–2, arms C/D/T, learners free + pooled 0.01 → `results/v4/twin_pilot`, pooled 0.1 × 3,000
-  steps → `twin_pilot_conv`). When done: `scripts/kaggle_cpu.py pull` (copies twin runs), then the twin
-  report (to write: `src/analysis/twin_report.py`), then choose the grid's learner settings and push
-  `--grid` and `--slices` (12 + 8 cells × 20 worlds; size the sessions from the pilot's `seconds_*`).
-- The bundle now carries `data/processed/kg/export_v4_*` (routing and twin read it).
+  item 18, last results paragraph; step note `step13_ladder.md`). **Correction of 2026-11-10:** the
+  free mode's gain over Pastas depends on early stopping (converged: log RMSE ratio −0.03 instead of
+  −0.15); converged, per-well pumping and canal responses stay unidentified; pooled λ = 0.1 converged
+  is identified (every parameter agrees between starts) at the level of Pastas. Permanent + seasonal
+  pumping: no gain. The main model's fitting protocol is a Gate 3 point, informed by the twin.
+- **Twin** (`src/models/twin.py`, `tests/test_twin.py` ≈ 3 min, `src/analysis/twin_report.py` →
+  `docs/results_twin_v4.md`). Design amended before any world (item 19, amendment of 2026-11-16,
+  points 1–9: oracle arm T; ε moves the truth, arms C and D stay the export's tables; slice G; π on
+  contribution variances; RQ2 settings none / soft λ_s = 1 / hard; rule for the grid's settings fixed
+  before the pilot's scores). `response.py --conv fft` (12.6× faster, same numbers; the twin uses it).
+  **Pilot** (kernel version 10, 18 min; `results/v4/twin_pilot*`, exploratory, 3 worlds): D ≈ 6 % more
+  accurate than C, as much as the oracle, but its pumping share no closer to the truth than C's;
+  early stopping recovers pumping better than converged pooling; soft λ_s = 1 barely reduces sign
+  violations. **Grid + slices pushed 2026-11-16 ≈ 14:25 CET** (kernel version 11, steps `twin_grid twin_slices`, both
+  protocols, ≈ 400 worlds, ≈ 2 sessions of 11 h → `twin_map`, `twin_slices`, `twin_rq2`): when the
+  kernel is COMPLETE, `scripts/kaggle_cpu.py pull`, then push the same steps again until every world
+  exists (resumable), then `python -m src.analysis.twin_report twin_map twin_slices twin_rq2` and the
+  reading in the step note (the knowledge-value map, slice G, the two protocols, RQ2).
+- **HILUCS done** (step note `step12_ontology.md`, last section): crop classes `skos:broadMatch`
+  HILUCS 1_1_1 (`configs/lu_hilucs.csv`), registry snapshot pinned, meta 0.3.1; release of
+  2026-11-16 12:41 UTC, every graph suite passes; export regenerated (deterministic recharge weights).
+- The Kaggle bundle carries `data/processed/kg/export_v4_*`; `pull` copies twin runs as they are.
+- Old Kaggle kernel version 9 (the first pilot, direct convolution) may still be running: ignore it.
 
 **2026-11-10: Fable review adopted in part; the model ladder started.**
 Review: `fable_review.md` (repository root; read-only checks on the saved v4 tables). Assil the same
@@ -585,12 +593,13 @@ State on 2026-11-10, evening (update this list when it changes):
   blocked download): Schorpp 2023, Shapoori 2015, Brodaric 2018, Bazzi 2019, the Lanini abstract
   (HAL), Chu 2026, Jeong 2026, Feng 2022 and the others of the list given in the session.
 
-**Next, in order (updated 2026-11-16):** (1) ✅ routed inputs (`src/models/routing.py`) and rung 4
-(`response.py --arm`) exist and are tested; the real-data arms wait for the twin's grid and the tag
-(item 19, "Order"); the per-regime depth threshold comes with message passing (rung 5); (2) 🔄 the
-twin: pilot on Kaggle (see 2026-11-16 above), then its report, the grid and the slices; (3) HILUCS mapping of the crop classes in `src/kg/landuse.py` (facts, so a
-rebuild), OOPS!; (4) `paper/` skeleton; (5) the explainer (`docs/explainer/`) has not been updated for
-the decisions of 2026-11-10. **Assil:** the three e-mails (`docs/supervisor_questions.md` §4–6; add
+**Next, in order (updated 2026-11-16, afternoon):** (1) ✅ routed inputs (`src/models/routing.py`) and
+rung 4 (`response.py --arm`) exist and are tested; the real-data arms wait for the twin's grid and the
+tag (item 19, "Order"); the per-regime depth threshold comes with message passing (rung 5); (2) 🔄 the
+twin: grid and slices on Kaggle (see above), then the map and its reading, then the Gate 3 sheet (the
+open points of items 15–19 in one place); (3) ✅ HILUCS mapping; OOPS! still to run (it sends the
+ontology to oops.linkeddata.es: ask Assil first); (4) `paper/` skeleton; (5) ✅ explainer updated for
+10–16 November (refresh it with the twin's map). **Assil:** the three e-mails (`docs/supervisor_questions.md` §4–6; add
 the monthly Pliocene pumping 1998–2007), the Earth Engine registration, the w3id redirect request, the
 Drive download of Colab session 2, the paywalled papers; the Gate 3 points of item 18.
 

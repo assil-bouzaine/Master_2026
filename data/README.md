@@ -472,3 +472,14 @@ Notes:
 - **Canal command areas: not found** (search of 2026-11-06: data.gouv.fr, the préfecture 66 site,
   the Géoplateforme WFS, Sandre). The ASA perimeters exist as map annexes of prefectural orders
   (PDF); a "test" dataset on data.gouv.fr covers the ASA of the Castellane only (Conflent).
+
+### INSPIRE HILUCS code list (Step 12, land use, 2026-11-16)
+
+| Date | Source | Endpoint / URL | Parameters | Output | Rows | Size |
+|---|---|---|---|---|---|---|
+| 2026-11-16 | INSPIRE registry (European Commission), code list HILUCSValue (Hierarchical INSPIRE Land Use Classification System), governance level "Legal (EU)" | `https://inspire.ec.europa.eu/codelist/HILUCSValue/HILUCSValue.en.json` | `python -m src.ingest.inspire_hilucs`; SHA-256 `6df58135c36f04541aaac1172e6e293a591efacc6021659c78626c4e9396fa33` | `raw/inspire_hilucs/2026-11-16/HILUCSValue.en.json`, `release.json` | 98 values, all Valid | 295 kB |
+
+- Each value's `id` is its IRI (e.g. `http://inspire.ec.europa.eu/codelist/HILUCSValue/1_1_1_CommercialAgriculturalProduction`).
+  Pinned in `configs/snapshots.json`; the crop classes' HILUCS values (`configs/lu_hilucs.csv`) are
+  checked against it when the graph is built, and `tests/test_kg.py` checks the local copies in
+  `ontology/imports/inspire_terms.ttl` against it.

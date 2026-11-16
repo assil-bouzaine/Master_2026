@@ -29,6 +29,10 @@ from the source tables with pandas, not taken from the builder (docs/competency_
    inserted on purpose, make checks 1 and 5 fail.
 9. Text: no literal holds a control character (an encoding error; a deliberate U+0085 is
    caught), and the two RPG code tables give every code they share the same label.
+10. HILUCS (2026-11-16): every crop class has the land-use value configs/lu_hilucs.csv gives it
+   (skos:broadMatch; none for the classes left unmapped), and every HILUCS value in the ontology
+   network has the IRI, label, definition and parent of the pinned registry snapshot, read here
+   from the stored JSON, status Valid.
 """
 import json
 import re
@@ -328,6 +332,36 @@ def wkt_problems(literals, box=DEPT_BOX_L93):
     return out
 
 
+def test_hilucs(store, net):
+    SKOS = rdflib.Namespace("http://www.w3.org/2004/02/skos/core#")
+    want = pd.read_csv(ROOT / "configs" / "lu_hilucs.csv", keep_default_na=False)
+    base = "http://inspire.ec.europa.eu/codelist/HILUCSValue/"
+    want = {c: (base + h if h else None) for c, h in zip(want["class"], want["hilucs"])}
+    got = rows(store, """PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+        SELECT ?n ?h WHERE { ?c a lulcw:CropClass ; skos:notation ?n . OPTIONAL { ?c skos:broadMatch ?h } }""")
+    assert got["n"].is_unique, "a crop class with two HILUCS values"
+    got = dict(zip(got["n"], got["h"]))
+    assert got == want, f"crop class -> HILUCS differs from the config: {got} vs {want}"
+    day = json.loads((ROOT / "configs" / "snapshots.json").read_text())["inspire_hilucs"]
+    reg = {}
+    for it in json.loads((RAW / "inspire_hilucs" / day / "HILUCSValue.en.json").read_text(encoding="utf-8"))[
+            "codelist"]["containeditems"]:
+        v = it["value"]
+        reg[v["id"]] = {"label": v["label"]["text"], "definition": (v.get("definition") or {}).get("text"),
+                        "parent": (v.get("parents") or [{}])[0].get("parent", {}).get("id"),
+                        "status": v["status"]["label"]["text"]}
+    local = {str(x) for x in net.subjects(RDF.type, OWL.NamedIndividual) if str(x).startswith(base)}
+    assert {h for h in want.values() if h} <= local, "a HILUCS value of the mapping has no local copy"
+    for h in local:
+        r = reg[h]
+        assert r["status"] == "Valid", h
+        assert {str(x) for x in net.objects(rdflib.URIRef(h), SKOS.prefLabel)} == {r["label"]}, h
+        assert {str(x) for x in net.objects(rdflib.URIRef(h), SKOS.definition)} == ({r["definition"]} if r["definition"] else set()), h
+        assert {str(x) for x in net.objects(rdflib.URIRef(h), SKOS.broader)} == ({r["parent"]} if r["parent"] else set()), h
+    print(f"  10. HILUCS: {sum(v is not None for v in want.values())} of {len(want)} crop classes mapped as the "
+          f"config says; {len(local)} local HILUCS values = the registry snapshot of {day} (label, definition, parent)")
+
+
 def main():
     if not KG_FILE.exists():
         print(f"{KG_FILE.relative_to(ROOT)} not built here, skipped (python -m src.kg.build_kg)")
@@ -345,6 +379,7 @@ def main():
     test_units(store)
     test_negative_controls(store, net)
     test_text(store)
+    test_hilucs(store, net)
     summary = json.loads((KG_FILE.parent / f"lulcw_kg_{DATASET}_summary.json").read_text())
     print(f"test_kg: all checks passed ({summary['triples']} triples, built {summary['built']}, "
           f"code {summary['code_version']})")

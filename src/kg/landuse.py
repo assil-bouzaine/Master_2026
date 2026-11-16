@@ -7,7 +7,10 @@ From the land-use thread of step 12d (docs/notes/step12d_land_use.md, src/datase
                 crop coefficients and stages and their irrigation assumption (backed by the 2020
                 agricultural census); which class a code belongs to is derived by a SHACL-AF rule
                 (ontology/rules/lulcw-rules.ttl), from the group numbers and code overrides
-                stated here
+                stated here; and their INSPIRE HILUCS land-use value (skos:broadMatch, from
+                configs/lu_hilucs.csv; the values are checked against the pinned registry
+                snapshot data/raw/inspire_hilucs/<date>, local copies in
+                ontology/imports/inspire_terms.ttl)
   zones         one crop demand zone per piezometer (radius BUFFER_M)
   crop areas    the clipped area of every crop code in every zone and RPG edition 2015-2025, one
                 SOSA observation each, for its own year
@@ -20,11 +23,13 @@ The high-demand threshold is a parameter of its rule, computed by src.kg.apply_r
 estimates (training years only).
 """
 import pandas as pd
-from rdflib import Literal
+from rdflib import Literal, URIRef
 from rdflib.namespace import RDF, RDFS, SKOS, XSD
 
 from src.config import DATASET, INTERIM, RAW, ROOT
 from src.dataset.crop_demand import AREA_OUT, BUFFER_M, CLASSES, load_classes
+from src.ingest.inspire_hilucs import NAME as HILUCS_FILE, values as hilucs_values
+from src.kg.rivers import snapshot
 
 EDITIONS = range(2015, 2026)
 DEMAND = INTERIM / f"crop_demand_weekly_{DATASET}.parquet"
@@ -52,6 +57,27 @@ FAO56 = ("FAO Irrigation and Drainage Paper 56 (Allen, Pereira, Raes and Smith, 
 ASSUMPTION = {"usually": "UsuallyIrrigated", "partly": "PartlyIrrigated", "rainfed": "Rainfed",
               "none": "NotCropped"}
 UNMAPPED = "unmapped"
+HILUCS = "http://inspire.ec.europa.eu/codelist/HILUCSValue/"
+HILUCS_MAP = ROOT / "configs" / "lu_hilucs.csv"
+
+
+def hilucs_map():
+    """Crop class -> HILUCS value IRI (or None), every class of the config and 'unmapped' listed
+    once; each value must be Valid in the pinned registry snapshot."""
+    m = pd.read_csv(HILUCS_MAP, keep_default_na=False)
+    known = set(load_classes().index) | {UNMAPPED}
+    assert sorted(m["class"]) == sorted(known), f"configs/lu_hilucs.csv lists {sorted(m['class'])}, not {sorted(known)}"
+    vals = hilucs_values(snapshot("inspire_hilucs") / HILUCS_FILE)
+    out = {}
+    for r in m.itertuples():
+        if r.hilucs:
+            assert r.relation == "broadMatch", r
+            iri = HILUCS + r.hilucs
+            assert vals.get(iri, {}).get("status") == "Valid", f"{iri} is not a Valid HILUCS value"
+            out[r._1] = iri
+        else:
+            out[r._1] = None
+    return out
 
 
 def nomenclature():
@@ -98,6 +124,19 @@ def add(kg, rel, wells, versions):
         kg.add(r, L.retrievalDate, Literal("2026-10-25", datatype=XSD.date))
         kg.add(r, RDFS.comment, Literal(f"Source: {url}", lang="en"))
         rel[key] = r
+    snap = snapshot("inspire_hilucs")
+    r = kg.node(iri("release", "inspire-hilucs"), L.DataRelease,
+                "INSPIRE HILUCS code list (land use), INSPIRE registry", "en")
+    kg.add(r, L.retrievalDate, Literal(snap.name, datatype=XSD.date))
+    kg.add(r, RDFS.comment, Literal(f"Source: https://inspire.ec.europa.eu/codelist/HILUCSValue; stored in "
+                                    f"{snap.relative_to(ROOT)}", lang="en"))
+    rel["inspire-hilucs"] = r
+    r = kg.node(iri("release", "crop-class-hilucs"), L.DataRelease,
+                "HILUCS land-use value of each crop class (configs/lu_hilucs.csv)", "en")
+    kg.add(r, L.releaseDate, Literal(file_date(HILUCS_MAP), datatype=XSD.date))
+    kg.add(r, RDFS.comment, Literal(f"Stored in {HILUCS_MAP.relative_to(ROOT)}", lang="en"))
+    kg.add(r, PROV.wasDerivedFrom, rel["inspire-hilucs"])
+    rel["crop-class-hilucs"] = r
     r = kg.node(iri("release", "fao-56"), L.DataRelease, FAO56[0], "en")
     kg.add(r, RDFS.comment, Literal(f"Source: {FAO56[1]} (checked 2026-10-25)", lang="en"))
     rel["fao-56"] = r
@@ -139,6 +178,7 @@ def add(kg, rel, wells, versions):
 
     # crop classes
     classes = load_classes()
+    hilucs = hilucs_map()
     cscheme = kg.node(iri("crop-class-scheme", "lulcw"), SKOS.ConceptScheme,
                       "harmonised crop classes of the LULC-Water project", "en")
     kg.add(cscheme, RDFS.label, Literal("classes de cultures harmonisées du projet LULC-Water", lang="fr"))
@@ -167,6 +207,9 @@ def add(kg, rel, wells, versions):
         kg.add(c, PROV.wasDerivedFrom, rel["crop-classes"])
         for key in AGRESTE:
             kg.add(c, PROV.wasDerivedFrom, rel[key])
+        if hilucs[name]:
+            kg.add(c, SKOS.broadMatch, URIRef(hilucs[name]))
+            kg.add(c, PROV.wasDerivedFrom, rel["crop-class-hilucs"])
     u = kg.node(iri("crop-class", UNMAPPED), L.CropClass)
     kg.add(u, SKOS.inScheme, cscheme)
     kg.add(u, SKOS.notation, Literal(UNMAPPED))

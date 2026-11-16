@@ -40,6 +40,7 @@ against whole-graph queries and against pandas rules on the source tables (the e
 """
 import argparse
 import json
+import math
 
 import geopandas as gpd
 import numpy as np
@@ -143,7 +144,9 @@ def aggregate(paths):
             "eligible": one_sign and all(local(p["eligibility"]) == "EligibleConstraint" for p in paths),
             "constrained": one_sign and all(p["constrained"] for p in paths),
             "distance_m": min(dist) if dist else None,
-            "cell_weight": float(np.mean(w)) if w else None,
+            # exactly rounded, so the weight does not depend on the order the query returns the
+            # paths in (a rebuild of 2026-11-16 changed 838 weights in the last bit otherwise)
+            "cell_weight": math.fsum(w) / len(w) if w else None,
             "association_types": " ".join(types) or None}
 
 

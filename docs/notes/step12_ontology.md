@@ -1666,3 +1666,52 @@ source-level oracle stays `tests.test_kg_rules.test_data_rivers`.
   is cheap once rung 4 exists.
 - `scripts/kaggle_cpu.py pull` downloads every earlier run again each time (over 1,400 small files
   before it reaches the new ones): worth restricting the kernel's output to what is new.
+
+## 2026-11-16: the HILUCS mapping of the crop classes
+
+### Recurring check (CLAUDE.md §7)
+1. *Chain link advanced:* land use → knowledge. The graph's crop classes now speak the EU's land-use
+   vocabulary, which the subject names (SO1, INSPIRE).
+2. *Dated land use:* unchanged; the mapping is per class, not per year.
+3. *Observed / inferred / assumed / unknown:* the HILUCS values are read from the registry (observed);
+   the mapping is a judgement per class, written with its reason in the config.
+4. *Evidence vs plan:* done and tested; no model uses it.
+5. *Next model experiment:* none depends on it (the twin runs on Kaggle).
+6. *Missing from the subject:* INSPIRE is now covered for hydrogeology and land use.
+
+### What was done
+- **Source.** The INSPIRE registry's code list (`HILUCSValue.en.json`, 98 values, all Valid), stored
+  by `src/ingest/inspire_hilucs.py` as a dated snapshot (`data/raw/inspire_hilucs/2026-11-16`,
+  SHA-256 in its `release.json`) and pinned in `configs/snapshots.json`; logged in `data/README.md`.
+- **Mapping** (`configs/lu_hilucs.csv`, read by `src/kg/landuse.py`): the 13 farmed classes →
+  `skos:broadMatch` `1_1_1_CommercialAgriculturalProduction` ("arable land, permanent crops and
+  grasslands in agricultural use"). HILUCS classifies the *use* of land, not the crop, so the HILUCS
+  value is broader than every class, and a broad match (not a close or exact one) is the right
+  relation. **Not mapped:** `no_crop`, because RPG group 28 ("Divers") mixes field margins, grazed oak
+  and chestnut woods, afforested farmland (forestry, 1_2), reed beds and salt marshes, so no single
+  HILUCS value holds for every member; and `unmapped`, which has no member. Each reason is in the
+  config. The build refuses a value that is not Valid in the pinned snapshot.
+- **Local copies** of `1_1_1` and its parents (`1_1_Agriculture`, `1_PrimaryProduction`), with label,
+  definition and parent verbatim, in `ontology/imports/inspire_terms.ttl` (meta 0.3.1). The mapping
+  itself stays in the facts: the classes are data, not ontology terms (decided 2026-11-10).
+- **Release rebuilt** (2026-11-16 12:41 UTC): facts 469,485 triples (+35: 13 mappings, 13 provenance
+  links, the two source records), rule outputs 162,922 (unchanged), no SHACL violation (the 8 usual
+  notes on missing depths). `test_ontology` passes (consistency, ledger unchanged). New check 10 in
+  `tests/test_kg.py`: the graph's mapping = the config, and every local HILUCS copy = the snapshot
+  (label, definition, parent, status), read from the stored JSON, not through the ingest code.
+
+- **Tests after the rebuild:** `test_kg` (with check 10), `test_release`, `test_kg_rules` (59 negative
+  controls), `test_cq`, `test_inventory`, `test_export` all pass. The export was regenerated for the new
+  release (`export_v4_main`, release 2026-11-16 12:41 UTC): nodes and arm C identical to the export of
+  2026-11-10; arm D identical except 838 recharge weights that differed **in the last bit** (at most
+  4e-16 relative). A recharge weight is the mean over its evidence paths, and the rebuilt graph
+  returned the paths in another order, so the floating-point sum rounded differently. The mean now
+  uses `math.fsum` (exactly rounded, independent of the order), so a rebuild of the same facts gives
+  a bit-identical export.
+
+### What to consider
+- The mapping says little about water: every farmed class lands on the same HILUCS value. Its value
+  is interoperability (a HILUCS-aware tool can read the crop classes as agricultural use), not
+  discrimination between crops; AGROVOC (12.9) carries the crop meaning.
+- Fallow land (group 11) alone would map to 1_1_1; splitting `no_crop` into fallow and "other" would
+  map most of its area. Not done: the class set is fixed for the land-use test (LU-4).

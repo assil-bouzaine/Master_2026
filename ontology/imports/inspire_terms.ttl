@@ -8,9 +8,14 @@
 # by hand: each concept keeps its register IRI (the "id" of its record) and its definition,
 # copied verbatim from <id>/<name>.en.json on 2026-11-10 (status "Valid" for every one; a made-up
 # name returns 404). The alignment axioms are in alignments/lulcw-inspire.ttl.
+# Added 2026-11-16 (theme Land use): the HILUCS values the crop classes of the graph are mapped to
+# (skos:broadMatch in the facts, src/kg/landuse.py and configs/lu_hilucs.csv), with their parents;
+# IRI, label and definition copied verbatim from the registry's code list
+# (https://inspire.ec.europa.eu/codelist/HILUCSValue/HILUCSValue.en.json, snapshot
+# data/raw/inspire_hilucs/2026-11-16, status "Valid"); tests/test_kg.py checks them against it.
 
 <https://w3id.org/lulcw/imports/inspire> a owl:Ontology ;
-    rdfs:comment "Hand-written copies (IRI, label, definition) of the INSPIRE feature concepts LULC-Water aligns to, from the INSPIRE feature concept dictionary (http://inspire.ec.europa.eu/featureconcept), retrieved 2026-11-10." .
+    rdfs:comment "Hand-written copies (IRI, label, definition) of the INSPIRE feature concepts LULC-Water aligns to, from the INSPIRE feature concept dictionary (http://inspire.ec.europa.eu/featureconcept), retrieved 2026-11-10; and of the HILUCS land-use values its crop classes are mapped to, from the HILUCS code list (http://inspire.ec.europa.eu/codelist/HILUCSValue), retrieved 2026-11-16." .
 
 skos:prefLabel a owl:AnnotationProperty .
 skos:definition a owl:AnnotationProperty .
@@ -51,3 +56,20 @@ inspirefc:ActiveWell a owl:NamedIndividual ;
     skos:definition "A well influencing the groundwater resources of the aquifer."@en ;
     rdfs:isDefinedBy <http://inspire.ec.europa.eu/featureconcept> .
 
+# --- HILUCS (land use), 2026-11-16
+<http://inspire.ec.europa.eu/codelist/HILUCSValue/1_PrimaryProduction> a owl:NamedIndividual ;
+    skos:prefLabel "primary production"@en ;
+    skos:definition "Areas where the manufacturing industries aggregate, package, purify or process the primary products close to the primary producers are included, especially if the raw material is unsuitable for sale or difficult to transport long distances."@en ;
+    rdfs:isDefinedBy <http://inspire.ec.europa.eu/codelist/HILUCSValue> .
+
+<http://inspire.ec.europa.eu/codelist/HILUCSValue/1_1_Agriculture> a owl:NamedIndividual ;
+    skos:prefLabel "agriculture"@en ;
+    skos:definition "Production of crop (plants, fungi, etc.) and animal products for food, for sale, own consumption or industrial purposes. It includes plants for biofuels"@en ;
+    skos:broader <http://inspire.ec.europa.eu/codelist/HILUCSValue/1_PrimaryProduction> ;
+    rdfs:isDefinedBy <http://inspire.ec.europa.eu/codelist/HILUCSValue> .
+
+<http://inspire.ec.europa.eu/codelist/HILUCSValue/1_1_1_CommercialAgriculturalProduction> a owl:NamedIndividual ;
+    skos:prefLabel "commercial agricultural production"@en ;
+    skos:definition "Arable land, permanent crops and grasslands in agricultural use (both sown and natural grassland). The products can be used for human or animal feed or bio-energy production."@en ;
+    skos:broader <http://inspire.ec.europa.eu/codelist/HILUCSValue/1_1_Agriculture> ;
+    rdfs:isDefinedBy <http://inspire.ec.europa.eu/codelist/HILUCSValue> .

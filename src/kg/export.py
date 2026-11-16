@@ -144,8 +144,9 @@ def aggregate(paths):
             "eligible": one_sign and all(local(p["eligibility"]) == "EligibleConstraint" for p in paths),
             "constrained": one_sign and all(p["constrained"] for p in paths),
             "distance_m": min(dist) if dist else None,
-            # exactly rounded, so the weight does not depend on the order the query returns the
-            # paths in (a rebuild of 2026-11-16 changed 838 weights in the last bit otherwise)
+            # exactly rounded, so the mean does not depend on the order the query returns the paths
+            # in; the cell weights themselves come from SPARQL sums in the rules (no fixed order), so
+            # exports of the same facts still agree only to ~1e-15, not bit for bit (2026-11-16)
             "cell_weight": math.fsum(w) / len(w) if w else None,
             "association_types": " ".join(types) or None}
 

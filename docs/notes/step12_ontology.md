@@ -1705,9 +1705,14 @@ source-level oracle stays `tests.test_kg_rules.test_data_rivers`.
   release (`export_v4_main`, release 2026-11-16 12:41 UTC): nodes and arm C identical to the export of
   2026-11-10; arm D identical except 838 recharge weights that differed **in the last bit** (at most
   4e-16 relative). A recharge weight is the mean over its evidence paths, and the rebuilt graph
-  returned the paths in another order, so the floating-point sum rounded differently. The mean now
-  uses `math.fsum` (exactly rounded, independent of the order), so a rebuild of the same facts gives
-  a bit-identical export.
+  returned the paths in another order, so the floating-point sum rounded differently. The export's
+  mean now uses `math.fsum` (exactly rounded, independent of the order). **Correction (same
+  afternoon):** that does not make exports bit-identical, as first written here and in commit
+  33acfa1. After the 0.7.1 re-derivation, 367 recharge weights again differed from the export
+  shipped with the twin's grid, by at most 4e-16 relative: the cell weights themselves come from
+  SPARQL sums in the rules, which run in no fixed order. Exports of the same facts agree to about
+  1e-15, not bit for bit. No model can tell the difference (inputs are float32); `test_export`
+  compares with a tolerance.
 
 ### What to consider
 - The mapping says little about water: every farmed class lands on the same HILUCS value. Its value
@@ -1715,3 +1720,45 @@ source-level oracle stays `tests.test_kg_rules.test_data_rivers`.
   discrimination between crops; AGROVOC (12.9) carries the crop meaning.
 - Fallow land (group 11) alone would map to 1_1_1; splitting `no_crop` into fallow and "other" would
   map most of its area. Not done: the class set is fixed for the land-use test (LU-4).
+
+## 2026-11-16 (afternoon): the OOPS! scan, ontology 0.7.1
+
+**What.** OOPS! (the OntOlogy Pitfall Scanner, Poveda-Villalón et al. 2014,
+doi:10.4018/ijswis.2014040102; checked on Crossref) is the one quality gate of CLAUDE.md §3 never
+run. It is a web service that reads an ontology and lists common modelling mistakes ("pitfalls"),
+graded critical, important or minor. Run on 2026-11-16 after Assil's "push and continue", once it
+was clear that sending the files exposes nothing new (the GitHub repository is public). `src/kg/oops_scan.py` sends the whole network (lulcw
+and its imports, merged by ROBOT), keeps the raw answer (`data/raw/oops/<date>`) and writes
+`docs/oops_report.md` with a verdict per pitfall (`configs/oops_verdicts.csv`).
+
+**Two lessons about the service.** It no longer scans by URL. And it fails on our `owl:imports`
+("unexpected error"), because their w3id.org addresses do not resolve until the redirect is set up.
+Bisection showed this (declarations alone passed; everything except the five imports passed). So
+the w3id redirect, still on Assil's list, matters for any tool that loads the ontology, not only for
+looks.
+
+**Result: no critical pitfall.**
+- *P11, important: missing domain or range.* Five were real omissions: four date properties and
+  `targetEntity` whose definitions state their range in words ("an xsd:date literal"; "the
+  piezometer whose head…") but not as an axiom. Every value in the graph already conforms (392 + 392
+  coverage dates, 6 release dates and 28 retrieval dates are `xsd:date`; all 3,047 `targetEntity`
+  values are piezometers), so the ranges were added: **ontology 0.7.1**. `test_ontology` passes
+  (consistent with HermiT and ELK). The 77 that remain are deliberate. A property shared by several
+  classes gets no domain, and one whose values are a union (a unit or a unit group) gets no range,
+  because in OWL a domain or range does not check anything: it silently *adds* a type to whatever
+  uses the property. Checking is SHACL's job here. 45 of the 77 are named in a shape; the other 33 are
+  plain values written by the builder (codes, dates, volumes), checked by `test_kg` against the source
+  tables.
+- *P13, minor: no inverse properties.* Deliberate: SPARQL follows a relation both ways.
+- *P04 and P08, minor:* only on the local copies of reused vocabularies (SOSA, PROV, …), not on lulcw.
+- *P22, minor: mixed naming conventions*, naming `lulcw:WaterUse` without detail. Not reproduced:
+  the script checks that every lulcw name is CamelCase (classes upper, properties lower).
+- *Suggestion:* make `overlies` symmetric or transitive. It is neither on purpose: it has a
+  direction, and direct contacts are kept apart from indirect orderings, each witnessed by a polygon.
+
+**Release** re-derived for 0.7.1 (the facts do not change; the rules and the validation run again
+because the release binds every ontology file): release of 2026-11-16 13:54 UTC, rule outputs
+162,922 (unchanged), no SHACL violation; `test_kg`, `test_release`, `test_kg_rules`, `test_cq`,
+`test_inventory`, `test_export` pass; export regenerated: nodes and arm C bit-identical to the export
+the twin's grid uses (release 12:41), arm D identical except 367 recharge weights in the last bit
+(see the correction in the HILUCS section).

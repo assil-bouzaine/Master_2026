@@ -483,3 +483,13 @@ Notes:
   Pinned in `configs/snapshots.json`; the crop classes' HILUCS values (`configs/lu_hilucs.csv`) are
   checked against it when the graph is built, and `tests/test_kg.py` checks the local copies in
   `ontology/imports/inspire_terms.ttl` against it.
+
+### OOPS! pitfall scan (quality gate, 2026-11-16)
+
+| Date | Source | Endpoint / URL | Parameters | Output | Rows | Size |
+|---|---|---|---|---|---|---|
+| 2026-11-16 | OOPS! (OntOlogy Pitfall Scanner), Ontology Engineering Group, UPM | `https://oops.linkeddata.es/rest` (POST) | `python -m src.kg.oops_scan`; content = the merged network (lulcw 0.7.1 + imports, ROBOT merge, owl:imports removed), RDF/XML in a CDATA section; scanning by URL is refused by the service | `raw/oops/2026-11-16/response.xml`, `release.json` (SHA-256 of the content sent) | 5 pitfalls + 1 suggestion | 3,236 triples sent |
+
+- What is sent is public already (the repository is public). The service failed ("unexpected
+  error") on the owl:imports of lulcw.ttl (w3id.org IRIs not yet redirected), hence their removal.
+- Report and verdicts: `docs/oops_report.md`, `configs/oops_verdicts.csv`.

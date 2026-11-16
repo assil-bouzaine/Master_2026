@@ -251,7 +251,12 @@ and never overwrite observed facts (CQ10/CQ16).
 2. **Reasoner:** ROBOT `reason` (ELK, then HermiT) finds the ontology
    consistent with no unsatisfiable class; ROBOT `report` gives no ERROR.
 3. **OOPS!** pitfall scan: no critical pitfall. It is a web service, so the
-   ontology is sent to it; ours only.
+   ontology is sent to it; ours only. Done 2026-11-16 (`python -m src.kg.oops_scan` →
+   `docs/oops_report.md`): no critical pitfall; P11 (important, missing domain or range) on 77 lulcw
+   properties after five ranges were added in 0.7.1, the rest accepted with reasons
+   (`configs/oops_verdicts.csv`); P13 (no inverses) accepted; P04 and P08 only on the local copies of
+   reused vocabularies. The service refuses scans by URL and fails on our owl:imports until the
+   w3id.org redirect exists, so the script sends the merged network without them.
 4. **SHACL:**
    - every `UnitAttribution` has a source, role, evidence and assessment status;
      resolved candidates additionally have a target, confidence and resolution.

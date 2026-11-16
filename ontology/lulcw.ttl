@@ -19,9 +19,9 @@
 # M2 = square metre, M3 = cubic metre) and are stated in each definition.
 
 <https://w3id.org/lulcw> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/0.7.0> ;
-    owl:versionInfo "0.7.0" ;
-    owl:priorVersion <https://w3id.org/lulcw/0.6.1> ;
+    owl:versionIRI <https://w3id.org/lulcw/0.7.1> ;
+    owl:versionInfo "0.7.1" ;
+    owl:priorVersion <https://w3id.org/lulcw/0.7.0> ;
     dcterms:title "LULC-Water bridging module"@en , "Module de liaison LULC-Water"@fr ;
     dcterms:description "Bridging module of the LULC-Water network of ontologies (SAVE Water, PRIMA): wells, abstraction facilities, hydrogeological units and the qualified, evidence-carrying assertions (unit attributions, stratigraphic relations, well links, influences, annual abstraction accounting) that structure, constrain and explain a groundwater-level model of the Roussillon multilayer aquifer."@en ,
         "Module de liaison du réseau d'ontologies LULC-Water (SAVE Water, PRIMA) : piézomètres, ouvrages de prélèvement, entités hydrogéologiques et assertions qualifiées, porteuses de preuves (attributions à une entité, relations stratigraphiques, liens entre piézomètres, influences, bilans annuels des prélèvements), qui structurent, contraignent et expliquent un modèle des niveaux piézométriques de l'aquifère multicouche du Roussillon."@fr ;
@@ -38,7 +38,8 @@
         "0.5.0 (2026-10-27, CQ4 and CQ8): recharge-proxy influences: the observable property GroundwaterRecharge, which no input of the graph measures; proxyFor, so that an influence states what its driver stands in for; omitsPathway, so that it names the pathways it does not represent; the mechanisms LateralInflow and VerticalLeakage; the driver group RechargeProxies; withinExtent also serves influences, and appliesInExtent names the fixed extents a rule derives in."@en,
         "0.6.0 (2026-11-06, CQ5 and CQ6): rivers, gauges and canals: watercourses, BD TOPO reaches (river and canal), reach search zones and the pieces of reaches over elementary polygons, river sections and WFD river water bodies, gauges with their discharge series, gauge pools and gauge-zone relations; documents, passages and exchange statements read from them (mechanism, direction, hedging, how the source names the unit); derived river-unit and canal-unit associations; surface-water intakes and the canal intake group; the observable property RiverStage."@en ,
         "0.6.1 (2026-11-06, CQ5, CQ6 and CQ8 rules): the driver group RiverDischargeGroup (river stage proxies) for the river influences; measuredAt, the site of the measurement behind an exchange statement; SurfaceWaterIntake is a geo:Feature, no longer an AbstractionFacility, whose instances are the groundwater facilities that carry unit attributions (CQ2); SummerDemand includes the canal diversion volumes."@en ,
-        "0.7.0 (2026-11-06, Codex review of that day): an exchange statement is about a unit itself (aboutUnit) or about an aggregate of units (aggregateMemberUnit, aboutGroundwaterBody), so membership of a groundwater body never stands for evidence about each member; localizedStatement, the separate inference that localises an aggregate statement to the unit on whose outcrop the river or canal runs; evidenceMethod (differential gauging, geochemical tracing, water balance, synthesis), separate from hedging; overlapsSection, so that only statements about the same stretch can contradict each other; ConstraintDecision, the decision of an export policy about the signs of one mechanism (proxy review and approval, with their basis), separate from the evidence layer of constraintEligibility; Piezometer covers the few monitoring points that are springs (the GWML2 alignment 0.2.0 makes it a close match of GW_Well, no longer a subclass)."@en ;
+        "0.7.0 (2026-11-06, Codex review of that day): an exchange statement is about a unit itself (aboutUnit) or about an aggregate of units (aggregateMemberUnit, aboutGroundwaterBody), so membership of a groundwater body never stands for evidence about each member; localizedStatement, the separate inference that localises an aggregate statement to the unit on whose outcrop the river or canal runs; evidenceMethod (differential gauging, geochemical tracing, water balance, synthesis), separate from hedging; overlapsSection, so that only statements about the same stretch can contradict each other; ConstraintDecision, the decision of an export policy about the signs of one mechanism (proxy review and approval, with their basis), separate from the evidence layer of constraintEligibility; Piezometer covers the few monitoring points that are springs (the GWML2 alignment 0.2.0 makes it a close match of GW_Well, no longer a subclass)."@en ,
+        "0.7.1 (2026-11-16, OOPS! scan, docs/oops_report.md): the ranges the definitions already stated, as axioms: xsd:date for coverageStart, coverageEnd, releaseDate and retrievalDate, Piezometer for targetEntity (every value in the graph conforms)."@en ;
     owl:imports <https://w3id.org/lulcw/imports/sosa> , <https://w3id.org/lulcw/imports/prov> ,
         <https://w3id.org/lulcw/imports/time> , <https://w3id.org/lulcw/imports/skos> ,
         <https://w3id.org/lulcw/imports/geo> .
@@ -712,7 +713,7 @@ lulcw:driverEntity a owl:ObjectProperty ;
     skos:definition "The entity whose driver variable an influence is about (e.g. an abstraction facility, an outcrop area, a weather cell)."@en .
 
 lulcw:targetEntity a owl:ObjectProperty ;
-    rdfs:domain lulcw:Influence ;
+    rdfs:domain lulcw:Influence ; rdfs:range lulcw:Piezometer ;
     rdfs:label "target entity"@en , "entité cible"@fr ;
     skos:definition "The piezometer whose head an influence may change."@en .
 
@@ -835,10 +836,10 @@ lulcw:verticalDatum a owl:DatatypeProperty ; rdfs:range xsd:string ;
 lulcw:temporalResolution a owl:DatatypeProperty ; rdfs:range xsd:string ;
     rdfs:label "temporal resolution"@en , "pas de temps"@fr ;
     skos:definition "Time step of a series, as an ISO 8601 duration (e.g. P7D)."@en .
-lulcw:coverageStart a owl:DatatypeProperty ;
+lulcw:coverageStart a owl:DatatypeProperty ; rdfs:range xsd:date ;
     rdfs:label "coverage start"@en , "début de couverture"@fr ;
     skos:definition "First date covered by a series (an xsd:date literal)."@en .
-lulcw:coverageEnd a owl:DatatypeProperty ;
+lulcw:coverageEnd a owl:DatatypeProperty ; rdfs:range xsd:date ;
     rdfs:label "coverage end"@en , "fin de couverture"@fr ;
     skos:definition "Last date covered by a series (an xsd:date literal)."@en .
 lulcw:storedIn a owl:DatatypeProperty ; rdfs:range xsd:string ;
@@ -847,10 +848,10 @@ lulcw:storedIn a owl:DatatypeProperty ; rdfs:range xsd:string ;
 lulcw:qualityPolicy a owl:DatatypeProperty ; rdfs:range xsd:string ;
     rdfs:label "quality policy"@en , "politique qualité"@fr ;
     skos:definition "The quality filter applied to a series (e.g. values qualified 'Incorrecte' dropped before the weekly mean)."@en .
-lulcw:releaseDate a owl:DatatypeProperty ;
+lulcw:releaseDate a owl:DatatypeProperty ; rdfs:range xsd:date ;
     rdfs:label "release date"@en , "date de version"@fr ;
     skos:definition "Publication or build date of a data release (an xsd:date literal); not the date its facts apply to."@en .
-lulcw:retrievalDate a owl:DatatypeProperty ;
+lulcw:retrievalDate a owl:DatatypeProperty ; rdfs:range xsd:date ;
     rdfs:label "retrieval date"@en , "date de récupération"@fr ;
     skos:definition "Date a data release was retrieved from its source (an xsd:date literal)."@en .
 lulcw:codeVersion a owl:DatatypeProperty ; rdfs:range xsd:string ;

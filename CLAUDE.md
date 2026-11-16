@@ -550,7 +550,16 @@ notebooks/       exploration only; anything that matters moves into src/
   reading in the step note (the knowledge-value map, slice G, the two protocols, RQ2).
 - **HILUCS done** (step note `step12_ontology.md`, last section): crop classes `skos:broadMatch`
   HILUCS 1_1_1 (`configs/lu_hilucs.csv`), registry snapshot pinned, meta 0.3.1; release of
-  2026-11-16 12:41 UTC, every graph suite passes; export regenerated (deterministic recharge weights).
+  2026-11-16 12:41 UTC, every graph suite passes; export regenerated (recharge weights agree with earlier exports to ~1e-15, not bit for bit: the rules' SPARQL sums).
+- **OOPS! scan done** (afternoon; `python -m src.kg.oops_scan` → `docs/oops_report.md`): no critical
+  pitfall; five ranges the definitions stated added as axioms (**ontology 0.7.1**), the rest accepted
+  with reasons (`configs/oops_verdicts.csv`); the service fails on our owl:imports until the w3id
+  redirect exists. Release re-derived for 0.7.1 (13:54 UTC; facts unchanged; every graph suite passes;
+  the twin's grid uses the 12:41 export, whose edges agree with the current one to 4e-16).
+- **Gate 3 sheet drafted:** `docs/gate3_decisions.md` (17 decisions with options, recommendations and
+  sources; 3 wait for the twin's grid). Review it with Assil before the supervisor meeting.
+- **Repository is public** (checked 2026-11-16; told, Assil asked to push): the supervisor/SAVE Water question is
+  point 17 of the Gate 3 sheet.
 - The Kaggle bundle carries `data/processed/kg/export_v4_*`; `pull` copies twin runs as they are.
 - Kaggle kernel version 9 (the first pilot, direct convolution) was superseded by version 10; its output is never pulled.
 
@@ -597,8 +606,8 @@ State on 2026-11-10, evening (update this list when it changes):
 rung 4 (`response.py --arm`) exist and are tested; the real-data arms wait for the twin's grid and the
 tag (item 19, "Order"); the per-regime depth threshold comes with message passing (rung 5); (2) 🔄 the
 twin: grid and slices on Kaggle (see above), then the map and its reading, then the Gate 3 sheet (the
-open points of items 15–19 in one place); (3) ✅ HILUCS mapping; OOPS! still to run (it sends the
-ontology to oops.linkeddata.es: ask Assil first); (4) `paper/` skeleton; (5) ✅ explainer updated for
+open points of items 15–19 in one place: ✅ drafted, `docs/gate3_decisions.md`); (3) ✅ HILUCS mapping;
+✅ OOPS! (ontology 0.7.1); (4) `paper/` skeleton; (5) ✅ explainer updated for
 10–16 November (refresh it with the twin's map). **Assil:** the three e-mails (`docs/supervisor_questions.md` §4–6; add
 the monthly Pliocene pumping 1998–2007), the Earth Engine registration, the w3id redirect request, the
 Drive download of Colab session 2, the paywalled papers; the Gate 3 points of item 18.

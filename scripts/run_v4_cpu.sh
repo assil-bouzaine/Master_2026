@@ -62,6 +62,14 @@ for s in $STEPS; do
                     $R --mode pooled --lam 1 --gain-units sd --run resp_pooled_sd_l1 &
                     $R --mode shared --gain-units sd --run resp_shared_sd &
                     wait ) ;;
+    twin_pilot)   # the twin's pilot (analysis plan §14 item 19 and its amendment of 2026-11-16):
+                  # base cell, worlds 0-2, arms C, D, T; one process per world and learner setting
+                  ( export PFE_THREADS=1; T="$PY -m src.models.twin"
+                    for w in 0 1 2; do
+                      $T --run twin_pilot --worlds $w --fits free pooled:0.01 &
+                      $T --run twin_pilot_conv --worlds $w --fits pooled:0.1:3000 &
+                    done
+                    wait ) ;;
     final:*)      $PY -m src.models.tune --model "${s#final:}" --final-only ;;   # v3 choice
     regimes:*)    $PY -m src.models.regimes --model "${s#regimes:}" ;;
     *)            echo "unknown step $s" ;;

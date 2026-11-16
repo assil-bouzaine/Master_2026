@@ -57,7 +57,21 @@ def _matrix(edges, relation, codes, sources):
     return W
 
 
-def routed_inputs(arm=None, policy="main", edges=None, codes=None, weeks=None, recharge="recharge"):
+def facility_volumes(weeks, facilities=None):
+    """Weekly volume of each groundwater facility (thousand m3/week), seasonal drinking-water
+    profile: a DataFrame weeks x facility. The pumping stresses are weighted sums of its columns."""
+    pw = pd.read_parquet(DATASET_DIR / "pumping_weekly.parquet")
+    pts = pd.read_parquet(DATASET_DIR / "pumping_points.parquet")
+    sp = seasonal_drinking_water(pw, pts)
+    if facilities is None:
+        facilities = sorted(pts.loc[pts["source"] == "groundwater", "code_ouvrage"].unique())
+    sp = sp[sp["code_ouvrage"].isin(facilities)]
+    return (sp.groupby(["week", "code_ouvrage"])["volume_m3"].sum().unstack("code_ouvrage")
+            .reindex(index=pd.DatetimeIndex(weeks), columns=list(facilities)).fillna(0.0) / 1e3)
+
+
+def routed_inputs(arm=None, policy="main", edges=None, codes=None, weeks=None, recharge="recharge",
+                  volumes=None):
     """Inputs of the wells `codes` on `weeks` (default: the dataset's wells and the panel's
     weeks) routed by the edges of `arm` (or by an explicit `edges` table with the export's
     columns). `recharge` names the relation used for the weather ("recharge", or
@@ -91,9 +105,8 @@ def routed_inputs(arm=None, policy="main", edges=None, codes=None, weeks=None, r
     pts = pd.read_parquet(DATASET_DIR / "pumping_points.parquet")
     pe = edges[edges["relation"].isin(("pumping", "pumping_unattributed"))]
     fac = sorted(pe["src"].unique())
-    sp = seasonal_drinking_water(pw, pts)
-    vol = (sp[sp["code_ouvrage"].isin(fac)].groupby(["week", "code_ouvrage"])["volume_m3"].sum()
-           .unstack("code_ouvrage").reindex(index=weeks, columns=fac).fillna(0.0).to_numpy().T / 1e3)
+    table = facility_volumes(weeks, fac) if volumes is None else volumes
+    vol = table.reindex(index=weeks, columns=fac).fillna(0.0).to_numpy().T      # (facilities, T)
     for name, rel in (("pump_gw", "pumping"), ("pump_un", "pumping_unattributed")):
         Wp = _matrix(edges, rel, codes, fac)
         out[name] = Wp @ vol

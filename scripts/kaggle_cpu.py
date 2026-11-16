@@ -27,7 +27,10 @@ push: packs code, dataset v4, the daily SAFRAN files (Pastas), the cached featur
 kernel: pushes the kernel staged by the last push (results/_kaggle_cpu/kernel) again, when
   the bundle on Kaggle is still current; same start watch.
 pull: downloads the kernel output to results/_kaggle_cpu/output, copies every finished run
-  (predictions.parquet present) to results/v4/<run> and rescores it with src.models.evaluate.
+  (predictions.parquet present) to results/v4/<run> and rescores it with src.models.evaluate;
+  twin runs (world_*.json, src/models/twin.py) are copied as they are.
+The bundle also carries the export tables of arms C and D (data/processed/kg/export_v4_*), which
+the routed models and the twin read.
 """
 import argparse
 import json
@@ -120,10 +123,11 @@ def bundle():
     """Code + data of the CPU baselines -> dataset folder/cpu_bundle.zip."""
     sys.path.insert(0, str(ROOT))
     os.environ["PFE_DATASET"] = "v4"
-    from src.config import DATASET_DIR, RAW   # noqa: E402
+    from src.config import DATASET_DIR, PROCESSED, RAW   # noqa: E402
     include = [ROOT / "src", ROOT / "scripts" / "run_v4_cpu.sh", ROOT / "requirements.txt",
                ROOT / "tests" / "__init__.py", ROOT / "tests" / "test_ealstm.py",
                DATASET_DIR, *sorted((RAW / "safran").glob("sim2_66_[0-9]*.parquet")),
+               *sorted((PROCESSED / "kg").glob("export_v4_*")),   # arms C and D (routing, twin)
                *sorted((V4 / "_cache").glob("panel*.parquet")),
                *sorted((V4 / "_cache").glob("panel*.json")),  # land-use identity records
                *sorted(V4.glob("*_tuning/best.json")), *sorted(V4.glob("*_tuned/best.json"))]
@@ -203,12 +207,17 @@ def pull():
     shutil.rmtree(OUTPUT, ignore_errors=True)
     OUTPUT.mkdir(parents=True)
     kg("kernels", "output", f"{u}/{KERNEL}", "-p", str(OUTPUT), "-o")
-    runs = []
+    runs, twins = [], []
     for d in sorted((OUTPUT / "results_cpu" / "v4").glob("*")):
         if (d / "predictions.parquet").exists():
             shutil.copytree(d, V4 / d.name, dirs_exist_ok=True)
             runs.append(d.name)
+        elif any(d.glob("*/world_*.json")):          # twin runs (src/models/twin.py): no rescoring
+            shutil.copytree(d, V4 / d.name, dirs_exist_ok=True)
+            twins.append(f"{d.name} ({len(list(d.glob('*/world_*.json')))} worlds)")
     print("finished runs copied:", " ".join(runs) or "none")
+    if twins:
+        print("twin runs copied:", ", ".join(twins))
     if runs:
         subprocess.run([sys.executable, "-m", "src.models.evaluate", *runs], cwd=ROOT,
                        env={**os.environ, "PFE_DATASET": "v4"}, check=True)

@@ -399,6 +399,14 @@ Kernels run in the background (laptop may be off), up to 12 h per session.
   kernel that fails with a log is not retried: the log tail is printed.
 - `pull` keeps the whole output in `results/_kaggle_cpu/output`; the next `push` ships it back
   as `state.zip`, so finished seeds and wells are not recomputed.
+- **While a kernel runs, `log` prints nothing** (seen 2026-11-16): Kaggle serves the log only once the
+  kernel has ended. Judge a running kernel by `status`; a step that fails at import ends the whole
+  kernel within minutes (COMPLETE early), while a twin or ladder step keeps it RUNNING for hours.
+- **Pushing a new version does not stop the running one**: on 2026-11-16 version 10 was pushed while
+  version 9 ran. `status`, `log` and `pull` always refer to the newest version; the older one runs on
+  to its end, and its output is not pulled.
+- **Twin runs** (`src/models/twin.py`) have no `predictions.parquet`: `pull` copies them as they are
+  (one `world_<k>.json` per world) and does not rescore them.
 - **EA-LSTM on Kaggle** (from 2026-10-24, when Colab ran out of GPU quota):
   `push --steps "final:ealstm regimes:ealstm"`. It uses the torch of Kaggle's image (not a
   pinned wheel). The kernel runs `tests/test_ealstm.py` first and drops the EA-LSTM steps if

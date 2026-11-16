@@ -63,11 +63,13 @@ for s in $STEPS; do
                     $R --mode shared --gain-units sd --run resp_shared_sd &
                     wait ) ;;
     twin_pilot)   # the twin's pilot (analysis plan §14 item 19 and its amendment of 2026-11-16):
-                  # base cell, worlds 0-2, arms C, D, T; one process per world and learner setting
+                  # base cell, worlds 0-2, arms C, D, T; one process per world and learner setting;
+                  # the RQ2 settings (none, soft) on arms D and T, beside the hard ones of twin_pilot
                   ( export PFE_THREADS=1; T="$PY -m src.models.twin"
                     for w in 0 1 2; do
                       $T --run twin_pilot --worlds $w --fits free pooled:0.01 &
                       $T --run twin_pilot_conv --worlds $w --fits pooled:0.1:3000 &
+                      $T --run twin_pilot_rq2 --worlds $w --fits free+none free+soft1 --arms D T &
                     done
                     wait ) ;;
     final:*)      $PY -m src.models.tune --model "${s#final:}" --final-only ;;   # v3 choice

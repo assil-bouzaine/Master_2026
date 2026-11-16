@@ -335,3 +335,24 @@ The settings of the grid (12 cells × 20 worlds) are chosen after it, from synth
   score is a statement about these generators, not about the aquifer.
 - After the pilot: a report script (`src/analysis/twin_report.py`), then the grid and the slices on
   Kaggle (about 400 worlds; the pilot's timing says how many kernel sessions).
+
+### Later the same day: the RQ2 settings, a faster convolution, the pilot pushed again
+
+- **The RQ2 settings are declared and coded** (analysis plan item 19, amendment point 9, written
+  before any RQ2 run). *Hard*: the signs are built in, as in every rung so far. *None*: every gain is
+  a free number. *Soft*: free gains plus a penalty equal to the share of the well's variance carried
+  by contributions with the wrong sign. That is Ross et al.'s "right for the right reasons" penalty
+  (arXiv:1703.03717), in the form that suits a model whose response to a sustained change has the
+  sign of its gain. It is in the same units as the error, so λ_s = 1 means a wrong-signed
+  contribution costs as much as an error of the same size. Its tests check the penalty by hand, check
+  that it pulls a wrong gain towards zero, and check that a short training with it leaves fewer wrong
+  signs than without it.
+- **The convolution is now done by FFT** (`--conv fft`): the same contributions and gradients to
+  float precision (largest difference 4e-7), and **12.6 times faster** on the real shapes (23 ms
+  instead of 291 ms per training step, one thread). Almost all of the model's time was this
+  convolution. The default stays the old one, so the runs of rungs 1–2 keep their numbers. The twin
+  and every later run use FFT.
+- **The pilot was pushed again** with the fast convolution (Kaggle kernel version 10), so that it
+  measures the code the grid will use. The first push (version 9, old convolution) would have needed
+  hours for its 3,000-step fits. The new push also gives a first look at RQ2 on the same three worlds
+  (none and soft, on arms D and T).

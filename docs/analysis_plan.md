@@ -1099,8 +1099,15 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       settings.** The pilot fits free and pooled λ = 0.01 with early stopping (the protocol of the
       real data) and, as a follow-up of the item 18 diagnostic, pooled λ = 0.1 for a fixed 3,000
       steps: on the real data the first is the more accurate and the second the one whose starts
-      agree; only a known truth can say which recovers the contributions. The grid's settings are
-      chosen from the pilot (run time and recovery), which uses synthetic heads only. (8)
+      agree; only a known truth can say which recovers the contributions. *Rule for the grid's
+      settings (fixed 2026-11-16, before any pilot score was read; replaces "chosen from the pilot's
+      run time and recovery"):* the twin is there to compare the two protocols, so both go into
+      the grid: free with early stopping (the real-data protocol) and pooled λ = 0.1 for 3,000 fixed
+      steps (the protocol whose starts agree), on every cell and slice, if the pilot's run time puts
+      the grid and the slices within three Kaggle sessions; otherwise the converged setting runs on
+      the base cell and the slices only. Pooled λ = 0.01 stays in the pilot only (on the real data it
+      differs from free by +0.014, inside the noise). RQ2's none and soft run on the base cell and the
+      slices, arms D and T. The pilot's scores choose nothing. (8)
       **Details.** The AR(1) noise starts from its stationary distribution; the variant-I factor is
       log-normal with mean 1; the real u of this item (about 0.66) is an upper bound, since it counts
       every unattributed facility within 5 km as drawing from the well's unit. The twin runs on Kaggle

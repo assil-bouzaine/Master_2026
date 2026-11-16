@@ -1110,7 +1110,25 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       slices, arms D and T. The pilot's scores choose nothing. *Pilot run (2026-11-16, Kaggle kernel
       version 10, 18 minutes):* one world costs about 8 CPU-minutes for both protocols, so the grid
       and the slices fit in about two sessions; by this rule both protocols run on every cell and
-      slice. Its scores (3 worlds, exploratory): `docs/results_twin_v4.md`. (8)
+      slice. Its scores (3 worlds, exploratory): `docs/results_twin_v4.md`. (10) **How the map is read
+      (written 2026-11-16 while the grid ran on Kaggle, before any of its worlds could be read).**
+      (a) *Where knowledge pays:* a cell where the median over worlds of score 1 (D / C) is at or
+      below −0.05 (the smallest effect of interest proposed in item 18) and its 2.5–97.5 % range over
+      worlds lies below 0. (b) *Whether the gain is pumping knowledge:* ε and u degrade only the
+      pumping routing, so a gain that comes from it shrinks as ε or u grow; the part that does not
+      shrink is measured directly by slice G (D / C in G against the base cell), and only the part
+      that varies with ε and u is credited to pumping knowledge. (c) *Right for the right reasons:* in
+      a cell where D beats C, D's pumping recovery (score 2) must also beat C's (median over worlds);
+      otherwise the cell is reported as "D more accurate for other reasons". (d) *The real data's
+      place:* the cells with ε in {0.1, 0.25} and u in {0.3, 0.6} bracket the real graph (ε 0.08–0.37,
+      u at most 0.66); if none of them meets (a), a real-data D vs C without a detected gain is the
+      expected outcome and is reported as such, not as a failure of the graph. (e) *The two
+      protocols:* compared cell by cell on scores 2 and 5 (recovery and intervention) and score 1; the
+      protocol with the better pumping recovery in most cells, and not worse in accuracy by more
+      than 0.05, is the recommendation for Gate 3 (point 1 of `docs/gate3_decisions.md`). (f) *RQ2:*
+      hard against none and soft on the base cell and the slices: the violation rate and the
+      intervention's sign, and whether hard signs cost accuracy (D / T under each setting). The
+      slices are read one at a time against the base cell, never pooled. (8)
       **Details.** The AR(1) noise starts from its stationary distribution; the variant-I factor is
       log-normal with mean 1; the real u of this item (about 0.66) is an upper bound, since it counts
       every unattributed facility within 5 km as drawing from the well's unit. The twin runs on Kaggle

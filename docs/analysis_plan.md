@@ -1107,7 +1107,10 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       the grid and the slices within three Kaggle sessions; otherwise the converged setting runs on
       the base cell and the slices only. Pooled λ = 0.01 stays in the pilot only (on the real data it
       differs from free by +0.014, inside the noise). RQ2's none and soft run on the base cell and the
-      slices, arms D and T. The pilot's scores choose nothing. (8)
+      slices, arms D and T. The pilot's scores choose nothing. *Pilot run (2026-11-16, Kaggle kernel
+      version 10, 18 minutes):* one world costs about 8 CPU-minutes for both protocols, so the grid
+      and the slices fit in about two sessions; by this rule both protocols run on every cell and
+      slice. Its scores (3 worlds, exploratory): `docs/results_twin_v4.md`. (8)
       **Details.** The AR(1) noise starts from its stationary distribution; the variant-I factor is
       log-normal with mean 1; the real u of this item (about 0.66) is an upper bound, since it counts
       every unattributed facility within 5 km as drawing from the well's unit. The twin runs on Kaggle

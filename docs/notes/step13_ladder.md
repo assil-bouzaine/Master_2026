@@ -356,3 +356,43 @@ The settings of the grid (12 cells × 20 worlds) are chosen after it, from synth
   measures the code the grid will use. The first push (version 9, old convolution) would have needed
   hours for its 3,000-step fits. The new push also gives a first look at RQ2 on the same three worlds
   (none and soft, on arms D and T).
+
+### The pilot's results (pulled 2026-11-16 ≈ 14:00; `docs/results_twin_v4.md`)
+
+Three worlds in the base cell (ε = 0.1, u = 0.3, π = 0.3, ν = 0.25). Three worlds are enough to size the
+run and to see that every score works; they are **not** enough for any conclusion. Every number below
+is a median over the three worlds.
+
+**Run time (what the pilot was for).** The whole pilot took 18 minutes on Kaggle (9 processes on 4
+CPUs). One world costs about 8 CPU-minutes for both protocols when nothing else runs. The grid and the
+slices (about 400 worlds) therefore fit in about two Kaggle sessions. By the rule written before the
+scores were read (item 19, amendment point 7), both protocols go on every cell and slice.
+
+**A first look at the scores (exploratory):**
+
+| | arm C (distance) | arm D (graph) | arm T (truth) |
+|---|---|---|---|
+| drought NSE, free | 0.63 | 0.64 | 0.70 |
+| error against C (log RMSE ratio) | — | −0.061 | −0.056 |
+| pumping recovery error (sd units; 0 = exact), free | 0.23 | 0.24 | 0.18 |
+| pumping recovery, pooled λ = 0.1 × 3,000 steps | 0.30 | 0.29 | 0.24 |
+| error of the −20 % intervention, free | 0.24 | 0.44 | 0.27 |
+
+- **D is about 6 % more accurate than C, as much as the oracle.** But its pumping share is no closer to
+  the truth than C's. D gets the river and canal shares right (0.11 and 0.00 against C's 0.14 and
+  0.06), and those are D's by assumption in the base world. So part of D's gain may come from relations
+  the dials do not control. Slice G (the truth taking C's routes for them) will measure how much.
+- **Early stopping recovers pumping better than converged pooling** (oracle: 0.18 against 0.24) and is
+  more accurate. On the real data, too, it was the more accurate protocol. If the grid confirms this,
+  stopping early is not just luck near the starting values, and the converged model's stability
+  comes at the price of a worse pumping share. (One reason may be the generator itself: its wells
+  differ from their group by design, which pooling resists.)
+- **D answers the intervention worse than C** (relative error 0.44 against 0.24). D splits pumping
+  into its attributed pumps and the rest, each with its own gain, and the cut falls on both. Worth
+  watching in the grid.
+- **RQ2.** With free signs, 19 % of D's gains (9 % of the oracle's) have the wrong sign. The soft
+  penalty at λ_s = 1 barely changes that (17 %), and the hard signs give D its best pumping share and
+  the right sign of the intervention in every well (85 % with free signs).
+- **No world has "wrong reasons"** (score 6) in this easy cell, as expected.
+
+**Next:** the grid and the slices on Kaggle (both protocols), then the knowledge-value map.

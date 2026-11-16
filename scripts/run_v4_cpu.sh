@@ -72,6 +72,25 @@ for s in $STEPS; do
                       $T --run twin_pilot_rq2 --worlds $w --fits free+none free+soft1 --arms D T &
                     done
                     wait ) ;;
+    twin_grid)    # the knowledge-value map (item 19): 12 cells (eps x u) x 20 worlds, both protocols
+                  # (rule of 2026-11-16); four processes, a quarter of the worlds each, resumable
+                  ( export PFE_THREADS=1; T="$PY -m src.models.twin"
+                    for part in 0-4 5-9 10-14 15-19; do
+                      $T --run twin_map --grid --worlds $part --fits free pooled:0.1:3000 &
+                    done
+                    wait ) ;;
+    twin_slices)  # the slices of item 19 (pi, nu, timing, variants I, O, S, G) from the base cell,
+                  # both protocols; RQ2's none and soft on arms D and T
+                  ( export PFE_THREADS=1; T="$PY -m src.models.twin"
+                    for part in 0-4 5-9 10-14 15-19; do
+                      $T --run twin_slices --slices --worlds $part --fits free pooled:0.1:3000 &
+                    done
+                    wait
+                    for part in 0-9 10-19; do
+                      $T --run twin_rq2 --worlds $part --fits free+none free+soft1 --arms D T &
+                      $T --run twin_rq2 --slices --worlds $part --fits free+none free+soft1 --arms D T &
+                    done
+                    wait ) ;;
     final:*)      $PY -m src.models.tune --model "${s#final:}" --final-only ;;   # v3 choice
     regimes:*)    $PY -m src.models.regimes --model "${s#regimes:}" ;;
     *)            echo "unknown step $s" ;;

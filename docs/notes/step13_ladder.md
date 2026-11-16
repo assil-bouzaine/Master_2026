@@ -206,3 +206,132 @@ above were read, and labelled so) separate the two and test two ideas:
   2,999.3 and 2,999.9 m are left out. Too small to matter; noted, not changed.
 - `scripts/kaggle_cpu_run.py`: a kernel's output now holds only the runs it touched, so a pull no
   longer downloads every earlier run again.
+
+## 2026-11-16: the follow-up runs, a correction, and the twin
+
+### Recurring check (CLAUDE.md §7), answered before starting the twin
+
+1. *Which link of the chain does this advance?* Knowledge → model → explanation. The twin is the one
+   place where the right answer is known, so it can say whether routing by the knowledge graph helps
+   and whether the model's driver shares are right.
+2. *Where does dated land use enter?* Not in the twin's base worlds: the canal volume is the only
+   agricultural input, as in rungs 1–2. The crop-calendar pumping (reconstruction 3) can become a
+   timing variant later.
+3. *Observed / inferred / assumed / unknown.* Observed: wells, weeks, weather, facility volumes,
+   river and canal series, which weeks have a head. Assumed (the dials): the response shapes, the
+   gains, the noise, and which pumps really affect which well.
+4. *Evidence vs plan.* The generator and its tests exist and pass. The pilot runs on Kaggle. There is
+   no twin result yet.
+5. *Does the experiment resolve an open question?* Two. Under which conditions D's routing beats
+   C's. And, after today's follow-up results, which fitting protocol gives the right driver shares
+   (see below).
+6. *Missing from the subject:* unchanged.
+
+### The follow-up runs (pulled today; `docs/results_ladder_v4.md`)
+
+| Model (median over the 33 core wells) | val NSE | drought NSE | drought skill | a well's drought NSE moves between starts by | wells whose pumping share keeps its size |
+|---|---|---|---|---|---|
+| free, early stopping (10 Nov) | 0.51 | −0.26 | 0.39 | 1.17 | 52 % |
+| free, 3,000 steps | 0.48 | −0.43 | 0.26 | 0.70 | 70 % |
+| pooled λ = 0.1, early stopping (10 Nov) | 0.52 | −0.63 | 0.35 | 0.44 | 91 % |
+| pooled λ = 0.1, 3,000 steps | 0.49 | −0.63 | 0.38 | **0.11** | **100 %** |
+| free, permanent + seasonal pumping | 0.51 | −0.31 | 0.34 | 1.11 | 45 % (seasonal part) |
+| pooled λ = 0.01, gains in the well's sd | 0.52 | −0.26 | 0.39 | 0.77 | 88 % |
+| shared, gains in the well's sd | 0.25 | −0.81 | 0.15 | 0.51 | 61 % |
+
+What it says, in plain words:
+
+1. **Most of the spread between starts came from early stopping.** Early stopping halts training
+   when the validation score stops improving, which happened after 140–330 steps, while each start
+   was still near its own starting point. Trained for 3,000 steps, the starts agree on the
+   predictions and on the recharge response. But in the free mode they still disagree on how strong
+   pumping and canal water are. With one set of numbers per well, the data cannot pin those two
+   down: this is the equifinality the review found in Pastas, and it is real, not a training artefact.
+2. **A correction to the section above.** On 10 Nov I wrote "fitting all wells together helps". Trained
+   to the end, the free model is no better than Pastas (log RMSE ratio −0.03, interval −0.18 to +0.23,
+   instead of −0.15). What helped was early stopping itself. Stopping early keeps every well's numbers
+   close to the common starting values, so it works like a pull towards an average model (a
+   *shrinkage*). That is a legitimate way to regularise a model. But it is not the structure, and it
+   makes each well's numbers depend on where its start happened to be.
+3. **Pooling, trained to the end, pins everything down.** All starts agree on every number, and every
+   core well keeps its pumping share. Its accuracy is that of Pastas, behind the early-stopped free model.
+4. **So accuracy and stability trade off.** Which one gives the *right* driver shares? On real data
+   nobody knows the true effect of pumping, so the real data cannot say. The twin can, because it
+   knows the truth. The fitting protocol of the main model is now a Gate 3 point, to be informed by the
+   twin (analysis plan §14 item 18, last results paragraph).
+5. **Two smaller results.** Splitting pumping into a permanent and a seasonal part (as BRGM did) brings
+   no gain. Expressing gains in units of each well's own swing helps pooling (as accurate as free,
+   steadier pumping share), but one response per aquifer group stays poor.
+
+### The twin: what was done
+
+`src/models/twin.py` builds a **world**: the real wells, weeks, weather, pumping volumes, rivers, canal
+and the real pattern of missing heads, with *invented* heads. Each invented head is the sum of known
+responses to recharge, pumping, river and canal, plus slowly varying noise. We choose which pumps truly
+affect which well (the *truth graph*). The model never sees it. Then the same model is fitted three
+times on the same world, and the only difference between the fits is the routing:
+
+- **C**: the distance rules (every pump within 10 km);
+- **D**: the knowledge graph's edges (the pumps attributed to the well's unit within 5 km, plus the
+  others as a separate "unattributed" input);
+- **T**: the truth's own routing, which the real data never have. It is the ceiling: how much routing
+  could help at most.
+
+Because the truth is known, each fit gets more than an accuracy score. We can measure how far its
+pumping share is from the true one, whether its response time is right, and whether it predicts
+correctly what happens if the true pumps are cut by 20 %.
+
+Two dials say how wrong the graph is: **ε**, the share of its pump links that are false, and **u**,
+the share of the true pumping it misses. The map over these dials says where routing by the graph
+beats routing by distance. The real data sit near ε ≈ 0.1–0.4, u ≤ 0.66 (analysis plan item 19).
+
+**Design changes made today, before any world existed** (analysis plan item 19, amendment of
+2026-11-16):
+
+- **The oracle T was added.** The plan needed a "truth-informed fit" (score 6) but the code had none.
+- **ε now moves the truth, not the graph.** The draft replaced some of D's links by wrong ones. That
+  was wrong in two ways. First, the numbers that place the real data on the ε axis (36 of 39 links
+  right; 63 %) measure *false* links only, while a replacement also *removes a true* link, which the
+  u dial already covers. Second, a test showed that the replacement could not reach its own dial
+  (0.41 instead of 0.5), because some wells have too few spare pumps nearby. Now D stays exactly the
+  exported graph, and the truth drops a share ε of D's links. It also means the model sees exactly
+  the tables the real experiment will use.
+- **Slice G was added.** The truth takes its recharge, river and canal routes from D, so D is right
+  about them *by assumption*. Slice G gives the truth C's routes instead, and the two together
+  bracket that assumption.
+- **The converged pooled model joins the pilot**, because of the follow-up results above.
+- **Smaller points:** π is defined on the contribution variances (and the share of the head it really
+  explains is recorded: about 0.2 for π = 0.3, because summer pumping and the dry season move
+  together); the noise starts from its steady state; the hidden variation of variant I has mean one.
+
+**Tests** (`tests/test_twin.py`, all pass): the generator and the model compute the same thing for the
+same parameters (relative difference 4e-7), so a base world is a world the model *can* fit exactly.
+The variance shares, signs and noise ratio are exact. ε is unbiased (0.250 for 0.25 over 30 seeds).
+The truths are nested along the dials. Variants S, I, O, G and the independent timing do what they
+should. The whole path runs end to end.
+
+Two bugs were found and fixed while writing the generator: it read a column the panel does not have
+(the weather cell), and the "independent timing" variant would have silently deleted the volume of
+pumps that opened after 2019.
+
+**The pilot is on Kaggle** (`scripts/run_v4_cpu.sh` step `twin_pilot`): 3 worlds in the base cell
+(ε = 0.1, u = 0.3, π = 0.3, ν = 0.25), arms C, D, T, three learners (free and pooled λ = 0.01 with
+early stopping; pooled λ = 0.1 for 3,000 steps). It measures the run time and gives a first look.
+The settings of the grid (12 cells × 20 worlds) are chosen after it, from synthetic heads only.
+
+### Why
+
+- **Why an oracle.** Without it, "D beats C by 3 %" cannot be read: is 3 % most of what routing could
+  give, or a small part? T gives that scale in every world.
+- **Why the twin before any real-data arm.** On real data a difference between C and D is the end of
+  the story. On the twin we know whether the difference comes with right driver shares or wrong ones,
+  which is the paper's question ("right for the right reasons").
+
+### What to consider
+
+- In the base cell, 9 core wells get true pumping although the graph attributes them none (u draws it
+  from their unattributed pumps). For these wells D can only use its unattributed input.
+- The twin's generator shares the model's additive structure, except in variants O and S. A good twin
+  score is a statement about these generators, not about the aquifer.
+- After the pilot: a report script (`src/analysis/twin_report.py`), then the grid and the slices on
+  Kaggle (about 400 worlds; the pilot's timing says how many kernel sessions).

@@ -528,7 +528,25 @@ notebooks/       exploration only; anything that matters moves into src/
 
 ### ▶ Where we are (read this first in a new session)
 
-**2026-11-10: Fable review adopted in part; the model ladder started. START HERE.**
+**2026-11-16: ladder follow-ups read; the twin built, its pilot on Kaggle. START HERE.**
+- **Ladder follow-ups (`ladder2`) pulled and read** (`docs/results_ladder_v4.md`; analysis plan §14
+  item 18, last results paragraph; step note `step13_ladder.md`, last section). **Correction of
+  2026-11-10:** the free mode's gain over Pastas depends on early stopping (converged: log RMSE ratio
+  −0.03 instead of −0.15); converged, per-well pumping and canal responses stay unidentified; pooled
+  λ = 0.1 converged is identified (every parameter agrees between starts) at the level of Pastas.
+  Permanent + seasonal pumping: no gain. The main model's fitting protocol is now a Gate 3 point,
+  informed by the twin.
+- **Twin** (`src/models/twin.py`, `tests/test_twin.py` passes, ≈ 3 min): design amended before any
+  world (item 19, amendment of 2026-11-16: oracle arm T; ε moves the truth, arms C and D stay the
+  export's tables; slice G; π on contribution variances; converged pooled learner in the pilot).
+  **Pilot pushed to Kaggle on 2026-11-16 ≈ 12:55 CET** (kernel version 9, step `twin_pilot`: base cell,
+  worlds 0–2, arms C/D/T, learners free + pooled 0.01 → `results/v4/twin_pilot`, pooled 0.1 × 3,000
+  steps → `twin_pilot_conv`). When done: `scripts/kaggle_cpu.py pull` (copies twin runs), then the twin
+  report (to write: `src/analysis/twin_report.py`), then choose the grid's learner settings and push
+  `--grid` and `--slices` (12 + 8 cells × 20 worlds; size the sessions from the pilot's `seconds_*`).
+- The bundle now carries `data/processed/kg/export_v4_*` (routing and twin read it).
+
+**2026-11-10: Fable review adopted in part; the model ladder started.**
 Review: `fable_review.md` (repository root; read-only checks on the saved v4 tables). Assil the same
 day: "okay start working and u have the permission to do anything" (Codex is not working on the
 repository for now). Read as the approval of five points, written as analysis plan §14 **item 18**
@@ -567,11 +585,10 @@ State on 2026-11-10, evening (update this list when it changes):
   blocked download): Schorpp 2023, Shapoori 2015, Brodaric 2018, Bazzi 2019, the Lanini abstract
   (HAL), Chu 2026, Jeong 2026, Feng 2022 and the others of the list given in the session.
 
-**Next, in order:** (1) the tensors of arms C and D from the export tables (per-arm stresses per well,
-the per-regime depth threshold, a fixed-weight forward pass compared between the two derivations) and
-**rung 4**: `response.py` with pumping, recharge, river and canal routed by C's or D's edges, first on
-two wells (MILLAS C2-1, PONTEILLA NYLS-1), then all; (2) the small twin with its dials (write them into
-the analysis plan first); (3) HILUCS mapping of the crop classes in `src/kg/landuse.py` (facts, so a
+**Next, in order (updated 2026-11-16):** (1) ✅ routed inputs (`src/models/routing.py`) and rung 4
+(`response.py --arm`) exist and are tested; the real-data arms wait for the twin's grid and the tag
+(item 19, "Order"); the per-regime depth threshold comes with message passing (rung 5); (2) 🔄 the
+twin: pilot on Kaggle (see 2026-11-16 above), then its report, the grid and the slices; (3) HILUCS mapping of the crop classes in `src/kg/landuse.py` (facts, so a
 rebuild), OOPS!; (4) `paper/` skeleton; (5) the explainer (`docs/explainer/`) has not been updated for
 the decisions of 2026-11-10. **Assil:** the three e-mails (`docs/supervisor_questions.md` §4–6; add
 the monthly Pliocene pumping 1998–2007), the Earth Engine registration, the w3id redirect request, the

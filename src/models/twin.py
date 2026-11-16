@@ -2,6 +2,7 @@
 
     python -m src.models.twin --run twin_pilot --worlds 0 1 2                       # base cell
     python -m src.models.twin --run twin_pilot_conv --worlds 0 --fits pooled:0.1:3000
+    python -m src.models.twin --run twin_rq2 --worlds 0 --fits free free+none free+soft1 --arms D T
     python -m src.models.twin --run twin_map --grid --worlds 0-19                   # the map
     python -m src.models.twin --run twin_map --slices --worlds 0-19                 # its slices
 
@@ -351,19 +352,22 @@ def learner_data(base, world, arm, volumes=None):
     return R.panel_arrays(P, base["K"], routed)
 
 
-def fit(base, world, arm, mode="free", lam=0.0, starts=(0, 1), steps=4000, fixed_steps=None):
+def fit(base, world, arm, mode="free", lam=0.0, starts=(0, 1), steps=4000, fixed_steps=None,
+        signs="structure", soft=None):
     """Fit the rung-4 response model on one arm from each start (the real data's protocol:
-    early stopping on the median validation NSE of the core wells unless `fixed_steps`)."""
+    early stopping on the median validation NSE of the core wells unless `fixed_steps`); `signs`
+    and `soft` are the RQ2 settings (hard = "structure", none, soft)."""
     data = learner_data(base, world, arm)
     X = {k: torch.from_numpy(v) for k, v in data["X"].items()}
-    nets, preds, contribs, lags, best, stops = [], [], [], [], [], []
+    nets, preds, contribs, lags, best, stops, gains = [], [], [], [], [], [], []
     t0 = time.time()
     for s in starts:
         net, b, step = R.train_seed(s, data, mode, lam, steps, kernel_weeks=base["K"], pumping="arm",
-                                    fixed_steps=fixed_steps)
+                                    fixed_steps=fixed_steps, signs=signs, soft=soft)
         with torch.no_grad():
             c = net.contributions(X).numpy().astype(np.float64)
-            _, a, n, _ = (t.numpy() for t in net.parameters_physical())
+            g, a, n, _ = (t.numpy() for t in net.parameters_physical())
+        gains.append(g)
         preds.append(data["mu"][:, :1] + net.d.detach().numpy()[:, None] + c.sum(1))
         contribs.append(c)
         lags.append(a * n)
@@ -372,7 +376,7 @@ def fit(base, world, arm, mode="free", lam=0.0, starts=(0, 1), steps=4000, fixed
         stops.append(int(step))
     return {"arm": arm, "nets": nets, "names": nets[0].names, "pred": np.mean(preds, 0),
             "contrib_starts": np.stack(contribs), "lag": np.mean(lags, 0), "val": float(np.mean(best)),
-            "steps": stops, "seconds": round(time.time() - t0, 1)}
+            "steps": stops, "seconds": round(time.time() - t0, 1), "gains": np.stack(gains)}
 
 
 def predict(base, world, fitted, volumes):
@@ -435,6 +439,10 @@ def score(base, world, fits):
             out[f"pumping_right_{arm}"] = float(np.mean((corr > 0) & (ratio > 0.5) & (ratio < 2.0)))
         else:
             out[f"pumping_right_{arm}"] = None
+        has_in = np.stack([world["routed"][arm]["has_" + n] for n in f["names"]], 1)   # (N, R): the arm has it
+        expected = np.array([R.SIGN[n] for n in f["names"]])
+        wrong = (expected * f["gains"] < 0).mean(0)                 # RQ2: share of starts, per (well, stress)
+        out[f"violation_rate_{arm}"] = float(wrong[ok][has_in[ok]].mean()) if has_in[ok].any() else None
         out[f"lag_error_recharge_wk_{arm}"] = _nanmed(                # score 4
             np.abs(f["lag"][:, f["names"].index("recharge")] - lag_true[:, 0])[ok])
         starts = [_centred(by_truth(c, f["names"])["pumping"], train)[:, dr] for c in f["contrib_starts"]]
@@ -482,15 +490,27 @@ def cell_tag(d):
 
 
 def parse_fit(spec):
-    """"free", "pooled:0.01", "pooled:0.1:3000" (λ, then a fixed number of steps)."""
+    """"free", "pooled:0.01", "pooled:0.1:3000" (λ, then a fixed number of steps), each with an
+    optional RQ2 setting: "+none" (free gains) or "+soft<λ_s>" (free gains and the soft penalty);
+    the default is hard (signs by construction). -> key, mode, λ, fixed steps, signs, soft."""
+    spec, _, rq2 = spec.partition("+")
     parts = spec.split(":")
     mode = parts[0]
-    lam = float(parts[1]) if len(parts) > 1 else 0.0
+    lam = float(parts[1]) if len(parts) > 1 and parts[1] else 0.0
     fixed = int(parts[2]) if len(parts) > 2 else None
     if mode not in ("free", "pooled", "shared") or (mode == "pooled" and lam <= 0):
         raise ValueError(spec)
-    key = mode + (f"_l{lam:g}" if mode == "pooled" else "") + (f"_fixed{fixed}" if fixed else "")
-    return key, mode, lam, fixed
+    if rq2 in ("", "hard"):
+        signs, soft = "structure", None
+    elif rq2 == "none":
+        signs, soft = "none", None
+    elif rq2.startswith("soft") and float(rq2[4:]) > 0:
+        signs, soft = "none", float(rq2[4:])
+    else:
+        raise ValueError(spec)
+    key = (mode + (f"_l{lam:g}" if mode == "pooled" else "") + (f"_fixed{fixed}" if fixed else "")
+           + ("" if signs == "structure" else f"_soft{soft:g}" if soft else "_none"))
+    return key, mode, lam, fixed, signs, soft
 
 
 def run_cell(base, dials, worlds, run, fits=("free",), starts=(0, 1), steps=4000, arms=ARMS):
@@ -508,8 +528,8 @@ def run_cell(base, dials, worlds, run, fits=("free",), starts=(0, 1), steps=4000
         rec = {"world": w, "dials": dials, "realised": world["realised"], "fits": {}, "per_well": {},
                "config": config, "src_sha256": code_version()["src_sha256"]}
         for spec in fits:
-            key, mode, lam, fixed = parse_fit(spec)
-            fitted = {arm: fit(base, world, arm, mode, lam, starts, steps, fixed) for arm in arms}
+            key, mode, lam, fixed, signs, soft = parse_fit(spec)
+            fitted = {arm: fit(base, world, arm, mode, lam, starts, steps, fixed, signs, soft) for arm in arms}
             rec["fits"][key], rec["per_well"][key] = score(base, world, fitted)
             s = rec["fits"][key]
             num = lambda x, f="+.3f": "—" if x is None else format(x, f)  # noqa: E731
@@ -553,7 +573,8 @@ def main():
     ap.add_argument("--timing", choices=["reconstructed", "independent"], default=BASE["timing"])
     ap.add_argument("--variant", choices=["I", "O", "S", "G"], default=None)
     ap.add_argument("--fits", nargs="+", default=["free", "pooled:0.01"],
-                    help="learner settings: free, pooled:<λ>, pooled:<λ>:<fixed steps>")
+                    help="learner settings: free, pooled:<λ>, pooled:<λ>:<fixed steps>, each with "
+                         "an optional +none or +soft<λ_s> (RQ2; default hard)")
     ap.add_argument("--arms", nargs="+", choices=ARMS, default=list(ARMS))
     ap.add_argument("--starts", type=int, nargs="+", default=[0, 1])
     ap.add_argument("--steps", type=int, default=4000)

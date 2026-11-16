@@ -1071,7 +1071,10 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       could not reach its dial where a well has fewer non-true facilities within 5 km than pairs to
       replace (realised 0.087, 0.216 and 0.414 for dials 0.1, 0.25 and 0.5 at u = 0.3, mean of 30
       seeds), so the grid would not have been a grid. With ε = 0 and u = 0 arm D still routes exactly
-      the true pumping, and the learner's arms are now exactly the tables the real arms use.
+      the true pumping, and the learner's arms are now exactly the tables the real arms use. §10's
+      requirement holds: the truth is a graph apart from the learner's, and the learner's graph
+      differs from it by exactly the dials (never corrupted together with it); only the direction of
+      construction is reversed (the truth is built from D, not D from the truth).
       (2) **π, precisely.** The gains give
       each contribution a training-period variance equal to its share times the real well's training
       variance (pumping π, river and canal 0.1 where the truth has the edge, recharge the rest, at
@@ -1101,4 +1104,14 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       **Details.** The AR(1) noise starts from its stationary distribution; the variant-I factor is
       log-normal with mean 1; the real u of this item (about 0.66) is an upper bound, since it counts
       every unattributed facility within 5 km as drawing from the well's unit. The twin runs on Kaggle
-      CPU, like every fit.
+      CPU, like every fit. (9) **The RQ2 settings (declared before any RQ2 run, on the twin or on real
+      data).** *Hard*: every gain signed by construction (`--signs structure`, rungs 1–4). *None*:
+      every gain a free number (`--signs none`). *Soft*: free gains plus the penalty λ_s × the share of
+      the well's training variance carried by contributions whose gain has the wrong sign, i.e. per
+      well Σ_r 1[sign_r × gain_ir < 0] × var_train(c_ir) / sd_i², averaged over wells and added to the
+      loss (`--soft λ_s`); it is the counterfactual form of Ross et al.'s penalty (arXiv:1703.03717)
+      for a model whose response to a sustained change of stress r has the sign of its gain, and it is
+      in the loss's own units (λ_s = 1: a wrong-signed contribution costs as much as an error of the
+      same size). λ_s = 1 on the twin; the real data's λ_s (one value or a grid chosen on validation)
+      is a Gate 3 point. Reported for RQ2 beside scores 1–5: the violation rate (share of core wells
+      and stresses whose fitted gain has the wrong sign) and the intervention sign of score 5.

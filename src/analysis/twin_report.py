@@ -8,7 +8,7 @@ Written on 2026-11-16, before any world was scored, so that the tables are fixed
 the realised dials; score 1 (median over core wells of log(RMSE_a / RMSE_C) in the drought, a = D
 and the oracle T, and D against T); the drought NSE of each arm; score 2 (recovery of each
 stress's contribution, RMSE in units of the well's noise-free sd); score 3 (share of wells with the
-right pumping contribution); score 4 (error of the recharge mean lag, weeks); score 5 (the -20 %
+right pumping contribution); the RQ2 sign-violation rate; score 4 (error of the recharge mean lag, weeks); score 5 (the -20 %
 intervention: median relative error, share of wells with the right sign); the seed disagreement
 of the pumping contribution (shortcut test 2); score 6 (share of worlds with "wrong reasons": the
 pumping recovery error above 0.5 while the drought NSE is within 0.1 of the oracle's); and the run
@@ -108,13 +108,14 @@ def main():
                  "within a factor 2. Score 4: recharge mean-lag error, weeks. Score 5: true-edge "
                  "facilities −20 % in the drought, median relative error of the head change, share of "
                  "wells with its sign. Seed disagreement: RMSE between the two starts' pumping "
-                 "contributions / noise-free sd.\n\n" + table(
+                 "contributions / noise-free sd. Sign violations (RQ2): share of core wells and "
+                 "stresses whose fitted gain has the wrong sign (0 by construction under hard signs).\n\n" + table(
                      df, [f"pumping_right_{a}" for a in ARMS] + [f"lag_error_recharge_wk_{a}" for a in ARMS]
                      + [f"intervention_rel_error_{a}" for a in ARMS] + [f"intervention_sign_{a}" for a in ARMS]
-                     + [f"seed_disagreement_pumping_{a}" for a in ARMS],
+                     + [f"seed_disagreement_pumping_{a}" for a in ARMS] + [f"violation_rate_{a}" for a in ARMS],
                      [f"right pumping {a}" for a in ARMS] + [f"lag error {a}" for a in ARMS]
                      + [f"cut error {a}" for a in ARMS] + [f"cut sign {a}" for a in ARMS]
-                     + [f"seed disagr. {a}" for a in ARMS]))
+                     + [f"seed disagr. {a}" for a in ARMS] + [f"sign violations {a}" for a in ARMS]))
     parts.append(f"## Score 6: worlds with wrong reasons\n\nShare of worlds where an arm's pumping recovery "
                  f"error exceeds {WRONG_RECOVERY} while its drought NSE is within {WRONG_NSE} of the "
                  "oracle's.\n\n" + table(df, [f"wrong_reasons_{a}" for a in ("C", "D")],

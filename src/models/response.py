@@ -51,6 +51,10 @@ doi:10.1111/gwat.12925), but written in PyTorch and fitted for every well at onc
   recharge, river and canal signs are pending at Gate 3) are built in, the other gains are free.
   --wells: only these wells (the two-well demonstration path). No real-data contrast between
   arms is scored before the twin's design is written and the plan is tagged (items 17-18).
+- The RQ2 settings (analysis plan §14 item 19, amendment point 9): --signs structure is "hard";
+  --signs none leaves every gain a free number ("none"); --signs none --soft L adds L times the
+  share of each well's training variance carried by contributions whose gain has the wrong sign
+  ("soft", the counterfactual form of Ross et al. 2017, arXiv:1703.03717, in the loss's units).
 - --fixed-steps N (diagnostic): no early stopping, N steps for every start: separates "starts
   stopped early at different places" from "several optima" when reading the spread over starts.
 - Weeks before the first forcing week (2000) are filled with each input's training mean,
@@ -105,7 +109,8 @@ SIGN = {"recharge": 1.0, "pumping": -1.0, "pumping_permanent": -1.0, "pumping_se
 # constraint_decisions.csv: pumping); 0 = no sign built in, the gain is a free number
 SIGN_SETS = {"structure": SIGN,
              "approved": {s: (v if s.startswith("pumping") and s != "pumping_unattributed" else 0.0)
-                          for s, v in SIGN.items()}}
+                          for s, v in SIGN.items()},
+             "none": {s: 0.0 for s in SIGN}}      # RQ2 "none" (and "soft" with --soft)
 WINTER_MONTHS = (1, 2, 3, 10, 11, 12)   # the permanent part of pumping is their mean, per year
 # fixed input scales (the same for every well, so that shared gains mean the same thing):
 # rain, ETP, PE in cm/week; pumping in 1e5 m3/week; canal volume in 10 Mm3/week
@@ -144,6 +149,8 @@ class ResponseModel(nn.Module):
         self.mode, self.K, self.amax, self.recharge = mode, int(kernel_weeks), float(amax), recharge
         self.names = STRESS_SETS[pumping]
         self.register_buffer("sign", torch.tensor([SIGN_SETS[signs][s] for s in self.names]))
+        # the design's signs, for the soft penalty; not saved, so checkpoints keep their keys
+        self.register_buffer("expected", torch.tensor([SIGN[s] for s in self.names]), persistent=False)
         self.register_buffer("group_of", torch.as_tensor(group_of, dtype=torch.long))
         self.register_buffer("lag", torch.arange(self.K, dtype=torch.float32) + 0.5)
         # metres per unit of gain: 1 (gains in metres) or the well's training sd (--gain-units sd)
@@ -203,6 +210,17 @@ class ResponseModel(nn.Module):
     def penalty(self):
         return (self.delta ** 2).mean()
 
+    def soft_penalty(self, c, mask, sd):
+        """Mean over wells of the share of the well's training variance carried by contributions
+        whose gain has the wrong sign: c (N, R, T) in metres, mask (N, T) training weeks, sd (N,)."""
+        gain = self.parameters_physical()[0]
+        wrong = (self.expected * gain < 0).to(c.dtype)                       # (N, R)
+        m = mask[:, None, :].to(c.dtype)
+        n = m.sum(-1).clamp(min=1.0)
+        mean = (c * m).sum(-1) / n
+        var = ((c - mean[..., None]) ** 2 * m).sum(-1) / n                   # (N, R)
+        return ((wrong * var).sum(1) / sd ** 2).mean()
+
 
 def panel_arrays(P, kernel_weeks=KERNEL_WEEKS, routed=None):
     """Panel -> wells, weeks, padded inputs and targets.
@@ -251,8 +269,9 @@ def panel_arrays(P, kernel_weeks=KERNEL_WEEKS, routed=None):
 def train_seed(seed, data, mode, lam=0.0, steps=4000, lr=0.05, patience=15, eval_every=20,
                kernel_weeks=KERNEL_WEEKS, amax=A_MAX, recharge="linear", init_sd=0.5,
                train_mask=None, es_wells=None, fixed_steps=None, state_out=None, pumping="sum",
-               gain_units="m", signs="structure"):
-    """One start. Returns (model, best validation median NSE, best step)."""
+               gain_units="m", signs="structure", soft=None):
+    """One start. Returns (model, best validation median NSE, best step). `soft`: weight of the
+    soft sign penalty (with signs "none")."""
     torch.manual_seed(seed)
     torch.set_num_threads(int(os.environ.get("PFE_THREADS", 4)))
     gen = torch.Generator().manual_seed(seed)
@@ -270,11 +289,18 @@ def train_seed(seed, data, mode, lam=0.0, steps=4000, lr=0.05, patience=15, eval
                         init_sd=init_sd, generator=gen, pumping=pumping,
                         gain_scale=sd_safe[:, 0] if gain_units == "sd" else None, signs=signs)
     opt = torch.optim.Adam([p for p in net.parameters() if p.requires_grad], lr=lr)
+    if soft:
+        mask_t = torch.from_numpy(np.asarray(train_mask, dtype=bool))
+        sd_t = torch.from_numpy(sd_safe[:, 0].astype(np.float32))
     best, best_state, best_step, bad = -np.inf, None, 0, 0
     n_steps = fixed_steps or steps
     t0 = time.time()
     for step in range(1, n_steps + 1):
-        loss = (wgt * (net(X) - y) ** 2).sum()
+        if soft:
+            c = net.contributions(X)
+            loss = (wgt * (net.d[:, None] + c.sum(1) - y) ** 2).sum() + soft * net.soft_penalty(c, mask_t, sd_t)
+        else:
+            loss = (wgt * (net(X) - y) ** 2).sum()
         if mode == "pooled" and lam > 0:
             loss = loss + lam * net.penalty()
         opt.zero_grad()
@@ -345,7 +371,10 @@ def main():
                     help="route the stresses by the edges of this graph arm (src.kg.export)")
     ap.add_argument("--policy", default="main", help="with --arm: the export policy")
     ap.add_argument("--signs", choices=list(SIGN_SETS), default="structure",
-                    help="approved: only the signs the export policy has approved are built in")
+                    help="approved: only the signs the export policy has approved are built in; "
+                         "none: every gain free (RQ2)")
+    ap.add_argument("--soft", type=float, default=None,
+                    help="with --signs none: weight of the soft sign penalty (RQ2)")
     ap.add_argument("--wells", nargs="*", default=None, help="only these wells (code_bss)")
     ap.add_argument("--gain-units", choices=["m", "sd"], default="m",
                     help="sd: gains in units of each well's training sd (for pooling and sharing)")
@@ -357,6 +386,11 @@ def main():
     args = ap.parse_args()
     if args.mode == "pooled" and args.lam <= 0:
         ap.error("--mode pooled needs --lam > 0")
+    if args.soft is not None and args.signs != "none":
+        ap.error("--soft needs --signs none (a built-in sign cannot be violated)")
+    soft = args.soft
+    if soft is None:              # the default leaves the fingerprints of earlier runs unchanged
+        del args.soft
     run = args.run or f"resp_{args.mode}"
     pumping = args.pumping
     if pumping == "sum":          # the default leaves the fingerprints of earlier runs unchanged
@@ -416,7 +450,8 @@ def main():
                                           kernel_weeks=args.kernel_weeks, amax=args.amax,
                                           recharge=args.recharge, train_mask=train_mask,
                                           es_wells=keep, fixed_steps=fixed, state_out=state,
-                                          pumping=pumping, gain_units=gain_units, signs=signs)
+                                          pumping=pumping, gain_units=gain_units, signs=signs,
+                                          soft=soft)
         pz, contrib, params = seed_outputs(net, data)
         contrib.to_parquet(out / f"contrib_seed_{s}.parquet", index=False)
         params.to_csv(out / f"params_seed_{s}.csv", index=False)

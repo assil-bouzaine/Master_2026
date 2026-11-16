@@ -19,8 +19,9 @@
    omitted group, 0.15 of its noise-free variance), timing "independent" (annual totals kept, one
    calendar profile, no volume lost for facilities without training volume).
 5. The same seed and dials give the same world; another seed another one.
-6. End to end through run_cell: three arms fitted for 20 steps from two starts, scored, written
-   (every score present and finite). This checks the code path, not the learner.
+6. End to end through run_cell: three arms fitted for 20 steps from two starts, hard and soft
+   (RQ2), scored, written (every score present and finite; under hard no gain violates its sign).
+   This checks the code path, not the learner. And the learner-setting specs parse as documented.
 """
 import json
 import shutil
@@ -214,15 +215,30 @@ def test_reproducible():
     print("  5. same seed and dials -> the same world; another seed -> another")
 
 
+def test_parse_fit():
+    assert W.parse_fit("free") == ("free", "free", 0.0, None, "structure", None)
+    assert W.parse_fit("pooled:0.1:3000") == ("pooled_l0.1_fixed3000", "pooled", 0.1, 3000, "structure", None)
+    assert W.parse_fit("free+none") == ("free_none", "free", 0.0, None, "none", None)
+    assert W.parse_fit("pooled:0.01+soft1") == ("pooled_l0.01_soft1", "pooled", 0.01, None, "none", 1.0)
+    for bad in ("pooled", "free+soft0", "free+sof1", "lstm"):
+        try:
+            W.parse_fit(bad)
+        except ValueError:
+            continue
+        raise AssertionError(bad)
+
+
 def test_end_to_end():
     b = base()
     run = "_test_twin"
     folder = W.RESULTS / run
     assert not folder.exists(), f"{folder} exists: remove it first"
     try:
-        W.run_cell(b, W.BASE, [5], run, fits=("free:0:20",), starts=(0, 1), steps=20)
+        W.run_cell(b, W.BASE, [5], run, fits=("free:0:20", "free:0:20+soft1"), starts=(0, 1), steps=20)
         rec = json.loads((folder / W.cell_tag(W.BASE) / "world_5.json").read_text())
-        s = rec["fits"]["free_fixed20"]
+        s, soft = rec["fits"]["free_fixed20"], rec["fits"]["free_fixed20_soft1"]
+        assert all(s[f"violation_rate_{a}"] == 0.0 for a in W.ARMS)
+        assert all(soft[f"violation_rate_{a}"] is not None for a in W.ARMS)
         for k in ("log_rmse_D_over_C", "log_rmse_T_over_C", "log_rmse_D_over_T", "nse_drought_D",
                   "recovery_pumping_T", "recovery_recharge_C", "pumping_right_D",
                   "seed_disagreement_pumping_C", "intervention_rel_error_T", "intervention_sign_D",

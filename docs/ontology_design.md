@@ -18,7 +18,7 @@ probability. See the [review note](notes/step12c_competency_review.md).
 
 | Prefix | Namespace | Role | Status |
 |---|---|---|---|
-| `lulcw:` | `https://w3id.org/lulcw#`, used from version 0.1.0 (2026-10-24); the w3id redirect is still to request, else a GitHub Pages IRI | our bridging module | ours |
+| `lulcw:` | `https://w3id.org/lulcw#`, used from version 0.1.0 (2026-10-24); the w3id redirect is still to request (ready; postponed by Assil until the ontology is published, 2026-11-16), else a GitHub Pages IRI | our bridging module | ours |
 | `lulcwd:` | same base + `data/` | instances of the knowledge graph | ours |
 | `gwml2:` | `http://gwml2.org/def/gwml2#` | GWML2 classes, in the OWL rendering of SAWGraph's water ontology v1.0 (`http://purl.org/spatialai/spatial/water-full`) | checked; **licence not stated**: keep local copies of the terms we use, with attribution |
 | `hyfo:` | `http://hyfo.spatialai.org/v1/hyfo#` | HyFO | checked (declared in the SAWGraph ontology) |
@@ -303,7 +303,8 @@ distance and depth thresholds are chosen on the training period in 12.5–12.8.
 
 
 - The namespace: a w3id.org redirect needs a pull request from Assil's
-  GitHub account; otherwise GitHub Pages.
+  GitHub account; otherwise GitHub Pages. The request is ready (`docs/w3id/README.md`) and postponed
+  by Assil until the ontology is published (2026-11-16).
 - The SAWGraph licence: ask, or keep local copies of the terms with
   attribution.
 - The `hyf:` class for rivers; the HILUCS value IRIs; the Sandre URIs (water

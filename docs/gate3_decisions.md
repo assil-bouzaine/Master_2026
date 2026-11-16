@@ -163,6 +163,8 @@ SAVE Water may have rules on releasing project outputs before publication. *Reco
 - Monthly drinking-water production, and BRGM's monthly Pliocene pumping 1998–2007 (Terrasson et al.
   2014, used by Caballero & Ladouche 2015): monthly volumes would separate pumping from weather inside
   a year, which annual totals cannot (`docs/supervisor_questions.md` §4–6).
-- The w3id.org redirect: until it exists, tools that load the ontology fail on its imports (OOPS!
-  did, 2026-11-16). The pull request is ready to open from Assil's account: `docs/w3id/README.md`.
+- The w3id.org redirect: postponed by Assil on 2026-11-16 until the ontology is published (request it a
+  few weeks before the paper is submitted; files and steps in `docs/w3id/README.md`). Until then the IRIs
+  are provisional, and tools that load the ontology from its address fail on its imports (OOPS! did; our
+  scan sends the merged network without them).
 - The Earth Engine account (satellite rule, task 12.10).

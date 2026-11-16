@@ -1734,8 +1734,10 @@ and its imports, merged by ROBOT), keeps the raw answer (`data/raw/oops/<date>`)
 **Two lessons about the service.** It no longer scans by URL. And it fails on our `owl:imports`
 ("unexpected error"), because their w3id.org addresses do not resolve until the redirect is set up.
 Bisection showed this (declarations alone passed; everything except the five imports passed). So
-the w3id redirect, still on Assil's list, matters for any tool that loads the ontology, not only for
-looks.
+the w3id redirect matters for any tool that loads the ontology, not only for looks. Later that day Assil
+postponed the request until the ontology is published: until then the scan keeps sending the merged
+network without its imports, and `docs/w3id/README.md` stays ready (send it a few weeks before the paper
+is submitted: reviewers click the addresses, and a merge can take days).
 
 **Result: no critical pitfall.**
 - *P11, important: missing domain or range.* Five were real omissions: four date properties and

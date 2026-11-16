@@ -1,5 +1,12 @@
 # Requesting the w3id.org redirect for the ontology (for Assil, about 5 minutes)
 
+**Status: postponed (Assil, 2026-11-16: "will publish the stuff later").** The request waits until the
+ontology is published. Nothing in the project breaks meanwhile: the IRIs stay as they are
+(provisional), our scripts read the local files through `ontology/catalog-v001.xml`, and the OOPS!
+scan sends the merged network without its `owl:imports` (`src/kg/oops_scan.py`). Send it a few weeks
+before the paper is submitted, so that the addresses work when reviewers click them (a merge can take
+days). The files and the steps below stay ready.
+
 **Why.** Every IRI of the ontology starts with `https://w3id.org/lulcw` (CLAUDE.md §3: a permanent
 address). Today those addresses lead nowhere, so a tool that loads the ontology and follows its
 `owl:imports` fails: the OOPS! scan of 2026-11-16 did, until the imports were removed by hand. w3id.org

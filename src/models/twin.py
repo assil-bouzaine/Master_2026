@@ -89,6 +89,7 @@ ARMS = ("C", "D", "T")
 OTHER = ("recharge", "river", "canal")
 PAIR = ["src", "dst", "weight", "distance_m"]
 STREAM = {"params": 1, "u": 2, "eps": 3, "hidden": 4, "omitted": 5, "noise": 6}
+CONV = "fft"            # the learner's convolution (src/models/response.py --conv; same numbers, faster)
 
 
 def load_base(policy="main", kernel_weeks=R.KERNEL_WEEKS):
@@ -363,7 +364,7 @@ def fit(base, world, arm, mode="free", lam=0.0, starts=(0, 1), steps=4000, fixed
     t0 = time.time()
     for s in starts:
         net, b, step = R.train_seed(s, data, mode, lam, steps, kernel_weeks=base["K"], pumping="arm",
-                                    fixed_steps=fixed_steps, signs=signs, soft=soft)
+                                    fixed_steps=fixed_steps, signs=signs, soft=soft, conv=CONV)
         with torch.no_grad():
             c = net.contributions(X).numpy().astype(np.float64)
             g, a, n, _ = (t.numpy() for t in net.parameters_physical())
@@ -518,7 +519,7 @@ def run_cell(base, dials, worlds, run, fits=("free",), starts=(0, 1), steps=4000
     out.mkdir(parents=True, exist_ok=True)
     config = {"dials": dials, "fits": list(fits), "arms": list(arms), "starts": list(starts),
               "steps": steps, "export_release": base["export"], "policy": base["policy"],
-              "kernel_weeks": base["K"], "design": "docs/analysis_plan.md §14 item 19 (+ 2026-11-16)"}
+              "kernel_weeks": base["K"], "conv": CONV, "design": "docs/analysis_plan.md §14 item 19 (+ 2026-11-16)"}
     done = [int(f.stem.split("_")[1]) for f in out.glob("world_*.json")]
     for w in worlds:
         path = out / f"world_{w}.json"

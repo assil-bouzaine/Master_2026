@@ -17,6 +17,8 @@
    share of each well's training variance carried by wrong-signed contributions (checked by hand),
    is 0 when every sign is right, pulls a wrong-signed gain towards 0, and with --soft a short
    training on data with right signs leaves fewer wrong signs than without it.
+8. --conv fft gives the contributions and the gradients of the direct convolution (float
+   precision), for every stress set.
 """
 import numpy as np
 import torch
@@ -228,6 +230,23 @@ def test_soft_and_none():
                              pumping="arm", signs="none", soft=soft)[0] for s in (0, 1)]
         n_wrong[soft] = sum(int((n.expected * n.parameters_physical()[0] < 0).sum()) for n in nets)
     assert n_wrong[1.0] < n_wrong[None], n_wrong
+
+
+def test_fft_conv():
+    N, T, K = 6, 160, 40
+    X = tt(toy_inputs(N, T, K))
+    for pumping in ("sum", "split", "arm"):
+        out = {}
+        for conv in ("direct", "fft"):
+            g = torch.Generator().manual_seed(5)
+            net = R.ResponseModel(np.arange(N) % 2, 2, "free", kernel_weeks=K, amax=20.0, init_sd=1.0,
+                                  generator=g, pumping=pumping, conv=conv)
+            c = net.contributions(X)
+            (c ** 2).sum().backward()
+            out[conv] = (c.detach().numpy(), net.delta.grad.numpy().copy())
+        (cd, gd), (cf, gf) = out["direct"], out["fft"]
+        assert np.abs(cd - cf).max() <= 1e-5 * max(1.0, np.abs(cd).max()), pumping
+        assert np.abs(gd - gf).max() <= 1e-4 * max(1.0, np.abs(gd).max()), pumping
 
 
 def test_gain_units():

@@ -57,6 +57,10 @@ doi:10.1111/gwat.12925), but written in PyTorch and fitted for every well at onc
   ("soft", the counterfactual form of Ross et al. 2017, arXiv:1703.03717, in the loss's units).
 - --fixed-steps N (diagnostic): no early stopping, N steps for every start: separates "starts
   stopped early at different places" from "several optima" when reading the spread over starts.
+- --conv fft (2026-11-16): the causal convolution by FFT instead of a direct conv1d; the same
+  numbers to float precision (tests/test_response.py), several times faster with 312-week
+  kernels. The default stays direct, so earlier runs keep their fingerprints and numbers; the twin
+  and the runs after it use fft.
 - Weeks before the first forcing week (2000) are filled with each input's training mean,
   as Pastas does.
 
@@ -142,10 +146,13 @@ class ResponseModel(nn.Module):
 
     def __init__(self, group_of, n_groups, mode="free", kernel_weeks=KERNEL_WEEKS, amax=A_MAX,
                  recharge="linear", init_sd=0.0, generator=None, pumping="sum", gain_scale=None,
-                 signs="structure"):
+                 signs="structure", conv="direct"):
         super().__init__()
         if mode not in ("free", "pooled", "shared"):
             raise ValueError(mode)
+        if conv not in ("direct", "fft"):
+            raise ValueError(conv)
+        self.conv = conv
         self.mode, self.K, self.amax, self.recharge = mode, int(kernel_weeks), float(amax), recharge
         self.names = STRESS_SETS[pumping]
         self.register_buffer("sign", torch.tensor([SIGN_SETS[signs][s] for s in self.names]))
@@ -200,6 +207,11 @@ class ResponseModel(nn.Module):
         gain, a, n, f = self.parameters_physical()
         S = self.stresses(X, f)                                  # (N, R, T + K - 1)
         N, R, L = S.shape
+        if self.conv == "fft":                                   # linear convolution, valid part
+            nfft = 1 << (L + self.K - 2).bit_length()
+            k = self.kernels(a, n)                               # (N, R, K), index = lag
+            c = torch.fft.irfft(torch.fft.rfft(S, nfft) * torch.fft.rfft(k, nfft), nfft)[..., self.K - 1:L]
+            return gain[..., None] * c
         w = self.kernels(a, n).flip(-1).reshape(N * R, 1, self.K)   # correlation -> convolution
         c = Fn.conv1d(S.reshape(1, N * R, L), w, groups=N * R).reshape(N, R, L - self.K + 1)
         return gain[..., None] * c
@@ -269,7 +281,7 @@ def panel_arrays(P, kernel_weeks=KERNEL_WEEKS, routed=None):
 def train_seed(seed, data, mode, lam=0.0, steps=4000, lr=0.05, patience=15, eval_every=20,
                kernel_weeks=KERNEL_WEEKS, amax=A_MAX, recharge="linear", init_sd=0.5,
                train_mask=None, es_wells=None, fixed_steps=None, state_out=None, pumping="sum",
-               gain_units="m", signs="structure", soft=None):
+               gain_units="m", signs="structure", soft=None, conv="direct"):
     """One start. Returns (model, best validation median NSE, best step). `soft`: weight of the
     soft sign penalty (with signs "none")."""
     torch.manual_seed(seed)
@@ -287,7 +299,7 @@ def train_seed(seed, data, mode, lam=0.0, steps=4000, lr=0.05, patience=15, eval
     es_core = core & (es_wells[:, None] if es_wells is not None else True)
     net = ResponseModel(data["group_of"], len(data["groups"]), mode, kernel_weeks, amax, recharge,
                         init_sd=init_sd, generator=gen, pumping=pumping,
-                        gain_scale=sd_safe[:, 0] if gain_units == "sd" else None, signs=signs)
+                        gain_scale=sd_safe[:, 0] if gain_units == "sd" else None, signs=signs, conv=conv)
     opt = torch.optim.Adam([p for p in net.parameters() if p.requires_grad], lr=lr)
     if soft:
         mask_t = torch.from_numpy(np.asarray(train_mask, dtype=bool))
@@ -375,6 +387,8 @@ def main():
                          "none: every gain free (RQ2)")
     ap.add_argument("--soft", type=float, default=None,
                     help="with --signs none: weight of the soft sign penalty (RQ2)")
+    ap.add_argument("--conv", choices=["direct", "fft"], default="direct",
+                    help="the causal convolution: direct conv1d (default, earlier runs) or by FFT")
     ap.add_argument("--wells", nargs="*", default=None, help="only these wells (code_bss)")
     ap.add_argument("--gain-units", choices=["m", "sd"], default="m",
                     help="sd: gains in units of each well's training sd (for pooling and sharing)")
@@ -388,9 +402,11 @@ def main():
         ap.error("--mode pooled needs --lam > 0")
     if args.soft is not None and args.signs != "none":
         ap.error("--soft needs --signs none (a built-in sign cannot be violated)")
-    soft = args.soft
-    if soft is None:              # the default leaves the fingerprints of earlier runs unchanged
+    soft, conv = args.soft, args.conv
+    if soft is None:              # the defaults leave the fingerprints of earlier runs unchanged
         del args.soft
+    if conv == "direct":
+        del args.conv
     run = args.run or f"resp_{args.mode}"
     pumping = args.pumping
     if pumping == "sum":          # the default leaves the fingerprints of earlier runs unchanged
@@ -451,7 +467,7 @@ def main():
                                           recharge=args.recharge, train_mask=train_mask,
                                           es_wells=keep, fixed_steps=fixed, state_out=state,
                                           pumping=pumping, gain_units=gain_units, signs=signs,
-                                          soft=soft)
+                                          soft=soft, conv=conv)
         pz, contrib, params = seed_outputs(net, data)
         contrib.to_parquet(out / f"contrib_seed_{s}.parquet", index=False)
         params.to_csv(out / f"params_seed_{s}.csv", index=False)

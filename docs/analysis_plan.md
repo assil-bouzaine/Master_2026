@@ -955,6 +955,33 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       well's own units:* gains in units of the well's training sd (`--gain-units sd`), pooled with
       λ in {0.01, 0.1, 1} and shared, because the heads of one group swing by centimetres at some
       wells and metres at others. Reported in the same tables, in their own block.
+    - *Results of the follow-up runs (pulled and read 2026-11-16; exploratory;
+      `docs/results_ladder_v4.md`).* (a) Trained for 3,000 steps without early stopping, the starts
+      of the free mode agree on the prediction (same-arm band ±0.005 instead of ±0.067; a single
+      start's median drought NSE varies with sd 0.05 instead of 0.15) and on the recharge gain and
+      time scale (spread 0.09 instead of about 0.6), but not on the evaporation factor or on the
+      pumping and canal responses (spreads 0.77–0.98). The spread of the first runs was therefore
+      mostly where early stopping ended, and per-well pumping and canal responses stay unidentified
+      even at convergence. Converged, the free mode loses most of its advantage over the Pastas
+      reference (log RMSE ratio −0.03, interval [−0.18, +0.23], instead of −0.15); its median well
+      is unchanged against the early-stopped run (+0.006) but a minority of wells get much worse
+      (median drought RMSE 0.93 m instead of 0.70, skill 0.26 instead of 0.39). **The advantage of
+      the free mode over Pastas depends on early stopping**, which keeps the parameters near their
+      common starting values (a shrinkage), more than on fitting all wells together. Pooled at
+      λ = 0.1 and converged, every parameter agrees between starts (spreads ≤ 0.18; a steady pumping
+      share in every core well, canal in 97 %), at the level of Pastas (−0.01) and behind the
+      early-stopped free mode (+0.19, interval [+0.10, +0.29]). (b) Permanent + seasonal pumping:
+      no gain (free +0.025, interval [+0.008, +0.058]; pooled λ = 0.01 +0.034, both against the free
+      mode); the permanent part gets a small contribution. (c) Gains in units of the well's sd:
+      pooled at λ = 0.01 is as accurate as free (+0.04, interval [−0.03, +0.08]) with a steady
+      pumping share in 88 % of the wells instead of 52 %; shared improves on shared in metres
+      (validation NSE 0.25 instead of 0.11, drought −0.81 instead of −1.52) and stays far behind
+      per-well parameters; these runs stopped after 60–110 steps, so their stability is partly the
+      early stop. **Consequence:** in this model family accuracy and agreement between starts trade
+      off, and only a known truth can say which fitted contributions are right; the twin (item 19,
+      amendment of 2026-11-16) fits the converged pooled model beside the early-stopped ones. The
+      protocol of rungs 1–2 is unchanged; the fitting protocol of the main model (early stopping or
+      convergence, pooling, λ) becomes a Gate 3 point, informed by the twin.
     - *The twin's role (§10).* Besides RQ3, the twin carries RQ1–RQ2 with power: C against D, and
       constraints off / soft / hard, over many synthetic worlds that vary the between-year pumping
       signal against the noise, the share of wrong pump links given to the learner and the share of
@@ -1030,3 +1057,48 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       model's additive structure except in variants O and S, which is why those two are run.
     - *Order.* The generator and its tests; a pilot of 3 worlds in the base cell to size the run
       time; then the grid. Only after that, and after the tag, the real-data arms.
+    - *Amendment of 2026-11-16 (written with the generator, before any world was generated or
+      fitted; the follow-up ladder runs of item 18 had been read).* (1) **Oracle arm T.** Every world
+      also fits the learner on the truth's own routing (every relation, the volumes the learners
+      see): the "truth-informed fit" that score 6 needs, and the ceiling of the world, i.e. what
+      routing could gain at most. D vs C is read beside T vs C. (1b) **Where ε acts (replaces the
+      replacement rule of "Learner's graphs").** Arm D is the export's graph unchanged, like arm C;
+      the truth departs from it: a share ε of D's attributed pairs are *not* true (false
+      attributions), drawn per well in a fixed random order with stochastic rounding, and the u rule
+      applies to the true volume that remains. Two reasons, found while writing the generator: the
+      anchors of ε (precision 36/39 and 0.632) measure false attributions only, while a replacement
+      also removes a true pair from D, a missed pair that dial u already covers; and the replacement
+      could not reach its dial where a well has fewer non-true facilities within 5 km than pairs to
+      replace (realised 0.087, 0.216 and 0.414 for dials 0.1, 0.25 and 0.5 at u = 0.3, mean of 30
+      seeds), so the grid would not have been a grid. With ε = 0 and u = 0 arm D still routes exactly
+      the true pumping, and the learner's arms are now exactly the tables the real arms use.
+      (2) **π, precisely.** The gains give
+      each contribution a training-period variance equal to its share times the real well's training
+      variance (pumping π, river and canal 0.1 where the truth has the edge, recharge the rest, at
+      least 0.2). The contributions are correlated (summer pumping and the dry season coincide), so
+      the share of the noise-free head's variance that pumping explains differs from π; it is recorded
+      per world (median over core wells). (3) **Wells without an attributed pair.** For them u cannot
+      be a share of the true volume (it would be 1): unattributed pairs are made true until they carry
+      the share u of the well's unattributed (5 km) volume (and when every attributed pair of a well
+      is false). The drawing stops at the first pair that
+      reaches the target, so the realised share of each well and the realised share of false
+      attributions are recorded per world. (4) **Score 3, for routed inputs.** The arms sum different
+      facilities, so their gains are not comparable, and the signs are built in. Score 3 = the share
+      of core wells with true pumping whose fitted pumping contribution (attributed + unattributed)
+      correlates positively with the true one over the drought phase and has an sd within a factor 2
+      of it. (5) **Seed disagreement** (shortcut test 2), per world and arm: the RMSE between the two
+      starts' pumping contributions (centred on their training means, drought phase, in units of the
+      well's noise-free sd), median over core wells. (6) **Slice G: the graph wrong on the other
+      relations.** In the base world the truth's recharge, river and canal edges are arm D's, so D is
+      right about them by assumption, and part of any D vs C difference comes from relations the dials
+      do not control. One slice from the cell (ε = 0.1, u = 0.3) gives the truth arm C's recharge,
+      river and canal edges instead (pumping unchanged); the two bracket the assumption. (7) **Learner
+      settings.** The pilot fits free and pooled λ = 0.01 with early stopping (the protocol of the
+      real data) and, as a follow-up of the item 18 diagnostic, pooled λ = 0.1 for a fixed 3,000
+      steps: on the real data the first is the more accurate and the second the one whose starts
+      agree; only a known truth can say which recovers the contributions. The grid's settings are
+      chosen from the pilot (run time and recovery), which uses synthetic heads only. (8)
+      **Details.** The AR(1) noise starts from its stationary distribution; the variant-I factor is
+      log-normal with mean 1; the real u of this item (about 0.66) is an upper bound, since it counts
+      every unattributed facility within 5 km as drawing from the well's unit. The twin runs on Kaggle
+      CPU, like every fit.

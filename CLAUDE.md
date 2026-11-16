@@ -552,7 +552,7 @@ notebooks/       exploration only; anything that matters moves into src/
   HILUCS 1_1_1 (`configs/lu_hilucs.csv`), registry snapshot pinned, meta 0.3.1; release of
   2026-11-16 12:41 UTC, every graph suite passes; export regenerated (deterministic recharge weights).
 - The Kaggle bundle carries `data/processed/kg/export_v4_*`; `pull` copies twin runs as they are.
-- Old Kaggle kernel version 9 (the first pilot, direct convolution) may still be running: ignore it.
+- Kaggle kernel version 9 (the first pilot, direct convolution) was superseded by version 10; its output is never pulled.
 
 **2026-11-10: Fable review adopted in part; the model ladder started.**
 Review: `fable_review.md` (repository root; read-only checks on the saved v4 tables). Assil the same

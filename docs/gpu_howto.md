@@ -402,9 +402,9 @@ Kernels run in the background (laptop may be off), up to 12 h per session.
 - **While a kernel runs, `log` prints nothing** (seen 2026-11-16): Kaggle serves the log only once the
   kernel has ended. Judge a running kernel by `status`; a step that fails at import ends the whole
   kernel within minutes (COMPLETE early), while a twin or ladder step keeps it RUNNING for hours.
-- **Pushing a new version does not stop the running one**: on 2026-11-16 version 10 was pushed while
-  version 9 ran. `status`, `log` and `pull` always refer to the newest version; the older one runs on
-  to its end, and its output is not pulled.
+- **Pushing a new version while one runs** (2026-11-16: version 10 pushed while version 9 ran):
+  `status`, `log` and `pull` refer to the newest version only. Whether Kaggle stops the older run
+  was not checked (the CLI shows no older version); its output is not pulled either way.
 - **Twin runs** (`src/models/twin.py`) have no `predictions.parquet`: `pull` copies them as they are
   (one `world_<k>.json` per world) and does not rescore them.
 - **EA-LSTM on Kaggle** (from 2026-10-24, when Colab ran out of GPU quota):

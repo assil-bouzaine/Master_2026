@@ -584,9 +584,10 @@ def main():
         parse_fit(spec)
     torch.set_num_threads(int(os.environ.get("PFE_THREADS", 4)))
     base = load_base()
-    for d in cells(args):
-        run_cell(base, d, parse_worlds(args.worlds), args.run, tuple(args.fits), tuple(args.starts),
-                 args.steps, tuple(args.arms))
+    for w in parse_worlds(args.worlds):      # worlds outside, cells inside: a session cut short still
+        for d in cells(args):                # leaves every cell of the map with the same worlds
+            run_cell(base, d, [w], args.run, tuple(args.fits), tuple(args.starts), args.steps,
+                     tuple(args.arms))
 
 
 if __name__ == "__main__":

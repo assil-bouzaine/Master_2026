@@ -1,0 +1,166 @@
+{
+  "smallest_effect": 0.05,
+  "alpha": 0.05,
+  "families": {
+    "RQ1": [
+      {
+        "name": "B vs A",
+        "a": "p4_B1_B_r1",
+        "b": "p4_B1_A_r1"
+      },
+      {
+        "name": "D vs C",
+        "a": "p4_B2_D_r1",
+        "b": "p4_B2_C_r1",
+        "coverage": true
+      }
+    ],
+    "RQ2": [
+      {
+        "name": "soft vs none",
+        "a": "p4_B4_D_soft{best}_r1",
+        "b": "p4_B4_D_none_r1",
+        "regimes": ["", "_lwo"]
+      },
+      {
+        "name": "hard vs none",
+        "a": "p4_B4_D_hard_r1",
+        "b": "p4_B4_D_none_r1",
+        "regimes": ["", "_lwo"]
+      }
+    ]
+  },
+  "regimes": ["", "_lwo", "_f25", "_f50", "_refit"],
+  "reconstructions": [1, 2, 3],
+  "soft_candidates": [1, 10, 100],
+  "controls": [
+    {
+      "name": "D vs E_degree",
+      "a": "p4_B2_D_r1",
+      "b": "p4_B3_Edeg{d}_r1",
+      "draws": [0, 1, 2, 3, 4],
+      "regimes": ["", "_lwo"],
+      "reconstructions": [1]
+    },
+    {
+      "name": "D vs E_distance",
+      "a": "p4_B2_D_r1",
+      "b": "p4_B3_Edist{d}_r1",
+      "draws": [0, 1, 2, 3, 4],
+      "regimes": ["", "_lwo"],
+      "reconstructions": [1]
+    },
+    {
+      "name": "D vs F_random",
+      "a": "p4_B2_D_r1",
+      "b": "p4_B3_Frand{d}_r1",
+      "draws": [0, 1, 2, 3, 4],
+      "regimes": ["", "_lwo"],
+      "reconstructions": [1]
+    },
+    {
+      "name": "D vs F_complete",
+      "a": "p4_B2_D_r1",
+      "b": "p4_B3_Fcomp_r1",
+      "regimes": ["", "_lwo"],
+      "reconstructions": [1]
+    },
+    {
+      "name": "B5 D vs E_degree",
+      "a": "p4_B5_D_r1",
+      "b": "p4_B5_Edeg{d}_r1",
+      "draws": [0, 1, 2, 3, 4],
+      "regimes": [""],
+      "reconstructions": [1]
+    },
+    {
+      "name": "B5 D vs E_distance",
+      "a": "p4_B5_D_r1",
+      "b": "p4_B5_Edist{d}_r1",
+      "draws": [0, 1, 2, 3, 4],
+      "regimes": [""],
+      "reconstructions": [1]
+    },
+    {
+      "name": "B5 D vs F_random",
+      "a": "p4_B5_D_r1",
+      "b": "p4_B5_Frand{d}_r1",
+      "draws": [0, 1, 2, 3, 4],
+      "regimes": [""],
+      "reconstructions": [1]
+    },
+    {
+      "name": "B5 D vs F_complete",
+      "a": "p4_B5_D_r1",
+      "b": "p4_B5_Fcomp_r1",
+      "regimes": [""],
+      "reconstructions": [1]
+    }
+  ],
+  "exploratory": [
+    {
+      "name": "B1c name tags vs B",
+      "a": "p4_B1c_B_nametags_r1",
+      "b": "p4_B1_B_r1",
+      "reconstructions": [1]
+    },
+    {
+      "name": "B1c shuffled facts vs B",
+      "a": "p4_B1c_B_shuffled_r1",
+      "b": "p4_B1_B_r1",
+      "reconstructions": [1]
+    },
+    {
+      "name": "B5 D vs C with message passing",
+      "a": "p4_B5_D_r1",
+      "b": "p4_B5_C_r1",
+      "regimes": ["", "_lwo"],
+      "reconstructions": [1],
+      "coverage": true
+    },
+    {
+      "name": "B5 D with message passing vs D with routing",
+      "a": "p4_B5_D_r1",
+      "b": "p4_B2_D_r1",
+      "regimes": ["", "_lwo"],
+      "reconstructions": [1]
+    },
+    {
+      "name": "B5 C with message passing vs C with routing",
+      "a": "p4_B5_C_r1",
+      "b": "p4_B2_C_r1",
+      "regimes": ["", "_lwo"],
+      "reconstructions": [1]
+    },
+    {
+      "name": "B6 D vs C, confident-only policy",
+      "a": "p4_B6_D_confident-only_r1",
+      "b": "p4_B6_C_confident-only_r1",
+      "regimes": ["", "_lwo"],
+      "reconstructions": [1],
+      "coverage": true
+    },
+    {
+      "name": "B6 D vs C, all-links policy",
+      "a": "p4_B6_D_all-links_r1",
+      "b": "p4_B6_C_all-links_r1",
+      "regimes": ["", "_lwo"],
+      "reconstructions": [1],
+      "coverage": true
+    },
+    {
+      "name": "B7 D with unit-wide recharge vs D",
+      "a": "p4_B7_D_unitwide_r1",
+      "b": "p4_B2_D_r1",
+      "regimes": [""],
+      "reconstructions": [1]
+    },
+    {
+      "name": "B7 D with soil drainage vs D",
+      "a": "p4_B7_D_drainage_r1",
+      "b": "p4_B2_D_r1",
+      "regimes": [""],
+      "reconstructions": [1]
+    }
+  ]
+}

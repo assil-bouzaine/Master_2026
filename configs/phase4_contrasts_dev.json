@@ -1,0 +1,29 @@
+{
+  "smallest_effect": 0.05,
+  "alpha": 0.05,
+  "families": {
+    "dev": [
+      {
+        "name": "Pooled λ = 0.1 vs free",
+        "a": "resp_pooled_l01",
+        "b": "resp_free"
+      },
+      {
+        "name": "Pooled λ = 0.01 vs free",
+        "a": "resp_pooled_l001",
+        "b": "resp_free"
+      }
+    ]
+  },
+  "regimes": [""],
+  "reconstructions": [1],
+  "controls": [
+    {
+      "name": "Illustrative draws vs free",
+      "a": "resp_free",
+      "b": "resp_pooled_l{d}",
+      "draws": [1, 10]
+    }
+  ],
+  "exploratory": []
+}

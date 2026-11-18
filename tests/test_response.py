@@ -313,6 +313,97 @@ def test_recovery():
         assert np.median(cc) > 0.9, (name, cc)
 
 
+def static_model(N=6, K=40, mode="pooled", seed=0, init_sd=1.0, Z=None, net="linear"):
+    g = torch.Generator().manual_seed(seed)
+    return R.ResponseModel(np.arange(N) % 2, 2, mode, kernel_weeks=K, amax=20.0, init_sd=init_sd,
+                           generator=g, statics=Z, static_net=net)
+
+
+def test_statics_start_and_signs():
+    """Rung 3 starts exactly at the pooled model; with any static map the signs still hold through
+    the whole path (the facts never see a stress); free mode refuses facts."""
+    N, T, K = 6, 160, 40
+    Z = np.random.default_rng(2).normal(size=(N, 4)).astype(np.float32)
+    X = toy_inputs(N, T, K, seed=1)
+    for net_kind in ("linear", "mlp16"):
+        base, withz = static_model(seed=3), static_model(seed=3, Z=Z, net=net_kind)
+        with torch.no_grad():
+            assert torch.equal(base(tt(X)), withz(tt(X))), net_kind
+            for p in withz.static_map.parameters():          # any map: signs must still hold
+                p.copy_(torch.randn(p.shape, generator=torch.Generator().manual_seed(7)) * 2.0)
+            out = withz(tt(X)).numpy()
+        assert not np.allclose(out, base(tt(X)).detach().numpy()), "the map must change the model"
+        rng = np.random.default_rng(4)
+        for name, sign in (("rain", 1), ("ETP", -1), ("pump_gw", -1), ("canal", 1)):
+            for kind in ("impulse", "sustained"):
+                X2 = {k: v.copy() for k, v in X.items()}
+                t0 = int(rng.integers(0, T + K - 2))
+                X2[name][:, slice(t0, t0 + 1) if kind == "impulse" else slice(t0, None)] += 1.5
+                with torch.no_grad():
+                    d = withz(tt(X2)).numpy() - out
+                assert (sign * d >= -1e-5).all() and (sign * d).max() > 0, (net_kind, name, kind)
+    try:
+        static_model(mode="free", Z=Z)
+        raise AssertionError("free mode must refuse statics")
+    except ValueError:
+        pass
+    lin = static_model(Z=Z)
+    assert lin.static_penalty().item() == 0.0                   # zero map at the start
+    with torch.no_grad():
+        lin.static_map.weight.fill_(0.5)
+    assert abs(lin.static_penalty().item() - 0.25) < 1e-7
+    mlp = static_model(Z=Z, net="mlp16")
+    w = torch.cat([mlp.static_map[0].weight.reshape(-1), mlp.static_map[2].weight.reshape(-1)])
+    assert abs(mlp.static_penalty().item() - w.pow(2).mean().item()) < 1e-7
+
+
+def toy_static_world(N=8, T=260, K=40, seed=0):
+    """Heads whose recharge and pumping gains vary with one fact z across wells of one group."""
+    z = np.linspace(-1.0, 1.0, N, dtype=np.float32)[:, None]
+    X = toy_inputs(N, T, K, seed=seed)
+    g = torch.Generator().manual_seed(21)
+    truth = R.ResponseModel(np.zeros(N, int), 1, "shared", kernel_weeks=K, amax=20.0, init_sd=0.3,
+                            generator=g, statics=z)
+    with torch.no_grad():
+        truth.static_map.weight[0, 0] = 0.8         # recharge gain (raw) rises with z
+        truth.static_map.weight[1, 0] = -1.5        # pumping gain (raw) falls with z
+        y = truth(tt(X)).numpy()
+    head = y + np.random.default_rng(seed).normal(0, 0.003, y.shape)
+    split = np.array([["train"] * 180 + ["validation"] * 80] * N, dtype=object)
+    data = {"X": X, "head": head, "mu": np.zeros_like(head), "sd": np.ones_like(head), "split": split,
+            "core": np.ones((N, T), bool), "groups": ["a"], "group_of": np.zeros(N, int),
+            "codes": [f"w{i}" for i in range(N)], "weeks": np.arange(T)}
+    return z, X, y, data
+
+
+def test_statics_heldout_wells():
+    """Held-out wells (no training week) get the group mean + f(z): their deviation never moves.
+    On heads whose gains vary with a fact, the facts carry the responses to held-out wells
+    (the purpose of rung 3, tested on the leave-wells-out folds), and the group mean alone cannot."""
+    N, T, K = 8, 260, 40
+    z, X, y, data = toy_static_world(N, T, K)
+    held = np.zeros(N, bool)
+    held[[2, 5]] = True                              # interior values of z: interpolation
+    train_mask = (data["split"] == "train") & ~held[:, None]
+    nets = {}
+    for name, Zin in (("facts", z), ("group only", None)):   # the same pooled model, +- the facts
+        nets[name] = R.train_seed(0, data, "pooled", lam=1.0, steps=1500, lr=0.05, patience=40, kernel_weeks=K,
+                                  amax=20.0, init_sd=0.0, train_mask=train_mask, es_wells=~held,
+                                  statics=Zin, static_l2=0.0)[0]
+    facts = nets["facts"]
+    assert facts.delta[held].abs().max().item() == 0.0, "a held-out well's deviation must stay 0"
+    with torch.no_grad():
+        want = facts.group_mean[facts.group_of] + facts.static_map(facts.Z)
+        assert torch.allclose(facts.raw()[held], want[held])
+    nse = {}
+    for name, net in nets.items():
+        with torch.no_grad():
+            p = net(tt(X)).numpy()
+        nse[name] = np.mean([1 - ((p[i] - y[i]) ** 2).sum() / ((y[i] - y[i].mean()) ** 2).sum()
+                             for i in np.where(held)[0]])
+    assert nse["facts"] > 0.9 and nse["facts"] > nse["group only"] + 0.05, nse
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_"):

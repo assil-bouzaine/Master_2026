@@ -206,6 +206,28 @@ swapped for the journal version).
 | Schneider et al., *EuroCrops*, *Sci. Data* 10, 2023, **doi:10.1038/s41597-023-02517-0**; Bazzi et al., *Mapping Irrigated Areas Using Sentinel-1 Time Series in Catalonia*, *Remote Sens.* 11, 2019, **doi:10.3390/rs11151836** | CITE | An external crop-code mapping for the alignment experiment (Gate 3); irrigation mapping by radar (SO2). |
 | Poveda-Villalón et al., *LOT: An industrial oriented ontology engineering framework*, *EAAI* 111, 2022, **doi:10.1016/j.engappai.2022.104755**; Janowicz et al., *KnowWhereGraph*, *AI Magazine* 43, 2022, **doi:10.1002/aaai.12043** | CITE | Ontology methodology; the reference geo-knowledge-graph. |
 
+### Added 2026-11-18 (citation audit, `docs/literature/citation_audit.md`; Crossref and arXiv records checked that day)
+
+These were already cited in the code or the docs, with the right identifier, but were missing from
+this list. Each identifier was resolved on Crossref (DOIs) or arXiv on 2026-11-18 and matches the
+paper it is cited for.
+
+| Reference | Verdict | Where it is used |
+|---|---|---|
+| Nash & Sutcliffe, *River flow forecasting through conceptual models part I*, *J. Hydrol.* 10, 1970, **doi:10.1016/0022-1694(70)90255-6** | CITE | NSE (`src/models/evaluate.py`). |
+| Gupta, Kling, Yilmaz & Martinez, *Decomposition of the mean squared error and NSE performance criteria*, *J. Hydrol.* 377, 2009, **doi:10.1016/j.jhydrol.2009.08.003** | CITE | KGE (`src/models/evaluate.py`). |
+| Collenteur, Bakker, Klammler & Birk, *Estimation of groundwater recharge from groundwater levels using nonlinear transfer function noise models…*, *HESS* 25, 2021, **doi:10.5194/hess-25-2931-2021** | CITE | Nonlinear recharge in Pastas (`src/models/pastas_baseline.py`). |
+| Brakenhoff, Vonk, Collenteur, Van Baar & Bakker, *Application of Time Series Analysis to Estimate Drawdown From Multiple Well Fields*, *Front. Earth Sci.* 10, 2022, **doi:10.3389/feart.2022.907609** | CITE | Pastas WellModel (`docs/feedback.md`). |
+| Akiba, Sano, Yanase, Ohta & Koyama, *Optuna: A Next-generation Hyperparameter Optimization Framework*, KDD 2019, **doi:10.1145/3292500.3330701** | CITE | The tuner (`src/models/tune.py`). |
+| Harbaugh, *MODFLOW-2005, the U.S. Geological Survey modular ground-water model — the ground-water flow process*, USGS Techniques and Methods 6-A16, 2005, **doi:10.3133/tm6a16** | CITE | River–aquifer exchange grows with the stage (rules, CQ5). |
+| Grüninger & Fox, *The Role of Competency Questions in Enterprise Engineering*, IFIP 1995, **doi:10.1007/978-0-387-34847-6_3** | CITE | Competency questions (CLAUDE.md §10). |
+| Wiśniewski, Potoniec, Ławrynowicz & Keet, *Analysis of Ontology Competency Questions and their formalizations in SPARQL-OWL*, *J. Web Semant.* 59, 2019, **doi:10.1016/j.websem.2019.100534** | CITE | CQs written as SPARQL. |
+| Tripathi & Babaie, *Developing a modular hydrogeology ontology by extending the SWEET upper-level ontologies*, *Comput. Geosci.* 34, 2008, **doi:10.1016/j.cageo.2007.08.009** | CITE | A hydrogeology ontology on SWEET. |
+| Hahmann & Stephen, *Using a hydro-reference ontology to provide improved computer-interpretable semantics for the groundwater markup language (GWML2)*, *IJGIS* 32, 2018, **doi:10.1080/13658816.2018.1443751** | CITE | The source of the HyFO terms (`ontology/imports/gwml2_hyfo_terms.ttl`). |
+| Lippolis, Lodi & Nuzzolese, *The Water Health Open Knowledge Graph*, *Sci. Data* 12, 2025, **doi:10.1038/s41597-025-04537-4** | CORE | WHOW-KG, the network-of-ontologies pattern (CLAUDE.md §3). Its DOI is wrapped over two comment lines in `ontology/lulcw-meta.ttl`, which the audit reports as a truncated `10.1038/`; the comment is joined at the next ontology release (a comment change now would re-derive the graph release for nothing). |
+| Poveda-Villalón, Gómez-Pérez & Suárez-Figueroa, *OOPS! (OntOlogy Pitfall Scanner!)*, *IJSWIS* 10(2), 2014, **doi:10.4018/ijswis.2014040102** | CITE | The pitfall scan (`src/kg/oops_scan.py`). |
+| Hamilton, Ying & Leskovec, *Inductive Representation Learning on Large Graphs* (GraphSAGE), NeurIPS 2017, **arXiv:1706.02216** | CITE | Mean aggregation over neighbours, the message passing of rung 5 (`src/models/message.py`). |
+
 ## 3. Reading order (about 3 weeks, alongside Phase 1)
 
 1. Taccari 2024 → Wu 2025 (E3) → Heudorfer 2024 → Pastas 2019. This is how our

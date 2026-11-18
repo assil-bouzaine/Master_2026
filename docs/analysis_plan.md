@@ -1143,3 +1143,53 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       same size). λ_s = 1 on the twin; the real data's λ_s (one value or a grid chosen on validation)
       is a Gate 3 point. Reported for RQ2 beside scores 1–5: the violation rate (share of core wells
       and stresses whose fitted gain has the wrong sign) and the intervention sign of score 5.
+20. **The controls of §10 and rung 3, made concrete (written 2026-11-18, before any real-data arm and
+    before any rung-3 run; ❓ Gate 3 confirms, then they are frozen with the tag).**
+    - *Control graphs, arms E and F (`src/kg/controls.py`).* Built from arm D's export tables,
+      deterministically (seeded by kind, draw and relation), five draws per random kind, and bound to
+      the export by the SHA-256 of `edges_D.parquet` and `nodes.parquet` (a stale control refuses to
+      load). Relations: pumping, recharge, river, canal and well links. The unattributed pumping of
+      every control is recomputed by D's rule (every facility within 5 km that the control's pumping
+      edges do not link to the well), so a control never drops volume (§8); D's unit-wide recharge
+      sensitivity is not carried. Weights follow D's rules on the new endpoints (pumping exp(−d/5 km);
+      well links exp(−d/σ), their depth difference recomputed from the investigation depths). The
+      attribute bundle of an edge (sign, eligibility, constraint flag, number of paths, association
+      types, and the outcrop weight of a recharge edge) stays with the target well, so every well
+      keeps, for example, its number of constrained pumping edges: the constraint setting is held
+      fixed in D vs E, as the contract requires. (Rung-4 models build signs per stress, not per edge,
+      so the bundles change no rung-4 fit; they matter only for a model that uses per-edge evidence.)
+      - **E_degree**: Maslov–Sneppen double-edge swaps within each relation (10 × its edge count of
+        successful swaps); every source and every well keeps its degree. The canal relation has one
+        source and cannot be rewired: it stays as in D, and that is reported.
+      - **E_distance**: each edge's source is replaced by one of the five same-type sources, not
+        linked by D, whose distance to the well is closest to the original edge's; well links keep one
+        end. The distance distribution is kept and the meaning is lost: a gain of D that survives it
+        is not a locality gain (§10, control 3).
+      - **F_random**: as many edges as D per relation, drawn uniformly from every compatible pair,
+        with no attribute (no sign, not eligible). **F_complete**: every compatible pair.
+      - Reported per kind, draw and relation: edges, wells, overlap with D, the degree checks, the
+        realised distance mismatch. The variation over draws is reported apart from the variation
+        over starts (§10).
+    - *Rung 3, parameters from facts (`src/models/response.py --statics A|B`, the facts in
+      `src/models/statics.py`).* Raw parameters = group mean + f(z_i) + δ_i, with z_i the well's
+      facts standardised over the wells of the run; f linear (default) or one hidden layer of 16
+      tanh units; no bias (the group means are the intercepts); the last layer starts at 0, so a run
+      starts exactly at the pooled model; f never sees a stress, so every sign still holds by
+      construction (§10 condition 1; checked by finite differences). δ_i is penalised as in mode
+      pooled and f's weights get a ridge equal to the pooled λ unless stated (`--static-l2`):
+      without it, thirteen facts could label each of 65 wells. Mode free refuses facts (free
+      deviations would absorb them). A held-out well of the leave-wells-out folds has no training
+      week, so its deviation stays 0 and its parameters are the group mean + f(z): rung 3's main
+      reading is on those folds, where the facts must carry information about wells, not labels; on
+      R1 the facts can help only through the pooling.
+      - **Set A** (dataset facts): log investigation depth (with a missing flag), altitude, the
+        BD LISA stack position (with a missing flag), the window's artesian share.
+      - **Set B** = A + facts from arm D's edges: the attributed share of the declared groundwater
+        volume within 5 km and the attributed volume (log), from the declared (not imputed) years of
+        the training window; the number of recharge cells; the kinds of river edge (on outcrop, over
+        cover, documented lateral); the canal edge. Nothing after the training end enters either set;
+        an R3 window uses its own window. B vs A at rung 3 is the ladder's form of "knowledge as
+        information" (§10).
+      - **Controls**: random name tags (N(0, 1) facts of the same width) and shuffled facts (the rows
+        permuted between wells), drawn per start so that their spread is part of the spread over
+        starts (Heudorfer et al. 2024, doi:10.5194/hess-28-525-2024).

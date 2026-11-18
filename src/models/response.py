@@ -61,6 +61,17 @@ doi:10.1111/gwat.12925), but written in PyTorch and fitted for every well at onc
   numbers to float precision (tests/test_response.py), several times faster with 312-week
   kernels. The default stays direct, so earlier runs keep their fingerprints and numbers; the twin
   and the runs after it use fft.
+- --statics A | B (rung 3, analysis plan §14 item 20): each raw parameter = group mean + f(z_i) +
+  delta_i, z_i the well's declared facts (src/models/statics.py; set A from the dataset, set B adds
+  the knowledge graph's facts), standardised over the run's wells; f linear (--static-net linear)
+  or one hidden layer of 16 units (mlp16), its last layer starting at 0 so a run starts at the
+  pooled model; a ridge on f's weights (--static-l2, default the pooled lambda). Needs mode pooled
+  or shared. A held-out well of a leave-wells-out fold keeps delta = 0, so its responses come from
+  its group and its facts only: the test that the facts describe wells instead of naming them.
+  --static-control nametags | shuffled: random facts of the same width, or the facts of other
+  wells, drawn per start (Heudorfer et al. 2024, doi:10.5194/hess-28-525-2024). f never sees a
+  stress, so the signs still hold by construction. Rung 5 (message passing over the arm's well
+  links) feeds f the aggregated facts of the neighbours as well (src/models/message.py).
 - Weeks before the first forcing week (2000) are filled with each input's training mean,
   as Pastas does.
 
@@ -146,12 +157,16 @@ class ResponseModel(nn.Module):
 
     def __init__(self, group_of, n_groups, mode="free", kernel_weeks=KERNEL_WEEKS, amax=A_MAX,
                  recharge="linear", init_sd=0.0, generator=None, pumping="sum", gain_scale=None,
-                 signs="structure", conv="direct"):
+                 signs="structure", conv="direct", statics=None, static_net="linear"):
         super().__init__()
         if mode not in ("free", "pooled", "shared"):
             raise ValueError(mode)
         if conv not in ("direct", "fft"):
             raise ValueError(conv)
+        if statics is not None and mode == "free":
+            # free deviations would absorb whatever the facts explain: the static map would not
+            # be identified, and only held-out wells would see it
+            raise ValueError("statics need mode pooled or shared")
         self.conv = conv
         self.mode, self.K, self.amax, self.recharge = mode, int(kernel_weeks), float(amax), recharge
         self.names = STRESS_SETS[pumping]
@@ -177,9 +192,35 @@ class ResponseModel(nn.Module):
         self.delta = nn.Parameter(noise(N, len(base)) if mode == "free" else torch.zeros(N, len(base)),
                                   requires_grad=mode != "shared")
         self.d = nn.Parameter(torch.zeros(N))
+        # rung 3: raw parameters = group mean + f(z_i) + delta_i, z_i the well's standardised facts
+        # (src/models/statics.py). The last layer of f starts at 0, so a run starts from the pooled
+        # model; no bias (the group means are the intercepts); f never sees a stress, so the signs
+        # still hold by construction (analysis plan §10, condition 1).
+        self.static_map = None
+        if statics is not None:
+            Z = torch.as_tensor(np.asarray(statics), dtype=torch.float32)
+            if Z.ndim != 2 or Z.shape[0] != N:
+                raise ValueError(f"statics must be (wells, features), got {tuple(Z.shape)} for {N} wells")
+            self.register_buffer("Z", Z)
+            F_in, P = Z.shape[1], len(base)
+            if static_net == "linear":
+                self.static_map = nn.Linear(F_in, P, bias=False)
+            elif static_net == "mlp16":
+                hidden = nn.Linear(F_in, 16)
+                with torch.no_grad():         # seeded like every other starting value
+                    hidden.weight.uniform_(-1, 1, generator=generator).mul_(F_in ** -0.5)
+                    hidden.bias.uniform_(-1, 1, generator=generator).mul_(F_in ** -0.5)
+                self.static_map = nn.Sequential(hidden, nn.Tanh(), nn.Linear(16, P, bias=False))
+            else:
+                raise ValueError(static_net)
+            last = self.static_map if static_net == "linear" else self.static_map[2]
+            nn.init.zeros_(last.weight)
 
     def raw(self):
-        return self.group_mean[self.group_of] + self.delta      # (N, 3R + 1)
+        p = self.group_mean[self.group_of] + self.delta         # (N, 3R + 1)
+        if self.static_map is not None:
+            p = p + self.static_map(self.Z)
+        return p
 
     def parameters_physical(self):
         """gain (N, R) signed, m per unit stress; a (N, R) weeks; n (N, R); f (N,)."""
@@ -221,6 +262,15 @@ class ResponseModel(nn.Module):
 
     def penalty(self):
         return (self.delta ** 2).mean()
+
+    def static_penalty(self):
+        """Mean squared weight of the static map (a ridge): without it, a map from 13 facts to the
+        parameters of 65 wells could explain each well's deviation for free and turn the facts
+        into name tags (Heudorfer et al. 2024, doi:10.5194/hess-28-525-2024)."""
+        if self.static_map is None:
+            return torch.zeros(())
+        w = [p for name, p in self.static_map.named_parameters() if name.endswith("weight")]
+        return torch.cat([p.reshape(-1) for p in w]).pow(2).mean()
 
     def soft_penalty(self, c, mask, sd):
         """Mean over wells of the share of the well's training variance carried by contributions
@@ -281,9 +331,12 @@ def panel_arrays(P, kernel_weeks=KERNEL_WEEKS, routed=None):
 def train_seed(seed, data, mode, lam=0.0, steps=4000, lr=0.05, patience=15, eval_every=20,
                kernel_weeks=KERNEL_WEEKS, amax=A_MAX, recharge="linear", init_sd=0.5,
                train_mask=None, es_wells=None, fixed_steps=None, state_out=None, pumping="sum",
-               gain_units="m", signs="structure", soft=None, conv="direct"):
+               gain_units="m", signs="structure", soft=None, conv="direct", statics=None,
+               static_net="linear", static_l2=0.0):
     """One start. Returns (model, best validation median NSE, best step). `soft`: weight of the
-    soft sign penalty (with signs "none")."""
+    soft sign penalty (with signs "none"). `statics` (N, F): the standardised facts of rung 3
+    (data["codes"] order), mapped to the raw parameters by `static_net`, whose weights get the
+    ridge `static_l2`."""
     torch.manual_seed(seed)
     torch.set_num_threads(int(os.environ.get("PFE_THREADS", 4)))
     gen = torch.Generator().manual_seed(seed)
@@ -299,7 +352,8 @@ def train_seed(seed, data, mode, lam=0.0, steps=4000, lr=0.05, patience=15, eval
     es_core = core & (es_wells[:, None] if es_wells is not None else True)
     net = ResponseModel(data["group_of"], len(data["groups"]), mode, kernel_weeks, amax, recharge,
                         init_sd=init_sd, generator=gen, pumping=pumping,
-                        gain_scale=sd_safe[:, 0] if gain_units == "sd" else None, signs=signs, conv=conv)
+                        gain_scale=sd_safe[:, 0] if gain_units == "sd" else None, signs=signs, conv=conv,
+                        statics=statics, static_net=static_net)
     opt = torch.optim.Adam([p for p in net.parameters() if p.requires_grad], lr=lr)
     if soft:
         mask_t = torch.from_numpy(np.asarray(train_mask, dtype=bool))
@@ -315,6 +369,8 @@ def train_seed(seed, data, mode, lam=0.0, steps=4000, lr=0.05, patience=15, eval
             loss = (wgt * (net(X) - y) ** 2).sum()
         if mode == "pooled" and lam > 0:
             loss = loss + lam * net.penalty()
+        if static_l2:
+            loss = loss + static_l2 * net.static_penalty()
         opt.zero_grad()
         loss.backward()
         opt.step()
@@ -365,6 +421,20 @@ def seed_outputs(net, data):
     return pz, c, p
 
 
+def seed_statics(Z0, control, seed):
+    """The facts one start sees: the declared ones, or a control drawn for this start (so the
+    spread over draws is part of the spread over starts): random name tags of the same width,
+    or the rows of Z0 permuted between wells."""
+    from src.models.statics import name_tags, shuffled
+    if control == "nametags":
+        return name_tags(Z0.shape[0], Z0.shape[1], seed)
+    if control == "shuffled":
+        return shuffled(Z0, seed)
+    if control is not None:
+        raise ValueError(control)
+    return Z0
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", choices=["free", "pooled", "shared"], required=True)
@@ -397,11 +467,32 @@ def main():
     ap.add_argument("--fold", type=int, default=None, help="leave-wells-out fold (0-4)")
     ap.add_argument("--train-start", default=None, help="shorter training period (regime R3)")
     ap.add_argument("--refit-from", default=None, help="refit on train+validation (steps of run)")
+    ap.add_argument("--statics", choices=["A", "B"], default=None,
+                    help="rung 3: parameters predicted from the declared facts of set A or B "
+                         "(src/models/statics.py); needs --mode pooled or shared")
+    ap.add_argument("--static-control", choices=["nametags", "shuffled"], default=None,
+                    help="with --statics: random name tags of the same width, or the facts of other "
+                         "wells (rows permuted), drawn per start (Heudorfer et al. 2024)")
+    ap.add_argument("--static-net", choices=["linear", "mlp16"], default="linear")
+    ap.add_argument("--static-l2", type=float, default=None,
+                    help="ridge on the static map's weights (default: --lam in pooled mode, 0 in shared)")
     args = ap.parse_args()
     if args.mode == "pooled" and args.lam <= 0:
         ap.error("--mode pooled needs --lam > 0")
     if args.soft is not None and args.signs != "none":
         ap.error("--soft needs --signs none (a built-in sign cannot be violated)")
+    if args.statics is None and (args.static_control or args.static_l2 is not None
+                                 or args.static_net != "linear"):
+        ap.error("--static-control, --static-net and --static-l2 need --statics")
+    if args.statics is not None and args.mode == "free":
+        ap.error("--statics needs --mode pooled or shared (free deviations absorb the facts)")
+    statics, static_control, static_net = args.statics, args.static_control, args.static_net
+    static_l2 = (args.static_l2 if args.static_l2 is not None
+                 else args.lam if args.mode == "pooled" else 0.0)
+    if statics is None:           # the defaults leave the fingerprints of earlier runs unchanged
+        del args.statics, args.static_control, args.static_net, args.static_l2
+    else:
+        args.static_l2 = static_l2
     soft, conv = args.soft, args.conv
     if soft is None:              # the defaults leave the fingerprints of earlier runs unchanged
         del args.soft
@@ -444,10 +535,27 @@ def main():
         print(f"arm {arm} ({policy}): wells with each relation {{{', '.join(f'{k} {v['wells']}' for k, v in cov.items())}}} "
               f"of {sum(keep)}", flush=True)
     data = panel_arrays(P, args.kernel_weeks, routed)
+    Z0 = None
+    if statics is not None:
+        from src.models.statics import standardise, static_table
+        tab = static_table(statics, train_start=args.train_start, policy=policy if arm else "main")
+        missing = sorted(set(data["codes"]) - set(tab.index))
+        if missing:
+            ap.error(f"no static facts for wells {missing}")
+        Z0, znames, zstats = standardise(tab.loc[data["codes"]])   # over the wells of this run
+        extra = (extra or {}) | {"statics": {"set": statics, "features": list(znames),
+                                             "control": static_control, "net": static_net,
+                                             "l2": static_l2, "standardisation": zstats}}
     out = RESULTS / run / (f"fold_{args.fold}" if args.fold is not None else "")
     out.mkdir(parents=True, exist_ok=True)
     inputs = [f"{c}/{SCALE[c]:g}" for c in (ROUTED if arm else RAW_INPUTS)]
-    fp = write_config(out, args, inputs, extra and {"export_release": extra["export"]["release"]})
+    fp_extra = {}
+    if extra and "export" in extra:
+        fp_extra["export_release"] = extra["export"]["release"]
+    if Z0 is not None:            # the facts themselves, so a changed table never reuses a seed
+        import hashlib
+        fp_extra["statics_sha256"] = hashlib.sha256(np.ascontiguousarray(Z0, dtype=np.float32).tobytes()).hexdigest()
+    fp = write_config(out, args, inputs, fp_extra or None)
     write_schema(out, {"nodes": data["codes"], "weeks": [str(data["weeks"][0])[:10], str(data["weeks"][-1])[:10]],
                        "inputs": inputs, "stresses": list(names),
                        "signs": {s: SIGN_SETS[signs][s] for s in names}, **(extra or {}),
@@ -462,12 +570,14 @@ def main():
             continue
         fixed = refit_epochs(args.refit_from, s) if args.refit_from else fixed_steps
         state = {}
+        Z = None if Z0 is None else seed_statics(Z0, static_control, s)
         net, best, best_step = train_seed(s, data, args.mode, args.lam, args.steps, args.lr,
                                           kernel_weeks=args.kernel_weeks, amax=args.amax,
                                           recharge=args.recharge, train_mask=train_mask,
                                           es_wells=keep, fixed_steps=fixed, state_out=state,
                                           pumping=pumping, gain_units=gain_units, signs=signs,
-                                          soft=soft, conv=conv)
+                                          soft=soft, conv=conv, statics=Z, static_net=static_net,
+                                          static_l2=static_l2 if Z is not None else 0.0)
         pz, contrib, params = seed_outputs(net, data)
         contrib.to_parquet(out / f"contrib_seed_{s}.parquet", index=False)
         params.to_csv(out / f"params_seed_{s}.csv", index=False)

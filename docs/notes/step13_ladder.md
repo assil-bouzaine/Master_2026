@@ -472,3 +472,30 @@ line, re-runs the tests and commits what passes. Every commit made from a worker
   `--message` is wired into the response model).
 - The workers cannot write into `.agents/` (Codex protects it): their reports go to
   `results/_agents/reports/`.
+
+### Later the same day: the workers' tasks T03–T07 (each reviewed, re-tested and committed)
+
+| Task | Worker | What it delivered | Review |
+|---|---|---|---|
+| T03 | B (GPT-6.1-Sol) | `src/models/statics.py`: fact sets A and B, the training-window rule, standardisation, name tags and shuffled facts | one fix (T03b): the source's altitude −999 for `10915X0395/PZ` is "unknown", not an altitude; it had shifted every well's standardised altitude |
+| T04 | A (GPT-6.2-Sol) | `src/models/depth_threshold.py`: the per-regime depth threshold of D's well links | accepted unchanged. **Result:** in every regime (R1, the five folds, both R3 windows) only "no threshold" has the 10 qualifying pairs the rule asks for (50 m: at most 8), so D keeps all 47 pairs; R1 medians 0.517 (50 m) and 0.511 (none) |
+| T05 | A | `paper/`: the EMS skeleton (headings and TODO notes only) and `fetch_bib.py` | accepted; Claude anchored the `tools/` ignore rule and fetched the bibliography online: 104/104 entries (one thesis record corrected by hand from its repository page) |
+| T06 | B | `--pumping-reconstruction 1/2/3` for every routed arm | accepted: default arrays bit-identical; annual totals of 2,137 facilities conserved to 4e-16 |
+| T07 | A | `src/analysis/arms_report.py` + `configs/phase4_contrasts.json`: the reading of Phase 4's contrasts | accepted; its development run on the ladder runs matches the ladder report to 1e-12 |
+
+Claude's own work in the afternoon: rung 5 wired (`--message`; per-regime links, controls drawn
+from the links D keeps), `--arm baseline` (the panel's rules as edges, so arms A and B get the
+reconstructions), `docs/phase4_runs.md`, Gate 3 points 18–21, the twin map's reading rules (a)–(f) as
+code (`twin_report.reading`, tested on hand-made tables only, before the grid could be read), and the
+exports of the two pump-link sensitivities (confident-only: D has 134 pumping edges on 26 wells;
+all-links: 1,839 on 54; main: 434 on 43).
+
+**What to consider**
+- The twin's next Kaggle push must carry the 12:41 export again: it is kept in
+  `results/_kaggle_cpu/twin_export_release1241/`. Copy it over `data/processed/kg/export_v4_main/`
+  (after moving the 13:54 export aside, outside `data/processed/kg/`), run `kaggle_cpu.py push`, and
+  put the 13:54 export back as soon as `results/_kaggle_cpu/dataset/cpu_bundle.zip` is rewritten.
+- Block B7 needs two small options before Phase 4: a flag for arm D's unit-wide recharge relation
+  (routing already accepts `recharge="recharge_unitwide"`) and soil drainage (DRAINC, in the forcing
+  table) as a recharge input.
+- The Codex account's five-hour window was about two-thirds used by 13:00 with both workers busy.

@@ -532,7 +532,12 @@ notebooks/       exploration only; anything that matters moves into src/
 - **Working mode (Assil, 2026-11-18):** tmux session `main`, windows `cxA` (GPT-6.2-Sol high: simple
   tasks) and `cxB` (GPT-6.1-Sol max: simplest). Briefs `.agents/briefs/` (`RULES.md` + `Tnn_*.md`;
   gitignored), reports `results/_agents/reports/Tnn.md` (Codex cannot write `.agents/`). Claude
-  designs, reviews, re-runs the tests and commits; commits from a worker's code say so.
+  designs, reviews, re-runs the tests and commits; commits from a worker's code say so. Repeated by
+  Assil on 2026-11-18 for every session: keep using the two workers (6.1-Sol max: simplest tasks;
+  6.2-Sol high: moderate simple tasks); compute for any run = Kaggle CPU, Colab CPU, and about 5 hours
+  of free GPU (Colab); ping Assil (PushNotification) whenever he is needed. At the start of a session,
+  check both Codex windows; give a worker `/new` if its context is above ~60 % (briefs are
+  self-contained).
 - **Twin grid, Kaggle kernel version 12** (pushed 2026-11-18 ≈ 10:35 UTC, steps `twin_grid twin_slices`):
   version 11 stopped at its budget with 206 of 240 grid worlds (pulled; `results/v4/twin_map`). Version
   12 carries the same export as version 11 (release 12:41 UTC of 11-16). When COMPLETE: `pull`, push

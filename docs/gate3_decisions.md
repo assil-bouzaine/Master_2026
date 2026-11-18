@@ -1,4 +1,4 @@
-# Gate 3: the decisions to take (draft of 2026-11-16, points 18–19 added 2026-11-18)
+# Gate 3: the decisions to take (draft of 2026-11-16, points 18–21 added 2026-11-18)
 
 Gate 3 is the supervisor's review of the knowledge graph and the experiment plan, before the plan is
 frozen with a git tag and Phase 4 (the main model and its comparisons) starts. This sheet gathers
@@ -32,6 +32,8 @@ Nothing here is decided until Assil decides it. The recommendations are Claude's
 | 17 | Public repository before the paper | Ask the supervisor and SAVE Water | Supervisor |
 | 18 | The control graphs of arms E and F (item 20): kinds, draws, bundle rule, what E_distance can control | Confirm; E_distance read as a locality control for pumping only (rivers and recharge cannot be length-matched) | — |
 | 19 | Rung 3's settings (item 20): fact sets A and B, linear map, ridge = the pooled λ, name tags and shuffled facts drawn per start | Confirm; read B vs A mainly on the leave-wells-out folds | — |
+| 20 | The bounded residual network of the hybrid (CLAUDE.md §3; "each rung with and without it", item 18) | A fixed seasonal residual (week-of-year terms and the facts only, bounded, the same every year), as a with/without row; not in the confirmatory contrasts | — |
+| 21 | Scope of the black-box comparison (heterogeneous ST-GNN on the same graph) | The Taccari-style ST-GNN (`src/models/taccari.py`) with arm D's edges, R1, 5 seeds, one Colab GPU session; the tuned LSTM and the existing graph baselines as the other references | Colab GPU |
 
 ## 1. The model
 
@@ -172,6 +174,26 @@ river kinds, canal), a linear map from the facts to the parameters (a 16-unit la
 alternative), a ridge on the map equal to the pooled λ, and the two controls (random name tags,
 shuffled facts) drawn per start. *Recommendation:* confirm; B vs A is read mainly on the
 leave-wells-out folds, where a held-out well's responses come from its facts only.
+
+**20. The bounded residual network (added 2026-11-18).** The design adds to the summed responses
+"a small bounded residual network" that must not see any constrained driver nor its close proxies
+(§10, hard monotonicity, conditions 2 and 6). Once recharge is constrained (point 7), rain, ETP,
+effective rain and the river discharge (a proxy of rain) are all off limits, so the residual can only
+see the week of the year and the well's facts: it becomes a fixed seasonal shape per well, the same
+every year, bounded (e.g. by a quarter of the well's training sd). It cannot explain a drought, only
+a seasonal misfit; it may absorb part of the *average* seasonal pumping cycle, which matches the rule
+that pumping effects are claimed from between-year and between-well variation only (§8). *Options:*
+(a) no residual; (b) the seasonal residual as a with/without row of each rung; (c) a residual with
+weather inputs, monotone in them (more complex; it would carry constrained drivers). *Recommendation:*
+(b), outside the confirmatory contrasts, with its share of the drought variance reported (§10
+condition 8).
+
+**21. The black-box comparison (added 2026-11-18).** The plan compares the hybrid with a black-box
+heterogeneous ST-GNN on the same graph (CLAUDE.md §3). The ladder now carries the main questions,
+and the Taccari-style ST-GNN already exists (`src/models/taccari.py`), built so that its edges can come
+from the knowledge graph. *Recommendation:* run it once with arm D's edges (R1, 5 seeds, one Colab
+GPU session) as "the black box on the same graph"; the tuned LSTM, the distance ST-GNN and the
+Taccari ST-GNN (distance edges) stay as the other references. A new HGT/RGCN model is not built.
 
 ## 6. Facts still missing (not decisions)
 

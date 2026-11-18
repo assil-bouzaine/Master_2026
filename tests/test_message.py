@@ -72,6 +72,23 @@ def test_export():
         print(f"    arm {arm}: {int(has.sum())} of {len(wells)} wells linked")
 
 
+def test_regime_links():
+    """Rung 5's links per regime: C's are fixed; D's are kept by the depth threshold of that regime
+    (on dataset v4 every regime keeps all 47 pairs: only "no threshold" has 10 qualifying pairs);
+    a control is drawn from the links D keeps, so with all of them it equals the saved control."""
+    from src.kg.controls import load_control
+    from src.models.message import regime_links
+    c, rec = regime_links("C")
+    assert rec["arm"] == "C" and len(c) == 254
+    for fold, start in ((None, None), (0, None), (None, "2012-07-01")):
+        d, rec = regime_links("D", fold=fold, train_start=start)
+        assert rec["threshold"]["choice"] is None and len(d) == 94, rec["threshold"]["reason"]
+    e, rec = regime_links("E_degree:2", fold=1)
+    saved = load_control("E_degree", 2).query("relation == 'well_link'")
+    assert set(zip(e["src"], e["dst"])) == set(zip(saved["src"], saved["dst"])) and rec["d_edges"] == 94
+    print("    D keeps all 94 directed links in R1, R2 fold 0 and R3 50 %; controls follow D's kept links")
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_"):

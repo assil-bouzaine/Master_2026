@@ -1,4 +1,4 @@
-# Gate 3: the decisions to take (draft of 2026-11-16)
+# Gate 3: the decisions to take (draft of 2026-11-16, points 18–19 added 2026-11-18)
 
 Gate 3 is the supervisor's review of the knowledge graph and the experiment plan, before the plan is
 frozen with a git tag and Phase 4 (the main model and its comparisons) starts. This sheet gathers
@@ -30,6 +30,8 @@ Nothing here is decided until Assil decides it. The recommendations are Claude's
 | 15 | Ontology scope: CQ9, 13, 14, 16 | Minimal fixtures or future work; the 7 SHOULD/COULD reviewed by Assil | Assil's CQ review |
 | 16 | Reporting: Chronos-2 and the forecast task; Pastas sensitivity rows; a time-reversed test; EuroCrops; text extraction | Thesis only for the first three; text extraction scored on the 32 curated statements; EuroCrops only if time | — |
 | 17 | Public repository before the paper | Ask the supervisor and SAVE Water | Supervisor |
+| 18 | The control graphs of arms E and F (item 20): kinds, draws, bundle rule, what E_distance can control | Confirm; E_distance read as a locality control for pumping only (rivers and recharge cannot be length-matched) | — |
+| 19 | Rung 3's settings (item 20): fact sets A and B, linear map, ridge = the pooled λ, name tags and shuffled facts drawn per start | Confirm; read B vs A mainly on the leave-wells-out folds | — |
 
 ## 1. The model
 
@@ -155,6 +157,21 @@ measured, thesis); EuroCrops as a second alignment benchmark only if time allows
 and the reviews can be read by anyone (the data and the articles are not committed). A public,
 dated plan is good evidence that the analysis was fixed before the results, but the supervisor and
 SAVE Water may have rules on releasing project outputs before publication. *Recommendation:* ask them.
+
+**18. The control graphs (added 2026-11-18; item 20).** Built and tested before any real-data arm
+(`src/kg/controls.py`): E_degree keeps every degree, E_distance keeps each edge's length as far as the
+sources allow, F_random keeps D's number of edges, F_complete links every pair; five draws each; an
+edge's attributes stay with its well. Measured: E_distance keeps pumping lengths within a median 45 m,
+but moves river edges by a median 13 km (five gauges) and recharge cells by 7 km (8 km grid). The
+canal (one source) cannot be rewired. *Recommendation:* confirm; read E_distance as a locality control
+for pumping only, and say so wherever it is reported.
+
+**19. Rung 3's settings (added 2026-11-18; item 20).** Fact set A (depth, altitude, stack position,
+artesian share) and set B (A + the graph's attributed share and volume of pumping, recharge cells,
+river kinds, canal), a linear map from the facts to the parameters (a 16-unit layer as the
+alternative), a ridge on the map equal to the pooled λ, and the two controls (random name tags,
+shuffled facts) drawn per start. *Recommendation:* confirm; B vs A is read mainly on the
+leave-wells-out folds, where a held-out well's responses come from its facts only.
 
 ## 6. Facts still missing (not decisions)
 

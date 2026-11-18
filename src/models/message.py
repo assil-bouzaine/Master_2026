@@ -74,6 +74,30 @@ def feature_names(names, hops=1):
     return out + ["has_link"]
 
 
+def regime_links(arm, policy="main", fold=None, train_start=None):
+    """The well links rung 5 passes messages over in one regime, and a JSON-safe record of them.
+    C: arm C's links (three nearest wells; no head data). D: D's same-unit links kept by the
+    per-regime depth threshold, chosen from the heads that regime allows (analysis plan §14 items
+    14-15; src/models/depth_threshold.py). A control: the control drawn from the links D keeps in
+    that regime (src.kg.controls.control_well_links), so D and its controls start from the same set."""
+    from src.models.routing import load_arm, parse_arm
+    kind, draw = parse_arm(arm)
+    if kind == "C":
+        edges, _ = load_arm("C", policy)
+        links = edges[edges["relation"] == "well_link"]
+        return links, {"arm": "C", "rule": "three nearest wells, symmetric", "edges": int(len(links))}
+    from src.models.depth_threshold import choose_threshold, kept_links
+    d_edges, _ = load_arm("D", policy)
+    regime = "R2" if fold is not None else ("R3" if train_start else "R1")
+    rec = choose_threshold(regime=regime, fold=fold, train_start=train_start)
+    kept = kept_links(d_edges[d_edges["relation"] == "well_link"], rec["choice"])
+    if kind == "D":
+        return kept, {"arm": "D", "threshold": rec, "edges": int(len(kept))}
+    from src.kg.controls import control_well_links
+    links = control_well_links(kind, draw, kept, policy)
+    return links, {"arm": arm, "threshold": rec, "d_edges": int(len(kept)), "edges": int(len(links))}
+
+
 def link_summary(edges, codes, relation="well_link"):
     """Per well: number of links and sum of weights (for the run's schema and reports)."""
     A, has = well_adjacency(edges, codes, relation)

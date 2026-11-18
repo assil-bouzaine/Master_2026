@@ -488,6 +488,9 @@ def main():
     ap.add_argument("--static-net", choices=["linear", "mlp16"], default="linear")
     ap.add_argument("--static-l2", type=float, default=None,
                     help="ridge on the static map's weights (default: --lam in pooled mode, 0 in shared)")
+    ap.add_argument("--message", type=int, default=0,
+                    help="rung 5: hops of message passing over the arm's well links (needs --statics "
+                         "and --arm; arm D's links are kept by the per-regime depth threshold)")
     args = ap.parse_args()
     if args.mode == "pooled" and args.lam <= 0:
         ap.error("--mode pooled needs --lam > 0")
@@ -505,6 +508,13 @@ def main():
         del args.statics, args.static_control, args.static_net, args.static_l2
     else:
         args.static_l2 = static_l2
+    message = args.message
+    if message < 0:
+        ap.error("--message must be 0 (rung 3) or a number of hops")
+    if message and (statics is None or args.arm is None):
+        ap.error("--message needs --statics (the facts it passes) and --arm (the links it passes them over)")
+    if not message:
+        del args.message
     soft, conv = args.soft, args.conv
     if soft is None:              # the defaults leave the fingerprints of earlier runs unchanged
         del args.soft
@@ -555,6 +565,15 @@ def main():
         if missing:
             ap.error(f"no static facts for wells {missing}")
         Z0, znames, zstats = standardise(tab.loc[data["codes"]])   # over the wells of this run
+        if message:               # rung 5: the neighbours' facts over the regime's well links
+            from src.models.message import feature_names, propagate, regime_links, well_adjacency
+            links, link_rec = regime_links(arm, policy, args.fold, args.train_start)
+            A, has = well_adjacency(links, data["codes"])
+            Z0, znames = propagate(Z0, A, has, hops=message), feature_names(znames, message)
+            extra = (extra or {}) | {"message": {"hops": message, "links": link_rec,
+                                                 "wells_linked": int(has.sum())}}
+            print(f"rung 5: {int(has.sum())} of {len(has)} wells linked ({link_rec['edges']} directed links)",
+                  flush=True)
         extra = (extra or {}) | {"statics": {"set": statics, "features": list(znames),
                                              "control": static_control, "net": static_net,
                                              "l2": static_l2, "standardisation": zstats}}

@@ -293,6 +293,22 @@ def _build_control(kind, draw, edges, nodes, depths, sigma, summarize=False):
     return table.sort_values(SORT_COLS, ignore_index=True), summary
 
 
+def control_well_links(kind, draw, d_links, policy="main", dataset=DATASET):
+    """The `well_link` rows of a control drawn from a given set of D's well links (both directions),
+    with the same seeds and rules as the saved controls. Rung 5 needs it: D's links are kept per
+    regime by the depth threshold (src/models/depth_threshold.py), so a control of that regime must
+    rewire the links D keeps there, not all of them (analysis plan §14 item 20). With every D link it
+    returns exactly the saved control's well links."""
+    _filename(kind, draw)
+    _, nodes, depths, meta = _read_export(out_dir(policy, dataset), dataset)
+    by_type = _nodes_by_type(nodes)
+    d_links = d_links[d_links["relation"] == "well_link"].sort_values(SORT_COLS, ignore_index=True)
+    distances = _distance_grid("well_link", by_type["well"], by_type["well"])
+    table, _ = _control_relation(kind, draw, "well_link", d_links, by_type, distances, depths,
+                                 meta["rules"]["well_link_sigma_m"])
+    return table.sort_values(SORT_COLS, ignore_index=True)
+
+
 def make_control(kind, draw=0, policy="main", dataset=DATASET):
     """Build one control from the given policy's export."""
     _filename(kind, draw)

@@ -48,10 +48,39 @@ def load_edges(arm, policy="main", dataset=DATASET):
 CONTROL_KINDS = ("E_degree", "E_distance", "F_random", "F_complete")
 
 
+def baseline_edges():
+    """The panel's own rules written as edges ("baseline inputs, no graph", arms A and B of
+    analysis plan §10): each well's own SAFRAN cell, the groundwater facilities inside the panel's
+    3 km buffer (weight 1; the same buffer polygon and "contains" predicate as
+    src/dataset/load.py, whose 64 sides lie up to 3.6 m inside the circle), and the plain's canal
+    for every well. tests/test_routing.py checks that they reproduce the panel's columns exactly;
+    routing them lets arms A and B use the pumping reconstructions like every graph arm."""
+    import geopandas as gpd
+
+    from src.config import CRS_L93, CRS_WGS84
+    from src.dataset.load import PUMP_RADIUS_KM
+    from src.kg import export as E
+    wells, fac, _, _ = E.tables()
+    gw = gpd.GeoDataFrame(wells[["code_bss"]], geometry=gpd.points_from_xy(wells["x"], wells["y"]),
+                          crs=CRS_WGS84).to_crs(CRS_L93)
+    gw["geometry"] = gw.buffer(PUMP_RADIUS_KM * 1000)
+    gf = gpd.GeoDataFrame(fac[["code_ouvrage"]], geometry=gpd.points_from_xy(fac["longitude"], fac["latitude"]),
+                          crs=CRS_WGS84).to_crs(CRS_L93)
+    near = gpd.sjoin(gw, gf, predicate="contains")
+    d = E._dist(wells, fac)
+    row = {c: i for i, c in enumerate(wells["code_bss"])}
+    col = {c: j for j, c in enumerate(fac["code_ouvrage"])}
+    rows = [E.edge("recharge", "weather_cell", c, w, 1.0) for w, c in zip(wells["code_bss"], wells["cell_id"])]
+    rows += [E.edge("canal", "canal", E.CANAL, w, 1.0) for w in wells["code_bss"]]
+    rows += [E.edge("pumping", "facility", f, w, 1.0, d[row[w], col[f]])
+             for w, f in sorted(zip(near["code_bss"], near["code_ouvrage"]))]
+    return pd.DataFrame(rows, columns=E.EDGE_COLS)
+
+
 def parse_arm(arm):
-    """"C", "D", or a control of analysis plan §14 item 20 written "<kind>:<draw>" (F_complete has
-    one draw) -> (kind, draw); anything else is an error."""
-    if arm in ("C", "D"):
+    """"baseline" (the panel's rules), "C", "D", or a control of analysis plan §14 item 20 written
+    "<kind>:<draw>" (F_complete has one draw) -> (kind, draw); anything else is an error."""
+    if arm in ("baseline", "C", "D"):
         return arm, None
     kind, sep, draw = str(arm).partition(":")
     if kind == "F_complete" and not sep:
@@ -66,6 +95,9 @@ def load_arm(arm, policy="main", dataset=DATASET):
     """Edges and provenance of a graph arm: the export's C or D, or a control graph built from D
     (src/kg/controls.py), which refuses to load if the export changed since it was built."""
     kind, draw = parse_arm(arm)
+    if kind == "baseline":            # no graph: nothing from the export, so no release to record
+        return baseline_edges(), {"release": None, "policy": "baseline (panel rules, no graph)",
+                                  "code_version": None, "control": "baseline"}
     if draw is None:
         return load_edges(arm, policy, dataset)
     from src.kg.controls import load_control

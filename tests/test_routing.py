@@ -5,7 +5,8 @@
 1. Baseline edges reproduce the feature panel: with each well's own SAFRAN cell, the groundwater
    facilities within 3 km (weight 1) and the canal for every well, the routed rain, ETP, PE,
    pumping and canal series equal the panel's columns (the inputs of rungs 1-2 and of the
-   baselines). The routing code and the panel code are separate, so this is a check of both.
+   baselines). The routing code and the panel code are separate, so this is a check of both. The
+   "baseline" arm (routing.baseline_edges, arms A and B) has exactly these edges.
 2. Arms C and D (the export): shapes, no missing value, non-negative volumes; a well without an
    edge for a relation has zeros and its flag off; coverage = the export's manifest; arm C has no
    unattributed input; arm D's routed plus unattributed pumping equals the distance-weighted sum
@@ -46,7 +47,14 @@ def test_baseline():
                 rows.append(("pumping", "facility", fac["code_ouvrage"].iloc[j], wells["code_bss"].iloc[i], 1.0, d[i, j]))
             else:
                 edge_cases += 1
-    R = routed_inputs(edges=edge_table(rows))
+    oracle = edge_table(rows)
+    from src.models.routing import baseline_edges
+    module = baseline_edges()                     # the "baseline" arm: must be this oracle's edges
+    key = ["relation", "src", "dst"]
+    pd.testing.assert_frame_equal(module.sort_values(key, ignore_index=True)[key + ["weight"]],
+                                  oracle.sort_values(key, ignore_index=True)[key + ["weight"]])
+    R = routed_inputs("baseline")
+    assert R["export"]["policy"].startswith("baseline")
     P = pd.read_parquet(RESULTS / "_cache" / "panel.parquet",
                         columns=["code_bss", "week", "rain", "ETP", "PE", "pump_gw", "canal"])
     worst = {}
@@ -123,7 +131,8 @@ def test_control_arms():
     from src.models.routing import load_arm, parse_arm
     assert parse_arm("D") == ("D", None) and parse_arm("E_degree:3") == ("E_degree", 3)
     assert parse_arm("F_complete") == ("F_complete", 0)
-    for bad in ("E", "E_degree", "E_degree:x", "F_complete:1", "G:0", ""):
+    assert parse_arm("baseline") == ("baseline", None)
+    for bad in ("E", "E_degree", "E_degree:x", "F_complete:1", "G:0", "", "Baseline"):
         try:
             parse_arm(bad)
             raise AssertionError(f"{bad!r} must be refused")

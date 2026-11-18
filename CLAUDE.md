@@ -528,7 +528,26 @@ notebooks/       exploration only; anything that matters moves into src/
 
 ### ▶ Where we are (read this first in a new session)
 
-**2026-11-16: ladder follow-ups read; the twin built and piloted; its grid on Kaggle; HILUCS done. START HERE.**
+**2026-11-18: Claude leads two Codex workers; controls E/F, rung 3, citation audit. START HERE.**
+- **Working mode (Assil, 2026-11-18):** tmux session `main`, windows `cxA` (GPT-6.2-Sol high: simple
+  tasks) and `cxB` (GPT-6.1-Sol max: simplest). Briefs `.agents/briefs/` (`RULES.md` + `Tnn_*.md`;
+  gitignored), reports `results/_agents/reports/Tnn.md` (Codex cannot write `.agents/`). Claude
+  designs, reviews, re-runs the tests and commits; commits from a worker's code say so.
+- **Twin grid, Kaggle kernel version 12** (pushed 2026-11-18 ≈ 10:35 UTC, steps `twin_grid twin_slices`):
+  version 11 stopped at its budget with 206 of 240 grid worlds (pulled; `results/v4/twin_map`). Version
+  12 carries the same export as version 11 (release 12:41 UTC of 11-16). When COMPLETE: `pull`, push
+  the same steps again until every world exists (`twin_rq2` comes last), then
+  `python -m src.analysis.twin_report twin_map twin_slices twin_rq2` and the reading (item 19 point 10).
+- **Done today** (step note `step13_ladder.md`, last section; analysis plan §14 **item 20**): control
+  graphs E_degree / E_distance / F_random / F_complete (`src/kg/controls.py`, 5 draws, bound to the
+  export; `--arm E_degree:0` etc.); rung 3 (`response.py --statics A|B`, `--static-control
+  nametags|shuffled`); rung 5's aggregation (`src/models/message.py`); citation audit
+  (`src/analysis/citation_audit.py`; 12 identifiers verified on Crossref and added to the reading list).
+- **In progress (workers):** T03 the fact table `src/models/statics.py` (cxB), T04 the per-regime depth
+  threshold `src/models/depth_threshold.py` (cxA). Then Claude wires `--message` (rung 5) and the
+  well-link controls per regime. Queued: T05 the `paper/` skeleton (brief written).
+
+**2026-11-16: ladder follow-ups read; the twin built and piloted; its grid on Kaggle; HILUCS done.**
 - **Ladder follow-ups (`ladder2`) pulled and read** (`docs/results_ladder_v4.md`; analysis plan §14
   item 18, last results paragraph; step note `step13_ladder.md`). **Correction of 2026-11-10:** the
   free mode's gain over Pastas depends on early stopping (converged: log RMSE ratio −0.03 instead of

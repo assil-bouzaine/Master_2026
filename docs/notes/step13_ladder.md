@@ -396,3 +396,79 @@ scores were read (item 19, amendment point 7), both protocols go on every cell a
 - **No world has "wrong reasons"** (score 6) in this easy cell, as expected.
 
 **Next:** the grid and the slices on Kaggle (both protocols), then the knowledge-value map.
+
+## 2026-11-18: the controls of arms E and F, rung 3, rung 5's groundwork, a citation audit
+
+Assil asked today for a new way of working: Claude leads, and two Codex workers in tmux windows take
+the well-specified pieces (GPT-6.2-Sol at high effort for the simple tasks, GPT-6.1-Sol at maximum
+effort for the simplest). Claude writes each brief with the design fixed, reviews the code line by
+line, re-runs the tests and commits what passes. Every commit made from a worker's code says so.
+
+### Recurring check (CLAUDE.md §7; answered late: the session started without it)
+
+1. *Which link of the chain does this advance?* Knowledge → model. The control graphs make a D vs C
+   result readable (meaning of the edges, or only their locality and number?). Rung 3 asks whether the
+   graph's facts describe wells well enough to carry responses to wells the model never saw.
+2. *Where does dated land use enter?* Still nowhere in these pieces. Set B's facts hold no crop
+   information (crop demand stays in arm B's ablation, Gate 3 point 11). The land-use thread waits for
+   Assil's AGROVOC gold set and the Earth Engine login.
+3. *Observed / inferred / assumed / unknown.* Set A's facts are observed (depth, altitude, stack
+   position, artesian share). Set B's are inferred by the graph's rules (attributed pumps, recharge
+   cells, river kinds, canal). The control graphs are wrong on purpose (that is their job).
+4. *Evidence vs plan.* The controls are built and tested; rung 3 is coded and tested on toy worlds;
+   no real-data run exists (it waits for the twin, Gate 3 and the tag). The twin's grid is running on
+   Kaggle (kernel version 12).
+5. *Does the next experiment resolve an open question?* Yes, two: whether D's gain (if any) is
+   semantic or local (E_distance), and whether facts beat name tags on held-out wells (rung 3 against
+   the controls of Heudorfer et al. 2024).
+6. *Missing from the subject:* unchanged (satellite rule, alignment results, explanations, dashboard).
+
+### What was done
+
+- **The twin's grid, second Kaggle session.** Version 11 ended at its 11-hour budget with 206 of the
+  240 grid worlds; the slices had not started. Pulled, and pushed again as version 12 (same steps,
+  resumes from the pulled worlds). The bundle carries the **same export as version 11** (release
+  12:41 UTC of 2026-11-16, put back in place for the push and restored afterwards), so every world of
+  the grid sees identical tables; the code differs from version 11 only by a comment in
+  `src/kg/export.py` and the new `src/kg/oops_scan.py`.
+- **Control graphs of arms E and F** (`src/kg/controls.py`, `tests/test_controls.py`; plan §14 item 20;
+  worker A, two review rounds). E_degree keeps every degree (Maslov–Sneppen swaps), E_distance keeps
+  the length of every edge as far as the sources allow (one of the five closest lengths), F_random
+  keeps D's number of edges, F_complete links everything. Five draws each, bound to the export by its
+  hashes. Review findings fixed: lengths now follow D's own convention (the graph stores points to
+  0.1 m, so D's pumping and well-link distances are reproduced to 1e-12 m) and an edge that a control
+  happens to keep carries exactly D's attributes. What the controls can and cannot do: E_distance
+  keeps pumping lengths within a median 45 m, but rivers (five gauges) move by a median 13 km and
+  recharge cells (8 km grid, the near cells are already D's) by 7 km, so it is a locality control
+  mainly for pumping. The canal (one source) cannot be rewired.
+- **`--arm` accepts the controls** (`E_degree:<draw>` …, `src/models/routing.py`), and a control's
+  export hashes enter the run fingerprint.
+- **Rung 3** (`src/models/response.py --statics A|B`): parameters = group mean + f(facts) + a pooled
+  deviation. A held-out well keeps its deviation at zero, so its responses come from its group and its
+  facts only. On a toy world whose gains vary with one fact, the facts carry the responses to the
+  held-out wells (NSE 0.98–1.00, against −3.6 and 0.86 with the group mean alone). The fact table
+  (`src/models/statics.py`) is worker B's current task.
+- **Rung 5's groundwork** (`src/models/message.py`): the neighbours' facts, averaged over the arm's well
+  links (GraphSAGE's mean), become extra inputs of rung 3's map. Arm C links every well, arm D 38 of
+  65. The per-regime depth threshold of D's links is worker A's current task.
+- **Citation audit** (`src/analysis/citation_audit.py` → `docs/literature/citation_audit.md`; worker
+  B, one review round). Twelve identifiers cited in the code or docs were missing from the reading list;
+  each was resolved on Crossref today and added. One line-wrapped DOI remains in an ontology comment
+  (`ontology/lulcw-meta.ttl`), to join at the next ontology release.
+
+### Why
+
+- **Why controls before any real-data arm.** A D vs C difference alone mixes three things: which
+  wells get which inputs (meaning), how far the inputs come from (locality) and how many inputs each
+  well gets (density). The controls take them apart, and they must exist before the first real
+  number so that nobody chooses them after seeing it.
+- **Why the fact table is declared now.** Static facts can act as name tags (Heudorfer et al. 2024).
+  The table, its training-window rule and the two name-tag controls are fixed before any rung-3 run.
+
+### What to consider
+
+- If the per-regime depth threshold keeps fewer well links than D's 47 pairs, the well-link controls
+  of rung 5 must be drawn from the kept links of each regime, not from the full set (to do when
+  `--message` is wired into the response model).
+- The workers cannot write into `.agents/` (Codex protects it): their reports go to
+  `results/_agents/reports/`.

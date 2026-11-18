@@ -543,9 +543,16 @@ notebooks/       exploration only; anything that matters moves into src/
   export; `--arm E_degree:0` etc.); rung 3 (`response.py --statics A|B`, `--static-control
   nametags|shuffled`); rung 5's aggregation (`src/models/message.py`); citation audit
   (`src/analysis/citation_audit.py`; 12 identifiers verified on Crossref and added to the reading list).
-- **In progress (workers):** T03 the fact table `src/models/statics.py` (cxB), T04 the per-regime depth
-  threshold `src/models/depth_threshold.py` (cxA). Then Claude wires `--message` (rung 5) and the
-  well-link controls per regime. Queued: T05 the `paper/` skeleton (brief written).
+- **Also done (afternoon):** fact table `src/models/statics.py` (sets A/B; altitude -999 = unknown);
+  per-regime depth threshold `src/models/depth_threshold.py` (every v4 regime keeps all 47 pairs: only
+  "none" reaches 10 qualifying pairs); `--message` (rung 5) with per-regime links
+  (`message.regime_links`; controls rewired from D's kept links); `--arm baseline` (the panel's rules
+  as edges, arms A/B); `docs/phase4_runs.md` (366 runs / 3,660 starts, 1–3 Kaggle sessions); Gate 3
+  sheet points 18–21; `paper/` skeleton + `refs.bib` (104 entries, fetched online); the twin map's
+  reading rules (a)–(f) as code (`twin_report.reading`, tested on hand-made tables only).
+- **In progress (workers):** T06 pumping reconstructions (2) and (3) in the routed path (cxB), T07 the
+  Phase 4 contrast report `src/analysis/arms_report.py` (cxA). The Codex account's 5-hour window is
+  shared by both workers (about half used at 13:00).
 
 **2026-11-16: ladder follow-ups read; the twin built and piloted; its grid on Kaggle; HILUCS done.**
 - **Ladder follow-ups (`ladder2`) pulled and read** (`docs/results_ladder_v4.md`; analysis plan §14

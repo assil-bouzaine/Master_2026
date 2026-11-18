@@ -36,6 +36,7 @@ doi:10.1111/gwat.12925), but written in PyTorch and fitted for every well at onc
   and October-December, constant within a year) and a seasonal part (the rest, not below 0),
   each with its own response and a non-positive gain. The permanent part only varies between
   years, which is the variation pumping effects may be claimed from (analysis plan §8).
+- --pumping-reconstruction 1 | 2 | 3 selects the weekly pumping profile with --arm; the panel path is unchanged.
 - --gain-units sd (follow-up of 2026-11-10): the gains are in units of each well's training sd
   instead of metres, so that pooled or shared gains mean "the same share of the well's own
   swing" (heads swing by centimetres at some wells and by metres at others; sharing gains in
@@ -464,6 +465,9 @@ def main():
                          "or a control E_degree:<draw>, E_distance:<draw>, F_random:<draw>, F_complete "
                          "(src.kg.controls; analysis plan §14 item 20)")
     ap.add_argument("--policy", default="main", help="with --arm: the export policy")
+    ap.add_argument("--pumping-reconstruction", type=int, choices=[1, 2, 3], default=1,
+                    help="with --arm only: 1 current, 2 flat drinking water, 3 crop calendar; "
+                         "the panel path is unchanged")
     ap.add_argument("--signs", choices=list(SIGN_SETS), default="structure",
                     help="approved: only the signs the export policy has approved are built in; "
                          "none: every gain free (RQ2)")
@@ -501,6 +505,11 @@ def main():
         ap.error("--static-control, --static-net and --static-l2 need --statics")
     if args.statics is not None and args.mode == "free":
         ap.error("--statics needs --mode pooled or shared (free deviations absorb the facts)")
+    reconstruction = args.pumping_reconstruction
+    if reconstruction != 1 and args.arm is None:
+        ap.error("--pumping-reconstruction needs --arm; the panel path is unchanged")
+    if reconstruction == 1:      # the default leaves the fingerprints of earlier runs unchanged
+        del args.pumping_reconstruction
     statics, static_control, static_net = args.statics, args.static_control, args.static_net
     static_l2 = (args.static_l2 if args.static_l2 is not None
                  else args.lam if args.mode == "pooled" else 0.0)
@@ -549,7 +558,7 @@ def main():
     routed, extra = None, None
     if arm is not None:
         from src.models.routing import coverage, routed_inputs
-        routed = routed_inputs(arm, policy)
+        routed = routed_inputs(arm, policy, reconstruction=reconstruction)
         core_of = P.drop_duplicates("code_bss").set_index("code_bss")["core"]
         keep = [c in core_of.index for c in routed["codes"]]
         cov = {k: {"wells": int(routed[f"has_{k}"][keep].sum())} for k in coverage(routed, [True] * len(keep))}

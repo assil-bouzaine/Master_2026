@@ -13,6 +13,9 @@
    over every groundwater facility within 5 km (nothing lost, nothing counted twice).
 3. A hand-made case: two cells with weights 1 and 3 give the 1:3 weighted mean; two facilities
    with weights 0.5 and 2 give that weighted sum.
+4. Control arms preserve their provenance and route like their explicit edge tables.
+5. Pumping reconstructions preserve annual totals, keep drinking water flat in reconstruction 2,
+   use crop-calendar irrigation in reconstruction 3, and supply the corresponding canal proxy.
 """
 import numpy as np
 import pandas as pd
@@ -149,9 +152,169 @@ def test_control_arms():
     print("  4. control arms: names parsed, provenance carried, routing equals the edge table's")
 
 
+def _check_reconstruction_cli(routed):
+    """Stop the CLI before arrays or fitting: inspect dispatch and the fingerprint arguments."""
+    import argparse
+    import io
+    import sys
+    from contextlib import redirect_stderr, redirect_stdout
+    from unittest.mock import patch
+
+    from src.models import response
+
+    class StopBeforeArrays(Exception):
+        pass
+
+    def preview(arguments):
+        parsed = []
+        original_parse = argparse.ArgumentParser.parse_args
+
+        def capture(parser, *args, **kwargs):
+            namespace = original_parse(parser, *args, **kwargs)
+            parsed.append(namespace)
+            return namespace
+
+        panel = pd.DataFrame({"code_bss": routed["codes"], "mu": 0.0, "core": True})
+        with (patch.object(sys, "argv", ["response", "--mode", "free", *arguments]),
+              patch.object(argparse.ArgumentParser, "parse_args", capture),
+              patch.object(response, "build_panel", return_value=panel),
+              patch("src.models.routing.routed_inputs", return_value=routed) as dispatch,
+              patch.object(response, "panel_arrays", side_effect=StopBeforeArrays),
+              redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO())):
+            try:
+                response.main()
+            except StopBeforeArrays:
+                return vars(parsed[0]).copy(), dispatch.call_args
+        raise AssertionError("CLI should have stopped before arrays and any output files")
+
+    panel_args, dispatch = preview([])
+    assert "pumping_reconstruction" not in panel_args and dispatch is None
+    for arm in ("baseline", "C", "D", "E_degree:0", "E_distance:0", "F_random:0", "F_complete"):
+        default, call = preview(["--arm", arm])
+        explicit, _ = preview(["--arm", arm, "--pumping-reconstruction", "1"])
+        assert default == explicit and "pumping_reconstruction" not in default
+        assert call.args == (arm, "main") and call.kwargs == {"reconstruction": 1}
+        for reconstruction in (2, 3):
+            args, call = preview(["--arm", arm, "--pumping-reconstruction", str(reconstruction)])
+            assert args["pumping_reconstruction"] == reconstruction
+            assert call.args == (arm, "main") and call.kwargs == {"reconstruction": reconstruction}
+    for arguments in (["--pumping-reconstruction", "2"], ["--pumping-reconstruction", "3"],
+                      ["--arm", "D", "--pumping-reconstruction", "4"]):
+        try:
+            preview(arguments)
+        except SystemExit as error:
+            assert error.code == 2
+        else:
+            raise AssertionError(f"Invalid reconstruction arguments accepted: {arguments}")
+
+
+def test_reconstructions():
+    """Read all facilities for annual conservation, but route only two wells for speed."""
+    import time
+    from pathlib import Path
+    from unittest.mock import patch
+
+    from src.dataset.pumping import canal_series
+    from src.models.routing import RECONSTRUCTIONS, facility_volumes, pumping_table
+
+    started = time.perf_counter()
+    assert RECONSTRUCTIONS == {1: "current", 2: "flat drinking water", 3: "crop calendar"}
+    codes = ["10906X0039/C2-1", "10964X0119/NYLS-1"]
+    default = routed_inputs("D", codes=codes)
+    current = routed_inputs("D", codes=codes, reconstruction=1)
+    assert default["reconstruction"] == current["reconstruction"] == 1
+    for name, value in default.items():
+        if isinstance(value, np.ndarray):
+            np.testing.assert_array_equal(value, current[name], err_msg=name)
+    weeks = default["weeks"]
+    years = [year for year in sorted(set(weeks.year))
+             if weeks[weeks.year == year].equals(pd.date_range(f"{year}-01-01", f"{year}-12-31", freq="W-SUN"))]
+    skipped = sorted(set(weeks.year) - set(years))
+    assert years
+    volumes = {number: facility_volumes(weeks, reconstruction=number) for number in RECONSTRUCTIONS}
+    annual = {number: frame.groupby(weeks.year).sum().loc[years] for number, frame in volumes.items()}
+    largest_relative = 0.0
+    for number in (2, 3):
+        pd.testing.assert_index_equal(volumes[1].columns, volumes[number].columns)
+        reference, candidate = annual[1].to_numpy(), annual[number].to_numpy()
+        np.testing.assert_allclose(candidate, reference, rtol=1e-9, atol=0)
+        relative = np.abs(candidate - reference) / np.maximum(np.abs(reference), 1e-30)
+        largest_relative = max(largest_relative, float(relative.max()))
+
+    raw = pumping_table(2)
+    pd.testing.assert_frame_equal(raw, pumping_table(1))
+    drinking = sorted(set(raw.loc[raw["usage"] == "drinking water", "code_ouvrage"]) & set(volumes[2].columns))
+
+    def weekly(rows, facilities):
+        return (rows.groupby(["week", "code_ouvrage"])["volume_m3"].sum().unstack("code_ouvrage")
+                .reindex(index=weeks, columns=facilities).fillna(0.0) / 1000)
+
+    drinking_component = weekly(raw.loc[raw["usage"] == "drinking water"], drinking)
+    other_rows = raw.loc[(raw["usage"] != "drinking water") & raw["code_ouvrage"].isin(drinking)]
+    other_component = weekly(other_rows, drinking)
+    pure_drinking = sorted(set(drinking) - set(other_rows["code_ouvrage"]))
+    np.testing.assert_allclose(volumes[2][drinking], drinking_component + other_component,
+                               rtol=1e-12, atol=1e-10)
+    for year in years:
+        for frame in (drinking_component, volumes[2][pure_drinking]):
+            block = frame.loc[weeks.year == year].to_numpy()
+            np.testing.assert_allclose(block.max(0), block.min(0), rtol=1e-12, atol=1e-12)
+
+    cropcal = pumping_table(3)
+    assert list(cropcal.columns) == list(raw.columns)
+    edges, _ = load_edges("D")
+    local = edges.loc[(edges["dst"] == codes[0]) & edges["relation"].isin(("pumping", "pumping_unattributed"))]
+    irrigation = sorted(set(raw.loc[raw["usage"] == "irrigation", "code_ouvrage"]) & set(local["src"]))
+    assert irrigation and not (set(irrigation) & set(drinking))
+    expected = weekly(cropcal.loc[cropcal["code_ouvrage"].isin(irrigation)], irrigation)
+    np.testing.assert_array_equal(volumes[3][irrigation].to_numpy(), expected.to_numpy())
+    changed = np.count_nonzero(volumes[3][irrigation].to_numpy() != volumes[1][irrigation].to_numpy())
+    assert changed > 0
+
+    points = pd.read_parquet(DATASET_DIR / "pumping_points.parquet")
+    for number in (2, 3):
+        routed = routed_inputs("D", codes=codes, reconstruction=number)
+        assert routed["reconstruction"] == number and isinstance(routed["reconstruction"], int)
+        for name in ("rain", "ETP", "PE", "river"):
+            np.testing.assert_array_equal(routed[name], default[name])
+        for relation, name in (("pumping", "pump_gw"), ("pumping_unattributed", "pump_un")):
+            for row, code in enumerate(codes):
+                links = edges.loc[(edges["relation"] == relation) & (edges["dst"] == code)]
+                expected = volumes[number][list(links["src"])].to_numpy() @ links["weight"].to_numpy()
+                np.testing.assert_allclose(routed[name][row], expected, rtol=1e-12, atol=1e-10)
+        if number == 2:
+            np.testing.assert_array_equal(routed["canal"], default["canal"])
+        else:
+            canal = canal_series(cropcal, points).reindex(weeks).fillna(0.0).to_numpy() / 1e6
+            np.testing.assert_array_equal(routed["canal"], routed["has_canal"][:, None] * canal[None, :])
+
+    for bad in (0, 4):
+        try:
+            pumping_table(bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"Invalid reconstruction {bad} accepted")
+    with patch.object(Path, "is_file", return_value=False):
+        try:
+            pumping_table(3)
+        except FileNotFoundError as error:
+            assert "python -m src.dataset.pumping_cropcal" in str(error)
+        else:
+            raise AssertionError("Missing crop-calendar table must explain how to build it")
+    _check_reconstruction_cli(default)
+    print(f"  5. reconstructions: {len(volumes[1].columns)} facilities, whole years {years}; "
+          f"partial years skipped {skipped}; largest annual relative difference {largest_relative:.2e}")
+    print(f"     flat drinking water: all {len(drinking)} components and {len(pure_drinking)} pure-facility series; "
+          f"{len(drinking) - len(pure_drinking)} mixed-use facilities retain their other uses")
+    print(f"     crop-calendar irrigation: {len(irrigation)} facilities near {codes[0]}, {changed} changed values; "
+          f"canal proxies, metadata and CLI dispatch pass ({time.perf_counter() - started:.1f}s)")
+
+
 if __name__ == "__main__":
     test_baseline()
     test_arms()
     test_weights()
     test_control_arms()
+    test_reconstructions()
     print("test_routing: all checks passed")

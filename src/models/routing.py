@@ -25,18 +25,22 @@ arm D has no distance fallback (item 14), and the share of wells without each re
 reported beside every D vs C result. Facility volumes use the seasonal drinking-water profile,
 like every baseline. tests/test_routing.py checks that the "baseline" edges (own cell, facilities
 within 3 km with weight 1, the canal for every well) reproduce the panel's columns exactly.
+Pumping robustness (analysis plan §8 and §10): reconstruction 1 is the current profile, 2 keeps
+drinking water flat, and 3 uses crop-calendar irrigation with seasonal drinking water. The same
+weekly reconstruction supplies both facility pumping and the canal proxy for every routed arm.
 """
 import json
 
 import numpy as np
 import pandas as pd
 
-from src.config import DATASET, DATASET_DIR, PROCESSED
+from src.config import DATASET, DATASET_DIR, INTERIM, PROCESSED
 from src.dataset.pumping import canal_series, seasonal_drinking_water
 from src.models.features import river_series
 
 WEATHER = ("rain", "ETP", "PE")
 EXPORT = PROCESSED / "kg"
+RECONSTRUCTIONS = {1: "current", 2: "flat drinking water", 3: "crop calendar"}
 
 
 def load_edges(arm, policy="main", dataset=DATASET):
@@ -119,12 +123,26 @@ def _matrix(edges, relation, codes, sources):
     return W
 
 
-def facility_volumes(weeks, facilities=None):
-    """Weekly volume of each groundwater facility (thousand m3/week), seasonal drinking-water
-    profile: a DataFrame weeks x facility. The pumping stresses are weighted sums of its columns."""
-    pw = pd.read_parquet(DATASET_DIR / "pumping_weekly.parquet")
+def pumping_table(reconstruction=1):
+    """Weekly pumping before the drinking-water re-spread; preserve the dataset's columns."""
+    if reconstruction not in RECONSTRUCTIONS:
+        raise ValueError(f"unknown pumping reconstruction {reconstruction!r}: {RECONSTRUCTIONS}")
+    path = (INTERIM / f"pumping_weekly_cropcal_{DATASET}.parquet" if reconstruction == 3
+            else DATASET_DIR / "pumping_weekly.parquet")
+    if reconstruction == 3 and not path.is_file():
+        raise FileNotFoundError(f"{path} is missing; run python -m src.dataset.pumping_cropcal")
+    return pd.read_parquet(path)
+
+
+def facility_volumes(weeks, facilities=None, reconstruction=1):
+    """Weekly groundwater volumes (thousand m3/week), as a weeks x facility table.
+
+    Reconstructions 1 and 3 re-spread drinking water seasonally; reconstruction 2 keeps the
+    dataset's flat drinking-water profile. Pumping stresses are weighted sums of the columns.
+    """
+    pw = pumping_table(reconstruction)
     pts = pd.read_parquet(DATASET_DIR / "pumping_points.parquet")
-    sp = seasonal_drinking_water(pw, pts)
+    sp = seasonal_drinking_water(pw, pts) if reconstruction != 2 else pw
     if facilities is None:
         facilities = sorted(pts.loc[pts["source"] == "groundwater", "code_ouvrage"].unique())
     sp = sp[sp["code_ouvrage"].isin(facilities)]
@@ -133,11 +151,12 @@ def facility_volumes(weeks, facilities=None):
 
 
 def routed_inputs(arm=None, policy="main", edges=None, codes=None, weeks=None, recharge="recharge",
-                  volumes=None):
+                  volumes=None, reconstruction=1):
     """Inputs of the wells `codes` on `weeks` (default: the dataset's wells and the panel's
     weeks) routed by the edges of `arm` (or by an explicit `edges` table with the export's
     columns). `recharge` names the relation used for the weather ("recharge", or
-    "recharge_unitwide" for arm D's sensitivity)."""
+    "recharge_unitwide" for arm D's sensitivity). `reconstruction` selects the pumping and canal
+    table for every arm, including baseline inputs and graph controls."""
     splits = json.loads((DATASET_DIR / "splits.json").read_text())
     wells = pd.read_parquet(DATASET_DIR / "wells.parquet")
     forcing = pd.read_parquet(DATASET_DIR / "forcing_weekly.parquet")
@@ -149,7 +168,8 @@ def routed_inputs(arm=None, policy="main", edges=None, codes=None, weeks=None, r
     meta = None
     if edges is None:
         edges, meta = load_arm(arm, policy)
-    out = {"codes": codes, "weeks": weeks, "arm": arm, "export": meta and
+    out = {"codes": codes, "weeks": weeks, "arm": arm, "reconstruction": int(reconstruction),
+           "export": meta and
            {k: meta[k] for k in ("release", "policy", "code_version", "control", "export_sha256")
             if k in meta}}
     # weather: weighted mean over the recharge-edge cells
@@ -164,11 +184,11 @@ def routed_inputs(arm=None, policy="main", edges=None, codes=None, weeks=None, r
         series = f.pivot(index="week", columns="cell_id", values=v).reindex(index=weeks, columns=cells)
         out[v] = Wn @ series.to_numpy(dtype=float).T                     # (N, T)
     # pumping: weighted sums of the facilities' weekly volumes (thousand m3/week)
-    pw = pd.read_parquet(DATASET_DIR / "pumping_weekly.parquet")
+    pw = pumping_table(reconstruction)
     pts = pd.read_parquet(DATASET_DIR / "pumping_points.parquet")
     pe = edges[edges["relation"].isin(("pumping", "pumping_unattributed"))]
     fac = sorted(pe["src"].unique())
-    table = facility_volumes(weeks, fac) if volumes is None else volumes
+    table = facility_volumes(weeks, fac, reconstruction) if volumes is None else volumes
     vol = table.reindex(index=weeks, columns=fac).fillna(0.0).to_numpy().T      # (facilities, T)
     for name, rel in (("pump_gw", "pumping"), ("pump_un", "pumping_unattributed")):
         Wp = _matrix(edges, rel, codes, fac)

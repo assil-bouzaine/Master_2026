@@ -1,0 +1,58 @@
+# Paper skeleton
+
+The manuscript entry point is `main.tex`. The eight numbered sections live in
+`sections/`. The source comments identify the project notes for each section.
+
+## Build
+
+- On Overleaf, upload `main.tex`, `sections/`, `refs.bib` and `latexmkrc`.
+  Set `main.tex` as the main document and use pdfLaTeX.
+- On a machine with TeX, make sure `elsarticle` and the packages listed in
+  `main.tex` are installed. From `paper/`, run `latexmk -pdf main.tex`.
+  The PDF is `main.pdf`.
+
+The bibliography commands are ready in `main.tex`. Uncomment
+`\paperbibliographytrue` after adding the first citation and populating
+`refs.bib`.
+
+## Submission files
+
+- Fill in `highlights.tex` separately from the manuscript. Provide three to
+  five highlights with at most 85 characters each.
+- Complete the unnumbered Software and data availability statement with the
+  repository URL, licences and data sources. The other back-matter placeholders
+  are in `main.tex`.
+
+## Refresh the bibliography
+
+From the repository root, run the following on a machine with network access.
+
+```sh
+PYTHONIOENCODING=utf-8 PFE_DATASET=v4 .venv/bin/python paper/tools/fetch_bib.py
+```
+
+This uses the DOIs and arXiv IDs in `docs/literature/reading_list.md`.
+Reruns use the saved records in `paper/bib_cache/`. Add `--offline` to build
+from the cache and list entries still missing. Commit `refs.bib` so the paper
+can build from the recorded entries and fetch dates without network access.
+Keep the raw cache local.
+
+Citation keys are based on the first author's family name, the year and the
+first title word. Collisions receive letter suffixes in identifier order.
+Review the generated keys after adding references for an existing key group.
+
+One record is corrected by hand: for doi:10.35662/unine-thesis-3052 (Dall'Alba's PhD thesis) doi.org
+and Crossref give an empty first author and no year, so the tool refuses it. Its cache record keeps the
+provider's fields with the author and year of the repository page's `citation_author` and
+`citation_publication_date` (libra.unine.ch/handle/20.500.14713/31592, read 2026-11-18). On a new
+machine, write that record again before `--offline` (the online fetch fails on it by design).
+
+## Build outputs to leave out of Git
+
+- Generated PDFs and LaTeX files such as `*.aux`, `*.bbl`, `*.blg`,
+  `*.fdb_latexmk`, `*.fls`, `*.log`, `*.out`, `*.toc`, `*.synctex.gz`
+  and `*.xdv`.
+- `paper/bib_cache/`.
+
+The repository's `.gitignore` leaves these out (the `tools/` rule is anchored to the
+repository root, so `paper/tools/` is committed).

@@ -1,0 +1,64 @@
+\documentclass[review,authoryear]{elsarticle}
+
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{hyperref}
+\usepackage[capitalise]{cleveref}
+
+\journal{Environmental Modelling \& Software}
+
+% TODO: enable the bibliography when the first citation is added.
+\newif\ifpaperbibliography
+% \paperbibliographytrue
+
+\begin{document}
+\begin{frontmatter}
+
+\title{Right for the right reasons? Ontology-derived graphs and constraints for
+groundwater-level simulation in a Mediterranean multilayer aquifer}
+
+\author[isamm]{Assil Bouzaine}
+\affiliation[isamm]{organization={ISAMM, Université de la Manouba}, country={Tunisia}}
+% TODO: supervisors as co-authors (names and affiliations from Assil)
+% TODO: corresponding author and email
+
+\begin{abstract}
+% TODO (written last)
+\end{abstract}
+
+\begin{keyword}
+groundwater level \sep knowledge graph \sep ontology \sep hybrid model \sep
+knowledge-guided machine learning \sep reasoning shortcuts \sep Mediterranean aquifer
+\end{keyword}
+
+\end{frontmatter}
+
+\input{sections/introduction}
+\input{sections/data}
+\input{sections/knowledge_graph}
+\input{sections/models}
+\input{sections/design}
+\input{sections/results}
+\input{sections/discussion}
+\input{sections/conclusions}
+
+\section*{Software and data availability}
+% TODO: repository URL, licence, data sources and their licences
+
+\section*{CRediT authorship contribution statement}
+% TODO: confirm contributions with all authors
+
+\section*{Declaration of competing interest}
+% TODO: confirm the declaration with all authors
+
+\section*{Acknowledgements}
+% TODO: SAVE Water / PRIMA, grant number to obtain (CLAUDE.md §1a)
+
+\ifpaperbibliography
+  \bibliographystyle{elsarticle-harv}
+  \bibliography{refs}
+\fi
+
+\end{document}

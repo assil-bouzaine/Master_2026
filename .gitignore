@@ -28,4 +28,18 @@ results/
 gpu_bundle.zip
 
 # ontology tools (ROBOT jar, downloaded by Claude; see docs/notes/step12_ontology.md)
-tools/
+/tools/
+
+# paper: LaTeX build outputs and the raw bibliography cache (refs.bib is committed)
+paper/bib_cache/
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.fdb_latexmk
+paper/*.fls
+paper/*.log
+paper/*.out
+paper/*.toc
+paper/*.synctex.gz
+paper/*.xdv
+paper/*.pdf

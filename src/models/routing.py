@@ -45,6 +45,36 @@ def load_edges(arm, policy="main", dataset=DATASET):
     return pd.read_parquet(d / f"edges_{arm}.parquet"), meta
 
 
+CONTROL_KINDS = ("E_degree", "E_distance", "F_random", "F_complete")
+
+
+def parse_arm(arm):
+    """"C", "D", or a control of analysis plan §14 item 20 written "<kind>:<draw>" (F_complete has
+    one draw) -> (kind, draw); anything else is an error."""
+    if arm in ("C", "D"):
+        return arm, None
+    kind, sep, draw = str(arm).partition(":")
+    if kind == "F_complete" and not sep:
+        return kind, 0
+    if kind in CONTROL_KINDS and kind != "F_complete" and sep and draw.isdigit():
+        return kind, int(draw)
+    raise ValueError(f"unknown arm {arm!r}: C, D, E_degree:<draw>, E_distance:<draw>, "
+                     "F_random:<draw> or F_complete")
+
+
+def load_arm(arm, policy="main", dataset=DATASET):
+    """Edges and provenance of a graph arm: the export's C or D, or a control graph built from D
+    (src/kg/controls.py), which refuses to load if the export changed since it was built."""
+    kind, draw = parse_arm(arm)
+    if draw is None:
+        return load_edges(arm, policy, dataset)
+    from src.kg.controls import load_control
+    edges = load_control(kind, draw, policy, dataset)
+    m = json.loads((EXPORT / f"export_{dataset}_{policy}" / "controls" / "manifest.json").read_text())
+    return edges, {"release": m["release"], "policy": m["policy"], "code_version": m["code_version"],
+                   "control": arm, "export_sha256": m["export_sha256"]}
+
+
 def _matrix(edges, relation, codes, sources):
     """(N wells, S sources) weights of one relation; rows = codes, columns = sources."""
     e = edges[edges["relation"] == relation]
@@ -86,9 +116,10 @@ def routed_inputs(arm=None, policy="main", edges=None, codes=None, weeks=None, r
     codes = list(wells["code_bss"]) if codes is None else list(codes)
     meta = None
     if edges is None:
-        edges, meta = load_edges(arm, policy)
+        edges, meta = load_arm(arm, policy)
     out = {"codes": codes, "weeks": weeks, "arm": arm, "export": meta and
-           {"release": meta["release"], "policy": meta["policy"], "code_version": meta["code_version"]}}
+           {k: meta[k] for k in ("release", "policy", "code_version", "control", "export_sha256")
+            if k in meta}}
     # weather: weighted mean over the recharge-edge cells
     e = edges[edges["relation"] == recharge]
     cells = sorted(e["src"].unique())

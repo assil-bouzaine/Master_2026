@@ -116,8 +116,33 @@ def test_weights():
     print("  3. hand-made weights: cells 1 and 3 give the 1:3 mean; facilities 0.5 and 2 give that weighted sum")
 
 
+def test_control_arms():
+    """The control graphs of item 20 load by name, carry the export they were built from, and route
+    exactly as their edge table does; unknown names are refused (--arm in the response model)."""
+    from src.kg.controls import load_control
+    from src.models.routing import load_arm, parse_arm
+    assert parse_arm("D") == ("D", None) and parse_arm("E_degree:3") == ("E_degree", 3)
+    assert parse_arm("F_complete") == ("F_complete", 0)
+    for bad in ("E", "E_degree", "E_degree:x", "F_complete:1", "G:0", ""):
+        try:
+            parse_arm(bad)
+            raise AssertionError(f"{bad!r} must be refused")
+        except ValueError:
+            pass
+    codes = ["10906X0039/C2-1", "10964X0119/NYLS-1"]
+    edges, meta = load_arm("E_degree:0")
+    assert meta["control"] == "E_degree:0" and set(meta["export_sha256"]) == {"edges_D.parquet", "nodes.parquet"}
+    by_name = routed_inputs("E_degree:0", codes=codes)
+    by_table = routed_inputs(edges=load_control("E_degree", 0), codes=codes)
+    for k in ("rain", "pump_gw", "pump_un", "river", "canal"):
+        assert np.array_equal(by_name[k], by_table[k]), k
+    assert by_name["export"]["control"] == "E_degree:0" and by_table["export"] is None
+    print("  4. control arms: names parsed, provenance carried, routing equals the edge table's")
+
+
 if __name__ == "__main__":
     test_baseline()
     test_arms()
     test_weights()
+    test_control_arms()
     print("test_routing: all checks passed")

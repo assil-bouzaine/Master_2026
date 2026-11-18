@@ -421,6 +421,16 @@ def seed_outputs(net, data):
     return pz, c, p
 
 
+def _arm_name(s):
+    """argparse type of --arm: the names src.models.routing.parse_arm accepts."""
+    from src.models.routing import parse_arm
+    try:
+        parse_arm(s)
+    except ValueError as err:
+        raise argparse.ArgumentTypeError(str(err)) from err
+    return s
+
+
 def seed_statics(Z0, control, seed):
     """The facts one start sees: the declared ones, or a control drawn for this start (so the
     spread over draws is part of the spread over starts): random name tags of the same width,
@@ -449,8 +459,10 @@ def main():
                     help="linear: rain - f * ETP (as Pastas); pe: SIM2 effective rainfall")
     ap.add_argument("--pumping", choices=["sum", "split"], default="sum",
                     help="split: a permanent and a seasonal pumping stress (sensitivity)")
-    ap.add_argument("--arm", choices=["C", "D"], default=None,
-                    help="route the stresses by the edges of this graph arm (src.kg.export)")
+    ap.add_argument("--arm", type=_arm_name, default=None,
+                    help="route the stresses by the edges of this graph arm: C or D (src.kg.export), "
+                         "or a control E_degree:<draw>, E_distance:<draw>, F_random:<draw>, F_complete "
+                         "(src.kg.controls; analysis plan §14 item 20)")
     ap.add_argument("--policy", default="main", help="with --arm: the export policy")
     ap.add_argument("--signs", choices=list(SIGN_SETS), default="structure",
                     help="approved: only the signs the export policy has approved are built in; "
@@ -552,6 +564,8 @@ def main():
     fp_extra = {}
     if extra and "export" in extra:
         fp_extra["export_release"] = extra["export"]["release"]
+        if "export_sha256" in extra["export"]:      # a control graph: bound to the export it came from
+            fp_extra["export_sha256"] = extra["export"]["export_sha256"]
     if Z0 is not None:            # the facts themselves, so a changed table never reuses a seed
         import hashlib
         fp_extra["statics_sha256"] = hashlib.sha256(np.ascontiguousarray(Z0, dtype=np.float32).tobytes()).hexdigest()

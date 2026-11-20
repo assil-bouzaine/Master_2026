@@ -1,11 +1,105 @@
-% Sources: CLAUDE.md §2, §3 “Data and target”; docs/analysis_plan.md §1–4, §7–9.
-\section{Study area and data}
+% Sources: CLAUDE.md §2, §3 "Data and target"; docs/analysis_plan.md §1–4, §7–9; docs/notes/step04_piezometers.md,
+% step06a_bnpe.md (abstraction by use and source), step06b_bdlisa.md (units, vertical pairs, artesian wells),
+% step08_dataset.md; docs/memo_gate1_feasibility.md §2; Caballero and Ladouche (2015).
+% Numbers: \nData... macros and the tables come from paper/tables/data_*.tex (paper/tools/data_tables.py);
+% the hydrogeological numbers of 2.1 are those of the step notes named beside them (regenerate if rebuilt).
+% REF-TODO: BD LISA (bdlisa.eaufrance.fr answered 503 on 2026-11-20), BD TOPO and the RPG (IGN): verify, then cite.
+\section{Study area and data}\label{sec:data}
 
-\subsection{The Roussillon multilayer aquifer}
-% TODO: describe the study area and hydrogeological setting.
+\subsection{The Roussillon multilayer aquifer}\label{sec:site}
 
-\subsection{Heads, forcings, abstraction, rivers and canals}
-% TODO: describe the input series, data quality and pumping reconstruction.
+The Roussillon plain lies on the Mediterranean coast of southern France, in the Pyr\'en\'ees-Orientales,
+between the Corbi\`eres to the north and the Albera range on the Spanish border (\cref{fig:site}). Three
+rivers cross it to the sea, the Agly in the north, the T\^et in the middle and the Tech in the south,
+with the smaller R\'eart between the last two. Under the plain lies a multilayer aquifer
+\citep{Caballero2015Impact}. At the top, the recent alluvium of the four rivers and older alluvial
+terraces form shallow porous aquifers. Below them, the Pliocene sands and clays form a multilayer
+aquifer system, about \SI{902}{km^2} under the plain of which
+\SI{289}{km^2} crop out. % step06b_bdlisa.md, "The plain's vertical structure"
+To the north, the Pliocene rests on the karst of the Corbi\`eres.
 
-\subsection{Periods and evaluation}
-% TODO: specify the evaluation periods, wells and regimes.
+Water does not flow one way between these layers. In 17 pairs of wells less than \SI{5}{km} apart,
+one in a shallow and one in a deeper unit, the shallow head was above the deep one in only
+\SI{50.5}{\percent} of the weeks they share, and ten pairs keep one ordering, in both directions: at a
+pair \SI{20}{m} apart in the T\^et valley the water goes down in every week, while at a pair
+\SI{50}{m} apart near the Agly it goes up from the Pliocene in \SI{94.5}{\percent} of weeks.
+% step06b_bdlisa.md, "The key number" (17 pairs, 17,124 pair-weeks)
+Four Pliocene wells are at times artesian. A constraint such as ``water infiltrates downward'' would
+therefore be wrong about half of the time here; the knowledge used in this study constrains the
+direction of a head's response to its drivers instead (\cref{sec:kg-module}), which holds everywhere.
+
+The two water systems of the plain are almost separate. Over 2012--2023, \SI{99}{\percent} of the
+declared drinking water came from groundwater, while \SI{84}{\percent} of the declared irrigation
+came from surface water (\SI{93}{\percent} when the canal intakes are counted as irrigation). % step06a_bnpe.md, "Results: plain, cumulative 2012–2023"
+Declarations cover only abstractions above a threshold, so groundwater irrigation is a lower bound.
+The plain reached historic low groundwater levels in 2022--2024 and recovered in 2025--2026; that
+drought is the test period of this study (\cref{sec:periods}).
+
+\subsection{Heads, forcings, abstraction, rivers and canals}\label{sec:inputs}
+
+\Cref{tab:data-sources} lists the data. The target is the weekly head of \nDataWells{} monitoring wells
+of the d\'epartement \citep{Hubeau2026Piezometry}, the weekly mean of the daily values, after removing the
+values whose quality their producer qualifies as incorrect or undeterminable. \nDataCoreWells{} of them form the core set on which every
+result is scored; the others may be used for training. The weather comes from the SAFRAN reanalysis
+\citep{Vidal2009A} and the SIM surface model \citep{Habets2008The} on an \SI{8}{km} grid
+\citep{MeteoFrance2026Sim}: rain, potential and actual evaporation, effective rain, drainage, runoff,
+temperature and a soil wetness index, summed or averaged by week, from 2000.
+
+Abstraction comes from the annual declarations of the national water-abstraction database (BNPE)
+\citep{Hubeau2026Abstraction}: \nDataGroundwaterPoints{} groundwater and \nDataSurfacePoints{} surface
+abstraction points, with their use (irrigation, drinking water, canals, industry, energy). A weekly
+series is needed, so each annual volume is spread over its year. In the main reconstruction,
+irrigation and canal intakes follow the year's April--October climatic deficit and drinking water
+is half flat and half seasonal; two other reconstructions (flat drinking water, and irrigation
+following a fixed crop calendar) serve as sensitivities, and a conclusion that depends on the
+reconstruction says so. Inside a year, the spread volumes are almost collinear with the climatic
+deficit ($r = 0.92$--$0.97$), so the effects of pumping can only be learned from differences
+between years and between wells. Years after the last published declaration are imputed and
+marked.
+
+River discharge comes from the gauges of the national hydrometric network
+\citep{Hubeau2026Hydrometry}: the models use \nDataGaugesUsed{} gauges on the main rivers, as
+$\log(1 + Q)$. Gaps of up to eight weeks are interpolated; longer gaps take the week-of-year median
+of the training years, so that no input borrows from a later period. The canals enter as one series,
+the weekly volume taken by the canal intakes of the plain. Land use comes from the annual
+declarations of the graphical parcel register (RPG), \nDataRpgEditions{} editions, mapped to
+crop classes with FAO-56 crop coefficients; it is used by the knowledge graph and by one
+pre-registered test of a crop-demand input, which found no detectable information. The aquifer
+units, their stacks and their outcrops come from the BD~LISA database, and the rivers and canals as
+lines from the BD~TOPO.
+
+\subsection{Periods and evaluation}\label{sec:periods}
+
+The task is simulation: a model reads weather, abstraction, river and static inputs and never an
+observed head. \Cref{tab:periods} gives the periods. Training ends in 2019; the validation period
+is the only one used for any choice; the test period covers the drought and the recovery, and the
+boundary between them follows a rule on observed levels only, never on a model's output: the recovery
+starts in the first month after the trough from which the median standardised groundwater index
+(SGI) of the core wells stays at or above $-0.5$ for three months. The primary endpoint is the
+median over the core wells of the Nash--Sutcliffe efficiency \citep{Nash1970River} in the drought,
+with the skill against the training climatology as a co-primary endpoint, because the efficiency of
+a sub-period uses that sub-period's mean as its benchmark \citep{Schaefli2007Do}. A well is scored
+in a period only with at least 26 observed weeks there.
+
+Three regimes test different kinds of generalisation. In R1 every training well trains on the
+training period. In R2 the core wells of one fold are left out of training; the five folds group
+wells less than \SI{2}{km} apart \citep{Roberts2017Crossvalidation} and balance the aquifer groups,
+and a left-out well's head is converted to metres with its own training mean and standard deviation,
+so R2 measures the dynamics of a monitored well that the model did not see, not prediction at an
+unmonitored place. In R3 the models train on the most recent \SI{25}{\percent} or \SI{50}{\percent} of
+the training period.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/study_area}
+\caption{The Roussillon study area. Surface colours show the outcropping hydrogeological unit
+classes of BD~LISA as typed by the ontology; filled circles are the \nCoreWells{} core wells, open
+circles the other wells, coloured by the class of the unit they monitor (grey: no recorded unit);
+triangles are the river gauges, grey dots the abstraction facilities, dashed lines the canals and
+the dashed box the plain. The inset places the area in the western Mediterranean
+\citep{NaturalEarth2026}.}
+\label{fig:site}
+\end{figure}
+
+\input{tables/data_sources}
+\input{tables/data_periods}

@@ -1,8 +1,54 @@
 % Sources: CLAUDE.md §1a, §3 “Validity and explanations”; docs/analysis_plan.md §1, §4, §6, §10, §14 items 19–20.
-\section{Experimental design}
+\section{Experimental design}\label{sec:design}
 
-\subsection{A semi-synthetic twin}
-% TODO: describe the generator, the stress tests and the recovery targets.
+\subsection{A semi-synthetic twin}\label{sec:twin}
+% Source: docs/analysis_plan.md §14 item 19 and its amendments of 2026-11-16 and 2026-11-20
+% (src/models/twin.py). Written before any real-data arm was scored.
+
+On real data the true drivers of a head are unknown, so neither the value of the graph's
+knowledge nor the reasons behind a model's accuracy can be checked. A semi-synthetic twin supplies
+both. A \emph{world} keeps everything real (the wells, the weeks, the weather, the facility
+volumes, the river and canal series, the pattern of missing heads and the splits) except the heads,
+which are synthetic: each head is a level plus the sum, over recharge, pumping, river and canal, of
+a gain times a response kernel convolved with the input that a \emph{truth graph} routes to the
+well, plus autocorrelated noise. Recharge, river and canal edges of the truth are arm~D's. For
+pumping, two dials set how far the graph is from the truth: a share $\varepsilon$ of the graph's
+attributed facility--well pairs are false, and a share $u$ of each well's true pumping volume
+comes from pairs that the graph does not attribute. The learner never sees the truth graph; its
+arms C and D are exactly the tables the real-data runs use, and a third arm, T, fits the learner on
+the truth's own routing: the oracle that bounds what routing could gain.
+
+The responses of the truth are gamma kernels whose mean lags are drawn around the published
+responses of this aquifer (9 to 31 weeks for recharge and about 11 weeks for seasonal pumping;
+\citealp{Caballero2015Impact}). The gains give each contribution a share of the real well's
+training variance: $\pi$ for pumping, 0.1 for a river or a canal where the truth has the edge, and
+the rest for recharge. The noise is AR(1), with a variance $\nu$ times that of the noise-free head.
+The base world has $\pi = 0.3$ and $\nu = 0.25$. The grid crosses $\varepsilon \in \{0, 0.1, 0.25,
+0.5\}$ with $u \in \{0, 0.3, 0.6\}$, 20 worlds per cell. Measurements made before any arm was
+scored place the real graph between $\varepsilon = 0.08$ (one minus the measured precision of
+the attribution rule) and 0.37 (one minus its precision at exact-unit resolution) and near $u = 0.66$ (the graph
+routes about a third of the groundwater volume within \SI{5}{km} of the core wells), so the four
+cells with $\varepsilon \in \{0.1, 0.25\}$ and $u \in \{0.3, 0.6\}$ bracket the real data. Slices
+from the cell $(\varepsilon, u) = (0.1, 0.3)$ change one thing at a time: the pumping signal
+$\pi$, the noise $\nu$, the timing of pumping (independent of the year's weather), hidden variation
+in the years whose volumes are imputed, an omitted driver (a slow random walk shared by one aquifer
+group), responses the model does not have (recharge above a threshold, pumping with a dead time),
+and a graph that is wrong about recharge, rivers and canals, not only pumping.
+
+Each world is fitted by the response model of \cref{sec:models} for arms C, D and T, from the
+same two starts, under two fitting protocols: early stopping on the validation period, and
+convergence with weak pooling of the parameters across wells ($\lambda = 0.1$, 3,000 steps).
+Six scores are computed per world and arm, on the core wells in the drought phase: (1) the median
+over wells of $\log(\mathrm{RMSE}_D / \mathrm{RMSE}_C)$, the primary measure of the real-data
+contrasts; (2) the recovery error of each driver's contribution, the RMSE between the fitted and
+the true contribution in units of the well's noise-free standard deviation; (3) the share of wells
+whose fitted pumping contribution follows the true one; (4) the error of the mean lag; (5) the
+response to an intervention, a \SI{20}{\percent} cut of every true facility of one well in the
+drought years; and (6) whether the world has \emph{wrong reasons}: an arm whose pumping recovery
+error exceeds 0.5 while its drought efficiency is within 0.1 of the oracle's. The rules that read
+the map were fixed before any world was read. A cell \emph{pays} when the median of score~1 over
+its worlds is at most $-0.05$, the smallest effect of interest proposed for the real-data contrasts,
+and its 97.5\,\% quantile is below zero. % SESOI: Gate 3 point 3
 
 \subsection{Real-data contrasts}
 % TODO: specify the comparisons, controls and pumping sensitivities.

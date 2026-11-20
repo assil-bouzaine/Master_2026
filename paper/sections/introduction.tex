@@ -1,10 +1,76 @@
-% Sources: CLAUDE.md §1a, §3 “Research framing”; docs/analysis_plan.md §10, §12.
-\section{Introduction}
-% TODO: the use conflict on the Roussillon Pliocene (drinking water against agriculture) and the
-% 2022–2025 drought.
-% TODO: data-driven groundwater-level simulation; static attributes as identifiers.
-% TODO: knowledge-guided ML: graphs, constraints, shortcuts.
-% TODO: gap: knowledge enters as features or as a graph, but whether the model uses it for the
-% right reasons is not tested, and the value of the knowledge is not separated from the value of
-% the ontology.
-% TODO: umbrella question and RQ1–RQ4 (CLAUDE.md §1a); contributions (four bullets).
+% Sources: CLAUDE.md §1a, §3 "Research framing"; docs/analysis_plan.md §10, §12; docs/literature/reading_list.md
+% (verdicts and notes of every reference cited here). Draft of 2026-11-20: the results paragraph waits for
+% Phase 4; the contributions follow the umbrella question decided on 2026-10-23.
+\section{Introduction}\label{sec:intro}
+
+Around the Mediterranean, groundwater is the reserve that carries cities and farms through dry
+years, and droughts and abstraction now lower it together \citep{Costa2025Five}. In the Roussillon
+plain of southern France the aquifer, mostly its deep Pliocene part, supplies the drinking water,
+while irrigation draws mostly on the rivers through gravity canals; in 2022--2024 the plain's
+groundwater reached historic lows. Deciding who may pump, where and when, needs models that do two things:
+simulate the head of each well from its drivers, and say how much of a change each driver caused.
+
+Data-driven models now simulate groundwater levels from weather and abstraction: recurrent networks,
+also trained on many wells at once \citep{Wunsch2021Groundwater,Chidepudi2025Training}, and
+spatio-temporal graph networks that link neighbouring wells
+\citep{Bai2023Graph,Taccari2024Spatial,Wu2025Forecasting}, beside transfer-function models
+calibrated well by well \citep{Collenteur2019Pastas}. Two weaknesses remain. First,
+what such a model learns about a driver is rarely checked: the static attributes of a well can act as
+mere identifiers \citep{Heudorfer2024On}, and explanations of groundwater models, mostly by feature
+attribution, are rarely confronted with physical knowledge \citep{Clark2025Explainable,
+Zounematkermani2026Explainable}. Second, pumping is the driver that matters most for decisions and
+the one known least: in the Roussillon, abstraction is declared once a year, boreholes below a
+threshold are not declared, and the weekly timing has to be reconstructed, so that within a year it
+moves with the weather. Interpretability and physical consistency are among the gaps that reviews
+of deep learning in hydrogeology name \citep{Dai2025Incorporating}.
+
+Knowledge-guided machine learning offers a way in: prior knowledge can shape a model's inputs, its
+structure, its loss or its output \citep{Karpatne2017Theorya,Vonrueden2021Informeda,
+Willard2022Integrating,Xu2024Physics}, and differentiable hybrids keep process structure inside a
+learned model \citep{Shen2023Differentiable,Feng2022Differentiable}. In hydrogeology much of that
+knowledge is not an equation but a set of facts and qualified statements: which unit a well
+monitors, which unit a facility draws from, which units touch, where a river feeds an aquifer, and
+in which direction a head responds to each driver. Such knowledge lives in databases and reports,
+with uneven evidence, and ontologies and knowledge graphs are built to hold it with its provenance
+\citep{Brodaric2018Enabling,Janowicz2022Know,Lippolis2025The}. Graph learners for groundwater already
+combine several kinds of adjacency \citep{Wu2025Forecasting} or embed hydrogeological units as prior
+information \citep{Wu2025Graph}; heterogeneous graphs model river floods \citep{Sarkar2025Hydrogat},
+and a knowledge graph has been joined to a time-series foundation model in river hydraulics
+\citep{Holmberg2026Knowledge}. What is missing is a model whose graph and constraints are generated
+from a formal, checkable store of hydrogeological knowledge, together with a test of whether the
+model uses them as intended.
+
+Adding knowledge does not by itself make a model right for the right reasons
+\citep{Ross2017Righta}. A model can reach the same accuracy through the wrong concepts, a reasoning
+shortcut \citep{Marconato2023Not,Marconato2024Bears}, and an explanation can be unfaithful to the
+model it explains \citep{Azzolin2025Reconsidering}. Two questions are therefore usually left open:
+whether a knowledge-guided model uses its knowledge as intended, and whether a gain comes from the
+knowledge or from the formalism that carries it. The second matters because an ontology adds
+traceability, consistency and reuse, but the same edges could often be computed from plain tables.
+
+This study asks when explicit hydrogeological knowledge improves groundwater simulation and the
+reliability of its explanations, under uncertain pumping information. We build an ontology network,
+LULC-Water, and from it a knowledge graph of the Roussillon multilayer aquifer that holds, for every
+candidate driver of every monitoring well, its evidence and the direction of the head's response.
+The graph supplies the inputs, the links and the sign constraints of a hybrid model, a sum of
+response functions fitted for all wells at once. Four research questions follow. RQ1: does knowledge
+from the graph improve simulation, as information and as structure? RQ2: do sign constraints derived
+from the ontology improve plausibility and skill out of distribution? RQ3: does the model use the
+knowledge, or does it take shortcuts? RQ4: can its explanations be stated in the ontology's terms and
+remain faithful?
+
+The contributions are four.
+\begin{enumerate}
+\item A knowledge graph of an aquifer system, built from a network of reused ontologies, in which
+  every derived influence carries its evidence, confidence and eligibility as a model constraint,
+  with competency questions turned into tests (\cref{sec:kg}).
+\item A ladder of models that adds one kind of knowledge at a time to the same differentiable
+  response model, so that information, structure and constraints are credited separately, with
+  controls that keep a graph's structure or locality and remove its meaning (\cref{sec:models}).
+\item A semi-synthetic twin of the aquifer that maps where routing by an imperfect graph can pay at
+  all, and calibrates the tests of wrong reasons before any real-data contrast is scored
+  (\cref{sec:twin}).
+\item Pre-registered contrasts on real data, with an equivalence test that separates the value of
+  the knowledge from the value of the ontology that carries it (\cref{sec:kg-export}).
+\end{enumerate}
+% TODO (after Phase 4): one paragraph with the main results.

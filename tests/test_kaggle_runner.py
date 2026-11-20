@@ -3,6 +3,8 @@
 Run with PFE_DATASET=v4 python -m tests.test_kaggle_runner. Use temporary folders
 and stand-ins for Kaggle and for the shell's model commands.
 """
+import ast
+import io
 import json
 import os
 import shutil
@@ -12,6 +14,7 @@ import sys
 import textwrap
 import time
 import zipfile
+from contextlib import redirect_stdout
 from datetime import datetime, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -58,6 +61,7 @@ def test_status(root):
         status = json.loads(status_file.read_text())
         assert status["exit"] == rc and status["budget_stop"] is budget
         assert status["failed_steps"] == failed and status["steps"] == steps
+        assert status["env"] == {}
         assert datetime.fromisoformat(status["finished_utc"]).utcoffset() == timedelta(0)
 
     worker = root / "worker"
@@ -70,6 +74,62 @@ def test_status(root):
     assert rc == -signal.SIGTERM and budget
     assert failed_file.read_text().splitlines() == ["nosuchstep"]
     print("  2. run status: clean, failed, budget stop, and a failure before the deadline")
+
+
+def test_kernel_env(root):
+    stdout = io.StringIO()
+    source = local.ROOT / "scripts" / "kaggle_cpu_run.py"
+    staged = root / "kernel" / source.name
+    extra = {"P4_CONFIRMED": "1", "P4_FIXED": "3000", "P4_SEEDS": "0 1 2",
+             "EMPTY": "", "LABEL": 'é="quoted" \\ tab\t\nnext line'}
+    args = [arg for key, value in extra.items() for arg in ("--env", f"{key}={value}")]
+    with (patch.object(local, "STAGE", root), patch.object(local, "user", return_value="fixture"),
+          patch.object(local, "kg", return_value="ready"), patch.object(local, "bundle", return_value=root),
+          patch.object(local, "upload") as upload, patch.object(local, "push_kernel"), redirect_stdout(stdout)):
+        local.main(["push"])
+        assert staged.read_bytes() == source.read_bytes()
+        local.main(["push", *args])
+        assert upload.call_count == 2
+
+    code = staged.read_text()
+    ast.parse(code)
+    staged_env = next(line for line in code.splitlines() if line.startswith("KERNEL_ENV = "))
+    env = ast.literal_eval(staged_env.removeprefix("KERNEL_ENV = "))
+    assert env == extra
+    assert code.replace(staged_env, "KERNEL_ENV = {}", 1) == source.read_text()
+    assert json.loads(stdout.getvalue().split("kernel environment overrides: ")[1]) == extra
+
+    failed = root / "failed_steps.txt"
+    status = root / "run_status.json"
+    with patch.object(remote, "KERNEL_ENV", env), patch.dict(os.environ, {"P4_FIXED": "100", "JOBS": "12345"}):
+        shell = remote.shell_env(failed)
+        assert {key: shell[key] for key in extra} == extra
+        assert shell["PY"] == sys.executable and shell["PYTHONPATH"] == remote.pythonpath()
+        assert shell["JOBS"] == str(len(os.sched_getaffinity(0))) and shell["STATUS_FILE"] == str(failed)
+        assert os.environ["P4_FIXED"] == "100"
+        remote.write_run_status(status, failed, 0, False, "p4_B1")
+    assert json.loads(status.read_text())["env"] == extra
+    print("  3. push stages literal overrides, and the shell and status receive those values")
+
+
+def test_invalid_kernel_env():
+    protected = ["PY", "PYTHONPATH", "STEPS", "JOBS", "STATUS_FILE", "PYTHONIOENCODING",
+                 "PYTHONUNBUFFERED", "PFE_DATASET", "PFE_THREADS", "PFE_RESULTS", "BUDGET_H",
+                 "SYNC_S", "KAGGLE_INPUT", "KAGGLE_WORK", "PFE_CODE", "PIN_TARGET", "PFE_STATE"]
+    assignments = [(f"{key}=value", f"cannot override {key}") for key in protected]
+    assignments += [(value, "expects KEY=VALUE") for value in ("NO_VALUE", "lower=1", "A-B=1", "=empty")]
+    with (patch.object(local, "user") as user, patch.object(local, "kg") as kg,
+          patch.object(local, "bundle") as bundle, patch.object(local, "upload") as upload):
+        for assignment, expected in assignments:
+            try:
+                local.main(["push", "--env", "P4_CONFIRMED=1", "--env", assignment])
+            except SystemExit as error:
+                assert expected in str(error)
+            else:
+                raise AssertionError(f"push accepted {assignment}")
+        for call in (user, kg, bundle, upload):
+            call.assert_not_called()
+    print("     rejected protected names and malformed assignments before any Kaggle work")
 
 
 def fixture_output(folder, run, seed):
@@ -139,7 +199,7 @@ def test_pull_merge(root):
         else:
             raise AssertionError("The download without a log should fail")
     assert [snapshot(folder) for folder in folders] == before
-    print("  3. pull merge: remembered both partial runs and the older download after failed pulls")
+    print("  4. pull merge: remembered both partial runs and the older download after failed pulls")
 
 
 def test_pull_status(root):
@@ -171,7 +231,7 @@ def test_pull_status(root):
         assert (results / "finished" / prediction.name).is_file()
         assert (results / "twin" / "cell" / world.name).is_file()
         assert (stage / "state" / seed).read_text() == str(count)
-    print("  4. pull status: new files replace old copies, predictions and twins survive failures")
+    print("  5. pull status: new files replace old copies, predictions and twins survive failures")
 
 
 def test_bundle(root):
@@ -205,7 +265,7 @@ def test_bundle(root):
     env = dict(os.environ, PYTHONPATH=str(extracted), PYTHONNOUSERSITE="1", PFE_DATASET="v4")
     env.pop("PFE_RESULTS", None)
     subprocess.run([sys.executable, "-c", code], cwd=extracted, env=env, check=True)
-    print("  5. bundle: routed inputs, facts, regime links and twin base loaded from the archive")
+    print("  6. bundle: routed inputs, facts, regime links and twin base loaded from the archive")
 
 
 if __name__ == "__main__":
@@ -215,6 +275,8 @@ if __name__ == "__main__":
         dispatcher.mkdir()
         test_dispatcher(dispatcher)
         test_status(dispatcher)
+        test_kernel_env(root / "stage")
+        test_invalid_kernel_env()
         test_pull_merge(root / "merge")
         test_pull_status(root / "status")
         test_bundle(root / "bundle")

@@ -7,7 +7,8 @@ Pushed by scripts/kaggle_cpu.py (docs/gpu_howto.md, "Kaggle CPU"). On Kaggle it:
 2. installs the pinned wheels (dataset <user>/pfe-wheels-cp313) offline into PIN_TARGET,
    placed first on PYTHONPATH, and stops if a version differs from requirements.txt or a
    baseline module does not import;
-3. runs STEPS through scripts/run_v4_cpu.sh, one Pastas worker per CPU. The results are
+3. runs STEPS through scripts/run_v4_cpu.sh with any staged environment overrides and one
+   Pastas worker per CPU. The results are
    copied to /kaggle/working/results_cpu/v4 (= the kernel's output) every SYNC_S seconds and
    at the end. A step that would run past BUDGET_H is stopped, so the output is saved before
    Kaggle's 12 h session limit. Push again to continue.
@@ -29,6 +30,7 @@ import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+KERNEL_ENV = {}
 STEPS = os.environ.get("STEPS", "naive lgbm lgbm_final lgbm_regimes pastas wellmodel")
 BUDGET_H = float(os.environ.get("BUDGET_H", 11.0))
 SYNC_S = int(os.environ.get("SYNC_S", 600))
@@ -83,6 +85,13 @@ def restore():
 
 def pythonpath():
     return os.pathsep.join(filter(None, [str(PINS), os.environ.get("PYTHONPATH")]))
+
+
+def shell_env(status_file):
+    """Apply the staged overrides to the dispatcher and set its runner-controlled values."""
+    env = {**os.environ, **KERNEL_ENV}
+    return dict(env, PY=sys.executable, PYTHONPATH=pythonpath(), PYTHONIOENCODING="utf-8",
+                PYTHONUNBUFFERED="1", JOBS=str(len(os.sched_getaffinity(0))), STATUS_FILE=str(status_file))
 
 
 def install():
@@ -177,22 +186,23 @@ def write_run_status(path, status_file, rc, budget_stop, steps, skipped=()):
     """Save the dispatcher result so pull can report it after copying the session's work."""
     failed_steps = status_file.read_text().splitlines() if status_file.is_file() else []
     status = {"exit": rc, "budget_stop": budget_stop, "failed_steps": [*failed_steps, *skipped],
-              "steps": steps, "finished_utc": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+              "steps": steps, "env": KERNEL_ENV,
+              "finished_utc": datetime.now(timezone.utc).isoformat(timespec="seconds")}
     path.write_text(json.dumps(status, indent=2) + "\n")
 
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     global T0
+    if KERNEL_ENV:
+        log(f"kernel environment overrides: {json.dumps(KERNEL_ENV)}")
     unpack()
     restore()
     T0 = time.time()
     install()
     status_file = (CODE / "failed_steps.txt").resolve()
     status_file.unlink(missing_ok=True)
-    env = dict(os.environ, PY=sys.executable, PYTHONPATH=pythonpath(), PYTHONIOENCODING="utf-8",
-               PYTHONUNBUFFERED="1", JOBS=str(len(os.sched_getaffinity(0))),
-               STATUS_FILE=str(status_file))
+    env = shell_env(status_file)
     steps = STEPS
     skipped = []
     if "ealstm" in steps and not ealstm_ok(env):

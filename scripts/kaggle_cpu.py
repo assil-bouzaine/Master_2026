@@ -1,7 +1,7 @@
 """Run the CPU baselines of dataset v4 on Kaggle from the laptop (docs/gpu_howto.md, Kaggle CPU).
 
     .venv/bin/python scripts/kaggle_cpu.py wheels     # once: pinned wheels -> private dataset
-    .venv/bin/python scripts/kaggle_cpu.py push [--steps "lgbm_final pastas"]
+    .venv/bin/python scripts/kaggle_cpu.py push [--steps "lgbm_final pastas"] [--env KEY=VALUE]
     .venv/bin/python scripts/kaggle_cpu.py kernel     # push the staged kernel again, same bundle
     .venv/bin/python scripts/kaggle_cpu.py status | log
     .venv/bin/python scripts/kaggle_cpu.py pull       # -> results/v4/<run>, rescored
@@ -53,6 +53,10 @@ BUNDLE, WHEELS, KERNEL = "pfe-v4-cpu-bundle", "pfe-wheels-cp313", "pfe-v4-cpu"
 VERSION_GRACE_S = 120      # after "ready": time for Kaggle to unpack a new dataset version
 WATCH_S, WATCH_STEP_S = 360, 30   # how long the start of a pushed kernel is watched
 DEFAULT_STEPS = "naive lgbm lgbm_final lgbm_regimes pastas wellmodel"
+# The kernel and dispatcher control the interpreter, session, and result paths.
+RUNNER_ENV = {"PY", "PYTHONPATH", "PYTHONIOENCODING", "PYTHONUNBUFFERED", "STEPS", "JOBS",
+              "STATUS_FILE", "PFE_DATASET", "PFE_THREADS", "PFE_RESULTS", "BUDGET_H", "SYNC_S",
+              "KAGGLE_INPUT", "KAGGLE_WORK", "PFE_CODE", "PIN_TARGET", "PFE_STATE"}
 # The CPU baselines and routing imports, with their required dependencies.
 # Versions come from requirements.txt.
 PINNED = ["numpy", "pandas", "pyarrow", "scipy", "lightgbm", "narwhals", "pastas", "numba",
@@ -168,7 +172,23 @@ def bundle(stage=STAGE):
     return ds
 
 
-def push(steps, budget):
+def parse_env(assignments):
+    """Validate shell environment overrides before contacting Kaggle."""
+    env = {}
+    for assignment in assignments:
+        key, separator, value = assignment.partition("=")
+        if not separator or not re.fullmatch(r"[A-Z][A-Z0-9_]*", key):
+            sys.exit("--env expects KEY=VALUE with a name matching [A-Z][A-Z0-9_]*")
+        if key in RUNNER_ENV:
+            sys.exit(f"--env cannot override {key}: the runner controls it")
+        env[key] = value
+    return env
+
+
+def push(steps, budget, env_assignments=()):
+    env = parse_env(env_assignments)
+    if env:
+        print(f"kernel environment overrides: {json.dumps(env)}")
     u = user()
     if "ready" not in kg("datasets", "status", f"{u}/{WHEELS}", check=False):
         sys.exit(f"dataset {u}/{WHEELS} missing: run `scripts/kaggle_cpu.py wheels` first")
@@ -179,6 +199,7 @@ def push(steps, budget):
     code = (ROOT / "scripts" / "kaggle_cpu_run.py").read_text()
     code = re.sub(r'"STEPS", ".*?"', f'"STEPS", "{steps}"', code, count=1)
     code = re.sub(r'"BUDGET_H", [\d.]+', f'"BUDGET_H", {budget}', code, count=1)
+    code = code.replace("\nKERNEL_ENV = {}\n", f"\nKERNEL_ENV = {env!r}\n", 1)
     (kd / "kaggle_cpu_run.py").write_text(code)
     (kd / "kernel-metadata.json").write_text(json.dumps(
         {"id": f"{u}/{KERNEL}", "title": KERNEL, "code_file": "kaggle_cpu_run.py",
@@ -273,16 +294,20 @@ def pull(stage=STAGE, results=V4):
             print("time budget used: push again to continue")
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("action", choices=["wheels", "push", "kernel", "status", "log", "pull"])
     ap.add_argument("--steps", default=DEFAULT_STEPS, help="steps of scripts/run_v4_cpu.sh")
     ap.add_argument("--budget", type=float, default=11.0, help="hours before a clean stop")
-    a = ap.parse_args()
+    ap.add_argument("--env", action="append", default=[], metavar="KEY=VALUE",
+                    help="override a dispatcher environment setting on push (repeatable)")
+    a = ap.parse_args(argv)
+    if a.env and a.action != "push":
+        ap.error("--env is only supported by push")
     if a.action == "wheels":
         wheels()
     elif a.action == "push":
-        push(a.steps, a.budget)
+        push(a.steps, a.budget, a.env)
     elif a.action == "kernel":
         push_kernel()
     elif a.action == "pull":

@@ -15,13 +15,13 @@ import argparse
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 import pandas as pd
 
 from src.config import R3_STARTS
 from src.models.evaluate import DS, RESULTS, evaluate_run
 from src.models.features import build_panel
-from src.models.tune import MODULE
 
 N_FOLDS = 5
 FRACTIONS = R3_STARTS
@@ -32,6 +32,8 @@ EXTRA = []
 
 
 def base_cmd(model, run):
+    from src.models.tune import MODULE
+
     p = json.loads((RESULTS / f"{model}_tuning" / "best.json").read_text())["params"]
     cmd = [sys.executable, "-m", MODULE[model], "--run", run, "--lookback", str(p["lookback"]),
            "--hidden", str(p["hidden"]), "--dropout", str(p["dropout"]), "--lr", str(p["lr"])]
@@ -62,7 +64,7 @@ def fold_seed_files(run, k, want):
 def assemble_lwo(run, seeds=None):
     """Held-out predictions of every fold -> one predictions.parquet, then score it. Every
     fold must hold exactly the expected seeds: a partly finished fold is not an ensemble
-    (third review, docs/review_codex_2026-10-24.md §7)."""
+    (third review, docs/review_codex_2026-10-24.md §7). Response seeds use their floored scale."""
     folds = json.loads((DS / "splits.json").read_text())["leave_wells_out"]["fold_of_well"]
     P = build_panel()
     musd = P.drop_duplicates("code_bss").set_index("code_bss")[["mu", "sd"]]
@@ -75,14 +77,22 @@ def assemble_lwo(run, seeds=None):
         parts.append(z.groupby(["code_bss", "week"])["z"].agg(["mean", "std"]).reset_index()
                      .assign(n_seeds=len(seeds)))
     z = pd.concat(parts).join(musd, on="code_bss")
+    sd = z["sd"]
+    if Path(run).parts[0].startswith(("resp_", "p4_")):
+        from src.models.response import SD_FLOOR
+
+        sd = sd.clip(lower=SD_FLOOR)
     pred = pd.DataFrame({"code_bss": z["code_bss"], "week": z["week"],
-                         "pred": z["mu"] + z["sd"] * z["mean"], "pred_seed_sd": z["sd"] * z["std"],
+                         "pred": z["mu"] + sd * z["mean"], "pred_seed_sd": sd * z["std"],
                          "task": "simulation", "horizon": 0}).dropna(subset=["pred"])
     pred.to_parquet(RESULTS / run / "predictions.parquet", index=False)
     return evaluate_run(run)
 
 
 def main():
+    # The standalone Kaggle assembler has no tuning dependency.
+    from src.models.tune import MODULE
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", choices=list(MODULE), required=True)
     ap.add_argument("--only", nargs="*", default=["lwo", "f25", "f50", "refit"])

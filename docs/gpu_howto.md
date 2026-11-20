@@ -383,6 +383,10 @@ Kernels run in the background (laptop may be off), up to 12 h per session.
   `/tmp/pins` (first on `PYTHONPATH`), stops if a version differs from `requirements.txt` or a
   baseline module does not import, then runs `scripts/run_v4_cpu.sh` (`--steps` selects
   steps; Pastas gets one worker per CPU). Results are copied to the output every 10 min.
+- After Gate 3 and the plan tag, pass Phase 4 settings with repeatable `push --env KEY=VALUE`
+  options, for example `--env P4_CONFIRMED=1 --env P4_FIXED=3000` with the chosen `--steps`.
+  Quote assignments containing spaces. Use non-secret values because they are staged with the
+  kernel and printed in the push log, kernel log and `run_status.json`.
 - The wheels come from `uvx pip download --platform manylinux… --python-version 3.13` (the
   venv has no pip). The list (`PINNED` in `kaggle_cpu.py`) is what an import trace of the CPU
   baselines showed, plus their runtime dependencies. Refresh the wheel dataset once for Phase 4

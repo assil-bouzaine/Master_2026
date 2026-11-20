@@ -68,18 +68,67 @@ def _split_labels(weeks, splits):
     return lab
 
 
-def river_series(weeks, train_end):
-    """log(1 + weekly mean discharge) per candidate gauge; gaps <= 8 weeks interpolated,
-    longer ones filled with the gauge's training-period median for that week of year."""
+RIVER_RULES = ("legacy", "declared")
+MAX_RIVER_GAP = 8      # weeks: a shorter internal gap is interpolated between both ends (§7b)
+
+
+def _short_gaps_interpolated(v, max_gap=MAX_RIVER_GAP):
+    """Linear interpolation of the internal runs of missing values of at most `max_gap` weeks only
+    (both ends observed); longer runs and runs at either end stay missing."""
+    v = v.copy()
+    miss = np.isnan(v)
+    i, n = 0, len(v)
+    while i < n:
+        if not miss[i]:
+            i += 1
+            continue
+        j = i
+        while j < n and miss[j]:
+            j += 1
+        if i > 0 and j < n and j - i <= max_gap:
+            v[i:j] = np.interp(np.arange(i, j), [i - 1, j], [v[i - 1], v[j]])
+        i = j
+    return v
+
+
+def river_series(weeks, train_end, rule="declared", train_start=None):
+    """log(1 + weekly mean discharge) per candidate gauge, with the gap rule of analysis plan §7b.
+
+    rule "declared" (from 2026-11-20, astra review point 2): an internal gap of at most 8 weeks is
+    interpolated between both ends; every other missing week (longer gaps, the ends of a record) gets
+    the gauge's median for that week of the year over the weeks *observed* in the training window
+    [train_start, train_end] (default: the dataset's training split, 2005-2019).
+    rule "legacy" (the code until 2026-11-20): pandas' interpolate(limit=8) also filled the first 8
+    weeks of a longer gap, toward its far end: Y047403001 (the Têt at Perpignan) misses 59 weeks from
+    2021-09-12 to 2022-10-23, so its first 8 validation weeks leaned on a test-period observation;
+    Y046403001 misses 11 weeks in 2005. Its median also counted the warm-up years (2000-2004) and
+    interpolated values. Kept for what was built with it: the cached panels of the baselines of
+    record (`build_panel`) and the twin, which pins it so that its worlds keep one input."""
+    if rule not in RIVER_RULES:
+        raise ValueError(f"unknown river gap rule {rule!r}: {RIVER_RULES}")
     r = pd.read_parquet(DS / "rivers_weekly.parquet")
+    weeks = pd.DatetimeIndex(weeks)
+    woy = pd.Series(weeks.isocalendar().week.clip(upper=52).to_numpy(), index=weeks)
+    if rule == "declared" and train_start is None:
+        train_start = json.loads((DS / "splits.json").read_text())["train"][0]
     out = {}
-    for code in set(NEAR_CANDIDATES) | set(RIVERS.values()):
+    for code in sorted(set(NEAR_CANDIDATES) | set(RIVERS.values())):
         s = np.log1p(r[r["code_station"] == code].set_index("week")["q_m3s"]).reindex(weeks)
-        s = s.interpolate(limit=8, limit_area="inside")
-        woy = pd.Series(weeks.isocalendar().week.clip(upper=52).to_numpy(), index=weeks)
-        clim = s[weeks <= train_end].groupby(woy[weeks <= train_end]).median()
-        out[code] = s.fillna(woy.map(clim))
+        out[code] = fill_river_gaps(s, woy, train_end, rule, train_start)
     return pd.DataFrame(out, index=weeks)
+
+
+def fill_river_gaps(s, woy, train_end, rule="declared", train_start=None):
+    """One gauge's weekly series (missing weeks NaN) filled by `rule` (see river_series)."""
+    weeks = s.index
+    if rule == "legacy":
+        s = s.interpolate(limit=8, limit_area="inside")
+        clim = s[weeks <= train_end].groupby(woy[weeks <= train_end]).median()
+        return s.fillna(woy.map(clim))
+    window = s.notna() & (weeks >= pd.Timestamp(train_start)) & (weeks <= pd.Timestamp(train_end))
+    clim = s[window].groupby(woy[window]).median()
+    filled = pd.Series(_short_gaps_interpolated(s.to_numpy(dtype=float)), index=weeks)
+    return filled.fillna(woy.map(clim))
 
 
 def nearest_gauge(wells):
@@ -227,7 +276,7 @@ def build_panel(refresh=False, train_start=None, land_use=None):
     canal = canal_series(pw, pts).reindex(weeks).fillna(0.0) / 1e6  # Mm3/week
 
     if WITH_RIVERS:
-        riv = river_series(weeks, splits["train"][1])
+        riv = river_series(weeks, splits["train"][1], rule="legacy")   # the baselines' panels (see river_series)
         near_of = nearest_gauge(wells)
     parts = []
     for _, w in wells.iterrows():

@@ -74,7 +74,7 @@ def exogenous_nodes(P, codes, weeks, train_cols):
         nodes.append((f"cell:{cell}", "weather", *cxy[cell], feats))
     # rivers (dataset v3 on)
     if WITH_RIVERS:
-        riv = river_series(pd.DatetimeIndex(weeks), str(weeks[train_cols][-1])[:10])
+        riv = river_series(pd.DatetimeIndex(weeks), str(weeks[train_cols][-1])[:10], rule="legacy")  # its runs of record
         gauges = pd.read_parquet(DS / "gauges.parquet").set_index("code_station")
         for code in sorted(set(NEAR_CANDIDATES) | set(RIVERS.values())):
             x, y = _xy([gauges.loc[code, "longitude_station"]], [gauges.loc[code, "latitude_station"]])[0]

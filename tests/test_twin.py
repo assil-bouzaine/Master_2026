@@ -22,6 +22,13 @@
 6. End to end through run_cell: three arms fitted for 20 steps from two starts, hard and soft
    (RQ2), scored, written (every score present and finite; under hard no gain violates its sign).
    This checks the code path, not the learner. And the learner-setting specs parse as documented.
+   A resumed cell with other settings stops instead of mixing worlds; the fitted weights are saved
+   beside each world (astra review points 10 and 1, 2026-11-20).
+7. Score 5 per well (the plan's definition; astra review point 1): on two hand-made wells with
+   disjoint true facilities and a cross-link in the arm, a well's input moves only through its own
+   true facilities; the old plain-wide cut also moves it through the other well's. On a real world
+   the truth's per-well cut equals its plain-wide cut (a well feels only its own true facilities).
+8. Parallel manifest writers keep every world and session record (astra review point 14).
 """
 import json
 import shutil
@@ -241,15 +248,100 @@ def test_end_to_end():
         assert all(soft[f"violation_rate_{a}"] is not None for a in W.ARMS)
         for k in ("log_rmse_D_over_C", "log_rmse_T_over_C", "log_rmse_D_over_T", "nse_drought_D",
                   "recovery_pumping_T", "recovery_recharge_C", "pumping_right_D",
-                  "seed_disagreement_pumping_C", "intervention_rel_error_T", "intervention_sign_D",
-                  "lag_error_recharge_wk_C"):
+                  "seed_disagreement_pumping_C", "intervention_well_rel_error_T", "intervention_well_sign_D",
+                  "intervention_plain_rel_error_C", "intervention_plain_sign_D", "lag_error_recharge_wk_C"):
             assert s[k] is not None and np.isfinite(s[k]), k
+        assert "intervention_rel_error_D" not in s and rec["scores_version"] == W.SCORES_VERSION
+        # the oracle routes exactly the truth: its per-well and plain-wide cuts are the same cut
+        assert np.isclose(s["intervention_well_rel_error_T"], s["intervention_plain_rel_error_T"], rtol=1e-9, atol=1e-12)
         assert len(rec["per_well"]["free_fixed20"]["code_bss"]) == s["wells"] > 0
-        assert (folder / W.cell_tag(W.BASE) / "manifest.json").exists()
+        cell = folder / W.cell_tag(W.BASE)
+        assert (cell / "manifest.json").exists()
+        nets = torch.load(cell / "world_5_nets.pt", weights_only=True)
+        assert set(nets["states"]) == {"free_fixed20", "free_fixed20_soft1"}
+        assert all(len(nets["states"][k][a]) == 2 for k in nets["states"] for a in W.ARMS)
+        # resuming the same cell with other settings must stop, not mix worlds
+        try:
+            W.run_cell(b, W.BASE, [5, 6], run, fits=("free:0:20", "free:0:20+soft1"), starts=(0, 1), steps=21)
+        except SystemExit as err:
+            assert "steps" in str(err), err
+        else:
+            raise AssertionError("a cell resumed with other settings must stop")
+        assert not (cell / "world_6.json").exists()
+        W.run_cell(b, W.BASE, [5], run, fits=("free:0:20", "free:0:20+soft1"), starts=(0, 1), steps=20)
     finally:
         shutil.rmtree(folder, ignore_errors=True)
     print(f"  6. run_cell end to end (20 steps, 2 starts, arms C, D, T): every score written, "
-          f"{s['wells']} core wells scored")
+          f"{s['wells']} core wells scored; weights saved; a resume with other settings stops")
+
+
+def test_per_well_cut():
+    weeks = pd.date_range("2021-01-03", "2023-12-31", freq="W-SUN")
+    codes = ["w1", "w2"]
+    vol = pd.DataFrame({"f1": 1.0, "f2": 2.0, "f3": 4.0}, index=weeks)
+    cols = ["relation", "src_type", "src", "dst", "weight", "distance_m"]
+    edge = lambda rel, s, d, w=1.0: (rel, "facility", s, d, w, 100.0)  # noqa: E731
+    truth = pd.DataFrame([edge("pumping", "f1", "w1"), edge("pumping", "f2", "w2")], columns=cols)
+    # the arm links w1 to its own true facility f1 and to f2 (true for w2 only), w2 to f3 (not true)
+    arm = pd.DataFrame([edge("pumping", "f1", "w1", 0.5), edge("pumping_unattributed", "f2", "w1", 0.25),
+                        edge("pumping", "f3", "w2")], columns=cols)
+    fac = ["f1", "f2", "f3"]
+    routed = {"pump_gw": W._matrix(arm, "pumping", codes, fac) @ vol[fac].to_numpy().T,
+              "pump_un": W._matrix(arm, "pumping_unattributed", codes, fac) @ vol[fac].to_numpy().T,
+              "rain": np.ones((2, len(weeks)))}
+    world = {"weeks": weeks, "codes": codes, "vol": vol, "edges": {"truth": truth, "C": arm},
+             "routed": {"C": routed}}
+    cut = W.per_well_cut(world, "C", vol)
+    dr = W.drought(weeks)
+    d_gw, d_un = cut["pump_gw"] - routed["pump_gw"], cut["pump_un"] - routed["pump_un"]
+    assert np.allclose(d_gw[0, dr], -W.CUT * 0.5 * 1.0) and np.allclose(d_gw[0, ~dr], 0.0)
+    assert np.allclose(d_un, 0.0), "f2 is true for w2 only: cutting w1's true facilities leaves it"
+    assert np.allclose(d_gw[1], 0.0), "the arm does not link w2 to its true facility f2"
+    assert cut["rain"] is routed["rain"] and routed["pump_gw"][0, 0] == 0.5
+    # the plain-wide cut (before 2026-11-20) moved w1 through f2 as well
+    plain = vol.copy()
+    plain.loc[dr, ["f1", "f2"]] *= 1 - W.CUT
+    plain_un = W._matrix(arm, "pumping_unattributed", codes, fac) @ plain[fac].to_numpy().T
+    assert np.allclose((plain_un - routed["pump_un"])[0, dr], -W.CUT * 0.25 * 2.0)
+    # on a real world the truth's per-well cut is its plain-wide cut
+    b = base()
+    w = W.make_world(b, 3, **W.BASE)
+    tr = w["edges"]["truth"]
+    v = w["vol_truth"].copy()
+    v.loc[W.drought(w["weeks"]), sorted(set(tr.loc[tr["relation"] == "pumping", "src"]) & set(v.columns))] *= 1 - W.CUT
+    union = W.routed_inputs(edges=tr, codes=w["codes"], weeks=w["weeks"], volumes=v)
+    per_well = W.per_well_cut(w, "truth", w["vol_truth"])
+    assert np.allclose(per_well["pump_gw"], union["pump_gw"], rtol=0, atol=1e-9)
+    d_arm = {a: np.abs(W.per_well_cut(w, a, w["vol"])["pump_gw"] - w["routed"][a]["pump_gw"]).sum() for a in ("C", "D")}
+    assert all(x > 0 for x in d_arm.values())
+    print("  7. score 5 per well: a well's input moves only through its own true facilities (hand-made "
+          "cross-link case); on a real world the truth's per-well cut = its plain-wide cut")
+
+
+def _manifest_writer(args):
+    """Ten manifest updates; every json.loads waits 20 ms, so a writer that reads the manifest
+    without the lock would overwrite another's update (the race of astra review point 14)."""
+    folder, k = args
+    import time
+    import types
+    import src.models.manifest as M
+    M.json = types.SimpleNamespace(loads=lambda t: (time.sleep(0.02), json.loads(t))[1], dumps=json.dumps)
+    for i in range(10):
+        M.write_manifest(folder, {"writer": k}, [100 * k + i])
+
+
+def test_manifest_parallel():
+    import multiprocessing as mp
+    import tempfile
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as tmp:
+        folder = Path(tmp)
+        with mp.get_context("spawn").Pool(4) as pool:
+            pool.map(_manifest_writer, [(folder, k) for k in range(4)])
+        m = json.loads((folder / "manifest.json").read_text())
+        assert m["seeds_done"] == sorted(100 * k + i for k in range(4) for i in range(10)), m["seeds_done"]
+        assert len(m["sessions"]) == 40
+    print("  8. four parallel manifest writers x 10 records: all 40 ids and 40 sessions kept")
 
 
 if __name__ == "__main__":

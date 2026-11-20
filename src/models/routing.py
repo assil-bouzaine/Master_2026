@@ -151,12 +151,14 @@ def facility_volumes(weeks, facilities=None, reconstruction=1):
 
 
 def routed_inputs(arm=None, policy="main", edges=None, codes=None, weeks=None, recharge="recharge",
-                  volumes=None, reconstruction=1):
+                  volumes=None, reconstruction=1, river_rule="declared"):
     """Inputs of the wells `codes` on `weeks` (default: the dataset's wells and the panel's
     weeks) routed by the edges of `arm` (or by an explicit `edges` table with the export's
     columns). `recharge` names the relation used for the weather ("recharge", or
     "recharge_unitwide" for arm D's sensitivity). `reconstruction` selects the pumping and canal
-    table for every arm, including baseline inputs and graph controls."""
+    table for every arm, including baseline inputs and graph controls. `river_rule`: the gap rule
+    of the river series (src.models.features.river_series): "declared" (analysis plan §7b; every
+    real-data arm), "legacy" only for the twin, which pins the series of its first worlds."""
     splits = json.loads((DATASET_DIR / "splits.json").read_text())
     wells = pd.read_parquet(DATASET_DIR / "wells.parquet")
     forcing = pd.read_parquet(DATASET_DIR / "forcing_weekly.parquet")
@@ -195,7 +197,7 @@ def routed_inputs(arm=None, policy="main", edges=None, codes=None, weeks=None, r
         out[name] = Wp @ vol
         out["has_" + rel] = Wp.sum(1) > 0
     # rivers: weighted mean of log(1 + discharge) over the river-edge gauges
-    riv = river_series(weeks, splits["train"][1])
+    riv = river_series(weeks, splits["train"][1], rule=river_rule)
     gauges = sorted(edges.loc[edges["relation"] == "river", "src"].unique())
     Wr = _matrix(edges, "river", codes, gauges)
     tot = Wr.sum(1, keepdims=True)

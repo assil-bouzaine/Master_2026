@@ -289,6 +289,15 @@ uses are causal (known at the issue week), but some inputs are not:
 | Static attributes, KG | yes | fixed before the test period |
 | RPG crop areas (crop-demand feature) | **no** | edition y holds the declarations of campaign y and is published afterwards (the 2025 edition was online in October 2026); 2005–2014 backfilled with 2015 |
 
+*River gaps, as applied (2026-11-20; §14 item 21).* Until that date the code also filled the first
+8 weeks of a longer gap by interpolation toward its far end: the Têt at Perpignan (Y047403001)
+misses 59 weeks from 2021-09-12, so 8 validation weeks of that input leaned on an observation of
+the test period (log discharge 1.114 instead of the training median 1.011), and the fill's
+median counted warm-up years and interpolated values. Every real-data arm of Phase 4 uses the
+rule as written above; the baselines of record keep the old fill (their cached panels and runs;
+the response models of rungs 1–2 take no river input) and the twin keeps the series of its first
+worlds.
+
 Results of the forecast task are reported as hindcast skill; an operational
 claim would need causal versions of the pumping and river inputs.
 
@@ -1143,6 +1152,34 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       same size). λ_s = 1 on the twin; the real data's λ_s (one value or a grid chosen on validation)
       is a Gate 3 point. Reported for RQ2 beside scores 1–5: the violation rate (share of core wells
       and stresses whose fitted gain has the wrong sign) and the intervention sign of score 5.
+    - *Amendment of 2026-11-20 (external review `astra_review.md` of 2026-11-18, points 1, 5, 6, 8,
+      10 and 14, each checked against the code; written after the grid's 240 worlds and 146 of the
+      160 slice worlds were pulled and before any cell of them was read; the kernel log's last lines
+      showed two single-world values of slices O and I).* (11) **Score 5 per well, as defined
+      above.** The code cut the union of every well's true facilities at once, so an arm's link from
+      well i to a facility that is true for another well moved i's fitted response, which the
+      definition ("every true-edge facility of a well") excludes. Score 5 now cuts each well's own
+      true facilities, one well at a time (one pass: the pumping inputs are weighted sums of the
+      volumes); the union cut is kept as a descriptive "plain-wide" score. The truth's head change is
+      the same under both (in the truth a well feels only its own facilities). The worlds written
+      before this date (the grid, 146 slice worlds) have only the plain-wide score and their fits were
+      not saved, so their per-well score would need a refit and is not computed. Score 5 enters the
+      reading only in (f): RQ2's run now also fits the hard setting on arms D and T, so that (f) reads
+      hard, none and soft on the same worlds, all with the per-well score. From this date every world
+      also saves its fitted weights (`world_<k>_nets.pt`), so a later scoring fix needs no refit.
+      (12) **Verdicts on complete cells only.** (a) and (c) judge a cell only with its 20 worlds; the
+      bracket verdict (d) needs the four bracket cells; (e) compares the protocols on the worlds both
+      have, counts tied cells apart, and recommends a protocol only with a strict majority of the 12
+      cells (and the accuracy rule); score 6 is reported as k of n worlds, beside the seed
+      disagreement of the worlds with and without wrong reasons (its detection and false-alarm rates
+      need a flag threshold: Gate 3 point 5). (13) **One experiment per cell.** A resumed cell stops
+      if a world on disk was made with other settings (dials, fits, arms, starts, steps, export,
+      policy, kernel length, convolution; from this date also the river gap rule and a hash of the
+      inputs every world reuses), and the report stops on a cell that mixes them; parallel workers no
+      longer drop manifest records. The twin keeps the river series of its first worlds (the "legacy"
+      gap rule) whatever the real-data runs use. (14) **Score 4** is the error of a·n, the mean of
+      the continuous Gamma law, not of the implemented weekly kernel (truncated and normalised):
+      true and fitted are compared alike, and the report says so.
 20. **The controls of §10 and rung 3, made concrete (written 2026-11-18, before any real-data arm and
     before any rung-3 run; ❓ Gate 3 confirms, then they are frozen with the tag).**
     - *Control graphs, arms E and F (`src/kg/controls.py`).* Built from arm D's export tables,
@@ -1193,3 +1230,29 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       - **Controls**: random name tags (N(0, 1) facts of the same width) and shuffled facts (the rows
         permuted between wells), drawn per start so that their spread is part of the spread over
         starts (Heudorfer et al. 2024, doi:10.5194/hess-28-525-2024).
+21. **The external review of 2026-11-18 (`astra_review.md`), adopted 2026-11-20.** Seventeen points,
+    each checked against the code before any change (all held); the fixes were
+    written before any cell of the twin's complete grid was read and before any Phase 4 run.
+    - *The twin* (points 1, 5, 6, 8, 10, 14): item 19, amendment of 2026-11-20.
+    - *River gaps* (point 2): §7b, "River gaps, as applied". The rule (`src/models/features.py`
+      `river_series`, rule "declared") interpolates only internal gaps of at most 8 weeks and fills
+      every other missing week with the week-of-year median of the weeks observed in the training
+      window; against the old fill it changes 8 validation weeks of the Têt at Perpignan, 8 training
+      weeks (2005) and 40 warm-up weeks of Y046403001, and 5 training and 35 warm-up weeks of
+      Y066404001 (`tests/test_river_rule.py`).
+    - *The Phase 4 report* (points 3, 4, 7): a confirmatory aggregate is rebuilt from exactly the ten
+      declared starts (never from a `predictions.parquet` that a later call may have rewritten), the
+      same starts as its same-arm band; a family with a missing test is "pending" (an interim Holm
+      value may be shown with the missing p-values set to 1, which can only enlarge the others);
+      response-model seeds decode with the scale they were encoded with (only `10984X0003/AIGUAN`,
+      not core, has a training sd under the 1 mm floor).
+    - *Scoring and runners* (points 9, 11–13, 15–17): unique keys and distinct weeks in the scorer;
+      the naive benchmarks written before any skill is scored; the Kaggle runner reports failed steps
+      and keeps every session's partial work; its bundle carries the inputs of the baseline arm and of
+      pumping reconstruction 3; Chronos-2 smoke runs never write into the run of record; an incomplete
+      bibliography refresh leaves `paper/refs.bib` unchanged.
+    - *Point 8 (mean lags):* the reported a·n is the mean of the continuous Gamma law; the implemented
+      weekly kernel is truncated and normalised, so its mean delay differs (up to 75 days at the
+      longest lags, per the review; to be confirmed when the fix is made). The ladder's comparison
+      with published transit times is to use the implemented mean and peak; the twin's score 4
+      compares a·n with a·n (labelled).

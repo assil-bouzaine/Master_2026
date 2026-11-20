@@ -10,21 +10,35 @@ shaped it.
 3. (d) The verdict on the bracket cells follows (a).
 4. (e) The protocol with the better pumping recovery in most cells is recommended unless it loses
    more than 0.05 drought NSE; otherwise no recommendation.
-5. (f) The RQ2 table appears when hard and soft/none settings exist for the base cell.
+5. (f) The RQ2 table appears when hard and soft/none settings exist for the base cell, and reads
+   twin_rq2 alone when it holds all three settings (score 5 per well).
+Added 2026-11-20 (astra review points 5, 6 and 10), on invented numbers too:
+6. No verdict on incomplete grids: a cell under 20 worlds is "pending"; without the four complete
+   bracket cells (d) is pending, never "no bracket cell pays".
+7. Protocols: worlds are paired; tied cells are counted apart; a 6-6 split or 12 ties give no
+   recommendation; an unpaired cell keeps (e) pending.
+8. Score 6 is a count of worlds ("4 of 20 (20%)"), not a median of 0/1 flags.
+9. The loader renames the first worlds' score 5 (plain-wide) and stops on a cell whose worlds were
+   made with different settings.
 """
+import json
+import tempfile
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
-from src.analysis.twin_report import reading
+from src.analysis import twin_report as TR
+from src.analysis.twin_report import count, reading
 
 
-def world_rows(cell, setting, d_over_c, rec_d, rec_c, nse_d, n=20, spread=0.01, seed=0, **extra):
+def world_rows(cell, setting, d_over_c, rec_d, rec_c, nse_d, n=20, spread=0.01, seed=0, run="twin_map", **extra):
     # deterministic worlds: D / C spread evenly around its median (97.5 % quantile ≈ median + 1.9 spread)
     offsets = spread * np.linspace(-2.0, 2.0, n)
     e, u = cell
     rows = []
     for w in range(n):
-        rows.append({"run": "twin_map", "cell": f"e{e:g}_u{u:g}_p0.3_n0.25_rec_base", "world": w,
+        rows.append({"run": run, "cell": f"e{e:g}_u{u:g}_p0.3_n0.25_rec_base", "world": w,
                      "setting": setting, "dial_eps": e, "dial_u": u, "dial_pi": 0.3, "dial_nu": 0.25,
                      "dial_timing": "reconstructed", "dial_variant": np.nan,
                      "log_rmse_D_over_C": d_over_c + offsets[w],
@@ -33,11 +47,12 @@ def world_rows(cell, setting, d_over_c, rec_d, rec_c, nse_d, n=20, spread=0.01, 
     return rows
 
 
-def grid(d_over_c=lambda e, u: -0.1, rec=(0.2, 0.3), nse=0.6, setting="free", spread=0.01):
+def grid(d_over_c=lambda e, u: -0.1, rec=(0.2, 0.3), nse=0.6, setting="free", spread=0.01, n=lambda e, u: 20):
     rows = []
     for e in (0.0, 0.1, 0.25, 0.5):
         for u in (0.0, 0.3, 0.6):
-            rows += world_rows((e, u), setting, d_over_c(e, u), *rec, nse, spread=spread,
+            r = rec(e, u) if callable(rec) else rec
+            rows += world_rows((e, u), setting, d_over_c(e, u), *r, nse, spread=spread, n=n(e, u),
                                seed=int(100 * e + 10 * u))
     return rows
 
@@ -72,9 +87,80 @@ def test_rq2_table():
     rows = grid()
     for setting in ("free_none", "free_soft1"):
         rows += world_rows((0.1, 0.3), setting, -0.05, 0.2, 0.3, 0.6, violation_rate_D=0.2,
-                           intervention_sign_D=0.8)
+                           intervention_well_sign_D=0.8)
     text = reading(pd.DataFrame(rows))
     assert "(f) RQ2" in text and "free_soft1" in text and "free_none" in text
+    # twin_rq2 with all three settings: (f) reads it alone (the grid's "free" rows are left out)
+    for setting in ("free", "free_none", "free_soft1"):
+        rows += world_rows((0.1, 0.3), setting, -0.05, 0.2, 0.3, 0.6, run="twin_rq2",
+                           violation_rate_D=0.0, intervention_well_sign_D=0.9)
+    text = reading(pd.DataFrame(rows))
+    f = text.split("(f) RQ2")[1]
+    assert "| twin_rq2 |" in f and "| twin_map |" not in f and "| 20 | 0.900 [0.900, 0.900] |" in f, f
+
+
+def test_incomplete_grid():
+    # two cells outside the bracket only: (d) is pending, never "no bracket cell pays"
+    rows = [r for r in grid(d_over_c=lambda e, u: -0.04) if (r["dial_eps"], r["dial_u"]) in {(0.0, 0.0), (0.5, 0.6)}]
+    text = reading(pd.DataFrame(rows))
+    assert "no bracket cell pays" not in text and "pending: 0 of 4 bracket cells complete" in text, text
+    # a bracket cell with 19 worlds: its verdict and (d) wait
+    text = reading(pd.DataFrame(grid(d_over_c=lambda e, u: -0.04, n=lambda e, u: 19 if (e, u) == (0.1, 0.3) else 20)))
+    assert "pending (19 of 20 worlds)" in text and "pending: 3 of 4 bracket cells complete" in text, text
+    # ... but a complete bracket cell that pays is reported at once
+    text = reading(pd.DataFrame(grid(d_over_c=lambda e, u: -0.1 if (e, u) == (0.25, 0.6) else -0.04,
+                                     n=lambda e, u: 19 if (e, u) == (0.1, 0.3) else 20)))
+    assert "at least one bracket cell pays" in text
+
+
+def test_protocol_ties_and_splits():
+    a = grid(setting="free", rec=(0.25, 0.3), nse=0.60)
+    b = grid(setting="pooled_l0.1_fixed3000", rec=(0.25, 0.3), nse=0.60)        # identical: 12 ties
+    text = reading(pd.DataFrame(a + b))
+    assert "tied in 12" in text and "no recommendation by this rule" in text and "**free**" not in text, text
+    six = lambda e, u: (0.20, 0.3) if e < 0.2 else (0.30, 0.3)                  # noqa: E731 free wins 6 cells
+    b = grid(setting="pooled_l0.1_fixed3000", rec=(0.25, 0.3), nse=0.60)
+    text = reading(pd.DataFrame(grid(setting="free", rec=six, nse=0.60) + b))
+    assert "free in 6 cells, pooled_l0.1_fixed3000 in 6" in text and "strict majority" in text, text
+    # one cell where free has 19 worlds: the comparison waits
+    a = grid(setting="free", rec=(0.20, 0.3), nse=0.60, n=lambda e, u: 19 if (e, u) == (0.5, 0.0) else 20)
+    text = reading(pd.DataFrame(a + b))
+    assert "Pending: 12 of 12 cells compared, 1 with fewer than 20 paired worlds" in text, text
+
+
+def test_score6_count():
+    flags = pd.Series([1.0] * 4 + [0.0] * 16 + [np.nan] * 2)
+    assert count(flags) == "4 of 20 (20%)", count(flags)
+    assert count(pd.Series([np.nan])) == "—"
+
+
+def test_loader():
+    s = {"intervention_rel_error_D": 0.3, "intervention_sign_D": 0.9, "nse_drought_D": 0.5}
+    assert TR._plain_wide(s) == {"intervention_plain_rel_error_D": 0.3, "intervention_plain_sign_D": 0.9,
+                                 "nse_drought_D": 0.5}
+    config = {"dials": {"eps": 0.1}, "fits": ["free"], "arms": ["C", "D", "T"], "starts": [0, 1], "steps": 4000,
+              "export_release": "r1", "policy": "main", "kernel_weeks": 260, "conv": "fft"}
+    old = TR.RESULTS
+    with tempfile.TemporaryDirectory() as tmp:
+        cell = Path(tmp) / "twin_x" / "e0.1_cell"
+        cell.mkdir(parents=True)
+        rec = {"world": 0, "dials": {"eps": 0.1}, "realised": {}, "config": config,
+               "fits": {"free": {"intervention_rel_error_D": 0.3, "nse_drought_D": 0.5, "nse_drought_T": 0.6,
+                                 "recovery_pumping_D": 0.2}}}
+        (cell / "world_0.json").write_text(json.dumps(rec))
+        TR.RESULTS = Path(tmp)
+        try:
+            df = TR.load(["twin_x"])
+            assert "intervention_plain_rel_error_D" in df and "intervention_rel_error_D" not in df
+            (cell / "world_1.json").write_text(json.dumps(rec | {"world": 1, "config": config | {"steps": 3000}}))
+            try:
+                TR.load(["twin_x"])
+            except SystemExit as err:
+                assert "must not mix" in str(err)
+            else:
+                raise AssertionError("a cell mixing settings must stop the report")
+        finally:
+            TR.RESULTS = old
 
 
 if __name__ == "__main__":

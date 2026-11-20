@@ -62,12 +62,12 @@ import pandas as pd
 import torch
 import torch.nn.functional as Fn
 
-from src.config import TEST_PERIODS
+from src.config import DATASET_DIR, TEST_PERIODS
 from src.models import response as R
 from src.models.evaluate import MIN_WEEKS, RESULTS
-from src.models.features import build_panel
+from src.models.features import build_panel, river_series
 from src.models.manifest import code_version, write_manifest
-from src.models.routing import facility_volumes, load_edges, routed_inputs
+from src.models.routing import _matrix, facility_volumes, load_edges, routed_inputs
 
 TRUTH = ("recharge", "pumping", "river", "canal")
 SIGN = {"recharge": 1.0, "pumping": -1.0, "river": 1.0, "canal": 1.0}
@@ -90,6 +90,7 @@ OTHER = ("recharge", "river", "canal")
 PAIR = ["src", "dst", "weight", "distance_m"]
 STREAM = {"params": 1, "u": 2, "eps": 3, "hidden": 4, "omitted": 5, "noise": 6}
 CONV = "fft"            # the learner's convolution (src/models/response.py --conv; same numbers, faster)
+RIVER_RULE = "legacy"   # the river gap rule of every world (src/models/features.py river_series), pinned
 
 
 def load_base(policy="main", kernel_weeks=R.KERNEL_WEEKS):
@@ -107,9 +108,32 @@ def load_base(policy="main", kernel_weeks=R.KERNEL_WEEKS):
     ec, _ = load_edges("C", policy)
     ed, meta = load_edges("D", policy)
     keep = lambda e: e[e["dst"].isin(codes)].reset_index(drop=True)  # noqa: E731
+    vol = facility_volumes(weeks)
     return {"P": P, "codes": codes, "weeks": weeks, "split": split, "train": split[0] == "train",
-            "ec": keep(ec), "ed": keep(ed), "vol": facility_volumes(weeks), "K": kernel_weeks,
-            "export": meta["release"], "policy": policy}
+            "ec": keep(ec), "ed": keep(ed), "vol": vol, "K": kernel_weeks,
+            "export": meta["release"], "policy": policy, "river_rule": RIVER_RULE,
+            "inputs_sha256": inputs_sha256(P, vol, weeks, RIVER_RULE)}
+
+
+def inputs_sha256(P, vol, weeks, river_rule):
+    """Hash of what every world reuses besides the export: the panel's wells, weeks, splits, scale
+    and observed-head mask, the facilities' weekly volumes and the river series. Worlds of one cell
+    must share it (recorded from 2026-11-20; the first worlds have none)."""
+    import hashlib
+    h = hashlib.sha256()
+    key = P[["code_bss", "week", "split", "core", "mu", "sd"]].assign(obs=P["head"].notna())
+    h.update(pd.util.hash_pandas_object(key, index=False).to_numpy().tobytes())
+    h.update(np.ascontiguousarray(vol.reindex(index=weeks).to_numpy(dtype=float)).tobytes())
+    h.update("|".join(map(str, vol.columns)).encode())
+    splits = json.loads((DATASET_DIR / "splits.json").read_text())
+    h.update(np.ascontiguousarray(river_series(weeks, splits["train"][1], rule=river_rule)
+                                  .sort_index(axis=1).to_numpy(dtype=float)).tobytes())
+    return h.hexdigest()
+
+
+def _route(base_or_world, **kw):
+    """routed_inputs with the twin's pinned river rule."""
+    return routed_inputs(river_rule=base_or_world["river_rule"], **kw)
 
 
 def _gen(seed, purpose, i=0):
@@ -268,7 +292,7 @@ def make_world(base, seed, eps=0.1, u=0.3, pi=0.3, nu=0.25, timing="reconstructe
         imp = imputed_years(weeks)
         declared = [y for y in np.unique(weeks.year[train]) if y not in imp]
         vol_truth = hidden_variation(vol, imp, declared, _gen(seed, "hidden"))
-    route = lambda e, v: routed_inputs(edges=e, codes=codes, weeks=weeks, volumes=v)  # noqa: E731
+    route = lambda e, v: _route(base, edges=e, codes=codes, weeks=weeks, volumes=v)  # noqa: E731
     routed = {"truth": route(truth_edges, vol_truth), "C": route(base["ec"], vol), "D": route(d_edges, vol)}
     routed["T"] = routed["truth"] if vol_truth is vol else route(truth_edges, vol)
     edges = {"truth": truth_edges, "C": base["ec"], "D": d_edges, "T": truth_edges}
@@ -330,7 +354,7 @@ def make_world(base, seed, eps=0.1, u=0.3, pi=0.3, nu=0.25, timing="reconstructe
             "contrib": {s: contrib[:, r] for r, s in enumerate(TRUTH)}, "omitted": omitted, "noise": noise,
             "level": level[:, 0], "params": {"a": a, "n": n, "f": f, "gain": gain, "share": share, "phi": phi},
             "routed": routed, "edges": edges, "vol": vol, "vol_truth": vol_truth, "draws": rec,
-            "realised": realised}
+            "realised": realised, "river_rule": base["river_rule"]}
 
 
 def _nanmed(x):
@@ -339,17 +363,19 @@ def _nanmed(x):
     return float(np.median(x)) if len(x) else None
 
 
-def learner_data(base, world, arm, volumes=None):
+def learner_data(base, world, arm, volumes=None, routed=None):
     """The response model's data for one arm of a world: the synthetic heads with their own
-    training mean and sd, the arm's routed inputs (or the same edges under other `volumes`)."""
+    training mean and sd, the arm's routed inputs (or the same edges under other `volumes`, or
+    `routed` inputs given directly)."""
     P = base["P"].copy()
     T = len(world["weeks"])
     P["head"] = world["head"].reshape(-1)
     obs = np.where(world["split"] == "train", world["head"], np.nan)
     P["mu"] = np.repeat(np.nanmean(obs, 1), T)
     P["sd"] = np.repeat(np.nanstd(obs, 1, ddof=1), T)
-    routed = world["routed"][arm] if volumes is None else routed_inputs(
-        edges=world["edges"][arm], codes=world["codes"], weeks=world["weeks"], volumes=volumes)
+    if routed is None:
+        routed = world["routed"][arm] if volumes is None else _route(
+            world, edges=world["edges"][arm], codes=world["codes"], weeks=world["weeks"], volumes=volumes)
     return R.panel_arrays(P, base["K"], routed)
 
 
@@ -377,15 +403,42 @@ def fit(base, world, arm, mode="free", lam=0.0, starts=(0, 1), steps=4000, fixed
         stops.append(int(step))
     return {"arm": arm, "nets": nets, "names": nets[0].names, "pred": np.mean(preds, 0),
             "contrib_starts": np.stack(contribs), "lag": np.mean(lags, 0), "val": float(np.mean(best)),
-            "steps": stops, "seconds": round(time.time() - t0, 1), "gains": np.stack(gains)}
+            "steps": stops, "seconds": round(time.time() - t0, 1), "gains": np.stack(gains),
+            "states": [{k: v.detach().clone() for k, v in net.state_dict().items()} for net in nets]}
 
 
-def predict(base, world, fitted, volumes):
-    """Mean prediction of a fitted arm under other facility volumes (an intervention)."""
-    data = learner_data(base, world, fitted["arm"], volumes)
+def predict(base, world, fitted, volumes=None, routed=None):
+    """Mean prediction of a fitted arm under other facility volumes or other routed inputs (an
+    intervention)."""
+    data = learner_data(base, world, fitted["arm"], volumes, routed)
     X = {k: torch.from_numpy(v) for k, v in data["X"].items()}
     with torch.no_grad():
         return np.mean([data["mu"][:, :1] + net(X).numpy() for net in fitted["nets"]], 0)
+
+
+def per_well_cut(world, arm, volumes, cut=CUT):
+    """Score 5 as the plan defines it ("every true-edge facility of a well -20 % for the drought
+    years"): the routed inputs of `arm` when, for each well separately, only that well's true
+    pumping facilities are cut. The pumping inputs are weighted sums of facility volumes, so well
+    i's input changes only through the pairs (facility, i) that the arm shares with the truth; all
+    wells are done in one pass. Before 2026-11-20 score 5 cut the union of every well's true
+    facilities at once (astra review point 1), which also moves a well's input through facilities
+    that are true for other wells only; that version is kept as the "plain-wide" score."""
+    tr = world["edges"]["truth"]
+    tp = tr[tr["relation"] == "pumping"]
+    true_pairs = set(zip(tp["src"], tp["dst"]))
+    e = world["edges"][arm]
+    pe = e[e["relation"].isin(("pumping", "pumping_unattributed"))]
+    shared = pe[[(s, d) in true_pairs for s, d in zip(pe["src"], pe["dst"])]]
+    routed = dict(world["routed"][arm] if volumes is world["vol"] else
+                  _route(world, edges=e, codes=world["codes"], weeks=world["weeks"], volumes=volumes))
+    fac = sorted(shared["src"].unique())
+    if fac:
+        dr = drought(world["weeks"]).astype(float)
+        dvol = -cut * volumes.reindex(index=world["weeks"], columns=fac).fillna(0.0).to_numpy().T * dr[None, :]
+        for name, rel in (("pump_gw", "pumping"), ("pump_un", "pumping_unattributed")):
+            routed[name] = routed[name] + _matrix(shared, rel, world["codes"], fac) @ dvol
+    return routed
 
 
 def drought(weeks):
@@ -456,13 +509,18 @@ def score(base, world, fits):
             out[f"log_rmse_{arm}_over_C"], per_well[f"log_rmse_{arm}_over_C"] = _nanmed(lr[ok]), lr[ok]
     if "D" in fits and "T" in fits:
         out["log_rmse_D_over_T"] = _nanmed(np.log(rmse["D"] / rmse["T"])[ok])
-    # score 5: the facilities of the true pumping pairs -20 % during the drought
+    # score 5: the response to a -20 % cut of true-edge facilities in the drought, fitted against
+    # the true head change. "well" (the plan's definition, the score of record): each well's own
+    # true facilities, one well at a time; "plain" (descriptive, the only version before
+    # 2026-11-20): the union of every well's true facilities cut at once, so an arm's links to
+    # facilities that are true for other wells move its prediction too. The truth's head change is
+    # the same for both: in the truth a well feels only its own true facilities.
     tr = world["edges"]["truth"]
     true_fac = sorted(set(tr.loc[tr["relation"] == "pumping", "src"]))
     cut, cut_truth = world["vol"].copy(), world["vol_truth"].copy()
     for v in (cut, cut_truth):
         v.loc[dr, [c for c in true_fac if c in v.columns]] *= 1 - CUT
-    rt = routed_inputs(edges=tr, codes=world["codes"], weeks=weeks, volumes=cut_truth)
+    rt = _route(world, edges=tr, codes=world["codes"], weeks=weeks, volumes=cut_truth)
     Xt = {k: torch.from_numpy(v) for k, v in R.panel_arrays(base["P"], base["K"], rt)["X"].items()}
     p = world["params"]
     new = truth_contributions(Xt, p["a"], p["n"], p["f"], base["K"], world["dials"]["variant"], train, p["gain"])
@@ -470,12 +528,15 @@ def score(base, world, fits):
     has = ok & (np.abs(d_true) > 1e-6)
     out["true_pumping_wells"] = int(has.sum())
     for arm, f in fits.items():
-        d_fit = (predict(base, world, f, cut) - f["pred"])[:, dr].mean(1)
-        if has.any():
-            out[f"intervention_rel_error_{arm}"] = _nanmed(np.abs(d_fit[has] - d_true[has]) / np.abs(d_true[has]))
-            out[f"intervention_sign_{arm}"] = float(np.mean(np.sign(d_fit[has]) == np.sign(d_true[has])))
-        else:
-            out[f"intervention_rel_error_{arm}"] = out[f"intervention_sign_{arm}"] = None
+        changes = {"plain": predict(base, world, f, volumes=cut),
+                   "well": predict(base, world, f, routed=per_well_cut(world, arm, world["vol"]))}
+        for kind, pred_cut in changes.items():
+            d_fit = (pred_cut - f["pred"])[:, dr].mean(1)
+            if has.any():
+                out[f"intervention_{kind}_rel_error_{arm}"] = _nanmed(np.abs(d_fit[has] - d_true[has]) / np.abs(d_true[has]))
+                out[f"intervention_{kind}_sign_{arm}"] = float(np.mean(np.sign(d_fit[has]) == np.sign(d_true[has])))
+            else:
+                out[f"intervention_{kind}_rel_error_{arm}"] = out[f"intervention_{kind}_sign_{arm}"] = None
     return out, {k: _jsonable(v) for k, v in per_well.items()}
 
 
@@ -514,30 +575,74 @@ def parse_fit(spec):
     return key, mode, lam, fixed, signs, soft
 
 
+# What makes two worlds of a cell comparable: the same generator settings, inputs and fits. A world
+# file whose saved config differs in any of these is never reused nor mixed with new worlds (astra
+# review point 10, 2026-11-20); the code version is recorded per world, not compared (a scoring fix
+# does not change the fits).
+IDENTITY = ("dials", "fits", "arms", "starts", "steps", "export_release", "policy", "kernel_weeks", "conv")
+OPTIONAL = ("river_rule", "inputs_sha256")      # recorded from 2026-11-20: compared when both have them
+# 1: score 5 cut the union of the true facilities only ("intervention_*"); 2 (2026-11-20): score 5
+# per well ("intervention_well_*", the plan's definition) and plain-wide ("intervention_plain_*"),
+# and the fitted weights saved beside each world (world_<k>_nets.pt).
+SCORES_VERSION = 2
+
+
+def identity(config):
+    out = {k: json.loads(json.dumps(config.get(k), default=float)) for k in IDENTITY}
+    out.update({k: config[k] for k in OPTIONAL if config.get(k) is not None})
+    return out
+
+
+def identity_diff(config_a, config_b):
+    """The identity keys on which two world configs differ (OPTIONAL keys only when both have
+    them)."""
+    a, b = identity(config_a), identity(config_b)
+    return [k for k in IDENTITY if a[k] != b[k]] + [k for k in OPTIONAL if k in a and k in b and a[k] != b[k]]
+
+
+def check_identity(path, config):
+    """Stop if the world file at `path` was made with settings other than `config`'s."""
+    old = json.loads(path.read_text()).get("config", {})
+    a, b = identity(old), identity(config)
+    diff = identity_diff(old, config)
+    if diff:
+        raise SystemExit(f"{path} was made with other settings ({', '.join(diff)}: saved "
+                         f"{ {k: a[k] for k in diff} }, now { {k: b[k] for k in diff} }); use another --run")
+
+
 def run_cell(base, dials, worlds, run, fits=("free",), starts=(0, 1), steps=4000, arms=ARMS):
     out = RESULTS / run / cell_tag(dials)
     out.mkdir(parents=True, exist_ok=True)
     config = {"dials": dials, "fits": list(fits), "arms": list(arms), "starts": list(starts),
               "steps": steps, "export_release": base["export"], "policy": base["policy"],
-              "kernel_weeks": base["K"], "conv": CONV, "design": "docs/analysis_plan.md §14 item 19 (+ 2026-11-16)"}
+              "kernel_weeks": base["K"], "conv": CONV, "river_rule": base["river_rule"],
+              "inputs_sha256": base["inputs_sha256"], "design": "docs/analysis_plan.md §14 item 19 (+ 2026-11-16)"}
     done = [int(f.stem.split("_")[1]) for f in out.glob("world_*.json")]
+    for f in sorted(out.glob("world_*.json")):          # every world already in the cell
+        check_identity(f, config)
     for w in worlds:
         path = out / f"world_{w}.json"
         if path.exists():
+            check_identity(path, config)
             continue
         world = make_world(base, w, **dials)
         rec = {"world": w, "dials": dials, "realised": world["realised"], "fits": {}, "per_well": {},
-               "config": config, "src_sha256": code_version()["src_sha256"]}
+               "config": config, "src_sha256": code_version()["src_sha256"], "scores_version": SCORES_VERSION}
+        states = {}
         for spec in fits:
             key, mode, lam, fixed, signs, soft = parse_fit(spec)
             fitted = {arm: fit(base, world, arm, mode, lam, starts, steps, fixed, signs, soft) for arm in arms}
             rec["fits"][key], rec["per_well"][key] = score(base, world, fitted)
+            states[key] = {arm: f["states"] for arm, f in fitted.items()}
             s = rec["fits"][key]
             num = lambda x, f="+.3f": "—" if x is None else format(x, f)  # noqa: E731
             print(f"  {cell_tag(dials)} world {w} {key}: log RMSE D/C {num(s.get('log_rmse_D_over_C'))}, "
                   f"T/C {num(s.get('log_rmse_T_over_C'))}; pumping recovery "
                   + " ".join(f"{a} {num(s[f'recovery_pumping_{a}'], '.2f')}" for a in arms), flush=True)
-        tmp = path.with_suffix(".tmp")
+        nets, tmp_nets = out / f"world_{w}_nets.pt", out / f"world_{w}_nets.pt.tmp"
+        torch.save({"world": w, "starts": list(starts), "states": states}, tmp_nets)
+        tmp_nets.replace(nets)                        # the fitted weights: scores can be recomputed
+        tmp = path.with_suffix(".tmp")                # the world file last: it marks the world done
         tmp.write_text(json.dumps(rec, indent=1, default=float))
         tmp.replace(path)
         done.append(w)

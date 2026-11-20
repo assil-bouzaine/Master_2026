@@ -116,7 +116,9 @@ for s in $STEPS; do
                     done
                     waitall "${pids[@]}" ) ;;
     twin_slices)  # the slices of item 19 (pi, nu, timing, variants I, O, S, G) from the base cell,
-                  # both protocols; RQ2's none and soft on arms D and T
+                  # both protocols; then RQ2 on arms D and T: hard ("free"), none and soft on the same
+                  # worlds (hard added 2026-11-20, so that RQ2's reading has score 5 per well for all
+                  # three settings: astra review point 1)
                   ( export PFE_THREADS=1; T="$PY -m src.models.twin"; pids=(); rc=0
                     for part in 0-4 5-9 10-14 15-19; do
                       $T --run twin_slices --slices --worlds $part --fits free pooled:0.1:3000 &
@@ -125,9 +127,9 @@ for s in $STEPS; do
                     waitall "${pids[@]}" || rc=1
                     pids=()
                     for part in 0-9 10-19; do
-                      $T --run twin_rq2 --worlds $part --fits free+none free+soft1 --arms D T &
+                      $T --run twin_rq2 --worlds $part --fits free free+none free+soft1 --arms D T &
                       pids+=("$!")
-                      $T --run twin_rq2 --slices --worlds $part --fits free+none free+soft1 --arms D T &
+                      $T --run twin_rq2 --slices --worlds $part --fits free free+none free+soft1 --arms D T &
                       pids+=("$!")
                     done
                     waitall "${pids[@]}" || rc=1

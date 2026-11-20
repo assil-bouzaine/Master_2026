@@ -16,9 +16,11 @@ tests/test_replay.py rebuilds the models from it and checks they give the stored
 """
 import hashlib
 import json
+import os
 import platform
 import subprocess
 import sys
+from contextlib import contextmanager
 from datetime import datetime, timezone
 
 from src.config import DATASET, DATASET_DIR, RAW, ROOT
@@ -83,18 +85,42 @@ def other_input_hashes():
     return {k: sha256_file(p)[:16] for k, p in OTHER_INPUTS.items() if p.exists()}
 
 
+@contextmanager
+def _locked(folder):
+    """An exclusive lock on folder/.manifest.lock while a manifest is read, merged and written:
+    the twin's workers update the same cell's manifest in parallel (astra review point 14,
+    2026-11-20), and without the lock two writers that read the same state each drop the other's
+    record. fcntl exists on Linux (laptop, Kaggle, Colab); elsewhere no lock is taken."""
+    try:
+        import fcntl
+    except ImportError:                       # pragma: no cover - not on the project's machines
+        yield
+        return
+    with open(folder / ".manifest.lock", "a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+
 def write_manifest(out, config, seeds_done=()):
-    """Create or update out/manifest.json; a resumed run appends its session."""
+    """Create or update out/manifest.json; a resumed run appends its session. The read-merge-write
+    runs under a lock and the file is replaced atomically, so parallel writers keep every record."""
     f = out / "manifest.json"
-    m = json.loads(f.read_text()) if f.exists() else {"created": None, "sessions": []}
-    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    m["created"] = m["created"] or now
-    m["dataset"] = {"version": DATASET, "files_sha256_16": dataset_hashes(),
-                    "other_inputs_sha256_16": other_input_hashes()}
-    m["config"] = json.loads(json.dumps(config, default=str))
-    m["seeds_done"] = sorted(set(m.get("seeds_done", [])) | set(seeds_done))
-    m["sessions"].append({"at": now, "code": code_version(), "environment": environment()})
-    f.write_text(json.dumps(m, indent=1))
+    environment_now, code_now = environment(), code_version()     # outside the lock: git is slow
+    hashes, other = dataset_hashes(), other_input_hashes()
+    with _locked(out):
+        m = json.loads(f.read_text()) if f.exists() else {"created": None, "sessions": []}
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        m["created"] = m["created"] or now
+        m["dataset"] = {"version": DATASET, "files_sha256_16": hashes, "other_inputs_sha256_16": other}
+        m["config"] = json.loads(json.dumps(config, default=str))
+        m["seeds_done"] = sorted(set(m.get("seeds_done", [])) | set(seeds_done))
+        m["sessions"].append({"at": now, "code": code_now, "environment": environment_now})
+        tmp = f.with_name(f".manifest.{os.getpid()}.tmp")
+        tmp.write_text(json.dumps(m, indent=1))
+        os.replace(tmp, f)
     return m
 
 

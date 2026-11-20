@@ -47,6 +47,9 @@ doi:10.1111/gwat.12925), but written in PyTorch and fitted for every well at onc
   weighted), the unattributed pumping of arm D as its own stress, the river from its gauge edges,
   the canal where it has a canal edge. A well without an edge for a relation has no such stress.
   Two runs that differ only in --arm differ only in the edges (analysis plan §10).
+  For B7, --recharge-relation recharge_unitwide selects arm D's cells over the unit's outcrop
+  across the forcing extent. --recharge drainc uses soil drainage as the single recharge proxy.
+  Drainage is part of the effective-rain surplus (analysis plan §14 item 15).
   --signs structure (default): recharge, river and canal gains >= 0, both pumping gains <= 0, as
   in rungs 1-2; --signs approved: only the signs the export policy has approved (pumping; the
   recharge, river and canal signs are pending at Gate 3) are built in, the other gains are free.
@@ -129,8 +132,9 @@ SIGN_SETS = {"structure": SIGN,
              "none": {s: 0.0 for s in SIGN}}      # RQ2 "none" (and "soft" with --soft)
 WINTER_MONTHS = (1, 2, 3, 10, 11, 12)   # the permanent part of pumping is their mean, per year
 # fixed input scales (the same for every well, so that shared gains mean the same thing):
-# rain, ETP, PE in cm/week; pumping in 1e5 m3/week; canal volume in 10 Mm3/week
+# rain, ETP, PE and DRAINC in cm/week; pumping in 1e5 m3/week; canal volume in 10 Mm3/week
 SCALE = {"rain": 10.0, "ETP": 10.0, "PE": 10.0, "pump_gw": 100.0, "canal": 10.0}
+SCALE["DRAINC"] = SCALE["PE"]
 RAW_INPUTS = ("rain", "ETP", "PE", "pump_gw", "canal")
 SCALE |= {"pump_pp": SCALE["pump_gw"], "pump_sp": SCALE["pump_gw"]}   # derived in panel_arrays
 SCALE |= {"pump_un": SCALE["pump_gw"], "river": 1.0}                  # routed inputs (--arm)
@@ -241,7 +245,12 @@ class ResponseModel(nn.Module):
 
     def stresses(self, X, f):
         """X: dict of (N, T + K - 1) scaled inputs, padded on the left -> (N, R, T + K - 1)."""
-        rch = X["PE"] if self.recharge == "pe" else X["rain"] - f[:, None] * X["ETP"]
+        if self.recharge == "drainc":
+            rch = X["DRAINC"]
+        elif self.recharge == "pe":
+            rch = X["PE"]
+        else:
+            rch = X["rain"] - f[:, None] * X["ETP"]
         return torch.stack([rch] + [X[STRESS_INPUT[s]] for s in self.names[1:]], dim=1)
 
     def contributions(self, X):
@@ -303,12 +312,17 @@ def kernel_moments(a, n, kernel_weeks):
     return np.asarray(mean), np.asarray(weights.argmax(axis=-1))
 
 
-def panel_arrays(P, kernel_weeks=KERNEL_WEEKS, routed=None):
+def _input_columns(columns, recharge):
+    return (*columns, "DRAINC") if recharge == "drainc" else columns
+
+
+def panel_arrays(P, kernel_weeks=KERNEL_WEEKS, routed=None, *, recharge="linear"):
     """Panel -> wells, weeks, padded inputs and targets.
     Inputs: dict name -> (N, T + K - 1) float32, scaled by SCALE, gaps and the K - 1 weeks
     before the first week filled with the well's training mean of that input. With `routed`
     (src.models.routing.routed_inputs of a graph arm) the weather, pumping, river and canal series
-    come from it instead of the panel's columns."""
+    come from it instead of the panel's columns. Soil drainage is read only for
+    `recharge="drainc"`."""
     P = P.sort_values(["code_bss", "week"])
     codes = list(dict.fromkeys(P["code_bss"]))
     weeks = np.sort(P["week"].unique())
@@ -317,13 +331,15 @@ def panel_arrays(P, kernel_weeks=KERNEL_WEEKS, routed=None):
     split = piv("split")
     train = split == "train"
     X = {}
-    raw = {c: piv(c).astype(np.float64) / SCALE[c] for c in RAW_INPUTS}
+    panel_columns = _input_columns(RAW_INPUTS, recharge) if routed is None else RAW_INPUTS
+    raw = {c: piv(c).astype(np.float64) / SCALE[c] for c in panel_columns}
     if routed is not None:
         if not (np.array_equal(pd.DatetimeIndex(routed["weeks"]).to_numpy(), pd.DatetimeIndex(weeks).to_numpy())):
             raise ValueError("the routed inputs are on other weeks than the panel")
         row = {c: i for i, c in enumerate(routed["codes"])}
         idx = [row[c] for c in codes]
-        raw |= {c: np.asarray(routed[c], dtype=np.float64)[idx] / SCALE[c] for c in ROUTED}
+        raw |= {c: np.asarray(routed[c], dtype=np.float64)[idx] / SCALE[c]
+                for c in _input_columns(ROUTED, recharge)}
     # permanent and seasonal parts of pumping (--pumping split): per well and calendar year, the
     # mean of the winter weeks, constant within the year; the rest, not below 0
     wk = pd.DatetimeIndex(weeks)
@@ -481,14 +497,18 @@ def main():
     ap.add_argument("--lr", type=float, default=0.05)
     ap.add_argument("--amax", type=float, default=A_MAX, help="upper bound of the Gamma scale, weeks")
     ap.add_argument("--kernel-weeks", type=int, default=KERNEL_WEEKS)
-    ap.add_argument("--recharge", choices=["linear", "pe"], default="linear",
-                    help="linear: rain - f * ETP (as Pastas); pe: SIM2 effective rainfall")
+    ap.add_argument("--recharge", choices=["linear", "pe", "drainc"], default="linear",
+                    help="Use rain - f * ETP with linear (default), SIM2 effective rainfall "
+                         "with pe, or SIM2 soil drainage with drainc (B7).")
     ap.add_argument("--pumping", choices=["sum", "split"], default="sum",
                     help="split: a permanent and a seasonal pumping stress (sensitivity)")
     ap.add_argument("--arm", type=_arm_name, default=None,
                     help="route the stresses by the edges of this graph arm: C or D (src.kg.export), "
                          "or a control E_degree:<draw>, E_distance:<draw>, F_random:<draw>, F_complete "
                          "(src.kg.controls; analysis plan §14 item 20)")
+    ap.add_argument("--recharge-relation", choices=["recharge", "recharge_unitwide"],
+                    help="Requires --arm. Use recharge for the local cells (default) or recharge_unitwide "
+                         "for all outcrop cells in the forcing extent (B7 sensitivity for arm D).")
     ap.add_argument("--policy", default="main", help="with --arm: the export policy")
     ap.add_argument("--pumping-reconstruction", type=int, choices=[1, 2, 3], default=1,
                     help="with --arm only: 1 current, 2 flat drinking water, 3 crop calendar; "
@@ -530,6 +550,12 @@ def main():
         ap.error("--static-control, --static-net and --static-l2 need --statics")
     if args.statics is not None and args.mode == "free":
         ap.error("--statics needs --mode pooled or shared (free deviations absorb the facts)")
+    recharge_relation = args.recharge_relation
+    if recharge_relation is not None and args.arm is None:
+        ap.error("--recharge-relation needs --arm")
+    relation_override = recharge_relation not in (None, "recharge")
+    if not relation_override:   # equivalent options use the same run fingerprint
+        del args.recharge_relation
     reconstruction = args.pumping_reconstruction
     if reconstruction != 1 and args.arm is None:
         ap.error("--pumping-reconstruction needs --arm; the panel path is unchanged")
@@ -583,14 +609,21 @@ def main():
     routed, extra = None, None
     if arm is not None:
         from src.models.routing import coverage, routed_inputs
-        routed = routed_inputs(arm, policy, reconstruction=reconstruction)
+        route_options = {"reconstruction": reconstruction}
+        if relation_override:
+            route_options["recharge"] = recharge_relation
+        if args.recharge == "drainc":
+            route_options["include_drainc"] = True
+        routed = routed_inputs(arm, policy, **route_options)
         core_of = P.drop_duplicates("code_bss").set_index("code_bss")["core"]
         keep = [c in core_of.index for c in routed["codes"]]
         cov = {k: {"wells": int(routed[f"has_{k}"][keep].sum())} for k in coverage(routed, [True] * len(keep))}
         extra = {"arm": arm, "export": routed["export"], "wells_with_relation": cov}
+        if relation_override:
+            extra["recharge_relation"] = recharge_relation
         print(f"arm {arm} ({policy}): wells with each relation {{{', '.join(f'{k} {v['wells']}' for k, v in cov.items())}}} "
               f"of {sum(keep)}", flush=True)
-    data = panel_arrays(P, args.kernel_weeks, routed)
+    data = panel_arrays(P, args.kernel_weeks, routed, recharge=args.recharge)
     Z0 = None
     if statics is not None:
         from src.models.statics import standardise, static_table
@@ -613,7 +646,7 @@ def main():
                                              "l2": static_l2, "standardisation": zstats}}
     out = RESULTS / run / (f"fold_{args.fold}" if args.fold is not None else "")
     out.mkdir(parents=True, exist_ok=True)
-    inputs = [f"{c}/{SCALE[c]:g}" for c in (ROUTED if arm else RAW_INPUTS)]
+    inputs = [f"{c}/{SCALE[c]:g}" for c in _input_columns(ROUTED if arm else RAW_INPUTS, args.recharge)]
     fp_extra = {}
     if extra and "export" in extra:
         fp_extra["export_release"] = extra["export"]["release"]

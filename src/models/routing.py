@@ -11,7 +11,8 @@ so two runs that differ only in the arm differ only in which sources reach each 
 plan §10, the experiment contract; §14 item 18, rung 4).
 
     stress               series of a well
-    rain, ETP, PE        weighted mean over its recharge-edge cells (weights renormalised to 1)
+    rain, ETP, PE         weighted mean over its recharge-edge cells (weights renormalised to 1)
+    DRAINC               the same mean for soil drainage, when requested for B7
     pump_gw              sum over its pumping edges of weight x the facility's weekly volume
     pump_un              the same over its "pumping_unattributed" edges (arm D; zero in arm C,
                          whose distance rule connects every facility): the explicit unattributed
@@ -38,7 +39,8 @@ from src.config import DATASET, DATASET_DIR, INTERIM, PROCESSED
 from src.dataset.pumping import canal_series, seasonal_drinking_water
 from src.models.features import river_series
 
-WEATHER = ("rain", "ETP", "PE")
+DEFAULT_WEATHER = ("rain", "ETP", "PE")
+WEATHER = (*DEFAULT_WEATHER, "DRAINC")
 EXPORT = PROCESSED / "kg"
 RECONSTRUCTIONS = {1: "current", 2: "flat drinking water", 3: "crop calendar"}
 
@@ -151,12 +153,14 @@ def facility_volumes(weeks, facilities=None, reconstruction=1):
 
 
 def routed_inputs(arm=None, policy="main", edges=None, codes=None, weeks=None, recharge="recharge",
-                  volumes=None, reconstruction=1, river_rule="declared"):
+                  volumes=None, reconstruction=1, river_rule="declared", *, include_drainc=False):
     """Inputs of the wells `codes` on `weeks` (default: the dataset's wells and the panel's
     weeks) routed by the edges of `arm` (or by an explicit `edges` table with the export's
     columns). `recharge` names the relation used for the weather ("recharge", or
-    "recharge_unitwide" for arm D's sensitivity). `reconstruction` selects the pumping and canal
-    table for every arm, including baseline inputs and graph controls. `river_rule`: the gap rule
+    "recharge_unitwide" for arm D's sensitivity). `include_drainc` adds soil drainage over those
+    cells as a replacement recharge proxy (analysis plan §14 item 15).
+    `reconstruction` selects the pumping and canal table for every arm, including baseline
+    inputs and graph controls. `river_rule` selects the gap rule
     of the river series (src.models.features.river_series): "declared" (analysis plan §7b; every
     real-data arm), "legacy" only for the twin, which pins the series of its first worlds."""
     splits = json.loads((DATASET_DIR / "splits.json").read_text())
@@ -182,7 +186,8 @@ def routed_inputs(arm=None, policy="main", edges=None, codes=None, weeks=None, r
     out["has_recharge"] = tot[:, 0] > 0
     Wn = np.divide(W, tot, out=np.zeros_like(W), where=tot > 0)
     f = forcing[forcing["cell_id"].isin(cells)]
-    for v in WEATHER:
+    weather = WEATHER if include_drainc else DEFAULT_WEATHER
+    for v in weather:
         series = f.pivot(index="week", columns="cell_id", values=v).reindex(index=weeks, columns=cells)
         out[v] = Wn @ series.to_numpy(dtype=float).T                     # (N, T)
     # pumping: weighted sums of the facilities' weekly volumes (thousand m3/week)

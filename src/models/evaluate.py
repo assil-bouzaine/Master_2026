@@ -1,7 +1,7 @@
 """Shared evaluation: every model writes predictions in one format, scored here.
 
 Prediction format (results/<run_id>/predictions.parquet), one row per
-well x week x task:
+well x week x task x horizon:
     code_bss, week, pred, task, horizon
     task    = "simulation" (inputs: weather + pumping only, no observed heads)
               or "forecast" (observed heads known up to week - horizon)
@@ -19,7 +19,7 @@ Variants (test periods only for the last two): "all" weeks; "validated", weeks w
 than half "Non qualifié" days (the v1-v3 definition, kept for comparison); "strict" (added
 2026-10-23, analysis plan v2), weeks whose every value is qualified "Correcte". Values
 qualified "Incorrecte" are dropped before the weekly mean from dataset v4 on; none fall in
-the test period of v3. n_weeks gives the coverage of each variant, and `support` (added
+the test period of v3. n_weeks counts the distinct weeks of each variant, and `support` (added
 2026-10-27, Codex review of 2026-10-26 §2) a 16-hex digest of its exact scored weeks: two runs
 are paired on the same observations of a well only when their digests agree, since equal
 counts can hide different weeks (src.analysis.stats.paired). Skill is scored on the weeks of
@@ -61,6 +61,8 @@ MIN_WEEKS = 26  # a well needs half a year of weeks in a period to be scored
 BENCHMARK = {"simulation": "naive_climatology", "forecast": "naive_anomaly_persist"}
 PLAIN_GROUPS = ("recent alluvium", "ancient alluvium", "Pliocene multilayer")
 METRICS = ["NSE", "KGE", "RMSE", "bias", "r", "alpha", "beta_n", "skill"]
+PREDICTION_KEYS = ["code_bss", "week", "task", "horizon"]
+SCORE_COLUMNS = ["code_bss", "task", "horizon", "split", "variant", "n_weeks", "support"] + METRICS
 
 
 def nse(obs, sim):
@@ -118,16 +120,28 @@ def benchmark_predictions(tasks):
     return pd.concat(parts, ignore_index=True) if parts else None
 
 
+def _check_unique_keys(table, name, keys):
+    """Reject repeated observations so a week cannot gain weight or coverage."""
+    duplicated = table.loc[table.duplicated(keys, keep=False), keys].drop_duplicates()
+    if not duplicated.empty:
+        raise ValueError(f"{name}: {len(duplicated)} duplicated keys on {tuple(keys)}; "
+                         f"first five: {duplicated.head(5).to_dict('records')}")
+
+
 def score(pred):
     """Per well x task x horizon x period x variant metrics."""
+    _check_unique_keys(pred, "predictions", PREDICTION_KEYS)
     heads = pd.read_parquet(DS / "heads_weekly.parquet")
+    _check_unique_keys(heads, "heads", ["code_bss", "week"])
     wells = pd.read_parquet(DS / "wells.parquet")
     splits = json.loads((DS / "splits.json").read_text())
+    bench = benchmark_predictions(pred["task"].unique())
+    if bench is not None:
+        _check_unique_keys(bench, "benchmark", PREDICTION_KEYS)
     d = pred.merge(heads[["code_bss", "week", "head", "share_not_validated"]],
                    on=["code_bss", "week"], how="inner").dropna(subset=["pred", "head"])
-    bench = benchmark_predictions(d["task"].unique())
     if bench is not None:
-        d = d.merge(bench, on=["code_bss", "week", "task", "horizon"], how="left")
+        d = d.merge(bench, on=PREDICTION_KEYS, how="left")
     else:
         d["bench"] = np.nan
     d = with_periods(d, splits)
@@ -149,24 +163,25 @@ def score(pred):
     rows = []
     for variant, dd in variants:
         for (code, task, h, split), g in dd.groupby(["code_bss", "task", "horizon", "split"]):
-            if len(g) < MIN_WEEKS:
+            n_weeks = g["week"].nunique()
+            if n_weeks < MIN_WEEKS:
                 continue
             o, s = g["head"].to_numpy(), g["pred"].to_numpy()
             k, r, alpha, beta_n = kge_parts(o, s)
             gb = g.dropna(subset=["bench"])
             skill = np.nan
-            if len(gb) >= MIN_WEEKS:
+            if gb["week"].nunique() >= MIN_WEEKS:
                 ob = gb["head"].to_numpy()
                 den = np.sum((gb["bench"].to_numpy() - ob) ** 2)
                 if den > 0:
                     skill = 1 - np.sum((gb["pred"].to_numpy() - ob) ** 2) / den
             rows.append({"code_bss": code, "task": task, "horizon": h, "split": split,
-                         "variant": variant, "n_weeks": len(g), "support": support_hash(g["week"]),
+                         "variant": variant, "n_weeks": n_weeks, "support": support_hash(g["week"]),
                          "NSE": nse(o, s), "KGE": k,
                          "RMSE": float(np.sqrt(np.mean((s - o) ** 2))),
                          "bias": float(np.mean(s - o)), "r": r, "alpha": alpha,
                          "beta_n": beta_n, "skill": skill})
-    m = pd.DataFrame(rows)
+    m = pd.DataFrame(rows, columns=SCORE_COLUMNS)
     return m.merge(wells[["code_bss", "group", "core", "libelle_pe"]], on="code_bss", how="left")
 
 

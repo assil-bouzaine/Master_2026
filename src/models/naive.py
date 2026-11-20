@@ -61,6 +61,8 @@ def main():
         out.mkdir(parents=True, exist_ok=True)
         pd.concat(parts, ignore_index=True).dropna().to_parquet(out / "predictions.parquet",
                                                                 index=False)
+    # Every benchmark must exist before the first forecast skill is scored.
+    for run_id in runs:
         s = evaluate_run(run_id)
         core = s[(s["group"] == "all core") & (s["variant"] == "all")]
         print(f"== {run_id}")

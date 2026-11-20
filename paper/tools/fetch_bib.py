@@ -1,8 +1,8 @@
 """Build the paper's bibliography from the checked reading list (CLAUDE.md §1a).
 
-Cache each provider record with its fetch date. Offline runs rebuild from the
-local cache and list missing entries. Keep the provider's fields and rewrite
-only the entry key.
+Cache each provider record with its fetch date. Replace the bibliography only
+when every reading-list identifier has a readable record. Keep the provider's
+fields and rewrite only the entry key.
 
     PYTHONIOENCODING=utf-8 PFE_DATASET=v4 .venv/bin/python paper/tools/fetch_bib.py --offline
 """
@@ -202,21 +202,33 @@ def _render(entries):
     return "\n\n".join(rewritten[key] for key in sorted(rewritten)) + ("\n" if rewritten else ""), len(rewritten)
 
 
-def main(argv=None):
+def main(argv=None, reading_list=READING_LIST, cache=CACHE, refs=REFS):
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--offline", action="store_true", help="use only the cached records")
+    parser.add_argument("--partial-out", type=Path,
+                        help="write an incomplete bibliography here, leaving refs.bib unchanged")
     args = parser.parse_args(argv)
-    wanted = collect_identifiers(READING_LIST)
-    missing = [identifier for identifier in wanted if not cache_path(CACHE, identifier).is_file()]
-    failed_fetches = _fetch_records(missing, CACHE) if missing and not args.offline else 0
+    if args.partial_out is not None and args.partial_out.resolve() == refs.resolve():
+        parser.error("--partial-out must differ from refs.bib")
+    wanted = collect_identifiers(reading_list)
+    missing = [identifier for identifier in wanted if not cache_path(cache, identifier).is_file()]
+    if missing and not args.offline:
+        _fetch_records(missing, cache)
+    entries, failed_cache = _cached_entries(cache)
+    available = {record[0] for group in entries.values() for record in group}
+    missing = [identifier for identifier in wanted if identifier not in available]
     for identifier in missing:
-        if not cache_path(CACHE, identifier).is_file():
-            print(f"Missing {identifier}")
-    entries, failed_cache = _cached_entries(CACHE)
+        print(f"Missing {identifier}")
     content, written = _render(entries)
-    _write_complete(REFS, content)
-    print(f"Wrote {written} entries to {REFS} from {len(wanted)} reading-list identifiers")
-    return int(bool(failed_fetches or failed_cache))
+    if missing or failed_cache:
+        if args.partial_out is not None:
+            _write_complete(args.partial_out, content)
+            print(f"Wrote {written} entries to {args.partial_out} from {len(wanted)} reading-list identifiers")
+        print(f"refs.bib left unchanged: {len(wanted) - len(missing)} of {len(wanted)} identifiers have a record")
+        return 2
+    _write_complete(refs, content)
+    print(f"Wrote {written} entries to {refs} from {len(wanted)} reading-list identifiers")
+    return 0
 
 
 if __name__ == "__main__":

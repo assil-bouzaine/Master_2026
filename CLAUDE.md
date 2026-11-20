@@ -550,8 +550,11 @@ notebooks/       exploration only; anything that matters moves into src/
   dry-run on Python 3.13.
 
 **Next, in order (2026-11-20):**
-1. **Review T13 (cxb: implemented kernel lags, ladder report regenerated) and T08 (cxa: Phase 4
-   Kaggle steps, locked until `P4_CONFIRMED=1`, dry run only)**, commit them.
+1. ✅ T08 (Phase 4 steps `p4_B1`…`p4_B7`, locked until `P4_CONFIRMED=1`; `P4_DRYRUN=1` prints),
+   T13 (implemented kernel lags; review point 8 confirmed), T15 (`kaggle_cpu.py push --env KEY=VALUE`:
+   the way `P4_CONFIRMED` and the `P4_*` settings reach the kernel) reviewed and committed.
+   **Open: T14 (cxa: B7's `--recharge-relation recharge_unitwide` and `--recharge drainc`)**; when
+   committed, enable B7's two commented commands in `scripts/run_v4_cpu.sh` (`p4_B7`).
 2. **The twin's last session:** `python scripts/kaggle_cpu.py status`; when COMPLETE, `pull` (now
    staged: validates, merges into `results/_kaggle_cpu/state`, exits 1 on a failed step), then
    `PFE_DATASET=v4 python -m src.analysis.twin_report twin_map twin_slices twin_rq2`; read (f) RQ2

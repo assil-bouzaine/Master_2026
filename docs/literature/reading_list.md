@@ -228,6 +228,20 @@ paper it is cited for.
 | Poveda-Villalón, Gómez-Pérez & Suárez-Figueroa, *OOPS! (OntOlogy Pitfall Scanner!)*, *IJSWIS* 10(2), 2014, **doi:10.4018/ijswis.2014040102** | CITE | The pitfall scan (`src/kg/oops_scan.py`). |
 | Hamilton, Ying & Leskovec, *Inductive Representation Learning on Large Graphs* (GraphSAGE), NeurIPS 2017, **arXiv:1706.02216** | CITE | Mean aggregation over neighbours, the message passing of rung 5 (`src/models/message.py`). |
 
+### Added 2026-11-20 (paper section 3, the knowledge graph; Crossref records checked that day)
+
+Standards and tools the ontology already uses, cited in `paper/sections/knowledge_graph.tex`. Each DOI
+was resolved on Crossref on 2026-11-20 (authors, title, venue and year match). W3C and OGC documents
+without a DOI are in `paper/refs_standards.bib`, their URLs opened the same day.
+
+| Janowicz, Haller, Cox, Le Phuoc & Lefrançois, *SOSA: A lightweight ontology for sensors, observations, samples, and actuators*, *J. Web Semant.* 56, 2019, **doi:10.1016/j.websem.2018.06.003** | CITE | Observations of annual volumes, crop areas and demand (ontology design §4.2). |
+| Raskin & Pan, *Knowledge representation in the semantic web for Earth and environmental terminology (SWEET)*, *Comput. Geosci.* 31, 2005, **doi:10.1016/j.cageo.2004.12.004** | CITE | SWEET, the alignment target of the aquifer types. |
+| Glimm, Horrocks, Motik, Stoilos & Wang, *HermiT: An OWL 2 Reasoner*, *J. Autom. Reason.* 53, 2014, **doi:10.1007/s10817-014-9305-1** | CITE | Consistency and the alignment ledger's entailment checks (`tests/test_ontology.py`). |
+| Kazakov, Krötzsch & Simančík, *The Incredible ELK*, *J. Autom. Reason.* 53, 2014 (online 2013), **doi:10.1007/s10817-013-9296-3** | CITE | The fast consistency gate. |
+| Jackson et al., *ROBOT: A Tool for Automating Ontology Workflows*, *BMC Bioinformatics* 20, 2019, **doi:10.1186/s12859-019-3002-3** | CITE | Runs the reasoners and the report profile. |
+| Caracciolo et al., *The AGROVOC Linked Dataset*, *Semantic Web* 4, 2013, **doi:10.3233/SW-130106** | CITE | The crop vocabulary of task 12.9. |
+| Car & Homburg, *GeoSPARQL 1.1: Motivations, Details and Applications of the Decadal Update to the Most Important Geospatial LOD Standard*, *ISPRS Int. J. Geo-Inf.* 11, 2022, **doi:10.3390/ijgi11020117** | CITE | GeoSPARQL 1.1 (geometry, spatial relations). |
+
 ## 3. Reading order (about 3 weeks, alongside Phase 1)
 
 1. Taccari 2024 → Wu 2025 (E3) → Heudorfer 2024 → Pastas 2019. This is how our

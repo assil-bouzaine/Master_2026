@@ -1,14 +1,175 @@
-% Sources: CLAUDE.md §3 “Knowledge side”, §7 step 12; docs/analysis_plan.md §10, §14 items 14–17.
-\section{The LULC-Water knowledge graph}
+% Sources: CLAUDE.md §3 “Knowledge side”, §7 step 12; docs/ontology_design.md; docs/competency_questions.md;
+% docs/ontology_term_usage.md; docs/oops_report.md; src/kg/export.py; tests/test_export.py;
+% docs/analysis_plan.md §10, §14 items 14–17.
+% Numbers: \n... macros and tables come from paper/tables/ (paper/tools/kg_tables.py, graph release \kgRelease);
+% the counts typed here (modules, terms, rules, shapes, CQs) were read on 2026-11-20 from ontology/*.ttl
+% (rdflib) and docs/ontology_term_usage.md; regenerate them if the ontology changes.
+% References: paper/refs.bib (DOIs, fetch_bib.py) and paper/refs_standards.bib (W3C/OGC/software, URLs opened).
+\section{The LULC-Water knowledge graph}\label{sec:kg}
 
-\subsection{A network of ontologies}
-% TODO: outline reuse and alignments.
+The knowledge graph has one job in this study: to state, with its evidence, which drivers can reach
+each monitoring well and in which direction each driver can move the well's head. Its scope was
+fixed by sixteen competency questions (CQs; \cref{tab:cqs}), written with example answers before
+any term was modelled \citep{Gruninger1995The}. Following the requirements-driven method LOT
+\citep{Povedavillalon2022Lot}, each CQ that the models need became an executable test
+\citep{Wisniewski2019Analysis}.
 
-\subsection{The bridging module and the influence pattern}
-% TODO: describe the influence pattern, evidence and provenance.
+\subsection{A network of ontologies}\label{sec:kg-network}
 
-\subsection{Rules, shapes and competency questions}
-% TODO: outline derivation, validation and the competency-question checks.
+LULC-Water is a network of small ontologies linked by alignment axioms, rather than one merged
+ontology; this is the architecture of the Water Health Open Knowledge Graph \citep{Lippolis2025The}.
+The release used in this study has 15 modules: the bridging module \texttt{lulcw:} (version 0.7.1),
+its metadata module, four alignment modules and nine local copies of the terms reused from other
+vocabularies. The local copies keep each graph release self-contained and versioned, and they
+carry the attribution of vocabularies whose licence is not stated.
 
-\subsection{From the graph to model inputs}
-% TODO: describe the export, routing and equivalence check.
+Groundwater features come from GroundWaterML2 \citep{Brodaric2018Enabling}. GroundWaterML2 is
+published as UML and GML/XML, with no official OWL rendering, so we use the OWL classes of the
+water ontology of SAWGraph \citep{SAWGraph2026Water}
+and the property \texttt{tapsAquifer} of the hydro-reference ontology HyFO \citep{Hahmann2018Using}.
+Observations, time, provenance, code lists and geometry use SOSA/SSN, OWL-Time, PROV-O, SKOS and
+GeoSPARQL~1.1 \citep{W3C2017Ssn,Janowicz2019Sosa,W3C2017Time,W3C2013ProvO,W3C2009Skos,Car2022Geosparql};
+rivers use HY\_Features \citep{OGC2018HyFeatures};
+land use the INSPIRE HILUCS code list, to which the crop classes point by
+\texttt{skos:broadMatch} \citep{INSPIRE2026Hilucs};
+and crop codes are matched to AGROVOC \citep{Caracciolo2013The}.
+SWEET \citep{Raskin2005Knowledge},
+which has been extended for hydrogeology before \citep{Tripathi2008Developing}, is an alignment
+target for the aquifer types.
+
+Alignments are conservative. A module states \texttt{rdfs:subClassOf} only where the relation holds
+for every instance, and \texttt{skos:closeMatch} otherwise, so that no alignment can produce a wrong
+inference. An alignment ledger lists, for every mapping, the subsumptions that must hold and those
+that must not, and a reasoner (HermiT; \citealp{Glimm2014Hermit})
+checks both on every change. For example, \texttt{lulcw:Piezometer} is a close match of the
+GroundWaterML2 well, not a subclass of it: the monitoring network includes springs, which are not
+drilled wells.
+
+\subsection{The bridging module and the influence pattern}\label{sec:kg-module}
+
+\texttt{lulcw:} holds only what the reused vocabularies lack: 384 terms (81 classes, 101 object
+properties, 96 datatype properties, 22 SKOS concept schemes and 84 controlled values), each with an
+English and a French label and a definition. Three modelling rules carry most of its domain
+knowledge.
+
+\emph{Uncertain facts stay uncertain.} Most abstraction facilities have no borehole log, so the
+unit a facility draws from is a qualified \texttt{UnitAttribution}: the rule that proposed it, its
+rank among the candidates, its evidence, its resolution (a group of units or one exact unit) and a
+confidence level. An explicit ``unknown'' is allowed, and no facility is forced into exactly
+one unit. Confidence levels are measured, not assumed: a rule gives ``probable'' only for the
+water uses on which its precision was measured against the 130 boreholes whose log records the
+unit. Two limits are stated wherever these links are used: a geological stack under a point does
+not prove a hydraulic connection, and the investigation depth of a well is not its screened depth.
+
+\emph{Types follow written rules.} Aquifer types come from a written mapping of the BD~LISA
+hydrogeological entities, not from the database's permeability label: alluvium is an
+\texttt{AlluvialAquifer}, the Pliocene sands and clays a \texttt{MultilayerAquiferSystem}, karst a
+\texttt{KarstAquifer} and impermeable units a \texttt{ConfiningUnit}. Geological cover, local
+confinement and hydraulic exchange are kept as separate relations, and every stratigraphic
+contact keeps the map polygon that witnesses it, so that a contact in one place is never chained
+with a contact in another.
+
+\emph{Causal knowledge has two levels.} At the class level, a mechanism specification states a
+conditional response, for example: the head of a well does not rise when abstraction increases
+from a facility attributed to the well's unit within a stated distance, other inputs held fixed.
+These are qualified constraints for a model, not claims of observed causality. At the instance
+level, each candidate pathway is an \texttt{Influence} node (the n-ary relation pattern) with a
+source, a target, a mechanism, a sign, a distance, a confidence level, its evidence
+(\texttt{prov:wasDerivedFrom}), the rule execution that produced it and a decision on whether its
+sign may constrain a model. Annual abstraction volumes, crop areas and demand estimates are SOSA
+observations with OWL-Time intervals; weekly series stay in Parquet files that the graph
+references.
+
+\subsection{Rules, shapes and competency questions}\label{sec:kg-rules}
+
+The facts graph (\nKgFactTriples{} triples; \cref{tab:kg-instances}) is built from the source tables
+with rdflib. Derived knowledge comes from 29 SHACL-AF SPARQL rules \citep{W3C2017Shacl,W3C2017ShaclAf} run with pySHACL \citep{Sommer2026Pyshacl}
+in a fixed order: stratigraphic contacts and orderings, the selection of pump-to-unit
+attributions under a named policy, same-unit well links, and the influences of four mechanisms:
+pumping drawdown (\nInflPumping), diffuse recharge (\nInflRecharge), river exchange (\nInflRiver) and
+canal return flow (\nInflCanal). Rules are written in SPARQL because OWL property chains cannot test
+a distance or a date. The rules add \nKgRuleTriples{} triples. SHACL then validates the result:
+64 node shapes, with 234 property shapes and 79 SPARQL constraints, check the completeness and
+the consistency of the facts and of the rule outputs. The released graph has no violation.
+
+Each implemented CQ is a SPARQL query paired with a status query, whose answer is
+``supported'', ``partial'', ``unknown'' or ``conflicting'', so that a missing
+answer is never read as a negative one. A test compares the answers with an oracle computed
+independently from the source tables with pandas and GeoPandas, both on small fixtures that
+contain conflicting, unknown and missing cases and on the real data; negative controls, fixtures
+that must fail, guard the rules. Ten CQs are implemented (CQ1--CQ8, CQ11 and CQ12). CQ10 needs the
+models' results and CQ15 the satellite rule. Quality gates run on every change of the ontology:
+consistency under the ELK and HermiT reasoners through ROBOT \citep{Kazakov2013The,Glimm2014Hermit,Jackson2019Robot},
+the OOPS! pitfall scan \citep{Povedavillalon2014Oops} (no critical pitfall; five range axioms that
+the definitions implied were added), SHACL conformance, every CQ test, and a usage audit (310 of
+the 384 terms are used by the released data).
+
+\subsection{From the graph to model inputs}\label{sec:kg-export}
+
+The export turns the graph into two edge tables over one node inventory: \nWells{} wells, the
+groundwater abstraction facilities, the weather cells, the river gauges and the plain's canal
+intakes. In arm~C, the edges follow the distance rules of the Taccari-style baseline
+\citep{Taccari2024Spatial}, applied to single facilities (\cref{sec:models}). In arm~D, every edge
+is read from the graph through the CQ queries: pumping from the facilities attributed to the
+well's unit within \SI{5}{km}, at a confidence the policy admits; recharge proxies from the
+weather cells over the outcrop of the well's unit within \SI{5}{km}, weighted by each cell's share
+of that outcrop; river exchange from the gauge of an associated watercourse; canal return flow
+where a source documents a return; and same-unit links between wells. Where the graph holds no
+link, arm~D has none: there is no distance fallback. Both arms weight an edge with the same
+function of distance, so that they differ in which edges exist, not in how an edge is weighted.
+Several evidence paths between one driver and one well make one edge, which is signed, and
+eligible for a sign constraint, only if every path agrees. Abstraction that the policy does not
+attribute to a well's unit enters as an explicit ``unattributed'' input, never as zero.
+
+The main policy admits confident and probable attributions: \nDPumpPairs{} facility--well pairs,
+from \nDPumpFacilities{} facilities to \nDPumpWells{} wells. Policies that admit confident
+attributions only, or all of them, give sensitivity runs. The export records the hashes of every
+file of the graph release it was built from (facts, rules, shapes and the 15 ontology modules),
+so that each result can be traced to the exact graph. \Cref{tab:arm-coverage} shows what reaches
+the wells in each arm: arm~D connects fewer wells than arm~C for every relation, because the graph
+holds a link only where it has evidence for one. Pumping is the most affected: no irrigation
+abstraction can be attributed to an exact unit, so arm~D routes only drinking-water abstraction,
+and the rest enters through the unattributed input.
+
+Finally, an equivalence test recomputes arm~D's edges from the source tables with plain pandas
+and GeoPandas rules (the pumping edges, the recharge weights within $10^{-5}$ and the set of
+unattributed facilities) and finds the same edges. Once its rules are known, the graph's edges
+can be reproduced without the ontology. In the rest of the paper, differences between arms~D
+and~C are therefore credited to the knowledge the graph carries; the ontology is credited with
+making that knowledge explicit, traceable to its sources, checkable and reusable.
+
+\begin{table}[t]
+\centering
+\caption{The sixteen competency questions, their priority and their state in this study.
+``Test'' marks a CQ implemented as a SPARQL query with a status query and an independent
+oracle. U is a hydrogeological unit, W a monitoring well, S an area.}
+\label{tab:cqs}
+\small
+\begin{tabular}{@{}llp{0.58\linewidth}l@{}}
+\toprule
+CQ & Priority & Question & State \\
+\midrule
+1 & must & What hydrogeological and monitoring context is known for W? & test \\
+2 & must & Which abstraction facilities may draw from W's unit, with what evidence and uncertainty? & test \\
+3 & must & What is the local vertical arrangement of units in S? & test \\
+4 & should & Which outcrop areas of U can support recharge-related inputs, and how do weather cells cover them? & test \\
+5 & should & Which river reaches are associated with U, and what is known about exchange and gauge relevance? & test \\
+6 & could & Which canal supply areas overlap U, and which intake-to-recharge pathways are supported? & test (partial chain) \\
+7 & must & What crops occupy S in year $y$, and what irrigation-demand estimates are justified? & test \\
+8 & must & Which driver-to-head pathways are admissible for W, and when may their signs constrain a model? & test \\
+9 & could & Which restriction events applied to the location, resource and use during a period? & future work \\
+10 & must & Which evidence and model results support an explanation of W at time $t$? & needs model results \\
+11 & must & Which wells are same-unit neighbours of W under a declared distance and depth policy? & test \\
+12 & must & What declared abstraction can be attributed to U in year $y$ by use, and what remains unresolved? & test \\
+13 & should & Which well pairs permit meaningful head comparisons? & future work \\
+14 & should & What is known separately about cover, confinement and pressure at W? & future work \\
+15 & must & Which parcel-seasons satisfy a documented probable-irrigation rule? & needs the satellite rule \\
+16 & could & Under an explicit crop-change scenario, where are modelled effects on U greatest? & future work \\
+\bottomrule
+\end{tabular}
+\end{table}
+% The states of CQ9, CQ13, CQ14 and CQ16 ("future work" or minimal fixtures) are Gate 3 point 15:
+% confirm them after Assil's review of the SHOULD/COULD questions before submission.
+
+\input{tables/kg_instances}
+\input{tables/kg_coverage}

@@ -249,3 +249,14 @@ Taccari ST-GNN (distance edges) stay as the other references. A new HGT/RGCN mod
   are provisional, and tools that load the ontology from its address fail on its imports (OOPS! did; our
   scan sends the merged network without them).
 - The Earth Engine account (satellite rule, task 12.10).
+
+## Assil's decisions (2026-11-20 evening, with Claude; the supervisor's review follows)
+
+Asked one point at a time with Claude's recommendation first; recorded as they were given.
+
+| # | Decision |
+|---|---|
+| 1 | **Both protocols, fixed roles:** early stopping for the accuracy contrasts, converged pooling for the explanation claims (the explanation runs get their own names, e.g. `_conv`; only the blocks that feed explanations run it) |
+| 2 | **Confirmed:** rungs 3–5; rung 4 (routing C vs D) is the primary D vs C contrast |
+| 3 | **Smallest effect of interest: 5 % less error** (log RMSE ratio −0.05), 10 seeds |
+| 4 | **Permanent + seasonal pumping: sensitivity only**, not the main structure |

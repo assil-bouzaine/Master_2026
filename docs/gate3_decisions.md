@@ -260,3 +260,7 @@ Asked one point at a time with Claude's recommendation first; recorded as they w
 | 2 | **Confirmed:** rungs 3–5; rung 4 (routing C vs D) is the primary D vs C contrast |
 | 3 | **Smallest effect of interest: 5 % less error** (log RMSE ratio −0.05), 10 seeds |
 | 4 | **Permanent + seasonal pumping: sensitivity only**, not the main structure |
+| 7 | **Recharge constrained:** "more effective rain does not lower the head", with effective rain (PE) as is; max(PE, 0) as a sensitivity |
+| 8 | **Rivers:** constrain only where eligible (3 wells); body-level statements stay ineligible; a conflicting direction elsewhere keeps an eligible sign eligible |
+| 9 | **Canals:** eligibility by the source's method; no hard canal constraint, a soft-prior sensitivity run instead |
+| 10 | **Proxy adequacy:** gauge discharge adequate for river stage (with its caveat); summed canal diversions a weak stand-in for canal return |

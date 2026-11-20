@@ -264,3 +264,7 @@ Asked one point at a time with Claude's recommendation first; recorded as they w
 | 8 | **Rivers:** constrain only where eligible (3 wells); body-level statements stay ineligible; a conflicting direction elsewhere keeps an eligible sign eligible |
 | 9 | **Canals:** eligibility by the source's method; no hard canal constraint, a soft-prior sensitivity run instead |
 | 10 | **Proxy adequacy:** gauge discharge adequate for river stage (with its caveat); summed canal diversions a weak stand-in for canal return |
+| 11 | **Crop demand out of Phase 4's main runs**; kept in arm B's ablation |
+| 12 | **Drop the weather cells holding under 0.001 of an outcrop** from the recharge edges |
+| 13 | **Confirmed:** one edge per driver and well, signed and eligible only if every path agrees |
+| 14 | **Confirmed:** RQ1 = {B vs A, D vs C}, RQ2 = {soft vs none, hard vs none}, one test each on the log RMSE ratio, Holm within each family |

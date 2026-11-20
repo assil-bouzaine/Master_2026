@@ -615,3 +615,36 @@ then B7's two commented commands in `run_v4_cpu.sh` can be enabled.
 
 Kaggle kernel version 13 (the twin's last session) was still running at the end. Assil asked to stop
 after the workers' tasks: nothing new was started.
+
+### Evening session (2026-11-20, 18:00-19:05 CET): the black box on D's edges, paper sections and figures, test 2's threshold
+
+Assil: "continue as the leader of the two Codex workers, spawned here in herdr, not inside tmux".
+Claude ran in herdr terminal t8 (space `~`); the workers were relaunched as t9 (`cxa`, GPT-6.2-Sol
+high) and t10 (`cxb`, GPT-6.1-Sol max), both `codex --no-daemon`, each a direct child of
+herdr-core with no `TMUX` in its environment (checked).
+
+| Task | Worker | What it delivered | Review |
+|---|---|---|---|
+| T17 | A | `src/models/taccari.py --edges D`: the Taccari ST-GNN on arm D's edges (51 cells, 5 gauges, 178 facilities, 64 per-well unattributed nodes, the canal, well links; 363 nodes vs 208), the export's provenance in the fingerprint; Gate 3 point 21 | accepted; distance graph bit-identical; Claude added a guard (`--edges D` refuses run folders not made with it) and its test |
+| T18 | B | `paper/tools/kg_tables.py` → `paper/tables/kg_*.tex` (classes by theme, coverage of arms C and D, 21 macros) | accepted; one label reworded ("triples derived by the rules") |
+| T19 | A | `paper/tools/fig_study_area.py` → figure 1 (units typed by `unit_class`, wells, gauges, facilities, canals, rivers, inset) | accepted; river labels moved into the plain in T21 |
+| T20 | B | `paper/tools/data_tables.py` → `paper/tables/data_*.tex` (sources, periods, 51 macros) | accepted; "59 % of rows imputed" replaced by which weeks are filled |
+| T21 | A | `paper/tools/fig_twin_map.py` → the twin's knowledge-value map (D/C, T/C, right reasons; 2 protocols) | accepted; matrices agree with the morning's reading |
+| T22 | B | `paper/tools/fig_influence.py` → one real Influence record with all its 21 triples and both attributions | accepted |
+| T23 | A | `paper/tools/fig_periods.py` → observed SGI of the core wells; the recovery rule recomputed: December 2025 | accepted |
+| T24 | A | `paper/tables/twin_numbers.tex` (34 macros of section 6.1) | accepted; section 6.1 now uses them |
+
+Claude: paper sections 1 (introduction), 2 (study area and data), 3 (the knowledge graph), 4 (the
+models), 5.1 (the twin) and 6.1 (the twin's map) drafted, every claim checked against the notes
+(several wordings corrected before each commit); 12 references added (9 by DOI on Crossref, refs.bib
+114; W3C/OGC documents, data services and LightGBM by hand in `paper/refs_standards.bib`, each page
+opened); bibliography switched on. BD LISA (503 that day), BD TOPO and the RPG are still to cite.
+**Test 2's flag threshold fixed before kernel version 13 is pulled** (analysis plan item 22, Gate 3
+point 5): τ = the 95 % quantile of the grid's seed disagreement per arm and protocol; the twin
+report computes τ and the detection and false-alarm rates (tested on hand-made tables only).
+Quick test suite at `2256f83`: 43 of 43 pass (the 4 slow modules skipped).
+
+Correction: the oracle's ceiling is a 2-8 % RMSE reduction (log T/C −0.021 to −0.086, i.e. 2.1-8.3 %),
+not "2-9 %" as said in the morning (that rounded the log ratio).
+Codex account at 19:00: 41 % of the five-hour window left; no new worker task until kernel
+version 13 is pulled.

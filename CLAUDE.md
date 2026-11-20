@@ -538,10 +538,13 @@ notebooks/       exploration only; anything that matters moves into src/
   `paper/tools/kg_tables.py` → `paper/tables/kg_*.tex`; `1d7191f` paper **section 3 (the knowledge
   graph) drafted** + 7 references by DOI (refs.bib 111) + `paper/refs_standards.bib` (W3C/OGC
   documents and software without a DOI, URLs opened 2026-11-20); bibliography on in `main.tex`.
-- **Running at the time of writing:** T19 (cxa) the study-area map `paper/tools/fig_study_area.py`
-  → `paper/figures/study_area.pdf`; T20 (cxb) the data tables `paper/tools/data_tables.py` →
-  `paper/tables/data_*.tex` (macros `\nData...`; add `\input{tables/data_numbers}` to `main.tex`
-  at review). Next for Claude: section 2 (study area and data) from T20's tables.
+- **Also committed by 19:05:** T19-T24 (figures: study area, the twin's map, periods, one Influence
+  record; tables: data; macros: twin numbers) and **paper sections 1, 2, 3, 4, 5.1, 6.1 drafted**
+  (every number from `paper/tables/*_numbers.tex` or a named note; 12 references added, refs.bib 114
+  + `refs_standards.bib`). Step note `step13_ladder.md`, last section. **Test 2's flag threshold
+  fixed before version 13 is pulled** (analysis plan item 22; the twin report computes it). Quick
+  test suite: 43 of 43 pass. Both workers idle (Codex window 41 % left at 19:00).
+- **Still to cite (no verified page yet):** BD LISA (503 on 2026-11-20), BD TOPO, the RPG.
 - **Kaggle kernel version 13** (twin slices + RQ2): still RUNNING at 18:06 CET; expected ≈ 21:00
   CET. Then item 2 of the list below (pull, twin report, reading of RQ2 and score 6).
 

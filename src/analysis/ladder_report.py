@@ -26,7 +26,7 @@ from src.analysis import stats
 from src.config import DATASET, ROOT, TEST_PERIODS
 from src.dataset.placeholders import load_mask
 from src.models.evaluate import DS, MIN_WEEKS, RESULTS, score
-from src.models.response import SD_FLOOR
+from src.models.response import SD_FLOOR, kernel_moments
 
 RUNS = {"resp_free": "free (per-well parameters)",
         "resp_pooled_l001": "pooled, λ = 0.01", "resp_pooled_l01": "pooled, λ = 0.1",
@@ -147,8 +147,15 @@ def response_stability(run, core, sd_train):
 
 
 def comparator(run):
-    """Per BRGM well: learned mean lag of the recharge response and lag of the largest weight of
-    the (seasonal) pumping response, in days: median [min, max] over the starts."""
+    """Implemented recharge mean and (seasonal) pumping peak delays beside BRGM, in days.
+
+    Read the saved kernel length; a missing schema cannot establish the delay
+    and raises an error. Summarise each well as median [min, max] over starts.
+    """
+    schema = RESULTS / run / "schema.json"
+    if not schema.is_file():
+        raise FileNotFoundError(f"{schema}: cannot report implemented lags without the saved kernel_weeks")
+    kernel_weeks = json.loads(schema.read_text())["kernel_weeks"]
     rows = []
     params = [pd.read_csv(f).set_index("code_bss") for f in sorted((RESULTS / run).glob("params_seed_*.csv"))]
     pump = "pumping_seasonal" if "a_pumping_seasonal_wk" in params[0] else "pumping"
@@ -156,10 +163,12 @@ def comparator(run):
     for code, (place, tm) in BRGM.items():
         if code not in params[0].index:
             continue
-        lag = [7 * p.loc[code, "mean_lag_recharge_wk"] for p in params]
-        peak = [7 * max((p.loc[code, f"n_{pump}"] - 1) * p.loc[code, f"a_{pump}_wk"], 0.0) for p in params]
-        rows.append((f"{RUNS[run]}, {place}", {"recharge mean lag, days": q(lag), "BRGM mean transit, days": tm,
-                                               "pumping peak lag, days": q(peak), "BRGM, days": BRGM_PUMP_DAYS}))
+        a = np.array([[p.loc[code, "a_recharge_wk"], p.loc[code, f"a_{pump}_wk"]] for p in params])
+        n = np.array([[p.loc[code, "n_recharge"], p.loc[code, f"n_{pump}"]] for p in params])
+        mean, peak = kernel_moments(a, n, kernel_weeks)
+        rows.append((f"{RUNS[run]}, {place}",
+                     {"implemented recharge mean delay, days": q(7 * mean[:, 0]), "BRGM mean transit, days": tm,
+                      "implemented pumping peak delay, days": q(7 * peak[:, 1]), "BRGM, days": BRGM_PUMP_DAYS}))
     return rows
 
 
@@ -285,9 +294,11 @@ def main():
          "\n## Learned response times beside BRGM's (two core wells)\n\nCaballero & Ladouche 2015 "
          "(doi:10.5194/hessd-12-10109-2015, Table 1) fitted a transfer model with measured monthly "
          "pumping (1998–2007) at these two wells: mean transit time of the recharge response, and the "
-         "maximum response to seasonal pumping 75 days after pumping starts. Ours: median [min, max] "
-         "over the starts. A comparison with a published model, not with a measurement.\n",
-         table(comp, ["recharge mean lag, days", "BRGM mean transit, days", "pumping peak lag, days",
+         "maximum response to seasonal pumping 75 days after pumping starts. Ours: the mean delay "
+         "and the delay of the largest weight of each run's finite weekly kernel, shown as median "
+         "[min, max] over the starts. A comparison with a published model, not with a measurement.\n",
+         table(comp, ["implemented recharge mean delay, days", "BRGM mean transit, days",
+                      "implemented pumping peak delay, days",
                       "BRGM, days"], nd=0),
          "\n## Contrasts (primary effect measure of item 18)\n\nPer core well, log(RMSE_a / RMSE_b) in "
          "the drought phase; negative = a better. Interval = cluster bootstrap, p = cluster sign-flip "

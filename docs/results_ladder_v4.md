@@ -82,42 +82,42 @@ Mean contribution of each stress over the drought weeks, in units of the well's 
 
 ## Learned response times beside BRGM's (two core wells)
 
-Caballero & Ladouche 2015 (doi:10.5194/hessd-12-10109-2015, Table 1) fitted a transfer model with measured monthly pumping (1998–2007) at these two wells: mean transit time of the recharge response, and the maximum response to seasonal pumping 75 days after pumping starts. Ours: median [min, max] over the starts. A comparison with a published model, not with a measurement.
+Caballero & Ladouche 2015 (doi:10.5194/hessd-12-10109-2015, Table 1) fitted a transfer model with measured monthly pumping (1998–2007) at these two wells: mean transit time of the recharge response, and the maximum response to seasonal pumping 75 days after pumping starts. Ours: the mean delay and the delay of the largest weight of each run's finite weekly kernel, shown as median [min, max] over the starts. A comparison with a published model, not with a measurement.
 
-| run | recharge mean lag, days | BRGM mean transit, days | pumping peak lag, days | BRGM, days |
+| run | implemented recharge mean delay, days | BRGM mean transit, days | implemented pumping peak delay, days | BRGM, days |
 |---|---:|---:|---:|---:|
-| free (per-well parameters), Perpignan | 97 [63, 118] | 89 | 14 [5, 36] | 75 |
-| free (per-well parameters), Argelès | 111 [92, 127] | 220 | 35 [22, 38] | 75 |
-| pooled, λ = 0.01, Perpignan | 70 [64, 102] | 89 | 11 [9, 14] | 75 |
-| pooled, λ = 0.01, Argelès | 104 [93, 121] | 220 | 35 [26, 38] | 75 |
-| pooled, λ = 0.1, Perpignan | 61 [56, 79] | 89 | 17 [14, 21] | 75 |
-| pooled, λ = 0.1, Argelès | 110 [101, 115] | 220 | 37 [32, 47] | 75 |
-| pooled, λ = 1, Perpignan | 85 [52, 87] | 89 | 96 [64, 100] | 75 |
-| pooled, λ = 1, Argelès | 143 [91, 146] | 220 | 96 [63, 99] | 75 |
-| pooled, λ = 10, Perpignan | 61 [53, 88] | 89 | 131 [28, 220] | 75 |
-| pooled, λ = 10, Argelès | 79 [68, 117] | 220 | 131 [28, 220] | 75 |
-| shared (one response per aquifer group), Perpignan | 91 [64, 122] | 89 | 179 [76, 219] | 75 |
-| shared (one response per aquifer group), Argelès | 91 [64, 122] | 220 | 179 [76, 219] | 75 |
-| free, time scale up to 104 weeks (sensitivity), Perpignan | 92 [89, 97] | 89 | 13 [13, 30] | 75 |
-| free, time scale up to 104 weeks (sensitivity), Argelès | 113 [93, 126] | 220 | 38 [32, 44] | 75 |
-| free, SIM2 effective rainfall as recharge (sensitivity), Perpignan | 97 [89, 108] | 89 | 16 [15, 20] | 75 |
-| free, SIM2 effective rainfall as recharge (sensitivity), Argelès | 173 [124, 318] | 220 | 46 [44, 47] | 75 |
-| free, permanent + seasonal pumping (sensitivity), Perpignan | 81 [60, 126] | 89 | 12 [0, 19] | 75 |
-| free, permanent + seasonal pumping (sensitivity), Argelès | 119 [101, 130] | 220 | 39 [18, 50] | 75 |
-| pooled λ = 0.01, permanent + seasonal pumping (sensitivity), Perpignan | 73 [67, 95] | 89 | 11 [10, 14] | 75 |
-| pooled λ = 0.01, permanent + seasonal pumping (sensitivity), Argelès | 106 [99, 122] | 220 | 42 [38, 44] | 75 |
-| free, 3,000 steps without early stopping (diagnostic), Perpignan | 97 [88, 114] | 89 | 17 [0, 137] | 75 |
-| free, 3,000 steps without early stopping (diagnostic), Argelès | 121 [93, 121] | 220 | 33 [32, 43] | 75 |
-| pooled λ = 0.1, 3,000 steps without early stopping (diagnostic), Perpignan | 92 [91, 95] | 89 | 26 [23, 26] | 75 |
-| pooled λ = 0.1, 3,000 steps without early stopping (diagnostic), Argelès | 129 [127, 136] | 220 | 43 [38, 44] | 75 |
-| pooled λ = 0.01, gains in units of the well's sd, Perpignan | 72 [53, 77] | 89 | 9 [6, 15] | 75 |
-| pooled λ = 0.01, gains in units of the well's sd, Argelès | 103 [82, 117] | 220 | 42 [28, 70] | 75 |
-| pooled λ = 0.1, gains in units of the well's sd, Perpignan | 61 [51, 100] | 89 | 19 [7, 27] | 75 |
-| pooled λ = 0.1, gains in units of the well's sd, Argelès | 104 [94, 110] | 220 | 35 [14, 49] | 75 |
-| pooled λ = 1, gains in units of the well's sd, Perpignan | 58 [53, 60] | 89 | 208 [45, 240] | 75 |
-| pooled λ = 1, gains in units of the well's sd, Argelès | 94 [85, 96] | 220 | 208 [45, 240] | 75 |
-| shared, gains in units of the well's sd, Perpignan | 76 [67, 97] | 89 | 93 [1, 226] | 75 |
-| shared, gains in units of the well's sd, Argelès | 76 [67, 97] | 220 | 93 [1, 226] | 75 |
+| free (per-well parameters), Perpignan | 93 [59, 114] | 89 | 7 [0, 35] | 75 |
+| free (per-well parameters), Argelès | 107 [88, 123] | 220 | 35 [21, 35] | 75 |
+| pooled, λ = 0.01, Perpignan | 66 [60, 99] | 89 | 7 [7, 14] | 75 |
+| pooled, λ = 0.01, Argelès | 101 [90, 117] | 220 | 32 [21, 35] | 75 |
+| pooled, λ = 0.1, Perpignan | 57 [52, 76] | 89 | 14 [14, 21] | 75 |
+| pooled, λ = 0.1, Argelès | 106 [97, 112] | 220 | 35 [28, 42] | 75 |
+| pooled, λ = 1, Perpignan | 81 [49, 84] | 89 | 91 [63, 98] | 75 |
+| pooled, λ = 1, Argelès | 139 [87, 142] | 220 | 91 [63, 98] | 75 |
+| pooled, λ = 10, Perpignan | 57 [49, 84] | 89 | 130 [21, 217] | 75 |
+| pooled, λ = 10, Argelès | 75 [64, 113] | 220 | 126 [21, 217] | 75 |
+| shared (one response per aquifer group), Perpignan | 88 [61, 118] | 89 | 175 [70, 217] | 75 |
+| shared (one response per aquifer group), Argelès | 88 [61, 118] | 220 | 175 [70, 217] | 75 |
+| free, time scale up to 104 weeks (sensitivity), Perpignan | 88 [85, 94] | 89 | 7 [7, 28] | 75 |
+| free, time scale up to 104 weeks (sensitivity), Argelès | 109 [89, 122] | 220 | 35 [28, 42] | 75 |
+| free, SIM2 effective rainfall as recharge (sensitivity), Perpignan | 93 [86, 105] | 89 | 14 [14, 14] | 75 |
+| free, SIM2 effective rainfall as recharge (sensitivity), Argelès | 170 [121, 313] | 220 | 42 [42, 42] | 75 |
+| free, permanent + seasonal pumping (sensitivity), Perpignan | 77 [57, 122] | 89 | 7 [0, 14] | 75 |
+| free, permanent + seasonal pumping (sensitivity), Argelès | 115 [97, 126] | 220 | 35 [14, 49] | 75 |
+| pooled λ = 0.01, permanent + seasonal pumping (sensitivity), Perpignan | 69 [63, 92] | 89 | 7 [7, 14] | 75 |
+| pooled λ = 0.01, permanent + seasonal pumping (sensitivity), Argelès | 102 [96, 118] | 220 | 42 [35, 42] | 75 |
+| free, 3,000 steps without early stopping (diagnostic), Perpignan | 94 [84, 110] | 89 | 14 [0, 133] | 75 |
+| free, 3,000 steps without early stopping (diagnostic), Argelès | 117 [90, 118] | 220 | 28 [28, 42] | 75 |
+| pooled λ = 0.1, 3,000 steps without early stopping (diagnostic), Perpignan | 88 [87, 92] | 89 | 21 [21, 21] | 75 |
+| pooled λ = 0.1, 3,000 steps without early stopping (diagnostic), Argelès | 125 [123, 133] | 220 | 42 [35, 42] | 75 |
+| pooled λ = 0.01, gains in units of the well's sd, Perpignan | 69 [49, 73] | 89 | 7 [0, 14] | 75 |
+| pooled λ = 0.01, gains in units of the well's sd, Argelès | 99 [79, 113] | 220 | 38 [28, 63] | 75 |
+| pooled λ = 0.1, gains in units of the well's sd, Perpignan | 57 [48, 96] | 89 | 14 [7, 21] | 75 |
+| pooled λ = 0.1, gains in units of the well's sd, Argelès | 100 [90, 106] | 220 | 32 [14, 49] | 75 |
+| pooled λ = 1, gains in units of the well's sd, Perpignan | 54 [50, 56] | 89 | 206 [42, 238] | 75 |
+| pooled λ = 1, gains in units of the well's sd, Argelès | 90 [82, 92] | 220 | 206 [42, 238] | 75 |
+| shared, gains in units of the well's sd, Perpignan | 73 [63, 93] | 89 | 88 [0, 224] | 75 |
+| shared, gains in units of the well's sd, Argelès | 73 [63, 93] | 220 | 88 [0, 224] | 75 |
 
 
 ## Contrasts (primary effect measure of item 18)

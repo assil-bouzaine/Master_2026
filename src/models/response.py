@@ -285,6 +285,24 @@ class ResponseModel(nn.Module):
         return ((wrong * var).sum(1) / sd ** 2).mean()
 
 
+def kernel_moments(a, n, kernel_weeks):
+    """Mean and peak delays of the model's finite weekly kernel, in weeks.
+
+    Use the model's weights rather than continuous Gamma moments. Weight j
+    acts after j weeks, even though its density is sampled at j + 0.5.
+    A private generator keeps this reporting step from changing training seeds.
+    """
+    if not isinstance(kernel_weeks, (int, np.integer)) or kernel_weeks < 1:
+        raise ValueError("kernel_weeks must be a positive integer")
+    net = ResponseModel([0], 1, kernel_weeks=kernel_weeks,
+                        generator=torch.Generator().manual_seed(0))
+    with torch.no_grad():
+        weights = net.kernels(torch.tensor(np.asarray(a), dtype=torch.float32),
+                              torch.tensor(np.asarray(n), dtype=torch.float32)).numpy()
+    mean = (weights * np.arange(kernel_weeks)).sum(axis=-1)
+    return np.asarray(mean), np.asarray(weights.argmax(axis=-1))
+
+
 def panel_arrays(P, kernel_weeks=KERNEL_WEEKS, routed=None):
     """Panel -> wells, weeks, padded inputs and targets.
     Inputs: dict name -> (N, T + K - 1) float32, scaled by SCALE, gaps and the K - 1 weeks
@@ -401,7 +419,11 @@ def train_seed(seed, data, mode, lam=0.0, steps=4000, lr=0.05, patience=15, eval
 
 
 def seed_outputs(net, data):
-    """Predictions in z, contributions (long table, m) and parameters (per well) of one start."""
+    """Predictions in z, contributions (m) and per-well parameters of one start.
+
+    mean_lag_<stress>_wk is the continuous Gamma mean (a * n). The impl_mean_lag
+    and impl_peak_lag columns describe delays of the finite weekly kernel.
+    """
     X = {k: torch.from_numpy(v) for k, v in data["X"].items()}
     with torch.no_grad():
         contrib = net.contributions(X).numpy()                   # (N, R, T)
@@ -416,9 +438,12 @@ def seed_outputs(net, data):
                       for r, s in enumerate(net.names)}, index=idx).reset_index()
     p = pd.DataFrame({"code_bss": data["codes"], "group": [data["groups"][g] for g in data["group_of"]],
                       "d_m": d, "f": f})
+    impl_mean, impl_peak = kernel_moments(a, n, net.K)
     for r, s in enumerate(net.names):
         p[f"gain_{s}"], p[f"a_{s}_wk"], p[f"n_{s}"] = gain[:, r], a[:, r], n[:, r]
         p[f"mean_lag_{s}_wk"] = a[:, r] * n[:, r]
+        p[f"impl_mean_lag_{s}_wk"] = impl_mean[:, r]
+        p[f"impl_peak_lag_{s}_wk"] = impl_peak[:, r]
     return pz, c, p
 
 

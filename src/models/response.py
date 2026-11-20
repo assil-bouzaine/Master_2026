@@ -628,7 +628,8 @@ def main():
         write_manifest(out, vars(args) | {"fingerprint": fp}, [s])
     if args.fold is not None:
         return
-    pred, n = seed_mean_predictions(out, P, args.seeds)
+    # Response seeds encode with the floored sd; decoding must use that same scale.
+    pred, n = seed_mean_predictions(out, P.assign(sd=P["sd"].clip(lower=SD_FLOOR)), args.seeds)
     pred.to_parquet(out / "predictions.parquet", index=False)
     s = evaluate_run(run)
     c = s[(s["group"] == "all core") & (s["variant"] == "all")]

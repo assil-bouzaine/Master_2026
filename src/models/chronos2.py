@@ -25,8 +25,12 @@ Modes
     ft        full fine-tuning (library defaults: learning rate 1e-6, 1000 steps) on the
               training period only (2005-2019 series); the validation period serves the
               library's model selection; then predicted as zero-shot. No choice uses test.
+
+Smoke runs use separate folders. Every run records its well selection and
+forecast settings before prediction, so incompatible caches cannot be reused.
 """
 import argparse
+import json
 
 import numpy as np
 import pandas as pd
@@ -96,24 +100,55 @@ def finetune(pipe, P, past, out, steps=1000):
                     output_dir=str(out / "ckpt"))
 
 
-def main():
-    from chronos import Chronos2Pipeline
+def ensure_selection(out, selection):
+    """Reuse a cache only when its recorded wells and forecast settings agree."""
+    path = out / "selection.json"
+    if path.exists():
+        try:
+            saved = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(saved, dict):
+                raise ValueError("expected a JSON object")
+        except (OSError, ValueError) as error:
+            raise SystemExit(f"{path}: unreadable selection.json ({error}); use a clean folder") from error
+        fields = sorted(key for key in saved.keys() | selection.keys()
+                        if key not in saved or key not in selection or saved[key] != selection[key])
+        if fields:
+            raise SystemExit(f"{out}: selection.json differs in {', '.join(fields)}; use a clean folder")
+        return
+    if out.exists() and any(path.is_file() for path in out.rglob("*")):
+        raise SystemExit(f"{out}: cached files have no selection.json; use a clean folder")
+    out.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(selection, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def main(argv=None, pipeline_factory=None):
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", choices=list(RUNS), default="zeroshot")
     ap.add_argument("--wells", type=int, default=0, help="first N wells only (smoke tests)")
     ap.add_argument("--ft-steps", type=int, default=1000)
-    args = ap.parse_args()
-    run = RUNS[args.mode]
-    torch.set_num_threads(4)
-    device = "cuda" if torch.cuda.is_available() else "cpu"  # GPU when present
-    print(f"Chronos-2 ({args.mode}) on {device}", flush=True)
-    pipe = Chronos2Pipeline.from_pretrained(MODEL, device_map=device)
+    args = ap.parse_args(argv)
+    if args.wells < 0:
+        ap.error("--wells must be 0 (all wells) or a positive smoke-test size")
+    run = RUNS[args.mode] + (f"_smoke{args.wells}" if args.wells > 0 else "")
     P = build_panel()
     P = P[P["mu"].notna()].sort_values(["code_bss", "week"])
     if args.wells:
         P = P[P["code_bss"].isin(P["code_bss"].unique()[:args.wells])]
     past = past_cols(P)
+    selection = {"mode": args.mode, "model": MODEL, "wells": sorted(P["code_bss"].unique().tolist()),
+                 "context": CONTEXT, "horizons": list(HORIZONS),
+                 "past_covariates": past, "future_covariates": FUTURE}
+    if args.mode == "ft":
+        selection["ft_steps"] = args.ft_steps
+    ensure_selection(RESULTS / run, selection)
+    if pipeline_factory is None:
+        from chronos import Chronos2Pipeline
+        pipeline_factory = Chronos2Pipeline
+    torch.set_num_threads(4)
+    device = "cuda" if torch.cuda.is_available() else "cpu"  # GPU when present
+    print(f"Chronos-2 ({args.mode}) on {device}", flush=True)
+    pipe = pipeline_factory.from_pretrained(MODEL, device_map=device)
     out = RESULTS / run / "wells"
     out.mkdir(parents=True, exist_ok=True)
     H = max(HORIZONS)
@@ -122,7 +157,7 @@ def main():
         # remaining wells are never predicted with the base model
         ckpt = RESULTS / run / "ckpt" / "finetuned-ckpt"
         if ckpt.exists():
-            pipe = Chronos2Pipeline.from_pretrained(str(ckpt), device_map=device)
+            pipe = pipeline_factory.from_pretrained(str(ckpt), device_map=device)
         else:
             pipe = finetune(pipe, P, past, RESULTS / run, args.ft_steps)
     groups = {code: g.reset_index(drop=True) for code, g in P.groupby("code_bss")}

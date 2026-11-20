@@ -17,6 +17,7 @@ The pooled run is chosen on validation only. Exploratory (development benchmark)
 baseline result (analysis plan §11).
 """
 import json
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -25,6 +26,7 @@ from src.analysis import stats
 from src.config import DATASET, ROOT, TEST_PERIODS
 from src.dataset.placeholders import load_mask
 from src.models.evaluate import DS, MIN_WEEKS, RESULTS, score
+from src.models.response import SD_FLOOR
 
 RUNS = {"resp_free": "free (per-well parameters)",
         "resp_pooled_l001": "pooled, λ = 0.01", "resp_pooled_l01": "pooled, λ = 0.1",
@@ -65,13 +67,16 @@ def medians(m):
 
 
 def seed_frames(run):
-    """{seed: prediction frame in metres} of a response run."""
+    """{seed: prediction frame in metres}; response seeds use their encoding scale."""
     P = pd.read_parquet(RESULTS / "_cache" / "panel.parquet", columns=["code_bss", "week", "mu", "sd"])
+    # Other models encode with raw sd; the response floor belongs only to resp_* and p4_*.
+    response = Path(run).parts[0].startswith(("resp_", "p4_"))
     out = {}
     for f in sorted((RESULTS / run).glob("seed_*.parquet")):
         z = pd.read_parquet(f).merge(P, on=["code_bss", "week"])
+        sd = z["sd"].clip(lower=SD_FLOOR) if response else z["sd"]
         out[int(f.stem.split("_")[1])] = pd.DataFrame(
-            {"code_bss": z["code_bss"], "week": z["week"], "pred": z["mu"] + z["sd"] * z["z"],
+            {"code_bss": z["code_bss"], "week": z["week"], "pred": z["mu"] + sd * z["z"],
              "task": "simulation", "horizon": 0}).dropna(subset=["pred"])
     return out
 

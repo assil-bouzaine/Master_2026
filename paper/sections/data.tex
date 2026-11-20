@@ -71,7 +71,7 @@ lines from the BD~TOPO.
 \subsection{Periods and evaluation}\label{sec:periods}
 
 The task is simulation: a model reads weather, abstraction, river and static inputs and never an
-observed head. \Cref{tab:periods} gives the periods. Training ends in 2019; the validation period
+observed head. \Cref{tab:periods} gives the periods and \cref{fig:periods} the observed levels. Training ends in 2019; the validation period
 is the only one used for any choice; the test period covers the drought and the recovery, and the
 boundary between them follows a rule on observed levels only, never on a model's output: the recovery
 starts in the first month after the trough from which the median standardised groundwater index
@@ -99,6 +99,18 @@ triangles are the river gauges, grey dots the abstraction facilities, dashed lin
 the dashed box the plain. The inset places the area in the western Mediterranean
 \citep{NaturalEarth2026}.}
 \label{fig:site}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/periods}
+\caption{Observed groundwater levels of the core wells as the monthly standardised groundwater
+index (SGI), 2005--2026. (a) Median over the core wells with its interquartile band; the recovery
+starts in the first month after the drought's trough from which the median stays at or above $-0.5$
+for three months. (b) Median per aquifer group with at least three core wells (number in brackets).
+Shading: training, validation, and the drought and recovery phases of the test period. October 2026
+holds one week of data.}
+\label{fig:periods}
 \end{figure}
 
 \input{tables/data_sources}

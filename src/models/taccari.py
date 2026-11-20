@@ -15,15 +15,24 @@ Here (docs/feedback.md section 4.1; docs/analysis_plan.md section 10):
     node types   piezometers (65), SAFRAN cells nearest to a piezometer (weather), the main
                  river gauges (dataset v3), groundwater-abstraction fields (abstraction points
                  grouped in FIELD_KM Lambert-93 cells), one plain canal-intake node
-    edges        DISTANCE RULES ONLY: 3 nearest piezometers, nearest SAFRAN cell, 2 nearest
+    edges        default distance rules: 3 nearest piezometers, nearest SAFRAN cell, 2 nearest
                  gauges, abstraction fields within PUMP_KM (weight exp(-d / 5 km)), canal node
                  -> piezometers of the plain. Exogenous nodes only keep their own state.
     inputs       piezometers carry their static attributes + season; each exogenous node its
                  own weekly series (no observed head anywhere: simulation task)
-The knowledge-graph model of Phase 4 uses the same node types and network with edges
-generated from the knowledge graph, so the comparison isolates the edge semantics (RQ1).
+
+With --edges D, the same network reads the Phase 4 arm D export for the comparison in
+docs/gate3_decisions.md, point 21. Recharge edges bring in SAFRAN cells, river edges bring
+in gauges, pumping edges bring in individual facilities, and canal edges share one canal
+node. Well links connect the piezometers. Unattributed pumping is summed with export weights
+into one node per receiving well. The hybrid reads the same source-unknown sum, and this
+keeps the graph small enough for the comparison. Gauges use the declared gap rule shared
+by the real-data Phase 4 runs (docs/analysis_plan.md section 7b).
+
+    PFE_DATASET=v4 python -m src.models.taccari --edges D --run taccari_D --lookback 156 --hidden 64 --dropout 0.22864303352275453 --lr 0.0008210305468215977
 """
-import argparse
+import json
+from functools import partial
 
 import geopandas as gpd
 import numpy as np
@@ -35,7 +44,8 @@ from torch import nn
 from src.config import CRS_L93, CRS_WGS84, RAW
 from src.analysis.piezo_profile import PLAIN_BBOX
 from src.dataset.pumping import canal_series, seasonal_drinking_water
-from src.models.evaluate import DS
+from src.models import routing
+from src.models.evaluate import DS, RESULTS
 from src.models.features import RIVERS, NEAR_CANDIDATES, STATIC, WITH_RIVERS, river_series
 from src.models.stgnn import parser, run_graph_model
 
@@ -43,6 +53,9 @@ RUN = "taccari"
 FIELD_KM, PUMP_KM = 5.0, 10.0
 WEATHER = ["rain", "ETP", "EVAP", "PE", "DRAINC", "RUNC", "T", "SWI"]
 TYPES = ["piezometer", "weather", "river", "pumping", "canal"]
+EXPORT_PREFIX = {"recharge": "cell", "river": "gauge", "pumping": "facility"}
+EXPORT_RELATIONS = {*EXPORT_PREFIX, "pumping_unattributed", "canal", "well_link"}
+IGNORED_RELATIONS = {"recharge_unitwide"}
 _GRAPH = {}   # node codes -> adjacency, filled by prepare()
 
 
@@ -57,28 +70,61 @@ def _std(a, train_cols):
     return np.nan_to_num((a - m) / np.where(s > 0, s, 1.0))
 
 
-def exogenous_nodes(P, codes, weeks, train_cols):
-    """Series (nodes x T x features) and coordinates of the exogenous nodes."""
-    wells = pd.read_parquet(DS / "wells.parquet").set_index("code_bss").loc[codes]
-    nodes = []          # (name, type, x, y, feature dict of arrays (T,))
-    # weather: SAFRAN cells nearest to a piezometer, with long rolling means (memory)
+def _check_sources(sources, available, kind):
+    missing = sorted(set(sources) - set(available))
+    if missing:
+        raise ValueError(f"{kind} sources without a series: {', '.join(map(str, missing))}")
+
+
+def weather_nodes(sources, weeks):
+    """SAFRAN weather and long rolling means for the requested cells."""
+    if not len(sources):
+        return []
     f = pd.read_parquet(DS / "forcing_weekly.parquet")
+    _check_sources(sources, f["cell_id"], "weather")
     cells = pd.read_parquet(RAW / "safran" / "grid_cells_66.parquet")
     cxy = dict(zip(cells["cell_id"], _xy(cells["lon"], cells["lat"])))
-    for cell in sorted(wells["cell_id"].unique()):
+    nodes = []
+    for cell in sources:
         g = f[f["cell_id"] == cell].set_index("week")[WEATHER].reindex(weeks)
         g["deficit"] = (g["ETP"] - g["rain"])
         feats = {v: g[v].to_numpy() for v in WEATHER}
         for v, k in (("rain", 52), ("rain", 104), ("DRAINC", 52), ("deficit", 52)):
             feats[f"{v}_m{k}"] = g[v].rolling(k, min_periods=k // 2).mean().to_numpy()
-        nodes.append((f"cell:{cell}", "weather", *cxy[cell], feats))
+        nodes.append((f"cell:{cell}", "weather", *cxy.get(cell, (np.nan, np.nan)), feats))
+    return nodes
+
+
+def river_nodes(sources, weeks, train_cols, rule):
+    if not len(sources):
+        return []
+    riv = river_series(pd.DatetimeIndex(weeks), str(weeks[train_cols][-1])[:10], rule=rule)
+    _check_sources(sources, riv.columns[riv.notna().any()], "river")
+    gauges = pd.read_parquet(DS / "gauges.parquet").set_index("code_station").reindex(sources)
+    gxy = _xy(gauges["longitude_station"], gauges["latitude_station"])
+    return [(f"gauge:{code}", "river", x, y, {"logq": riv[code].to_numpy()})
+            for code, (x, y) in zip(sources, gxy)]
+
+
+def pumping_features(volume):
+    """Log of weekly volume in thousand cubic metres and its 52-week mean."""
+    v = np.log1p(volume)
+    return {"logvol": v, "logvol_m52": pd.Series(v).rolling(52, min_periods=1).mean().to_numpy()}
+
+
+def canal_node(pw, pts, weeks):
+    c = canal_series(pw, pts).reindex(weeks).fillna(0).to_numpy() / 1e6
+    return ("canal:plain", "canal", np.nan, np.nan, {"canal": c})
+
+
+def exogenous_nodes(P, codes, weeks, train_cols):
+    """Series (nodes x T x features) and coordinates of the distance graph's exogenous nodes."""
+    wells = pd.read_parquet(DS / "wells.parquet").set_index("code_bss").loc[codes]
+    nodes = weather_nodes(sorted(wells["cell_id"].unique()), weeks)
     # rivers (dataset v3 on)
     if WITH_RIVERS:
-        riv = river_series(pd.DatetimeIndex(weeks), str(weeks[train_cols][-1])[:10], rule="legacy")  # its runs of record
-        gauges = pd.read_parquet(DS / "gauges.parquet").set_index("code_station")
-        for code in sorted(set(NEAR_CANDIDATES) | set(RIVERS.values())):
-            x, y = _xy([gauges.loc[code, "longitude_station"]], [gauges.loc[code, "latitude_station"]])[0]
-            nodes.append((f"gauge:{code}", "river", x, y, {"logq": riv[code].to_numpy()}))
+        nodes += river_nodes(sorted(set(NEAR_CANDIDATES) | set(RIVERS.values())), weeks, train_cols,
+                             rule="legacy")  # the distance runs of record use the old gap rule
     # groundwater-abstraction fields (seasonal drinking-water profile, as the baselines)
     pw = pd.read_parquet(DS / "pumping_weekly.parquet")
     pts = pd.read_parquet(DS / "pumping_points.parquet")
@@ -95,14 +141,88 @@ def exogenous_nodes(P, codes, weeks, train_cols):
                     centre["fy"].to_numpy()[:, None] - wxy[:, 1][None]).min(axis=1)
     centre = centre[dmin <= PUMP_KM * 1000]   # fields that reach at least one piezometer
     for fld in [c for c in vol.columns if c in centre.index]:
-        v = np.log1p(vol[fld].to_numpy() / 1e3)
         nodes.append((fld, "pumping", centre.loc[fld, "fx"], centre.loc[fld, "fy"],
-                      {"logvol": v, "logvol_m52": pd.Series(v).rolling(52, min_periods=1).mean()
-                       .to_numpy()}))
+                      pumping_features(vol[fld].to_numpy() / 1e3)))
     # canal intakes of the plain (one node)
-    c = canal_series(pw, pts).reindex(weeks).fillna(0).to_numpy() / 1e6
-    nodes.append(("canal:plain", "canal", np.nan, np.nan, {"canal": c}))
+    nodes.append(canal_node(pw, pts, weeks))
     return nodes
+
+
+def select_export_edges(edges, codes):
+    """Validate the export and keep links that reach the run's piezometers."""
+    relations = set(edges["relation"])
+    unknown = relations - EXPORT_RELATIONS - IGNORED_RELATIONS
+    if unknown:
+        raise ValueError(f"unknown arm D relations: {', '.join(sorted(map(str, unknown)))}")
+    key = ["relation", "src", "dst"]
+    duplicate = edges.duplicated(key)
+    if duplicate.any():
+        raise ValueError(f"duplicated arm D edge (relation, src, dst): "
+                         f"{tuple(edges.loc[duplicate, key].iloc[0])}")
+    ignored = ", ".join(sorted(relations & IGNORED_RELATIONS))
+    print(f"Arm D ignored relations: {ignored or '(none)'}", flush=True)
+    in_graph = edges["dst"].isin(codes) & (
+        (edges["relation"] != "well_link") | edges["src"].isin(codes))
+    return edges.loc[in_graph & edges["relation"].isin(EXPORT_RELATIONS)]
+
+
+def export_nodes(edges, codes, weeks, train_cols):
+    """Build exogenous series from the selected arm D edges."""
+    by_relation = edges.groupby("relation")["src"].agg(set)
+    nodes = weather_nodes(sorted(by_relation.get("recharge", ())), weeks)
+    nodes += river_nodes(sorted(by_relation.get("river", ())), weeks, train_cols, rule="declared")
+    pumps = sorted(by_relation.get("pumping", ()))
+    un = edges[edges["relation"] == "pumping_unattributed"]
+    facilities = sorted(set(pumps) | set(un["src"]))
+    has_canal = "canal" in by_relation
+    if facilities or has_canal:
+        pw = pd.read_parquet(DS / "pumping_weekly.parquet")
+        pts = pd.read_parquet(DS / "pumping_points.parquet")
+    if facilities:
+        # facility_volumes fills requested columns even when the seasonal merge had no source.
+        available = set(pw["code_ouvrage"]) & set(pts["code_ouvrage"])
+        _check_sources(facilities, available, "pumping")
+        volumes = routing.facility_volumes(weeks, facilities, reconstruction=1)
+        _check_sources(facilities, volumes.columns, "pumping")
+        coords = pts.set_index("code_ouvrage").reindex(pumps)
+        pxy = _xy(coords["longitude"], coords["latitude"])
+        for code, (x, y) in zip(pumps, pxy):
+            nodes.append((f"facility:{code}", "pumping", x, y,
+                          pumping_features(volumes[code].to_numpy())))
+        targets = sorted(un["dst"].unique())
+        # The hybrid uses this same weighted sum as its source-unknown pumping input.
+        weights = routing._matrix(un, "pumping_unattributed", targets, facilities)
+        for code, volume in zip(targets, weights @ volumes[facilities].to_numpy().T):
+            nodes.append((f"unattributed:{code}", "pumping", np.nan, np.nan,
+                          pumping_features(volume)))
+    if has_canal:
+        nodes.append(canal_node(pw, pts, weeks))
+    return nodes
+
+
+def export_adjacency(codes, nodes, edges):
+    """Identity plus arm D's directed weights, before row normalisation."""
+    A = np.eye(len(codes) + len(nodes))
+    row = {code: i for i, code in enumerate(codes)}
+    col = row | {name: i for i, (name, *_) in enumerate(nodes, start=len(codes))}
+    for edge in edges.itertuples(index=False):
+        relation = edge.relation
+        weight = edge.weight
+        if relation == "well_link":
+            source = edge.src
+        elif relation == "pumping_unattributed":
+            source = f"unattributed:{edge.dst}"
+            weight = 1.0
+        elif relation == "canal":
+            source = "canal:plain"
+        else:
+            source = f"{EXPORT_PREFIX[relation]}:{edge.src}"
+        A[row[edge.dst], col[source]] = weight
+    return A
+
+
+def normalise_adjacency(A):
+    return torch.tensor(A / A.sum(1, keepdims=True), dtype=torch.float32)
 
 
 def adjacency(codes, wells_xy, plain, nodes):
@@ -133,16 +253,25 @@ def adjacency(codes, wells_xy, plain, nodes):
                     A[i, nw + idx[j]] = np.exp(-dd[i, j] / 5000.0)
     for j in np.where(typ == "canal")[0]:
         A[np.where(plain)[0], nw + j] = 1.0
-    A = A / A.sum(1, keepdims=True)
-    return torch.tensor(A, dtype=torch.float32)
+    return normalise_adjacency(A)
 
 
-def prepare(P, data):
+def prepare(P, data, edges=None):
     """Per-well arrays -> node arrays (piezometers first, then exogenous nodes)."""
     codes, weeks, X, Z, split, core, mu, sd, head = data
     T = len(weeks)
     train_cols = np.where(split[0] == "train")[0]
-    nodes = exogenous_nodes(P, codes, weeks, train_cols)
+    if edges is None:
+        nodes = exogenous_nodes(P, codes, weeks, train_cols)
+        wells = pd.read_parquet(DS / "wells.parquet").set_index("code_bss").loc[codes]
+        wxy = _xy(wells["x"], wells["y"])
+        lon0, lat0, lon1, lat1 = PLAIN_BBOX
+        plain = (wells["x"].between(lon0, lon1) & wells["y"].between(lat0, lat1)).to_numpy()
+        A = adjacency(codes, wxy, plain, nodes)
+    else:
+        edges = select_export_edges(edges, codes)
+        nodes = export_nodes(edges, codes, weeks, train_cols)
+        A = normalise_adjacency(export_adjacency(codes, nodes, edges))
     feat_names = sorted({k for *_, f in nodes for k in f})
     n_static = len(STATIC)
     # piezometer slots: statics (already standardised, last columns of X) + season
@@ -160,12 +289,8 @@ def prepare(P, data):
             a = _std(np.asarray(v, dtype=float)[None], train_cols)[0]
             Xn[nw + j, :, n_static + 2 + feat_names.index(name)] = a
         Xn[nw + j, :, -len(TYPES) + TYPES.index(t)] = 1.0
-    wells = pd.read_parquet(DS / "wells.parquet").set_index("code_bss").loc[codes]
-    wxy = _xy(wells["x"], wells["y"])
-    lon0, lat0, lon1, lat1 = PLAIN_BBOX
-    plain = (wells["x"].between(lon0, lon1) & wells["y"].between(lat0, lat1)).to_numpy()
     all_codes = list(codes) + [name for name, *_ in nodes]
-    _GRAPH[tuple(all_codes)] = adjacency(codes, wxy, plain, nodes)
+    _GRAPH[tuple(all_codes)] = A
 
     def pad(a, fill):
         return np.concatenate([a, np.full((len(nodes),) + a.shape[1:], fill, dtype=a.dtype)])
@@ -247,8 +372,29 @@ def build(codes, wells, n_in, args):
 
 
 def main():
-    args = parser(RUN).parse_args()
-    run_graph_model(args, build, prepare)
+    ap = parser(None)
+    ap.add_argument("--edges", choices=("distance", "D"), default="distance")
+    args = ap.parse_args()
+    if args.run is None:
+        args.run = f"{RUN}_D" if args.edges == "D" else RUN
+    prepare_graph = prepare
+    if args.edges == "D":
+        # A run folder made by a distance run must never hand its seeds to arm D: a folder from
+        # before 2026-10-25 has no fingerprint, and write_config then compares only the settings
+        # both versions record, which do not include the edges (lead's review of T17).
+        made = [f for f in (RESULTS / args.run).glob("**/config.json")
+                if json.loads(f.read_text()).get("edges") != "D"]
+        if made:
+            raise SystemExit(f"{made[0]} was not made with --edges D; use another --run "
+                             f"(default {RUN}_D)")
+        edges, meta = routing.load_arm("D")
+        args.release = meta["release"]
+        args.policy = meta["policy"]
+        args.code_version = meta["code_version"]
+        prepare_graph = partial(prepare, edges=edges)
+    else:
+        del args.edges  # keep the distance-run fingerprint used by existing seed caches
+    run_graph_model(args, build, prepare_graph)
 
 
 if __name__ == "__main__":

@@ -128,7 +128,11 @@ response then lowers the head, as Pastas does with rain minus evaporation. *Opti
 not; PE as is or max(PE, 0). *Recommendation:* constrain, with PE as is (negative in dry weeks, like
 the rain minus evaporation of the hydrological reference), max(PE, 0) as a sensitivity. Note: on the real data, PE was a clearly worse
 recharge input than rain minus a fitted share of evapotranspiration (validation NSE 0.45 against 0.51),
-so the recharge proxy of the main runs should be decided together. Items 15, 18.
+so the recharge proxy of the main runs should be decided together. Items 15, 18. *Implementation
+(2026-11-20):* the Phase 4 steps take the main recharge stress from `P4_RECHARGE` (default `linear`,
+rain minus a fitted share of evapotranspiration, as in the ladder; `pe` for effective rain), set with
+`kaggle_cpu.py push --env P4_RECHARGE=...`; block B7 adds soil drainage (`--recharge drainc`) and the
+unit-wide recharge cells (`--recharge-relation recharge_unitwide`) as sensitivities.
 
 **8. Rivers.** The flux between a river and its aquifer grows with the river stage whatever its
 direction (Harbaugh 2005, doi:10.3133/tm6A16), so "a higher river does not lower the head" is eligible

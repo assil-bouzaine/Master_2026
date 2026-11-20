@@ -96,12 +96,13 @@ p4_step() (
   fi
 
   local mode=${P4_MODE:-pooled} lam=${P4_LAM:-0.1} fixed=${P4_FIXED:-}
+  local recharge=${P4_RECHARGE:-linear}   # the main recharge stress (Gate 3 point 7: linear or pe)
   local statics=${P4_RUNG4_STATICS:-} p4_failed=0
   local -a p4_seeds reconstructions soft_grid rung4=() p4_pids=()
   read -r -a p4_seeds <<< "${P4_SEEDS:-0 1 2 3 4 5 6 7 8 9}"
   read -r -a reconstructions <<< "${P4_RECONS:-1 2 3}"
   read -r -a soft_grid <<< "${P4_SOFT_GRID:-1 10 100}"
-  local -a p4_flags=(--mode "$mode" --lam "$lam" --conv fft --seeds "${p4_seeds[@]}")
+  local -a p4_flags=(--mode "$mode" --lam "$lam" --recharge "$recharge" --conv fft --seeds "${p4_seeds[@]}")
   if [[ -n $fixed ]]; then p4_flags+=(--fixed-steps "$fixed"); fi
   if [[ -n $statics ]]; then rung4=(--statics "$statics"); fi
   export PFE_THREADS=1
@@ -157,11 +158,11 @@ p4_step() (
         done
       done ;;
     p4_B7)
-      # TODO: add the recharge options to response.py before enabling these
-      # R1 commands. The option names below are proposed.
-      # p4_enqueue p4_B7_D_unitwide_r1 r1 1 --arm D "${rung4[@]}" --recharge-relation recharge_unitwide
-      # p4_enqueue p4_B7_D_drainage_r1 r1 1 --arm D "${rung4[@]}" --recharge drainc
-      echo "p4_B7: pending response CLI options for unit-wide recharge and soil drainage" ;;
+      # recharge sensitivities of arm D (options added 2026-11-20, worker task T14): the unit-wide
+      # recharge cells, and soil drainage instead of the main recharge stress (the later
+      # --recharge overrides P4_RECHARGE's: argparse keeps the last value)
+      p4_enqueue p4_B7_D_unitwide_r1 r1 1 --arm D "${rung4[@]}" --recharge-relation recharge_unitwide
+      p4_enqueue p4_B7_D_drainage_r1 r1 1 --arm D "${rung4[@]}" --recharge drainc ;;
   esac
   p4_wait
   return "$p4_failed"

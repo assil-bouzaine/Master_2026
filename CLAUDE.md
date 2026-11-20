@@ -528,7 +528,46 @@ notebooks/       exploration only; anything that matters moves into src/
 
 ### ▶ Where we are (read this first in a new session)
 
-**2026-11-18: Claude leads two Codex workers; controls E/F, rungs 3 and 5, reconstructions, contrast report, paper skeleton. START HERE.**
+**2026-11-20: external review (astra) checked and fixed; the twin's grid complete and read; kernel version 13 running. START HERE.**
+- **Working mode (Assil, 2026-11-20):** Claude runs inside the **herdr app** (not tmux; `TMUX` empty).
+  The two Codex workers are herdr terminals started by Claude with `hc run --bg --name cxa|cxb ...
+  --label herdr.space=<Master_2026 space id>` (tabs of the Master_2026 space; `hc send`, `hc read`,
+  `hc ls`): cxa = GPT-6.2-Sol high (moderate tasks), cxb = GPT-6.1-Sol max (simplest). Briefs
+  `.agents/briefs/` (`RULES.md`, T09–T13 today), reports `results/_agents/reports/Tnn.md`. Details:
+  memory `codex-worker-orchestration`.
+- **The review** (`astra_review.md`, 17 points, all held): fixed and committed today (`b57b837`,
+  `394da63`, `3bad792`, `f2cd482`, `5ab58f1`), except point 8 (kernel lags: T13, cxb, running).
+  Table in the step note `step13_ladder.md` (last section); analysis plan item 19 amendment of
+  2026-11-20 and **item 21**; §7b "River gaps, as applied".
+- **Twin:** version 12 pulled (grid 240/240, slices 146/160). Report regenerated
+  (`docs/results_twin_v4.md`, interim). Reading: D/C ≈ 0 everywhere (even the oracle gains only
+  2–9 %); no cell pays; under converged pooling D recovers pumping better than C in 82 % of worlds
+  (all 12 cells), under early stopping in 25 %; rule (e) picks early stopping; score 6: 0 of 240
+  worlds with wrong reasons. Gate 3 points 1 and 5 updated (`docs/gate3_decisions.md`).
+- **Kaggle kernel version 13** pushed 2026-11-20 ≈ 11:55 UTC, steps `twin_slices` (14 missing slice
+  worlds, then `twin_rq2` with hard + none + soft on arms D, T; ≈ 8 h), with the 12:41 export (the
+  13:54 export restored after the bundle was built). Wheel dataset refreshed (33 wheels) and
+  dry-run on Python 3.13.
+
+**Next, in order (2026-11-20):**
+1. **Review T13 (cxb: implemented kernel lags, ladder report regenerated) and T08 (cxa: Phase 4
+   Kaggle steps, locked until `P4_CONFIRMED=1`, dry run only)**, commit them.
+2. **The twin's last session:** `python scripts/kaggle_cpu.py status`; when COMPLETE, `pull` (now
+   staged: validates, merges into `results/_kaggle_cpu/state`, exits 1 on a failed step), then
+   `PFE_DATASET=v4 python -m src.analysis.twin_report twin_map twin_slices twin_rq2`; read (f) RQ2
+   (hard/none/soft, per-well score 5) and score 6 in slices O and S; Gate 3 points 5 and 6 get their
+   evidence; refresh the explainer. If worlds are missing, push `--steps "twin_slices"` again with the
+   12:41 export swapped in (procedure below, 11-18 list item 1); the identity check stops a wrong export.
+3. **Gate 3** with Assil, then the supervisor (`docs/gate3_decisions.md`; point 1 now proposes early
+   stopping for accuracy contrasts and converged pooling for explanation claims). After it: tag the
+   plan, set the `P4_*` settings, push the Phase 4 blocks.
+4. B7's two options (a flag for arm D's unit-wide recharge relation; DRAINC as a recharge input),
+   then the black box on D's edges (Colab), explanations (Phase 5), the paper's text.
+**Assil (unchanged):** the three e-mails (`docs/supervisor_questions.md` §4–6, add the monthly Pliocene
+pumping 1998–2007), the Earth Engine registration, the Drive download of Colab session 2, the
+paywalled papers, the AGROVOC gold set, the review of the 7 SHOULD/COULD CQs, the Gate 3 sheet.
+
+**2026-11-18: Claude leads two Codex workers; controls E/F, rungs 3 and 5, reconstructions, contrast report, paper skeleton.**
 - **Working mode (Assil, 2026-11-18):** tmux session `main`, windows `cxA` (GPT-6.2-Sol high: simple
   tasks) and `cxB` (GPT-6.1-Sol max: simplest). Briefs `.agents/briefs/` (`RULES.md` + `Tnn_*.md`;
   gitignored), reports `results/_agents/reports/Tnn.md` (Codex cannot write `.agents/`). Claude

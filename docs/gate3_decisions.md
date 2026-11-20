@@ -1,4 +1,4 @@
-# Gate 3: the decisions to take (draft of 2026-11-16, points 18–21 added 2026-11-18)
+# Gate 3: the decisions to take (draft of 2026-11-16, points 18–21 added 2026-11-18, the twin's grid 2026-11-20)
 
 Gate 3 is the supervisor's review of the knowledge graph and the experiment plan, before the plan is
 frozen with a git tag and Phase 4 (the main model and its comparisons) starts. This sheet gathers
@@ -13,11 +13,11 @@ Nothing here is decided until Assil decides it. The recommendations are Claude's
 
 | # | Decision | Recommendation | Waits for |
 |---|---|---|---|
-| 1 | Fitting protocol of the main model: early stopping or training to convergence with pooling | Early stopping, provisionally; converged pooling as a sensitivity | Twin |
+| 1 | Fitting protocol of the main model: early stopping or training to convergence with pooling | By the declared rule (e) of the twin's grid: early stopping (better absolute pumping recovery in 8 of 12 cells, +0.03 NSE). But the graph improves the recovered pumping only under converged pooling (D better than C in 82 % of worlds, all 12 cells; 25 % under early stopping): early stopping for the accuracy contrasts, converged pooling for the explanation claims, both declared before the tag | Grid read 2026-11-20 |
 | 2 | Rungs 3–5 of the ladder; routing (rung 4) as the primary form of D vs C | Confirm | — |
 | 3 | Smallest effect of interest for the primary contrasts | A median RMSE reduction of 5 % (log ratio −0.05), with 10 seeds | — |
 | 4 | Permanent + seasonal pumping as the main structure | No: keep it as a sensitivity | — |
-| 5 | The twin's design (item 19 and its amendment) | Confirm and freeze with the tag | Twin (pilot done) |
+| 5 | The twin's design (item 19 and its amendments) | Confirm and freeze with the tag; fix the flag threshold of shortcut test 2 (score 6 found no world with wrong reasons in the grid) | Slices and RQ2 (kernel version 13) |
 | 6 | RQ2: the weight λ_s of the soft sign penalty on real data | A declared grid {1, 10, 100}, chosen on validation | Twin |
 | 7 | Recharge: does "effective rain raises the head" constrain the model? PE or max(PE, 0)? | Yes, with PE as is; max(PE, 0) as a sensitivity | — |
 | 8 | Rivers: constrain the sign where eligible (3 wells)? body-level statements? conflicting directions? | Constrain only where eligible; body-level statements stay ineligible; a conflicting direction keeps the sign eligible | — |
@@ -43,9 +43,29 @@ disagree on the size of the pumping effect; pooled towards the aquifer group and
 every start tells the same story, at the accuracy of the Pastas reference. The first look at the twin
 (3 worlds) found that early stopping also recovers the true pumping effect better. *Options:* early
 stopping (report the spread over starts with every explanation); converged pooling (stable, less
-accurate); both, one as the main protocol and one as a sensitivity. *Recommendation:* early stopping,
-unless the twin's grid shows that converged pooling recovers the contributions better across the
-cells. Details: analysis plan item 18 (follow-up results), item 19 amendment point 7.
+accurate); both, one as the main protocol and one as a sensitivity. *Recommendation before the grid:*
+early stopping, unless the twin's grid shows that converged pooling recovers the contributions better
+across the cells. Details: analysis plan item 18 (follow-up results), item 19 amendment point 7.
+
+*The grid (240 worlds, 12 cells, both protocols; read 2026-11-20, `docs/results_twin_v4.md`).*
+- **Rule (e), declared 2026-11-16:** early stopping has the lower pumping recovery error of arm D in
+  8 of the 12 cells (median over all worlds 0.269 against 0.288, in units of the noise-free head sd)
+  and a higher drought NSE (+0.032, median over cells): by the rule, **early stopping**.
+- **But the graph's value for explanations depends on the protocol.** Under early stopping, arm D
+  recovers the true pumping contribution *worse* than arm C (D better in 25 % of the worlds; medians
+  0.269 against 0.244; rule (c) reads "D more accurate for other reasons" where D/C < 0). Under
+  converged pooling, D recovers it better than C in 82 % of the worlds (0.288 against 0.329) and in
+  all 12 cells ("right reasons"), and its starts agree three times better (seed disagreement 0.015
+  against 0.050).
+- **Accuracy barely moves in either:** D / C between −0.012 and +0.009 (early stopping) and between
+  −0.025 and −0.002 (converged); even the oracle T, which routes exactly the truth, gains only 2–9 %
+  (T / C −0.02 to −0.09). No cell meets the "pays" rule (a), the bracket cells included (d): a
+  real-data D vs C accuracy contrast without a detected gain is the expected outcome.
+- *Revised recommendation:* declare both before the tag, with fixed roles: **early stopping for the
+  accuracy contrasts** (RQ1, the rule's choice), **converged pooling for the explanation claims**
+  (RQ3–RQ4: contributions, their agreement over starts, the template text), since only there does the
+  twin show the graph making the recovered pumping right. Synthetic heads only: this says how the
+  learner behaves under these generators, not what is true in the aquifer.
 
 **2. Rungs 3–5 and the routing contrast.** The main model is built as a ladder: (1) one response
 model for all wells, (2) pooling by aquifer group, (3) parameters predicted from the graph's facts
@@ -77,6 +97,14 @@ real wells and inputs, a truth graph apart from the learner's, dials for false l
 pumping (u), pumping signal (π), noise (ν), and variants (pumping timing, hidden variation, an omitted
 driver, responses the model does not have, the graph wrong on rivers, canals and recharge).
 *Recommendation:* confirm and freeze it with the tag; the grid is computed from it. Item 19.
+*Grid (2026-11-20):* score 6 found **no** world with "wrong reasons" (pumping recovery error above 0.5
+while the drought NSE is within 0.1 of the oracle's): 0 of 240 for both arms and protocols (recovery
+errors are 0.1–0.4). In the base grid the generator lies inside the learner's model class, so the
+shortcut tests have no positive case there; slices O and S (an omitted driver, responses the model
+does not have) are where wrong reasons can appear (kernel version 13 completes them). Test 2's
+detection and false-alarm rates also need a flag threshold, to fix here before they are computed. The
+fixes of the external review (item 19, amendment of 2026-11-20: score 5 per well, one experiment per
+cell, verdicts on complete cells) are part of what is frozen.
 
 **6. RQ2's soft penalty (Twin).** The soft setting adds λ_s × the share of each well's variance
 carried by contributions of the wrong sign. In the twin's pilot, λ_s = 1 barely reduced the wrong

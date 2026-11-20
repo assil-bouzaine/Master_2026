@@ -499,3 +499,98 @@ all-links: 1,839 on 54; main: 434 on 43).
   (routing already accepts `recharge="recharge_unitwide"`) and soil drainage (DRAINC, in the forcing
   table) as a recharge input.
 - The Codex account's five-hour window was about two-thirds used by 13:00 with both workers busy.
+
+## 2026-11-20: an external review checked and fixed; the twin's grid read
+
+Assil started the session in the herdr app (not tmux) and asked for the same way of working: Claude
+leads and reviews, two Codex workers take the well-specified pieces. The workers now run as herdr
+terminals started by Claude (`hc run --bg`, tabs of the Master_2026 space): cxa = GPT-6.2-Sol at high
+effort (moderate tasks), cxb = GPT-6.1-Sol at maximum effort (the simplest). He also asked to check
+`astra_review.md`, an external review of commit `0171297` (17 points), and to correct what is useful.
+
+### Recurring check (CLAUDE.md §7)
+
+1. *Which link of the chain does this advance?* Knowledge → model → explanation: the twin says when
+   the graph makes the model right for the right reasons, and the review's fixes keep the Phase 4
+   reading honest (no incomplete experiment can be read as a result).
+2. *Where does dated land use enter?* Nowhere new today (it waits for the AGROVOC gold set and the
+   Earth Engine login).
+3. *Observed / inferred / assumed / unknown.* The twin's results are synthetic (assumed generators);
+   the river gap fix changes an observed input's fill (an assumption) on 8 validation weeks.
+4. *Evidence vs plan.* The grid is evidence about the learner under the generators, not about the
+   aquifer; no real-data arm exists yet.
+5. *Does the next experiment resolve an open question?* Yes: RQ2's three settings on the same worlds
+   with the per-well score 5 (kernel version 13), and the slices O and S, where wrong reasons can
+   appear.
+6. *Missing from the subject:* unchanged (satellite rule, alignment results, explanations, dashboard).
+
+### The review, point by point
+
+Every point was checked against the code before any change; all held.
+
+| Point | What was wrong | Fixed by | Commit |
+|---|---|---|---|
+| 1 | Score 5 cut the union of all wells' true facilities, not "every true-edge facility of a well" | Claude: per-well cut (one pass), union kept as "plain-wide"; RQ2 also fits hard | `3bad792` |
+| 2 | River gaps > 8 weeks partly interpolated toward their far end (8 validation weeks of the Têt leaned on a test observation) | Claude: rule "declared" for every real-data arm; "legacy" kept for the baselines' panels and the twin | `3bad792` |
+| 3 | A one-start `predictions.parquet` could be read as a ten-start Phase 4 result | cxa (T12): aggregates rebuilt from exactly seeds 0–9 | `5ab58f1` |
+| 4 | A missing test shrank its Holm family | cxa (T12): families kept whole, pending until complete | `5ab58f1` |
+| 5 | Score 6 reported as a median of 0/1 flags | Claude: k of n worlds | `3bad792` |
+| 6 | Twin verdicts on incomplete grids and on ties | Claude: complete cells only, paired worlds, ties counted, strict majority | `3bad792` |
+| 7 | Response predictions decoded with the raw sd (only AIGUAN, not core) | cxb (T11), cxa (T12) | `f2cd482`, `5ab58f1` |
+| 8 | Reported lags are a·n, not the implemented weekly kernel's mean | cxb (T13, running) | — |
+| 9 | Duplicate predictions counted twice; empty scores crashed | cxb (T09) | `b57b837` |
+| 10 | A resumed twin cell accepted worlds of another experiment | Claude: identity check on resume and in the report | `3bad792` |
+| 11 | Kaggle runs looked successful after failures | cxa (T10) | `394da63` |
+| 12 | A pull could delete the only copy of partial work | cxa (T10): staged pull + cumulative state | `394da63` |
+| 13 | The bundle lacked Phase 4 inputs | cxa (T10) | `394da63` |
+| 14 | Parallel twin workers lost manifest records | Claude: file lock + atomic replace (the test fails without it: 31 of 40 records kept) | `3bad792` |
+| 15 | A first naive run wrote persistence skill as missing | cxb (T09) | `b57b837` |
+| 16 | A Chronos-2 smoke run could become the full forecast | cxb (T11) | `f2cd482` |
+| 17 | An offline bibliography refresh could empty `refs.bib` | cxb (T09) | `b57b837` |
+
+### The twin: kernel version 12 pulled, version 13 pushed
+
+- Version 12 (pushed 11-18) ended at its budget: **grid complete (240 worlds)**, slices 146 of 160,
+  RQ2 not started. Pulled (the previous download kept in `results/_kaggle_cpu/output_v11_backup`).
+- The Kaggle wheel dataset was refreshed (33 wheels: T10 added rdflib, pyoxigraph, requests and their
+  dependencies, checked on Kaggle) and dry-run on a clean Python 3.13 (install and versions only).
+- **Version 13 pushed 2026-11-20 ≈ 12:55 CET**, steps `twin_slices` (the 14 missing slice worlds,
+  then `twin_rq2`: hard, none and soft on arms D and T, base cell and 8 slices × 20 worlds), with the
+  12:41 export again (swapped in for the bundle, the 13:54 export restored right after). About 8 h.
+
+### The grid's reading (`docs/results_twin_v4.md`, rules fixed before; synthetic heads only)
+
+- **Accuracy barely moves.** D / C (log RMSE ratio, drought, median over 20 worlds) is between
+  −0.012 and +0.009 under early stopping and between −0.025 and −0.002 under converged pooling. Even
+  the oracle T, which routes exactly the truth, gains only 2–9 %. No cell "pays" (rule a), the
+  bracket cells included (rule d): a real-data D vs C accuracy contrast without a detected gain is
+  the expected outcome, not a failure of the graph.
+- **The graph's value shows in the explanation, and only under converged pooling.** There D recovers
+  the true pumping contribution better than C in 82 % of the worlds and in every cell (rule c: right
+  reasons); under early stopping it does so in 25 % of the worlds (rule c: "D more accurate for other
+  reasons" where D/C < 0).
+- **Rule (e) picks early stopping** (lower absolute pumping recovery error of D in 8 of 12 cells,
+  +0.03 NSE). Gate 3 point 1 now proposes both, with declared roles: early stopping for the accuracy
+  contrasts, converged pooling for the explanation claims.
+- **Score 6 never fires:** 0 of 240 worlds have "wrong reasons" (recovery errors 0.1–0.4, the
+  threshold is 0.5). Inside the model class there is no positive case for the shortcut tests; slices O
+  and S will say whether one appears outside it.
+- Slice G (16 worlds so far): when the graph is wrong about recharge, rivers and canals, D loses 5–7 %
+  against C: those relations weigh more on accuracy than the pumping routing does.
+
+### Why
+
+The review found real defects, and the most important ones could have changed what we report: the
+intervention score measured something other than its definition, and the Phase 4 report could have
+classified an incomplete experiment. Fixing them before the twin's grid was read, and before any
+Phase 4 run, keeps the plan's "rules first, results second" order intact.
+
+### What to consider
+
+- The twin's scores 4 (lags) compare a·n with a·n: like with like, but not the implemented delay;
+  T13 gives the ladder's comparison with BRGM the implemented mean and peak.
+- The baselines of record keep the old river fill (8 validation weeks of one gauge): documented in
+  §7b and item 21, not re-run.
+- `selection.json` now guards Chronos-2 caches: Colab session 2's Chronos folders (still on Drive)
+  have none, so a *resumed* Chronos run in those folders stops by design; scoring them is unaffected.
+- Codex account: about 70 % of the five-hour window left at 13:00 with both workers busy since 11:30.

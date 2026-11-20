@@ -12,6 +12,7 @@ import pandas as pd
 
 from src.analysis import arms_report as A, ladder_report, stats
 from src.models.evaluate import RESULTS
+from src.models.response import SD_FLOOR
 
 
 def test_classification():
@@ -38,14 +39,18 @@ def table(marker):
                           "core": True, "NSE": 0.5, "skill": 0.5, "KGE": 0.3, "RMSE": 0.6}]).assign(run=marker)
 
 
-class MemoryRuns:
+class MemoryRuns(A.SavedRuns):
     wells = None
 
+    def __init__(self, missing="B_r2_lwo"):
+        super().__init__()
+        self.missing = missing
+
     def metrics(self, run, regime):
-        return None if run == "B_r2_lwo" else table(run)
+        return None if run == self.missing else table(run)
 
     def band(self, run, regime, metrics):
-        return (-0.01, 0.01), 10
+        return (-0.01, 0.01), tuple(range(10))
 
     def coverage(self, run, regime):
         return "pumping 10"
@@ -57,7 +62,7 @@ def test_holm_and_missing():
                                         for name in "AB"],
                            "family 2": [{"name": name, "a": name + "_r1", "b": "ref_r1"} for name in "CD"]},
               "controls": [], "exploratory": []}
-    p = {"A": 0.01, "B": 0.04, "C": 0.02, "D": 0.03}
+    p = {"A": 0.02, "B": 0.39, "C": 0.02, "D": 0.03}
 
     def contrast(ma, mb, wells):
         name = ma["run"].iloc[0]
@@ -66,21 +71,37 @@ def test_holm_and_missing():
 
     with patch.object(A.ladder, "contrast", side_effect=contrast), patch.object(A.stats, "paired") as paired:
         report = A.compute(config, MemoryRuns())
-    assert all(call.kwargs["strict"] for call in paired.call_args_list)
-    assert paired.call_count == 15
+        assert all(call.kwargs["strict"] for call in paired.call_args_list)
+        assert paired.call_count == 15
+        complete = A.compute(config, MemoryRuns(missing=None))
     assert report["missing"] == ["B_r2_lwo"]
     for family, names in (("family 1", "AB"), ("family 2", "CD")):
         for regime in config["regimes"]:
             for recon in config["reconstructions"]:
                 rows = [r for r in report["families"] if (r["family"], r["regime"], r["reconstruction"])
                         == (family, regime, recon)]
-                want_names = "A" if (family, regime, recon) == ("family 1", "_lwo", 2) else names
-                assert "".join(row["name"] for row in rows) == want_names
+                assert "".join(row["name"] for row in rows) == names
+                if (family, regime, recon) == ("family 1", "_lwo", 2):
+                    available, missing = rows
+                    np.testing.assert_allclose(available["p_cluster"], 0.030)
+                    assert A.classify(available[A.EFFECT], available["interval"], available["union"],
+                                      available["p_cluster"]) == A.DETECTED
+                    assert all(row["classification"] is None and row["p_holm"] is None for row in rows)
+                    assert all(row["pending"] == "pending: family incomplete, 1 of 2 tests" for row in rows)
+                    assert missing["p_cluster"] is None and missing["p_holm_interim"] is None
+                    np.testing.assert_allclose(available["p_holm_interim"], stats.holm([0.030, 1])[0])
+                    continue
                 np.testing.assert_array_equal([row["p_holm"] for row in rows],
-                                              stats.holm([p[name] + (0.01 if recon == 2 else 0) for name in want_names]))
+                                              stats.holm([p[name] + (0.01 if recon == 2 else 0) for name in names]))
+    done_a, done_b = [r for r in complete["families"] if (r["family"], r["regime"], r["reconstruction"])
+                      == ("family 1", "_lwo", 2)]
+    np.testing.assert_allclose([done_a["p_holm"], done_b["p_cluster"]], [0.060, 0.40])
+    assert done_a["classification"] == A.UNDECIDED and done_a["p_holm_interim"] is None
     rendered = A.render(config, report)
     assert all(word in rendered for word in ("confirmatory", "robustness", "pumping 10", "B_r2_lwo"))
-    print("  2. Holm matches the independent family/cell calls and drops the one listed missing run.")
+    assert "0.06<br>interim (family incomplete)" in rendered
+    assert "pending: family incomplete, 1 of 2 tests" in rendered
+    print("  2. A raw p of 0.030 gives interim Holm p 0.060 while pending, then final p 0.060 and undecided.")
 
 
 def test_draws():
@@ -99,7 +120,9 @@ def test_reconstructions():
     assert A.reconstruction_agreement(rows, [1, 2, 3]).startswith("Yes.")
     disagree = A.reconstruction_agreement([*rows[:2], rows[2] | {A.EFFECT: 0.09}], [1, 2, 3])
     assert disagree.startswith("Depends") and "(3)" in disagree and "favours b" in disagree
-    assert A.reconstruction_agreement(rows[:2], [1, 2, 3]) == "Incomplete. Missing 3"
+    assert A.reconstruction_agreement(rows[:2], [1, 2, 3]).startswith("Pending.")
+    pending = rows[2] | {"classification": None, "pending": "pending: family incomplete, 1 of 2 tests"}
+    assert A.reconstruction_agreement([*rows[:2], pending], [1, 2, 3]).startswith("Pending.")
     same_class = [row | {"classification": A.NO_EFFECT} for row in rows]
     assert A.reconstruction_agreement(same_class, [1, 2, 3]).startswith("Yes.")
     print("  4. Reconstruction agreement follows detection direction or the shared non-detected class.")
@@ -155,6 +178,108 @@ def test_seed_layout():
     print("  5b. R2 pools held-out wells once and R3 reads the shortened-window scale.")
 
 
+def write_seeds(folder, data, offset=0):
+    folder.mkdir(parents=True)
+    for seed in range(10):
+        data.assign(z=offset + float(seed)).to_parquet(folder / f"seed_{seed}.parquet", index=False)
+
+
+def test_declared_seeds():
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        cache = root / "_cache"
+        cache.mkdir()
+        pd.DataFrame({"code_bss": ["A", "B"], "mu": [10.0, 20.0], "sd": [1e-13, 2.0]}).to_parquet(
+            cache / "panel.parquet", index=False)
+        weeks = pd.date_range("2024-01-07", periods=26, freq="W-SUN")
+        data = pd.MultiIndex.from_product([["A", "B"], weeks], names=["code_bss", "week"]).to_frame(index=False)
+        run, reference = "p4_fixture", "p4_reference"
+        write_seeds(root / run, data)
+        write_seeds(root / reference, data, offset=1)
+        stale = data.assign(pred=data["code_bss"].map({"A": 10.0, "B": 20.0}), task="simulation", horizon=0)
+        stale.to_parquet(root / run / "predictions.parquet", index=False)
+        (root / run / "metrics_per_well.csv").write_text("stale\n")
+
+        runs = A.SavedRuns(root)
+        assert runs.seed_frames(root / run, "")[1].iloc[0]["pred"] == 10.0 + SD_FLOOR
+        with patch.object(A, "score", side_effect=lambda pred: pred) as score:
+            prediction = runs.metrics(run, "")
+        score.assert_called_once()
+        np.testing.assert_allclose(prediction.loc[prediction["code_bss"] == "A", "pred"], 10.0 + SD_FLOOR * 4.5)
+        np.testing.assert_allclose(prediction.loc[prediction["code_bss"] == "B", "pred"], 29.0)
+        assert (prediction["pred"].to_numpy() != stale["pred"].to_numpy()).all()
+        assert runs.aggregate_seeds[run, ""] == tuple(range(10))
+
+        spec = {"name": "fixture vs reference", "a": run, "b": reference}
+        config = {"smallest_effect": 0.05, "alpha": 0.05, "regimes": [""], "reconstructions": [1],
+                  "families": {"fixture": [spec]}, "exploratory": [spec], "controls": [spec]}
+        effects = {A.EFFECT: -0.09, "interval": (-0.15, -0.03), "p_cluster": 0.03,
+                   "share of wells a better": 0.7, "support mismatch": 0}
+        runs = A.SavedRuns(root)
+        runs.observed = pd.DataFrame({"A": 1.0}, index=weeks)
+        bands = []
+
+        def band(frames, obs, wells, rng):
+            bands.append(tuple(sorted(frames)))
+            return -0.01, 0.01, 0.01
+
+        with (patch.object(A, "score", return_value=table(run).assign(code_bss="A")),
+              patch.object(A.stats, "paired"), patch.object(A.ladder, "contrast", return_value=effects),
+              patch.object(A.ladder, "band", side_effect=band)):
+            report = A.compute(config, runs)
+            for row in [*report["families"], *report["exploratory"], *report["controls"][0]["rows"]]:
+                for arm in ("a", "b"):
+                    assert row[f"aggregate_seeds_{arm}"] == row[f"band_seeds_{arm}"] == tuple(range(10))
+            assert bands == [tuple(range(10))] * 2
+            assert report["families"][0]["classification"] == A.DETECTED
+            with patch.object(runs, "band", return_value=((-0.01, 0.01), tuple(range(1, 11)))):
+                try:
+                    A.compute(config, runs)
+                except AssertionError as error:
+                    assert "declared seed IDs" in str(error)
+                else:
+                    raise AssertionError("Classification accepted different band seeds")
+
+        seed_7 = root / run / "seed_7.parquet"
+        seed = pd.read_parquet(seed_7)
+        seed_7.unlink()
+        with patch.object(A, "score", return_value=table(reference)) as score:
+            report = A.compute(config, A.SavedRuns(root))
+        score.assert_called_once()  # Only the complete reference was scored.
+        assert set(report["pending"][run][run]) == {f"seed_{s}" for s in range(10) if s != 7}
+        assert report["families"][0]["classification"] is None
+        assert not report["exploratory"] and report["controls"][0]["n"] == 0
+        assert f"`{run}` · seeds found: seed_0" in A.render(config, report)
+        seed.to_parquet(seed_7, index=False)
+        seed.to_parquet(root / run / "seed_10.parquet", index=False)
+        runs = A.SavedRuns(root)
+        with patch.object(A, "score") as score:
+            assert runs.metrics(run, "") is None
+        score.assert_not_called()
+        assert "seed_10" in runs.pending[run][run]
+
+        folded = "p4_fixture_lwo"
+        for fold in (0, 1):
+            write_seeds(root / folded / f"fold_{fold}", data, offset=fold)
+        splits = {"leave_wells_out": {"n_folds": 2, "fold_of_well": {"A": 0, "B": 1}}}
+        runs = A.SavedRuns(root)
+        runs.splits = splits
+        with patch.object(A, "score", side_effect=lambda pred: pred):
+            prediction = runs.metrics(folded, "_lwo")
+        np.testing.assert_allclose(prediction.loc[prediction["code_bss"] == "A", "pred"], 10.0 + SD_FLOOR * 4.5)
+        np.testing.assert_allclose(prediction.loc[prediction["code_bss"] == "B", "pred"], 31.0)
+        fold_1 = root / folded / "fold_1"
+        (fold_1 / "seed_7.parquet").rename(fold_1 / "seed_10.parquet")
+        runs = A.SavedRuns(root)
+        runs.splits = splits
+        with patch.object(A, "score") as score:
+            assert runs.metrics(folded, "_lwo") is None
+        score.assert_not_called()
+        assert "seed_7" in runs.pending[folded]["fold_0"]
+        assert "seed_7" not in runs.pending[folded]["fold_1"] and "seed_10" in runs.pending[folded]["fold_1"]
+    print("  5c. Phase 4 checks the exact seeds per fold, ignores stale aggregates and decodes with SD_FLOOR.")
+
+
 def test_smoke():
     config = json.loads(A.DEV_CONFIG.read_text())
     runs = A.SavedRuns()
@@ -180,11 +305,12 @@ def test_smoke():
     assert report["controls"][0]["n"] == 2
     text = A.render(config, report, development=True)
     # Exercise the CLI's development path using the same computed result.
-    with patch.object(A, "compute", return_value=report):
+    with (TemporaryDirectory() as tmp, patch.object(A, "RESULTS", Path(tmp)),
+          patch.object(A, "compute", return_value=report)):
         A.main(["--config", str(A.DEV_CONFIG)])
-    assert (RESULTS / "_arms_dev.md").read_text() == text
+        assert (Path(tmp) / "_arms_dev.md").read_text() == text
     assert "Development only" in text and "confirmatory" not in text
-    print(f"  5c. Development report matches ladder_report.contrast (median {row[A.EFFECT]:.6f}).")
+    print(f"  5d. Development report matches ladder_report.contrast (median {row[A.EFFECT]:.6f}).")
 
 
 def main():
@@ -194,6 +320,7 @@ def main():
     test_reconstructions()
     test_soft_selection()
     test_seed_layout()
+    test_declared_seeds()
     test_smoke()
     print("test_arms_report: all checks passed")
 

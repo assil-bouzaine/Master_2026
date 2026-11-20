@@ -550,11 +550,18 @@ notebooks/       exploration only; anything that matters moves into src/
   dry-run on Python 3.13.
 
 **Next, in order (2026-11-20):**
-1. ✅ T08 (Phase 4 steps `p4_B1`…`p4_B7`, locked until `P4_CONFIRMED=1`; `P4_DRYRUN=1` prints),
-   T13 (implemented kernel lags; review point 8 confirmed), T15 (`kaggle_cpu.py push --env KEY=VALUE`:
-   the way `P4_CONFIRMED` and the `P4_*` settings reach the kernel) reviewed and committed.
-   **Open: T14 (cxa: B7's `--recharge-relation recharge_unitwide` and `--recharge drainc`)**; when
-   committed, enable B7's two commented commands in `scripts/run_v4_cpu.sh` (`p4_B7`).
+1. ✅ Session of 2026-11-20 ended with every worker task reviewed and committed (T09–T16; 17
+   commits since `0171297`, **local, not pushed**): T08 Phase 4 steps `p4_B1`…`p4_B7` (locked until
+   `P4_CONFIRMED=1`; `P4_DRYRUN=1` prints all 366 fits + 51 fold assemblies; B7 enabled; the main
+   recharge stress is `P4_RECHARGE`, default `linear`), T13 implemented kernel lags, T14 B7's
+   `--recharge-relation recharge_unitwide` and `--recharge drainc`, T15 `kaggle_cpu.py push --env
+   KEY=VALUE` (how `P4_CONFIRMED` and the `P4_*` settings reach the kernel), T16
+   `scripts/run_tests.py` (**42 of 42 test modules pass**, 23 min; `--quick` skips test_cq,
+   test_kg_rules, test_routing, test_twin). Both workers idle (no open task).
+   **Phase 4 launch after Gate 3 and the tag:** `python scripts/kaggle_cpu.py push --steps "p4_B1 p4_B2
+   ..." --env P4_CONFIRMED=1 --env P4_FIXED=... --env P4_RECHARGE=...` (settings from the Gate 3
+   decisions; a second protocol needs its own run names: Gate 3 point 1). Run `scripts/run_tests.py`
+   at the commit to be tagged.
 2. **The twin's last session:** `python scripts/kaggle_cpu.py status`; when COMPLETE, `pull` (now
    staged: validates, merges into `results/_kaggle_cpu/state`, exits 1 on a failed step), then
    `PFE_DATASET=v4 python -m src.analysis.twin_report twin_map twin_slices twin_rq2`; read (f) RQ2

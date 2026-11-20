@@ -605,3 +605,13 @@ Phase 4 run, keeps the plan's "rules first, results second" order intact.
 
 Open: T14 (A, running): the two B7 options (`--recharge-relation recharge_unitwide`, `--recharge drainc`);
 then B7's two commented commands in `run_v4_cpu.sh` can be enabled.
+
+### End of the session (2026-11-20 ≈ 14:10 CET): T14 and T16, then stop
+
+| Task | Worker | What it delivered | Review |
+|---|---|---|---|
+| T14 | A (GPT-6.2-Sol) | B7's options: `--recharge-relation recharge_unitwide` (960 edges for 59 wells against 193 for 54) and `--recharge drainc` | accepted; every existing configuration bit-identical (arrays, predictions from the same start, config and schema files). Claude then enabled B7 in the Phase 4 steps and added `P4_RECHARGE` |
+| T16 | B (GPT-6.1-Sol) | `scripts/run_tests.py`: every test module in its own process, times and logs in `results/_tests/` | accepted; **42 of 42 modules pass** (23 min) |
+
+Kaggle kernel version 13 (the twin's last session) was still running at the end. Assil asked to stop
+after the workers' tasks: nothing new was started.

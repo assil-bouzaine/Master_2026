@@ -11,7 +11,12 @@ Pushed by scripts/kaggle_cpu.py (docs/gpu_howto.md, "Kaggle CPU"). On Kaggle it:
    copied to /kaggle/working/results_cpu/v4 (= the kernel's output) every SYNC_S seconds and
    at the end. A step that would run past BUDGET_H is stopped, so the output is saved before
    Kaggle's 12 h session limit. Push again to continue.
+
+After dispatch, the kernel exits successfully even if steps failed. Kaggle may only keep the
+results of a successful kernel, and its output is the only copy of the session's work. The
+local pull reads run_status.json and reports step failures after retrieving that work.
 """
+import json
 import os
 import re
 import shutil
@@ -21,6 +26,7 @@ import sys
 import threading
 import time
 import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 STEPS = os.environ.get("STEPS", "naive lgbm lgbm_final lgbm_regimes pastas wellmodel")
@@ -37,7 +43,8 @@ STATE = Path(os.environ.get("PFE_STATE", "/tmp/pfe_state"))   # earlier results,
 T0 = time.time()                                             # reset after restore(): see save()
 DEADLINE = time.time() + BUDGET_H * 3600
 CHECKED = ["numpy", "pandas", "pyarrow", "scipy", "lightgbm", "pastas", "numba", "llvmlite",
-           "matplotlib", "geopandas", "shapely", "pyproj"]    # import names = pin names
+           "matplotlib", "geopandas", "shapely", "pyproj", "rdflib", "pyoxigraph",
+           "requests"]    # import names = pin names
 
 
 def log(msg):
@@ -143,14 +150,35 @@ def run(steps, env):
     p = subprocess.Popen(["bash", "scripts/run_v4_cpu.sh"], cwd=CODE, env=dict(env, STEPS=steps),
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                          start_new_session=True)
-    timer = threading.Timer(max(DEADLINE - time.time(), 0), os.killpg, (p.pid, signal.SIGTERM))
+    budget_stop = threading.Event()
+
+    def end_session():
+        try:
+            os.killpg(p.pid, signal.SIGTERM)
+        except ProcessLookupError:  # the process group already finished
+            return
+        budget_stop.set()
+
+    timer = threading.Timer(max(DEADLINE - time.time(), 0), end_session)
     timer.start()
-    with LOG.open("a") as f:
-        for line in p.stdout:
-            print(line, end="", flush=True)
-            f.write(line)
-    timer.cancel()
-    return p.wait()
+    try:
+        with LOG.open("a") as f, p.stdout:
+            for line in p.stdout:
+                print(line, end="", flush=True)
+                f.write(line)
+        rc = p.wait()
+    finally:
+        timer.cancel()
+        timer.join()
+    return rc, budget_stop.is_set()
+
+
+def write_run_status(path, status_file, rc, budget_stop, steps, skipped=()):
+    """Save the dispatcher result so pull can report it after copying the session's work."""
+    failed_steps = status_file.read_text().splitlines() if status_file.is_file() else []
+    status = {"exit": rc, "budget_stop": budget_stop, "failed_steps": [*failed_steps, *skipped],
+              "steps": steps, "finished_utc": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    path.write_text(json.dumps(status, indent=2) + "\n")
 
 
 def main():
@@ -160,23 +188,33 @@ def main():
     restore()
     T0 = time.time()
     install()
+    status_file = (CODE / "failed_steps.txt").resolve()
+    status_file.unlink(missing_ok=True)
     env = dict(os.environ, PY=sys.executable, PYTHONPATH=pythonpath(), PYTHONIOENCODING="utf-8",
-               PYTHONUNBUFFERED="1", JOBS=str(len(os.sched_getaffinity(0))))
+               PYTHONUNBUFFERED="1", JOBS=str(len(os.sched_getaffinity(0))),
+               STATUS_FILE=str(status_file))
     steps = STEPS
+    skipped = []
     if "ealstm" in steps and not ealstm_ok(env):
-        # "none", not "": an empty STEPS would make run_v4_cpu.sh run its default steps
-        steps = " ".join(s for s in steps.split() if "ealstm" not in s) or "none"
+        skipped = [s for s in steps.split() if "ealstm" in s]
+        steps = " ".join(s for s in steps.split() if s not in skipped)
     log(f"{env['JOBS']} CPUs; steps {steps}; budget {BUDGET_H} h")
     stop = threading.Event()
-    threading.Thread(target=sync_loop, args=(stop,), daemon=True).start()
+    sync = threading.Thread(target=sync_loop, args=(stop,), daemon=True)
+    sync.start()
     try:
-        rc = run(steps, env)
-        log(f"steps ended (exit {rc})" if time.time() < DEADLINE
-            else "time budget used: push again to continue")
+        if skipped and not steps:
+            rc, budget_stop = 0, False
+        else:
+            rc, budget_stop = run(steps, env)
+        log("time budget used: push again to continue" if budget_stop
+            else f"steps ended (exit {rc})")
     finally:
         stop.set()
+        sync.join()
         save()
         log(f"results saved to {OUT}")
+    write_run_status(WORK / "run_status.json", status_file, rc, budget_stop, STEPS, skipped)
 
 
 if __name__ == "__main__":

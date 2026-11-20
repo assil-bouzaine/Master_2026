@@ -370,7 +370,7 @@ name resolution; pastas missing, numpy 2.1.3, pandas 2.3.3, LightGBM 4.6.0 (not 
 Kernels run in the background (laptop may be off), up to 12 h per session.
 
 ```bash
-.venv/bin/python scripts/kaggle_cpu.py wheels    # once: 28 pinned cp313 wheels (235 MB)
+.venv/bin/python scripts/kaggle_cpu.py wheels    # once per wheel set, including Phase 4 routing
                                                  # -> private dataset <user>/pfe-wheels-cp313
 .venv/bin/python scripts/kaggle_cpu.py push      # bundle -> <user>/pfe-v4-cpu-bundle, kernel
 .venv/bin/python scripts/kaggle_cpu.py kernel    # the staged kernel again (bundle unchanged)
@@ -385,11 +385,12 @@ Kernels run in the background (laptop may be off), up to 12 h per session.
   steps; Pastas gets one worker per CPU). Results are copied to the output every 10 min.
 - The wheels come from `uvx pip download --platform manylinux… --python-version 3.13` (the
   venv has no pip). The list (`PINNED` in `kaggle_cpu.py`) is what an import trace of the CPU
-  baselines showed, plus their runtime dependencies.
+  baselines showed, plus their runtime dependencies. Refresh the wheel dataset once for Phase 4
+  so the baseline and control routing imports are available offline.
 - **Dry-run a new wheel set locally before pushing**, on a clean Python 3.13 and without
   computing anything: `uv venv --seed --python 3.13 <dir>/py313`, put `cpu_bundle.zip` and the
   wheels under `<dir>/input`, then `KAGGLE_INPUT=<dir>/input KAGGLE_WORK=<dir>/working
-  PFE_CODE=<dir>/pfe PIN_TARGET=<dir>/pins STEPS=none <dir>/py313/bin/python
+  PFE_CODE=<dir>/pfe PIN_TARGET=<dir>/pins STEPS=' ' <dir>/py313/bin/python
   scripts/kaggle_cpu_run.py`. The first dry run found that Pastas needs `tqdm`.
 - **The push watches the start** (2026-10-24): kernel version 3, pushed 16 s after a new
   bundle version, ended in ERROR with an empty log and no output; it had never run (the
@@ -397,11 +398,16 @@ Kernels run in the background (laptop may be off), up to 12 h per session.
   dataset while its new version may still be unpacked, so a new version now waits 2 min,
   and a kernel that dies in its first minutes with an empty log is pushed once more. A
   kernel that fails with a log is not retried: the log tail is printed.
-- `pull` keeps the whole output in `results/_kaggle_cpu/output`; the next `push` ships it back
-  as `state.zip`, so finished seeds and wells are not recomputed.
+- `pull` checks for the run log before replacing `results/_kaggle_cpu/output` and keeps the
+  previous download in `output_prev`. Each successful download adds its run files to
+  `results/_kaggle_cpu/state`. The next `push` packs that history into `state.zip` to resume
+  partial runs from any session.
+- The dispatcher continues after a failed step. The kernel saves its results and writes
+  `run_status.json` before completing. `pull` copies the results and returns exit 1 if a step
+  failed. A time-budget stop alone returns exit 0 and asks you to push again to continue.
 - **While a kernel runs, `log` prints nothing** (seen 2026-11-16): Kaggle serves the log only once the
-  kernel has ended. Judge a running kernel by `status`; a step that fails at import ends the whole
-  kernel within minutes (COMPLETE early), while a twin or ladder step keeps it RUNNING for hours.
+  kernel has ended. Judge a running kernel by `status`. When Kaggle shows COMPLETE, use `pull`
+  to read the step outcomes.
 - **Pushing a new version while one runs** (2026-11-16: version 10 pushed while version 9 ran):
   `status`, `log` and `pull` refer to the newest version only. Whether Kaggle stops the older run
   was not checked (the CLI shows no older version); its output is not pulled either way.
@@ -410,7 +416,7 @@ Kernels run in the background (laptop may be off), up to 12 h per session.
 - **EA-LSTM on Kaggle** (from 2026-10-24, when Colab ran out of GPU quota):
   `push --steps "final:ealstm regimes:ealstm"`. It uses the torch of Kaggle's image (not a
   pinned wheel). The kernel runs `tests/test_ealstm.py` first and drops the EA-LSTM steps if
-  torch is missing or the test fails; if every step is dropped it runs "none", never the
-  default steps. About 2 h for the final and 17 h for the regimes on 4 CPUs: two pushes.
+  torch is missing or the test fails. The skipped steps appear in `failed_steps`. About 2 h
+  for the final and 17 h for the regimes on 4 CPUs: two pushes.
 - **Pastas stability check:** steps `pastas_starts` (10 starting points per well) and
   `pastas_trainobs` (the same with training-period heads only), about 1 min per run.

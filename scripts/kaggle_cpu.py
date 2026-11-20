@@ -15,7 +15,7 @@ wheels: downloads the wheels of the pinned packages that the CPU baselines impor
   and uploads them as the private dataset <user>/pfe-wheels-cp313.
 push: packs code, dataset v4, the daily SAFRAN files (Pastas), the cached feature panels and
   the configurations selected on v3 (scripts/v4_from_v3.py) into cpu_bundle.zip, with the
-  last pulled output as state.zip (resume), as the private dataset <user>/pfe-v4-cpu-bundle;
+  cumulative pulled results as state.zip (resume), as the private dataset <user>/pfe-v4-cpu-bundle;
   waits until Kaggle has processed it; then pushes scripts/kaggle_cpu_run.py as the private
   kernel <user>/pfe-v4-cpu (CPU, internet off). Kaggle starts it at once and it runs
   without the laptop. The push then watches the start: on 2026-10-24 kernel version 3, pushed
@@ -26,9 +26,10 @@ push: packs code, dataset v4, the daily SAFRAN files (Pastas), the cached featur
   with an empty log is pushed once more.
 kernel: pushes the kernel staged by the last push (results/_kaggle_cpu/kernel) again, when
   the bundle on Kaggle is still current; same start watch.
-pull: downloads the kernel output to results/_kaggle_cpu/output, copies every finished run
-  (predictions.parquet present) to results/v4/<run> and rescores it with src.models.evaluate;
-  twin runs (world_*.json, src/models/twin.py) are copied as they are.
+pull: validates the download before merging it into cumulative state and rotating the output.
+  Copies finished runs (predictions.parquet present) to results/v4/<run> and rescores them with
+  src.models.evaluate. Twin runs (world_*.json, src/models/twin.py) are copied as they are.
+  Reports any failed steps after copying the results.
 The bundle also carries the export tables of arms C and D (data/processed/kg/export_v4_*), which
 the routed models and the twin read.
 """
@@ -46,18 +47,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 KAGGLE = str(Path(sys.executable).parent / "kaggle")
 STAGE = ROOT / "results" / "_kaggle_cpu"              # results/ is gitignored
-OUTPUT = STAGE / "output"
 V4 = ROOT / "results" / "v4"
+CPU_RESULTS = Path("results_cpu") / "v4"
 BUNDLE, WHEELS, KERNEL = "pfe-v4-cpu-bundle", "pfe-wheels-cp313", "pfe-v4-cpu"
 VERSION_GRACE_S = 120      # after "ready": time for Kaggle to unpack a new dataset version
 WATCH_S, WATCH_STEP_S = 360, 30   # how long the start of a pushed kernel is watched
 DEFAULT_STEPS = "naive lgbm lgbm_final lgbm_regimes pastas wellmodel"
-# pinned distributions imported by naive, LightGBM, Pastas and the evaluation (checked with an
-# import trace), with their runtime dependencies; versions come from requirements.txt
+# The CPU baselines and routing imports, with their required dependencies.
+# Versions come from requirements.txt.
 PINNED = ["numpy", "pandas", "pyarrow", "scipy", "lightgbm", "narwhals", "pastas", "numba",
           "llvmlite", "matplotlib", "contourpy", "cycler", "fonttools", "kiwisolver", "pillow",
           "pyparsing", "packaging", "python-dateutil", "six", "pytz", "tzdata", "geopandas",
-          "pyogrio", "shapely", "pyproj", "certifi", "charset-normalizer", "tqdm"]
+          "pyogrio", "shapely", "pyproj", "certifi", "charset-normalizer", "tqdm",
+          "rdflib", "pyoxigraph", "requests", "idna", "urllib3"]
 PLATFORMS = ["manylinux2014_x86_64", "manylinux_2_17_x86_64", "manylinux_2_27_x86_64",
              "manylinux_2_28_x86_64", "manylinux_2_34_x86_64"]
 
@@ -119,19 +121,39 @@ def wheels():
     upload(download_wheels(), WHEELS)
 
 
-def bundle():
+def bundle_state(stage, archive):
+    """Pack the cumulative pulled results for resume, or the latest output before the first merge."""
+    source = stage / "state"
+    if not source.exists():
+        source = stage / "output"
+    runs = source / CPU_RESULTS
+    if not runs.is_dir():
+        return False
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as z:
+        for f in sorted(runs.rglob("*")):
+            if f.is_file():
+                z.write(f, f.relative_to(source))
+    return True
+
+
+def bundle(stage=STAGE):
     """Code + data of the CPU baselines -> dataset folder/cpu_bundle.zip."""
     sys.path.insert(0, str(ROOT))
-    os.environ["PFE_DATASET"] = "v4"
-    from src.config import DATASET_DIR, PROCESSED, RAW   # noqa: E402
+    from src.config import INTERIM, PROCESSED, RAW
+    dataset = "v4"
+    routing_inputs = [RAW / "safran" / "grid_cells_66.parquet",
+                      INTERIM / f"pumping_weekly_cropcal_{dataset}.parquet"]
+    for path in routing_inputs:
+        if not path.is_file():
+            raise FileNotFoundError(f"required routing input is missing: {path}")
     include = [ROOT / "src", ROOT / "scripts" / "run_v4_cpu.sh", ROOT / "requirements.txt",
                ROOT / "tests" / "__init__.py", ROOT / "tests" / "test_ealstm.py",
-               DATASET_DIR, *sorted((RAW / "safran").glob("sim2_66_[0-9]*.parquet")),
-               *sorted((PROCESSED / "kg").glob("export_v4_*")),   # arms C and D (routing, twin)
+               PROCESSED / f"dataset_{dataset}", *sorted((RAW / "safran").glob("sim2_66_[0-9]*.parquet")),
+               *routing_inputs, *sorted((PROCESSED / "kg").glob(f"export_{dataset}_*")),
                *sorted((V4 / "_cache").glob("panel*.parquet")),
                *sorted((V4 / "_cache").glob("panel*.json")),  # land-use identity records
                *sorted(V4.glob("*_tuning/best.json")), *sorted(V4.glob("*_tuned/best.json"))]
-    ds = STAGE / "dataset"
+    ds = stage / "dataset"
     shutil.rmtree(ds, ignore_errors=True)
     ds.mkdir(parents=True)
     with zipfile.ZipFile(ds / "cpu_bundle.zip", "w", zipfile.ZIP_DEFLATED) as z:
@@ -140,14 +162,9 @@ def bundle():
             for f in files:
                 if "__pycache__" not in f.parts:
                     z.write(f, f.relative_to(ROOT))
-    prev = OUTPUT / "results_cpu" / "v4"
-    if prev.exists():                                  # earlier Kaggle results -> resume
-        with zipfile.ZipFile(ds / "state.zip", "w", zipfile.ZIP_DEFLATED) as z:
-            for f in sorted(prev.rglob("*")):
-                if f.is_file():
-                    z.write(f, f.relative_to(OUTPUT))
+    with_state = bundle_state(stage, ds / "state.zip")
     print(f"cpu_bundle.zip: {(ds / 'cpu_bundle.zip').stat().st_size / 1e6:.1f} MB"
-          + (", with state.zip" if prev.exists() else ""))
+          + (", with state.zip" if with_state else ""))
     return ds
 
 
@@ -198,32 +215,62 @@ def push_kernel(retry=True):
           "(`scripts/kaggle_cpu.py status`, then `pull`)")
 
 
-def pull():
+def download_output(destination):
     u = user()
     status = kg("kernels", "status", f"{u}/{KERNEL}")
     print(status.strip())
     if "running" in status.lower() or "queued" in status.lower():
         sys.exit("still running: pull when it has finished")
-    shutil.rmtree(OUTPUT, ignore_errors=True)
-    OUTPUT.mkdir(parents=True)
-    kg("kernels", "output", f"{u}/{KERNEL}", "-p", str(OUTPUT), "-o")
+    kg("kernels", "output", f"{u}/{KERNEL}", "-p", str(destination), "-o")
+
+
+def pull(stage=STAGE, results=V4):
+    incoming = stage / "output_incoming"
+    output = stage / "output"
+    previous = stage / "output_prev"
+    state = stage / "state" / CPU_RESULTS
+    if incoming.exists():
+        shutil.rmtree(incoming)
+    incoming.mkdir(parents=True)
+    download_output(incoming)
+    if not (incoming / "run_kaggle_cpu.log").is_file():
+        sys.exit(f"download is missing {incoming / 'run_kaggle_cpu.log'}")
+
+    if not state.exists() and (output / CPU_RESULTS).is_dir():
+        shutil.copytree(output / CPU_RESULTS, state)
+    if (incoming / CPU_RESULTS).is_dir():
+        shutil.copytree(incoming / CPU_RESULTS, state, dirs_exist_ok=True)
+    if previous.exists():
+        shutil.rmtree(previous)
+    if output.exists():
+        output.rename(previous)
+    incoming.rename(output)
+
     runs, twins = [], []
-    for d in sorted((OUTPUT / "results_cpu" / "v4").glob("*")):
+    for d in sorted((output / CPU_RESULTS).glob("*")):
         if (d / "predictions.parquet").exists():
-            shutil.copytree(d, V4 / d.name, dirs_exist_ok=True)
+            shutil.copytree(d, results / d.name, dirs_exist_ok=True)
             runs.append(d.name)
         elif any(d.glob("*/world_*.json")):          # twin runs (src/models/twin.py): no rescoring
-            shutil.copytree(d, V4 / d.name, dirs_exist_ok=True)
+            shutil.copytree(d, results / d.name, dirs_exist_ok=True)
             twins.append(f"{d.name} ({len(list(d.glob('*/world_*.json')))} worlds)")
     print("finished runs copied:", " ".join(runs) or "none")
     if twins:
         print("twin runs copied:", ", ".join(twins))
     if runs:
         subprocess.run([sys.executable, "-m", "src.models.evaluate", *runs], cwd=ROOT,
-                       env={**os.environ, "PFE_DATASET": "v4"}, check=True)
-    log = OUTPUT / "run_kaggle_cpu.log"
-    if log.exists():
-        print("".join(log.read_text().splitlines(keepends=True)[-15:]))
+                       env={**os.environ, "PFE_DATASET": "v4", "PFE_RESULTS": str(results.resolve())},
+                       check=True)
+    log = output / "run_kaggle_cpu.log"
+    print("".join(log.read_text().splitlines(keepends=True)[-15:]))
+    status_file = output / "run_status.json"
+    if status_file.is_file():
+        status = json.loads(status_file.read_text())
+        print(json.dumps(status, indent=2))
+        if status["failed_steps"] or (status["exit"] != 0 and not status["budget_stop"]):
+            sys.exit(1)
+        if status["budget_stop"]:
+            print("time budget used: push again to continue")
 
 
 def main():

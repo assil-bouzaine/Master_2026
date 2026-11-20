@@ -1258,3 +1258,24 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       with the published transit times uses the implemented mean (recharge) and peak (pumping)
       delays (`response.kernel_moments`; about 4 days shorter for recharge, up to 7 days for the
       pumping peak); the twin's score 4 compares a·n with a·n (labelled).
+22. **Shortcut test 2's flag threshold (proposed 2026-11-20 at about 18:40 CET, before kernel version 13
+    was pulled; ❓ Gate 3 point 5).** Test 2 (item 19, amendment of 2026-11-20, point 5) flags a world
+    and arm when its **seed disagreement** (the RMSE between the two starts' pumping contributions,
+    drought phase, in units of the well's noise-free sd, median over core wells) is **above τ**.
+    - τ, per arm and fitting protocol, is the **95th percentile** (numpy's default linear
+      interpolation) of the seed disagreement over the 240 worlds of the base grid (`twin_map`) of
+      that arm and protocol. No grid world has wrong reasons (score 6: 0 of 240, read on 2026-11-20),
+      and the generator lies inside the learner's model class there, so the grid is the reference of
+      known negatives: the nominal false-alarm rate on the grid is 5 % by construction.
+    - The rates are reported on the slices (`twin_slices`, all 160 worlds when complete), per slice,
+      arm and protocol: flagged worlds k of n; **detection rate** = the flagged share of the worlds
+      with wrong reasons (score 6); **false-alarm rate** = the flagged share of the others. With fewer
+      than 5 worlds with wrong reasons, the detection rate is printed as "k of n" and called not
+      estimable; with none, "no positive case".
+    - Written before any slice world's seed disagreement or score 6 was read (the slice worlds of
+      version 12 were pulled on 2026-11-20, but those rows were not looked at), and without looking at
+      the grid's seed-disagreement values: the rule fixes a percentile, not a number.
+    - Why: a flag is a warning that the explanation is unstable across starts, not a proof of wrong
+      reasons; a 5 % false-alarm rate on worlds known to be right is the conventional level. Whether,
+      and how, τ carries over to the real arms' seed disagreement (whose scale has no noise-free sd)
+      is decided at Gate 3 with these rates.

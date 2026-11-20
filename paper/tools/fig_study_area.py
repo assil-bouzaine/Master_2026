@@ -16,6 +16,7 @@ import matplotlib
 import pandas as pd
 from shapely import get_parts, line_merge
 from shapely.geometry import box
+from shapely.ops import nearest_points
 
 matplotlib.use("Agg")
 import matplotlib.patheffects as effects
@@ -110,7 +111,19 @@ def read_waterways(extent):
     return rivers, canals
 
 
-def draw_waterways(ax, rivers, canals):
+def river_label_point(route, plain, markers):
+    """Place the label on an in-plain reach, with room beside the station symbols."""
+    inside = route.intersection(plain)
+    candidates = [part.interpolate(fraction, normalized=True)
+                  for part in get_parts(inside) if part.geom_type == "LineString" and not part.is_empty
+                  for fraction in (0.25, 0.5, 0.75)]
+    if not candidates:
+        return nearest_points(route, plain)[0]
+    boundary = plain.boundary
+    return max(candidates, key=lambda point: min(point.distance(boundary), point.distance(markers)))
+
+
+def draw_waterways(ax, rivers, canals, plain, markers):
     if not canals.empty:
         canals.plot(ax=ax, color=CANAL, linewidth=0.55, linestyle=CANAL_DASH, alpha=0.82, zorder=3)
     major = rivers.loc[rivers["label"].notna()]
@@ -119,10 +132,9 @@ def draw_waterways(ax, rivers, canals):
         context.plot(ax=ax, color=RIVER, linewidth=0.45, alpha=0.68, zorder=4)
     if not major.empty:
         major.plot(ax=ax, color=RIVER, linewidth=0.85, zorder=4)
-    label_fractions = {"Agly": 0.52, "Têt": 0.50, "Tech": 0.48, "Réart": 0.76}
     for name, reaches in major.groupby("label"):
-        trunk = max(get_parts(line_merge(reaches.geometry.union_all())), key=lambda line: line.length)
-        point = trunk.interpolate(label_fractions[name], normalized=True)
+        route = line_merge(reaches.geometry.union_all())
+        point = river_label_point(route, plain, markers)
         ax.annotate(name, (point.x, point.y), xytext=(0, 3), textcoords="offset points",
                     ha="center", va="bottom", color=RIVER, fontsize=7.5,
                     fontstyle="italic", path_effects=TEXT_HALO, zorder=5)
@@ -237,7 +249,8 @@ def draw_study_area(out=OUT):
         layer = polygons.loc[polygons["unit_class"] == kind]
         if not layer.empty:
             layer.plot(ax=ax, color=pale(colour), linewidth=0.18, edgecolor="#fcfcfb", zorder=2)
-    draw_waterways(ax, rivers, canals)
+    markers = visible.loc[visible["type"].isin(("well", "gauge")), "geometry"].union_all()
+    draw_waterways(ax, rivers, canals, plain, markers)
     draw_points(ax, wells, gauges, facilities)
     draw_map_furniture(ax, plain, extent)
     draw_inset(ax, countries, extent)

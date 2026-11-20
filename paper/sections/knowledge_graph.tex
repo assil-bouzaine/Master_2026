@@ -76,7 +76,7 @@ These are qualified constraints for a model, not claims of observed causality. A
 level, each candidate pathway is an \texttt{Influence} node (the n-ary relation pattern) with a
 source, a target, a mechanism, a sign, a distance, a confidence level, its evidence
 (\texttt{prov:wasDerivedFrom}), the rule execution that produced it and a decision on whether its
-sign may constrain a model. Annual abstraction volumes, crop areas and demand estimates are SOSA
+sign may constrain a model (\cref{fig:influence}). Annual abstraction volumes, crop areas and demand estimates are SOSA
 observations with OWL-Time intervals; weekly series stay in Parquet files that the graph
 references.
 
@@ -170,6 +170,18 @@ CQ & Priority & Question & State \\
 \end{table}
 % The states of CQ9, CQ13, CQ14 and CQ16 ("future work" or minimal fixtures) are Gate 3 point 15:
 % confirm them after Assil's review of the SHOULD/COULD questions before submission.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/influence}
+\caption{One influence of the knowledge graph, drawn from the release with every one of its
+statements: the abstraction facility OPR0000059108 may lower the head of the alluvium well MILLAS
+C2-1, \SI{1.3}{km} away. Both the facility and the well are attributed, with confidence, to the
+same exact unit (the recent alluvium of the T\^et, 718BP02), which makes the non-increasing response
+eligible to constrain a model; the record keeps its conditions, the rule and the rule execution
+that produced it, and the export policies that select it. Edge labels are the ontology's own.}
+\label{fig:influence}
+\end{figure}
 
 \input{tables/kg_instances}
 \input{tables/kg_coverage}

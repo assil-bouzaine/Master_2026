@@ -121,6 +121,69 @@ PLANNED_WORLDS = 20   # worlds per cell (item 19); a verdict waits for all of th
 GRID_CELLS = 12       # eps in {0, 0.1, 0.25, 0.5} x u in {0, 0.3, 0.6}
 PROTOCOLS = ("free", "pooled_l0.1_fixed3000")                    # early stopping, converged pooling
 ACCURACY_SLACK = 0.05  # "not worse in accuracy by more than 0.05" (drought NSE of arm D)
+SEED_FLAG_Q = 0.95     # shortcut test 2 flags a world above this quantile of the grid's (item 22)
+GRID_RUN = "twin_map"  # the base grid: the reference of worlds without wrong reasons
+MIN_POSITIVES = 5      # under this many worlds with wrong reasons, detection is "not estimable"
+
+
+def seed_thresholds(df):
+    """Shortcut test 2's flag threshold τ per (arm, setting): the 95th percentile (numpy's default
+    linear interpolation) of the seed disagreement over the base grid's worlds of that arm and
+    setting (analysis plan §14 item 22, proposed before kernel version 13 was pulled). The grid's
+    generator lies inside the learner's model class and no grid world has wrong reasons, so it is
+    the reference of known negatives: a nominal 5 % false-alarm rate there by construction."""
+    out = {}
+    grid = df[df["run"] == GRID_RUN] if "run" in df else df.iloc[0:0]
+    for setting, g in grid.groupby("setting"):
+        for a in ("C", "D"):
+            col = f"seed_disagreement_pumping_{a}"
+            x = pd.to_numeric(g[col], errors="coerce").dropna() if col in g else pd.Series(dtype=float)
+            if len(x):
+                out[(a, setting)] = (float(np.quantile(x.to_numpy(), SEED_FLAG_Q)), len(x))
+    return out
+
+
+def test2_rates(df, tau):
+    """Detection and false-alarm rates of shortcut test 2 per run, cell and setting (item 22):
+    flagged = seed disagreement above τ of its arm and setting; detection = flagged among the
+    worlds with wrong reasons (score 6), false alarm = flagged among the others."""
+    out = ["| run | cell | setting | arm | τ | worlds | wrong reasons | detection | false alarms |",
+           "|---|---|---|---|---:|---:|---:|---:|---:|"]
+    for (run, cell, setting), g in df.groupby(["run", "cell", "setting"], sort=True):
+        for a in ("C", "D"):
+            w, sd = f"wrong_reasons_{a}", f"seed_disagreement_pumping_{a}"
+            if (a, setting) not in tau or w not in g or sd not in g:
+                continue
+            t = tau[(a, setting)][0]
+            x = g[[w, sd]].apply(pd.to_numeric, errors="coerce").dropna()
+            if not len(x):                    # no world of this cell can be judged for the arm
+                continue
+            flag = x[sd] > t
+            pos, neg = x[w] == 1, x[w] == 0
+            k, n = int(flag[pos].sum()), int(pos.sum())
+            det = ("no positive case" if n == 0 else
+                   f"{k} of {n}" + (" (not estimable)" if n < MIN_POSITIVES else f" ({k / n:.0%})"))
+            fa = f"{int(flag[neg].sum())} of {int(neg.sum())}" + (f" ({flag[neg].mean():.0%})" if neg.any() else "")
+            out.append(f"| {run} | {cell} | {setting} | {a} | {t:.3f} | {len(x)} | {n} | {det} | {fa} |")
+    return "\n".join(out)
+
+
+def test2_section(df):
+    """The report's text for test 2's flag (item 22): τ, then the rates per cell."""
+    tau = seed_thresholds(df)
+    if not tau:
+        return ("\n\nTest 2's flag: no base-grid world with a seed disagreement in these runs, so τ "
+                "(item 22) cannot be computed; add the run `twin_map`.")
+    full = PLANNED_WORLDS * GRID_CELLS
+    taus = "; ".join(f"{a}, {s}: τ = {t:.3f} ({n} grid worlds"
+                     + ("" if n >= full else f", **interim: {n} of {full}**") + ")"
+                     for (a, s), (t, n) in sorted(tau.items()))
+    return (f"\n\nTest 2's flag (analysis plan §14 item 22, fixed before kernel version 13 was pulled): a "
+            f"world is flagged when its seed disagreement is above τ, the {SEED_FLAG_Q:.0%} quantile of "
+            f"the base grid's worlds of the same arm and setting ({taus}). Detection = flagged among the "
+            "worlds with wrong reasons; false alarms = flagged among the others (nominally 5 % on the "
+            f"grid itself, by construction); under {MIN_POSITIVES} worlds with wrong reasons the "
+            "detection rate is not estimable.\n\n" + test2_rates(df, tau))
 
 
 def _q(x, q):
@@ -319,10 +382,10 @@ def main():
                  "k of n evaluable worlds (share).\n\n" + table(df, [f"wrong_reasons_{a}" for a in ("C", "D")],
                                                                 ["C", "D"], fmt=count)
                  + "\n\nShortcut test 2 (seed disagreement of the pumping contribution) in the worlds with "
-                 "and without wrong reasons. Its detection and false-alarm rates need a flag threshold, "
-                 "to be fixed at Gate 3 (point 5) before they are computed.\n\n"
+                 "and without wrong reasons.\n\n"
                  + table(cond, [c for a in ("C", "D") for c in (f"sd_wrong_{a}", f"sd_right_{a}")],
-                         [f"{a}: {k}" for a in ("C", "D") for k in ("wrong reasons", "right reasons")]))
+                         [f"{a}: {k}" for a in ("C", "D") for k in ("wrong reasons", "right reasons")])
+                 + test2_section(df))
     parts.append("## Run time\n\nSeconds per fit (all starts) and steps per start, Kaggle CPU, one thread.\n\n"
                  + table(df, [f"seconds_{a}" for a in ARMS] + [f"steps_{a}" for a in ARMS],
                          [f"s {a}" for a in ARMS] + [f"steps {a}" for a in ARMS]))

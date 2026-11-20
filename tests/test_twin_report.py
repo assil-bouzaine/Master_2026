@@ -163,6 +163,48 @@ def test_loader():
             TR.RESULTS = old
 
 
+
+def test_seed_flag():
+    """Shortcut test 2's flag (analysis plan item 22): τ = the 95 % quantile of the grid's seed
+    disagreement per arm and setting; detection and false alarms counted per slice cell."""
+    rows = []
+    for k in range(240):                           # grid: values 0.000 ... 0.239 for arm D, twice for C
+        rows.append({"run": "twin_map", "cell": f"g{k % 12}", "world": k, "setting": "free",
+                     "seed_disagreement_pumping_D": k / 1000, "seed_disagreement_pumping_C": 2 * k / 1000,
+                     "wrong_reasons_D": 0.0, "wrong_reasons_C": 0.0})
+    tau = TR.seed_thresholds(pd.DataFrame(rows))
+    assert abs(tau[("D", "free")][0] - np.quantile(np.arange(240) / 1000, 0.95)) < 1e-12, tau
+    assert tau[("D", "free")][1] == 240 and abs(tau[("C", "free")][0] - 2 * tau[("D", "free")][0]) < 1e-12
+    t = tau[("D", "free")][0]                      # 0.22705
+    # slice O: 6 worlds with wrong reasons (4 above τ), 14 without (2 above τ)
+    for w in range(20):
+        wrong = w < 6
+        above = (w < 4) or (6 <= w < 8)
+        rows.append({"run": "twin_slices", "cell": "sliceO", "world": w, "setting": "free",
+                     "seed_disagreement_pumping_D": t + 0.01 if above else t - 0.01,
+                     "seed_disagreement_pumping_C": np.nan,
+                     "wrong_reasons_D": float(wrong), "wrong_reasons_C": np.nan})
+    # slice S: 2 worlds with wrong reasons (both flagged), nothing else -> not estimable
+    for w in range(2):
+        rows.append({"run": "twin_slices", "cell": "sliceS", "world": w, "setting": "free",
+                     "seed_disagreement_pumping_D": t + 0.5, "seed_disagreement_pumping_C": np.nan,
+                     "wrong_reasons_D": 1.0, "wrong_reasons_C": np.nan})
+    df = pd.DataFrame(rows)
+    text = TR.test2_rates(df, TR.seed_thresholds(df))
+    line = {tuple(c.strip() for c in r.split("|")[1:5]): r for r in text.splitlines()[2:]}
+    o = line[("twin_slices", "sliceO", "free", "D")]
+    assert "| 4 of 6 (67%) | 2 of 14 (14%) |" in o, o
+    s = line[("twin_slices", "sliceS", "free", "D")]
+    assert "| 2 of 2 (not estimable) | 0 of 0 |" in s, s
+    g = line[("twin_map", "g0", "free", "D")]      # the grid's own cell: no positive case
+    assert "no positive case" in g, g
+    assert ("twin_slices", "sliceO", "free", "C") not in line   # C has no evaluable world there
+    # the grid's false alarms are 5 % by construction (12 of 240 above the 95 % quantile)
+    grid = df[df["run"] == "twin_map"]
+    assert int((grid["seed_disagreement_pumping_D"] > t).sum()) == 12
+    assert "interim" not in TR.test2_section(df)
+    assert "interim: 120 of 240" in TR.test2_section(df[df["world"] < 120])
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_"):

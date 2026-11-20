@@ -243,6 +243,7 @@ without a DOI are in `paper/refs_standards.bib`, their URLs opened the same day.
 | Car & Homburg, *GeoSPARQL 1.1: Motivations, Details and Applications of the Decadal Update to the Most Important Geospatial LOD Standard*, *ISPRS Int. J. Geo-Inf.* 11, 2022, **doi:10.3390/ijgi11020117** | CITE | GeoSPARQL 1.1 (geometry, spatial relations). |
 | Vidal, Martin, Franchistéguy, Baillon & Soubeyroux, *A 50-year high-resolution atmospheric reanalysis over France with the Safran system*, *Int. J. Climatol.* 30, 2010 (online 2009), **doi:10.1002/joc.2003** | CITE | SAFRAN, the weather of every model (paper section 2). |
 | Habets et al., *The SAFRAN-ISBA-MODCOU hydrometeorological model applied over France*, *J. Geophys. Res.* 113, 2008, **doi:10.1029/2007JD008548** | CITE | SIM: effective rain, drainage, runoff and soil wetness (paper section 2). |
+| Hochreiter & Schmidhuber, *Long Short-Term Memory*, *Neural Comput.* 9, 1997, **doi:10.1162/neco.1997.9.8.1735** | CITE | The LSTM baseline (paper section 4). |
 
 ## 3. Reading order (about 3 weeks, alongside Phase 1)
 

@@ -1,14 +1,86 @@
 % Sources: CLAUDE.md §3 “Model and constraints”; docs/analysis_plan.md §5, §10, §14 items 18–20.
 \section{Models}\label{sec:models}
 
-\subsection{Response-function superposition}
-% TODO: specify the response functions and residual.
+\subsection{Response-function superposition}\label{sec:response}
+% Source: src/models/response.py (docstring); docs/analysis_plan.md §14 items 18-20.
 
-\subsection{A ladder of knowledge}
-% TODO: describe what information each rung adds.
+The main model is a hybrid: a sum of responses to stresses, as in transfer-function noise models
+\citep{Collenteur2019Pastas}, written as one differentiable model and fitted for every well at once.
+The head of well $i$ minus its training mean is
+\begin{equation}
+h_i(t) - \mu_i = d_i + \sum_{r} G_{ir}\,\bigl(k_{ir} * s_{ir}\bigr)(t),
+\label{eq:response}
+\end{equation}
+where $r$ runs over the stresses (recharge, pumping, river, canal), $s_{ir}$ is the input that
+reaches well $i$ for stress $r$, $k_{ir}$ a gamma kernel on the weekly grid with non-negative
+weights that sum to one, and $G_{ir}$ the gain, the head change under a sustained unit stress. The
+recharge input is the well's effective rain $P - f_i\,\mathrm{ETP}$ with an evaporation factor
+$f_i$. Gains and kernels cannot trade scale, the kernels' time scales are bounded more widely than
+any published response of this aquifer \citep{Caballero2015Impact}, and each contribution
+$G_{ir}(k_{ir} * s_{ir})$ is exact and additive, so the model's own decomposition of a head into its
+drivers is available at every week. That decomposition explains the model's computation; it is
+not, by itself, the physical contribution of a driver, which is what the twin tests
+(\cref{sec:twin}). The loss is the mean over wells of the training MSE divided by each well's
+training variance, so that wells with large and small swings weigh alike.
 
-\subsection{Sign constraints}
-% TODO: specify constraint eligibility, the variants and the sign checks.
+\subsection{A ladder of knowledge}\label{sec:ladder}
 
-\subsection{Baselines}
-% TODO: list the baselines and the tuning protocol.
+The hybrid is built in rungs, each adding one kind of knowledge to the same model, so that a gain
+can be traced to what was added:
+\begin{enumerate}
+\item \emph{Free}: one set of parameters per well, inputs from the well's own weather cell and the
+  pumping within \SI{3}{km}, signs by construction.
+\item \emph{Pooled}: the parameters are pulled towards the mean of the well's aquifer group with a
+  penalty $\lambda$; one response per group is the other end of the scale.
+\item \emph{Facts}: the parameters of a well are its group mean plus a function of its declared
+  facts plus a small deviation. Fact set A comes from the dataset (depth, altitude, position in the
+  stack); set B adds the facts the knowledge graph holds. The comparison of B with A is the
+  ``knowledge as information'' arm of RQ1. Two controls guard it: random facts of the same width
+  (name tags) and the facts of other wells, both drawn per start \citep{Heudorfer2024On}; and a
+  well left out of training keeps a zero deviation, so its responses come from its group and its
+  facts alone.
+\item \emph{Routing}: the inputs of each well are routed by the edges of a graph arm
+  (\cref{sec:kg-export}), arm~C's distance rules or arm~D's knowledge-graph edges, on otherwise the
+  same model. This is the primary form of the D versus C contrast: two runs that differ only in the
+  arm differ only in which sources reach each well. Arms E and F are controls built from D's edges:
+  E rewires them, either preserving every degree or matching each edge's length, so that it keeps
+  the structure or the locality of D and loses the meaning; F draws random edges or links every
+  compatible pair.
+\item \emph{Message passing}: the facts of a well's linked neighbours, averaged over the arm's
+  well links \citep{Hamilton2018Inductive}, also feed the function of rung 3 (secondary).
+\end{enumerate}
+The ontology-derived graph thus reaches the model in two ways, as information (rung 3) and as
+structure (rungs 4 and 5), as the research questions require. % Gate 3 point 2 confirms rungs 3-5
+% and the routing contrast as primary; point 20 decides the bounded residual network.
+
+\subsection{Sign constraints}\label{sec:signs}
+
+The ontology's mechanism specifications give the direction of each response: abstraction from a
+connected unit does not raise the head, effective rain does not lower it, and where a source
+documents them, river exchange and canal return flow do not lower it. In this study a sign may
+constrain a model only where the knowledge graph marks the influence as eligible and the export
+policy accepts it (\cref{sec:kg-rules}): at present every exact-unit pumping influence, and the
+recharge, river and canal signs whose adoption is a decision of the review of the knowledge graph.
+% Gate 3 points 7-10 (recharge, rivers, canals, proxy adequacy).
+Three settings answer RQ2. \emph{Hard}: the signs hold by construction, the gain of a decreasing
+response being $-\mathrm{softplus}(\cdot)$ and no parameter depending on a stress, so that the
+monotonicity holds along the whole path from input to head \citep{Runje2023Constrained}; a
+finite-difference test checks it. \emph{None}: every gain is a free number. \emph{Soft}: free
+gains plus a penalty, $\lambda_s$ times the share of each well's training variance carried by
+contributions of the wrong sign, a counterfactual form of the explanation penalties of
+\citet{Ross2017Righta} in the loss's own units. % Gate 3 point 6: the grid of lambda_s on real data.
+
+\subsection{Baselines}\label{sec:baselines}
+
+The hybrid is compared with references a hydrologist and a machine-learning reader would each
+expect: the seasonal naive forecast and the training climatology; Pastas per well
+\citep{Collenteur2019Pastas}, with a reference built from the training heads only and the start of
+each well chosen by a frozen rule; LightGBM \citep{Ke2017Lightgbm} without the well's own
+climatology; a global LSTM \citep{Hochreiter1997Long,Wunsch2021Groundwater} and an entity-aware
+LSTM \citep{Kratzert2019Towards}; Chronos-2 \citep{Ansari2025Chronos}, zero-shot, with
+cross-learning and fine-tuned, the reference of the forecasting task; and two spatio-temporal graph
+networks, one on a three-nearest-neighbour graph and one following \citet{Taccari2024Spatial}.
+Every learned baseline had the same tuning budget, 24 Optuna trials \citep{Akiba2019Optuna} and a
+re-selection over three seeds. Finally, the Taccari-style network run on arm~D's edges is the
+black box on the same graph: it sees the same sources and links as the hybrid of arm~D, without
+the response structure or the signs. % Gate 3 point 21: its scope (R1, 5 seeds, one Colab GPU session).

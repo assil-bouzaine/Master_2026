@@ -17,7 +17,7 @@ Nothing here is decided until Assil decides it. The recommendations are Claude's
 | 2 | Rungs 3–5 of the ladder; routing (rung 4) as the primary form of D vs C | Confirm | — |
 | 3 | Smallest effect of interest for the primary contrasts | A median RMSE reduction of 5 % (log ratio −0.05), with 10 seeds | — |
 | 4 | Permanent + seasonal pumping as the main structure | No: keep it as a sensitivity | — |
-| 5 | The twin's design (item 19 and its amendments) | Confirm and freeze with the tag; fix the flag threshold of shortcut test 2 (score 6 found no world with wrong reasons in the grid) | Slices and RQ2 (kernel version 13) |
+| 5 | The twin's design (item 19 and its amendments) | Confirm and freeze with the tag; shortcut test 2 flags a world whose seed disagreement is above the 95th percentile of the grid's, per arm and protocol (item 22, proposed before kernel version 13 was pulled) | Slices and RQ2 (kernel version 13) |
 | 6 | RQ2: the weight λ_s of the soft sign penalty on real data | A declared grid {1, 10, 100}, chosen on validation | Twin |
 | 7 | Recharge: does "effective rain raises the head" constrain the model? PE or max(PE, 0)? | Yes, with PE as is; max(PE, 0) as a sensitivity | — |
 | 8 | Rivers: constrain the sign where eligible (3 wells)? body-level statements? conflicting directions? | Constrain only where eligible; body-level statements stay ineligible; a conflicting direction keeps the sign eligible | — |
@@ -110,6 +110,11 @@ does not have) are where wrong reasons can appear (kernel version 13 completes t
 detection and false-alarm rates also need a flag threshold, to fix here before they are computed. The
 fixes of the external review (item 19, amendment of 2026-11-20: score 5 per well, one experiment per
 cell, verdicts on complete cells) are part of what is frozen.
+*Test 2's flag threshold (proposed 2026-11-20, analysis plan item 22, before version 13 was pulled
+and before any slice world's seed disagreement or score 6 was read):* τ = the 95th percentile of the
+seed disagreement over the 240 grid worlds, per arm and protocol (the grid holds only worlds without
+wrong reasons, inside the model class: a nominal 5 % false-alarm rate); detection and false-alarm
+rates are reported on the slices, with "not estimable" under 5 worlds with wrong reasons.
 
 **6. RQ2's soft penalty (Twin).** The soft setting adds λ_s × the share of each well's variance
 carried by contributions of the wrong sign. In the twin's pilot, λ_s = 1 barely reduced the wrong

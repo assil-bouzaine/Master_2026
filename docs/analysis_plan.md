@@ -1252,7 +1252,9 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       pumping reconstruction 3; Chronos-2 smoke runs never write into the run of record; an incomplete
       bibliography refresh leaves `paper/refs.bib` unchanged.
     - *Point 8 (mean lags):* the reported a·n is the mean of the continuous Gamma law; the implemented
-      weekly kernel is truncated and normalised, so its mean delay differs (up to 75 days at the
-      longest lags, per the review; to be confirmed when the fix is made). The ladder's comparison
-      with published transit times is to use the implemented mean and peak; the twin's score 4
-      compares a·n with a·n (labelled).
+      weekly kernel is shifted by half a week, truncated and normalised, so its mean delay differs
+      (confirmed: PONT in `resp_free` start 0, 17.31 against 16.78 weeks; up to 75 days for a
+      recharge response and 106 days for a canal response). From 2026-11-20 the ladder's comparison
+      with the published transit times uses the implemented mean (recharge) and peak (pumping)
+      delays (`response.kernel_moments`; about 4 days shorter for recharge, up to 7 days for the
+      pumping peak); the twin's score 4 compares a·n with a·n (labelled).

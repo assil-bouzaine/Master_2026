@@ -537,7 +537,7 @@ Every point was checked against the code before any change; all held.
 | 5 | Score 6 reported as a median of 0/1 flags | Claude: k of n worlds | `3bad792` |
 | 6 | Twin verdicts on incomplete grids and on ties | Claude: complete cells only, paired worlds, ties counted, strict majority | `3bad792` |
 | 7 | Response predictions decoded with the raw sd (only AIGUAN, not core) | cxb (T11), cxa (T12) | `f2cd482`, `5ab58f1` |
-| 8 | Reported lags are a·n, not the implemented weekly kernel's mean | cxb (T13, running) | — |
+| 8 | Reported lags are a·n, not the implemented weekly kernel's mean | cxb (T13): implemented mean and peak beside BRGM (review's numbers confirmed) | `945b322` |
 | 9 | Duplicate predictions counted twice; empty scores crashed | cxb (T09) | `b57b837` |
 | 10 | A resumed twin cell accepted worlds of another experiment | Claude: identity check on resume and in the report | `3bad792` |
 | 11 | Kaggle runs looked successful after failures | cxa (T10) | `394da63` |
@@ -594,3 +594,14 @@ Phase 4 run, keeps the plan's "rules first, results second" order intact.
 - `selection.json` now guards Chronos-2 caches: Colab session 2's Chronos folders (still on Drive)
   have none, so a *resumed* Chronos run in those folders stops by design; scoring them is unaffected.
 - Codex account: about 70 % of the five-hour window left at 13:00 with both workers busy since 11:30.
+
+### Later the same day: the workers' tasks T08, T13, T15 (each reviewed, re-tested and committed)
+
+| Task | Worker | What it delivered | Review |
+|---|---|---|---|
+| T08 | A (GPT-6.2-Sol) | Phase 4 steps `p4_B1` … `p4_B7` in `scripts/run_v4_cpu.sh`, locked until `P4_CONFIRMED=1`, dry-run mode | accepted; dry runs repeated: 364 of 366 fits + 51 fold assemblies printed with the declared names (B7 waits for its options) |
+| T13 | B (GPT-6.1-Sol) | `response.kernel_moments`, the ladder's comparison with BRGM on implemented delays | accepted; only the lag table of `docs/results_ladder_v4.md` changed |
+| T15 | A | `kaggle_cpu.py push --env KEY=VALUE` (how `P4_CONFIRMED` and the `P4_*` settings reach the kernel), the R2 assembler's scale for response seeds | accepted |
+
+Open: T14 (A, running): the two B7 options (`--recharge-relation recharge_unitwide`, `--recharge drainc`);
+then B7's two commented commands in `run_v4_cpu.sh` can be enabled.

@@ -191,9 +191,11 @@ def reading(df):
         gslice = df[(df["dial_variant"] == "G") & (df["setting"] == setting)]
         b0 = g[np.isclose(g["dial_eps"], 0.1) & np.isclose(g["dial_u"], 0.3)]
         if len(gslice) and len(b0):
+            ng = gslice["world"].nunique()
+            interim = "" if ng >= PLANNED_WORLDS else f" Interim: slice G has {ng} of {PLANNED_WORLDS} worlds."
             out.append(f"(b) Slice G against the base cell: D / C {gslice['log_rmse_D_over_C'].median():.3f} "
-                       f"(G, {gslice['world'].nunique()} worlds) against {b0['log_rmse_D_over_C'].median():.3f} "
-                       "(base): the gain that stays in G is not credited to pumping knowledge.")
+                       f"(G, {ng} worlds) against {b0['log_rmse_D_over_C'].median():.3f} "
+                       "(base): the gain that stays in G is not credited to pumping knowledge." + interim)
     # (e) the two protocols, cell by cell on the grid, over the worlds both protocols have
     if all(p in set(grid["setting"]) for p in PROTOCOLS):
         rows, wins, ties, short = [], {p: 0 for p in PROTOCOLS}, 0, 0

@@ -525,7 +525,7 @@ Rules fixed on 2026-11-16 before any world was read; the operational choices are
 
 (b) D / C along eps (median over u): 0: 0.001, 0.1: 0.005, 0.25: 0.003, 0.5: 0.002; D / C along u (median over eps): 0: -0.009, 0.3: 0.003, 0.6: 0.005.
 
-(b) Slice G against the base cell: D / C 0.070 (G, 16 worlds) against 0.005 (base): the gain that stays in G is not credited to pumping knowledge.
+(b) Slice G against the base cell: D / C 0.070 (G, 16 worlds) against 0.005 (base): the gain that stays in G is not credited to pumping knowledge. Interim: slice G has 16 of 20 worlds.
 
 ### Setting pooled_l0.1_fixed3000
 
@@ -548,7 +548,7 @@ Rules fixed on 2026-11-16 before any world was read; the operational choices are
 
 (b) D / C along eps (median over u): 0: -0.007, 0.1: -0.010, 0.25: -0.010, 0.5: -0.010; D / C along u (median over eps): 0: -0.005, 0.3: -0.010, 0.6: -0.018.
 
-(b) Slice G against the base cell: D / C 0.046 (G, 16 worlds) against -0.010 (base): the gain that stays in G is not credited to pumping knowledge.
+(b) Slice G against the base cell: D / C 0.046 (G, 16 worlds) against -0.010 (base): the gain that stays in G is not credited to pumping knowledge. Interim: slice G has 16 of 20 worlds.
 
 ### (e) The two protocols
 

@@ -268,3 +268,7 @@ Asked one point at a time with Claude's recommendation first; recorded as they w
 | 12 | **Drop the weather cells holding under 0.001 of an outcrop** from the recharge edges |
 | 13 | **Confirmed:** one edge per driver and well, signed and eligible only if every path agrees |
 | 14 | **Confirmed:** RQ1 = {B vs A, D vs C}, RQ2 = {soft vs none, hard vs none}, one test each on the log RMSE ratio, Holm within each family |
+| 15 | **Build CQ14 too** (cover, confinement and pressure state per well) before the freeze, against the recommendation (minimal fixture); CQ4–CQ6 count as done; CQ9, CQ13, CQ16 stay minimal fixtures or future work |
+| 16 | **Chronos-2 and the forecasting comparison in the paper too**, against the recommendation (thesis only); the Pastas sensitivity rows and the time-reversed test stay in the thesis; text extraction scored on the 32 curated statements; EuroCrops only if time |
+| 18 | **Confirmed:** control graphs E_degree, E_distance (a locality control for pumping only), F_random, F_complete |
+| 19 | **Confirmed:** rung 3 with fact sets A and B, linear map, ridge = the pooled λ, name tags and shuffled facts drawn per start; B vs A read mainly on the leave-wells-out folds |

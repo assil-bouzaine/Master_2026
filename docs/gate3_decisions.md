@@ -272,3 +272,8 @@ Asked one point at a time with Claude's recommendation first; recorded as they w
 | 16 | **Chronos-2 and the forecasting comparison in the paper too**, against the recommendation (thesis only); the Pastas sensitivity rows and the time-reversed test stay in the thesis; text extraction scored on the 32 curated statements; EuroCrops only if time |
 | 18 | **Confirmed:** control graphs E_degree, E_distance (a locality control for pumping only), F_random, F_complete |
 | 19 | **Confirmed:** rung 3 with fact sets A and B, linear map, ridge = the pooled λ, name tags and shuffled facts drawn per start; B vs A read mainly on the leave-wells-out folds |
+| 20 | **Fixed seasonal residual** (week-of-year terms and the facts only, bounded, the same every year) as a with/without row; not in the confirmatory contrasts |
+| 21 | **Confirmed:** the Taccari-style ST-GNN on arm D's edges (`taccari.py --edges D`), R1, 5 seeds, one Colab GPU session; no new HGT/RGCN |
+
+Still open: points 5 and 6 (after kernel version 13), 17 (the supervisor and SAVE Water). Assil chose
+to push the repository on 2026-11-20 (before point 17's answer).

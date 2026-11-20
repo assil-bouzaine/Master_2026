@@ -21,6 +21,152 @@ waitall() {
   return "$rc"
 }
 
+# Phase 4 of the analysis plan (§14, items 18 and 20). Keep the helpers here so
+# they travel with the dispatcher in the CPU bundle.
+p4_command() {
+  if [[ ${P4_DRYRUN:-0} == 1 ]]; then
+    printf '%q' "$1"
+    shift
+    printf ' %q' "$@"
+    printf '\n'
+  else
+    "$@"
+  fi
+}
+
+p4_regimes() {
+  local name=$1 regimes=$2 reconstruction=$3
+  shift 3
+  local -a fit=("$PY" -m src.models.response "${p4_flags[@]}" --pumping-reconstruction "$reconstruction" "$@")
+  local failed=0 r1_failed=0 folds_failed=0 fold
+  p4_command "${fit[@]}" --run "$name" || r1_failed=1
+  if [[ $regimes != r1 ]]; then
+    for fold in 0 1 2 3 4; do
+      p4_command "${fit[@]}" --run "${name}_lwo" --fold "$fold" || folds_failed=1
+    done
+    if (( ! folds_failed )); then
+      p4_command "$PY" -c 'import sys; from src.models.regimes import assemble_lwo; assemble_lwo(sys.argv[1], seeds=list(map(int, sys.argv[2:])))' \
+        "${name}_lwo" "${p4_seeds[@]}" || failed=1
+    fi
+  fi
+  if [[ $regimes == all ]]; then
+    p4_command "${fit[@]}" --run "${name}_f25" --train-start "$f25" || failed=1
+    p4_command "${fit[@]}" --run "${name}_f50" --train-start "$f50" || failed=1
+    if (( ! r1_failed )); then
+      p4_command "${fit[@]}" --run "${name}_refit" --refit-from "$name" || failed=1
+    fi
+  fi
+  return "$((r1_failed || folds_failed || failed))"
+}
+
+p4_wait() {
+  waitall "${p4_pids[@]}" || p4_failed=1
+  p4_pids=()
+}
+
+p4_enqueue() {
+  if [[ ${P4_DRYRUN:-0} == 1 ]]; then
+    p4_regimes "$@" || p4_failed=1
+  else
+    # An arm and reconstruction run their regimes in order. Up to four
+    # independent jobs share the CPUs, with one fit active per job.
+    p4_regimes "$@" &
+    p4_pids+=("$!")
+    if (( ${#p4_pids[@]} == 4 )); then
+      p4_wait
+    fi
+  fi
+}
+
+p4_controls() {
+  local block=$1 regimes=$2 draw
+  shift 2
+  for draw in 0 1 2 3 4; do
+    p4_enqueue "p4_${block}_Edeg${draw}_r1" "$regimes" 1 --arm "E_degree:$draw" "$@"
+    p4_enqueue "p4_${block}_Edist${draw}_r1" "$regimes" 1 --arm "E_distance:$draw" "$@"
+    p4_enqueue "p4_${block}_Frand${draw}_r1" "$regimes" 1 --arm "F_random:$draw" "$@"
+  done
+  p4_enqueue "p4_${block}_Fcomp_r1" "$regimes" 1 --arm F_complete "$@"
+}
+
+p4_step() (
+  if [[ ${P4_CONFIRMED:-0} != 1 ]]; then
+    echo "Phase 4 is locked until Gate 3 and the plan's tag (docs/phase4_runs.md)"
+    return 0
+  fi
+
+  local mode=${P4_MODE:-pooled} lam=${P4_LAM:-0.1} fixed=${P4_FIXED:-}
+  local statics=${P4_RUNG4_STATICS:-} p4_failed=0
+  local -a p4_seeds reconstructions soft_grid rung4=() p4_pids=()
+  read -r -a p4_seeds <<< "${P4_SEEDS:-0 1 2 3 4 5 6 7 8 9}"
+  read -r -a reconstructions <<< "${P4_RECONS:-1 2 3}"
+  read -r -a soft_grid <<< "${P4_SOFT_GRID:-1 10 100}"
+  local -a p4_flags=(--mode "$mode" --lam "$lam" --conv fft --seeds "${p4_seeds[@]}")
+  if [[ -n $fixed ]]; then p4_flags+=(--fixed-steps "$fixed"); fi
+  if [[ -n $statics ]]; then rung4=(--statics "$statics"); fi
+  export PFE_THREADS=1
+
+  local reconstruction arm facts control soft policy f25 f50 starts
+  if [[ $1 == p4_B1 || $1 == p4_B1c || $1 == p4_B2 ]]; then
+    # The dry run reads these dates too, so it prints the actual fit arguments.
+    starts=$("$PY" -c 'from src.config import R3_STARTS; print(R3_STARTS["f25"], R3_STARTS["f50"])') || return 1
+    read -r f25 f50 <<< "$starts"
+  fi
+
+  case $1 in
+    p4_B1)
+      for reconstruction in "${reconstructions[@]}"; do
+        for facts in A B; do
+          p4_enqueue "p4_B1_${facts}_r${reconstruction}" all "$reconstruction" --arm baseline --statics "$facts"
+        done
+      done ;;
+    p4_B1c)
+      for control in nametags shuffled; do
+        p4_enqueue "p4_B1c_B_${control}_r1" all 1 --arm baseline --statics B --static-control "$control"
+      done ;;
+    p4_B2)
+      for reconstruction in "${reconstructions[@]}"; do
+        for arm in C D; do
+          p4_enqueue "p4_B2_${arm}_r${reconstruction}" all "$reconstruction" --arm "$arm" "${rung4[@]}"
+        done
+      done ;;
+    p4_B3)
+      p4_controls B3 r1-r2 "${rung4[@]}" ;;
+    p4_B4)
+      for reconstruction in "${reconstructions[@]}"; do
+        p4_enqueue "p4_B4_D_hard_r${reconstruction}" r1-r2 "$reconstruction" --arm D "${rung4[@]}"
+        p4_enqueue "p4_B4_D_none_r${reconstruction}" r1-r2 "$reconstruction" --arm D "${rung4[@]}" --signs none
+        for soft in "${soft_grid[@]}"; do
+          p4_enqueue "p4_B4_D_soft${soft}_r${reconstruction}" r1-r2 "$reconstruction" \
+            --arm D "${rung4[@]}" --signs none --soft "$soft"
+        done
+      done ;;
+    p4_B5)
+      for arm in C D; do
+        p4_enqueue "p4_B5_${arm}_r1" r1-r2 1 --arm "$arm" --statics B --message 1
+      done
+      p4_controls B5 r1 --statics B --message 1 ;;
+    p4_B6)
+      for policy in confident-only all-links; do
+        if [[ ! -d data/processed/kg/export_v4_${policy} ]]; then
+          echo "p4_B6: missing data/processed/kg/export_v4_${policy}; skipping $policy"
+          continue
+        fi
+        for arm in C D; do
+          p4_enqueue "p4_B6_${arm}_${policy}_r1" r1-r2 1 --arm "$arm" --policy "$policy" "${rung4[@]}"
+        done
+      done ;;
+    p4_B7)
+      # TODO: add the recharge options to response.py before enabling these
+      # R1 commands. The option names below are proposed.
+      # p4_enqueue p4_B7_D_unitwide_r1 r1 1 --arm D "${rung4[@]}" --recharge-relation recharge_unitwide
+      # p4_enqueue p4_B7_D_drainage_r1 r1 1 --arm D "${rung4[@]}" --recharge drainc
+      echo "p4_B7: pending response CLI options for unit-wide recharge and soil drainage" ;;
+  esac
+  p4_wait
+  return "$p4_failed"
+)
+
 failed=()
 if [[ -n ${STATUS_FILE:-} ]]; then
   : > "$STATUS_FILE" || exit 1
@@ -134,6 +280,7 @@ for s in $STEPS; do
                     done
                     waitall "${pids[@]}" || rc=1
                     exit "$rc" ) ;;
+    p4_B[1-7]|p4_B1c) p4_step "$s" ;;
     final:*)      $PY -m src.models.tune --model "${s#final:}" --final-only ;;   # v3 choice
     regimes:*)    $PY -m src.models.regimes --model "${s#regimes:}" ;;
     *)            echo "unknown step $s"; false ;;

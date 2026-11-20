@@ -528,7 +528,49 @@ notebooks/       exploration only; anything that matters moves into src/
 
 ### ▶ Where we are (read this first in a new session)
 
-**2026-11-20 evening (second session of the day): black box on D's edges, paper sections, kernel version 13 still running. START HERE.**
+**2026-11-20, end of the evening: Gate 3 decided by Assil (18 of 21 points), everything pushed; tomorrow: kernel version 13, points 5-6, the professor's e-mail. START HERE.**
+- **Gate 3 with Assil (2026-11-20 ≈ 19:10-19:30, asked 4 at a time, recommendation first):** answers
+  in `docs/gate3_decisions.md`, last section ("Assil's decisions"). All as recommended except **point
+  15: build CQ14 too** (cover, confinement and pressure state per well) and **point 16: Chronos-2 and
+  the forecasting comparison in the paper too**. Still open: **5 and 6** (the twin's design and λ_s:
+  after kernel version 13), **17** (public repository: the supervisor and SAVE Water).
+- **Pushed** to GitHub on Assil's request (`155d70e..66bd71c`, 59 commits; no data or secrets): the
+  repository is public, paper drafts included, before point 17's answer.
+- **The professor's e-mail:** the plain-words content Assil read is in `docs/supervisor_questions.md`
+  §7 (draft of 2026-11-20; it replaces §4's message of October, never sent). Next: Assil's edits,
+  then the French version, sent with the Gate 3 sheet, paper section 3 and `docs/lu6_example.md`.
+- **Workers stopped** at the end of the session (both idle, all tasks T17-T24 reviewed and committed);
+  relaunch them as in memory `codex-worker-orchestration` (`--no-daemon`, the space Claude is in).
+
+**Tomorrow, in order (2026-11-21):**
+1. **Kaggle kernel version 13** (was still RUNNING at 19:30 CET on 2026-11-20; ≈ 8 h from 11:55 UTC):
+   `python scripts/kaggle_cpu.py status`; when COMPLETE, `pull` (staged), then `PFE_DATASET=v4 python -m
+   src.analysis.twin_report twin_map twin_slices twin_rq2`; read (f) RQ2 (hard/none/soft, per-well
+   score 5), score 6 in slices O and S, and **test 2's rates** (analysis plan item 22: τ = 95 % of the
+   grid, fixed before the pull); step note; explainer (incl. the decisions board).
+2. **Gate 3 points 5 and 6 with Assil** (same way: AskUserQuestion, recommendation first), then the
+   professor's e-mail in French (§7) once he has edited the content.
+3. **Before the tag, implement the decisions** (each with its test; workers for the mechanical parts):
+   (a) point 12: drop recharge edges with an outcrop share < 0.001 in `src/kg/export.py` (12 local
+   edges / 12 wells, 195 unit-wide), regenerate the exports and the control graphs (they refuse a
+   changed export), `tests/test_export.py`'s oracle the same; (b) point 15: **CQ14** (ontology module,
+   rules, shapes, `tests/cq/cq14_*.rq` + oracle; the ontology was feature-frozen at 0.7.x, this is
+   Assil's exception); (c) point 1: the `_conv` run names for the explanation blocks in
+   `configs/phase4_contrasts.json` and the `P4_*` settings; (d) point 20: the fixed seasonal
+   residual as a with/without row; (e) point 16: Chronos-2 in the paper: Colab session 2 results
+   from Drive (Assil's login) and `chronos2_ft` (Colab GPU); (f) the analysis plan amendment that
+   records every Gate 3 decision; then `scripts/run_tests.py` (full), the tag, the Phase 4 push
+   (`kaggle_cpu.py push --steps ... --env P4_CONFIRMED=1 ...`) and the black box on Colab
+   (`taccari.py --edges D`, point 21).
+4. Paper: cite BD LISA, BD TOPO and the RPG once their pages are verified; sections 5.2-5.3 from the
+   Gate 3 decisions; 6.1 gets the slices and RQ2.
+**Assil's list (given 2026-11-20, in order):** Gate 3 ✅ (except 5, 6, 17); push ✅; the professor's
+e-mail; Colab session 2 from Drive; the two data e-mails (§5 monthly drinking water + BRGM's monthly
+Pliocene pumping 1998-2007, §6 CORNEILLA PD5); the AGROVOC gold set; Earth Engine registration; the
+paywalled papers (Schorpp 2023, Shapoori 2015, Brodaric 2018, Bazzi 2019, Lanini HAL, Chu 2026,
+Jeong 2026, Feng 2022).
+
+**2026-11-20 evening (second session of the day): black box on D's edges, paper sections, kernel version 13 still running.**
 - **Workers relaunched** by Claude (terminal t8, herdr space `~`, not tmux): `cxa` = t9 (GPT-6.2-Sol
   high), `cxb` = t10 (GPT-6.1-Sol max), both `codex --no-daemon` (hc manual: else Codex's commands
   run outside hc). Briefs T17–T20 in `.agents/briefs/`.

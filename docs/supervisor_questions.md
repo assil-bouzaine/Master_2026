@@ -201,3 +201,37 @@ values become "artesian, head unknown", or a corrected series replaces them.
 > Assil Bouzaine
 > Master Science des données, ISAMM — Université de la Manouba
 
+
+## 7. E-mail to the supervisor for Gate 3 (content in plain words, draft of 2026-11-20)
+
+Read by Assil on 2026-11-20 evening; he edits it, then Claude writes the French version. Send it
+with `docs/gate3_decisions.md` (his answers), paper section 3 (`paper/sections/knowledge_graph.tex`,
+as PDF once built) and `docs/lu6_example.md`. Replaces the message of §4 (October, never sent).
+
+1. **Where we are.** The ontology is written and checked (it reuses standard vocabularies for
+   groundwater, rivers, land use and observations; 384 terms in French and English; a reasoner finds
+   it consistent; the OOPS! checker found no serious mistake). The knowledge graph is built from the
+   Roussillon's open data (wells, aquifer layers, pumps and their yearly volumes, rivers, canals,
+   crops, weather); rules work out which pumps, rain, rivers and canals can affect each well, with
+   the evidence and a confidence level; all checks pass. The practice experiments are done (240
+   simulated "practice worlds" where we know the true answer): the graph improves accuracy only a
+   little (even perfect links gain at most about 8 %), but it helps the model attribute drops in
+   the water level to pumping correctly when the model is trained to the end. The main model on the
+   real data is ready and waits only for his review (Gate 3). The paper's method sections are
+   drafted (target: *Environmental Modelling & Software*, submission end of April 2027).
+2. **What I need from him: the Gate 3 review.** A meeting date, ideally before 6 December. Before it
+   I send the decision sheet with my answers, the paper section on the knowledge graph, and one
+   worked example from crop fields to wells.
+3. **The main choices I made (he can object).** Train the model two ways (one for accuracy, one for
+   explanations); an improvement counts if it cuts the error by at least 5 %; the rules forced on
+   the model: pumping never raises the water level, rain never lowers it, rivers only at the 3 wells
+   where BRGM measured it, canals not forced; add one more question to the ontology (what is known
+   about confinement at each well); put the Chronos-2 forecasting comparison in the paper too.
+4. **Practical questions.** The defence date and any intermediate deadline; the code and notes are
+   public on GitHub, paper drafts included: OK for him and SAVE Water, or private until the paper
+   is published?; for the paper: co-authors, the SAVE Water/PRIMA grant number, help with
+   open-access fees; if possible the SAVE Water documents D4.1 and D3.1, and contacts at MSE-UMA
+   (Manouba sensors) and UGE/LASTIG (ontology review).
+5. **Two missing data sets.** Monthly drinking-water production of the Roussillon wells, and BRGM's
+   monthly Pliocene pumping 1998-2007: with yearly totals only, the effect of pumping cannot be
+   separated from the effect of the weather within a year.

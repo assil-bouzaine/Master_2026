@@ -66,6 +66,11 @@ across the cells. Details: analysis plan item 18 (follow-up results), item 19 am
   (RQ3–RQ4: contributions, their agreement over starts, the template text), since only there does the
   twin show the graph making the recovered pumping right. Synthetic heads only: this says how the
   learner behaves under these generators, not what is true in the aquifer.
+- *If both are adopted:* the explanation runs need their own names (for example a `_conv` suffix),
+  declared in `configs/phase4_contrasts.json` and in the `P4_*` settings of the Phase 4 steps
+  (`scripts/run_v4_cpu.sh`, one protocol per push): the same name with other settings is refused by
+  the run fingerprint. Cost: the converged protocol takes about 5 times longer per start (98 s
+  against 20 s), so only the blocks that feed explanations (B2's D and C, R1) would run it.
 
 **2. Rungs 3–5 and the routing contrast.** The main model is built as a ladder: (1) one response
 model for all wells, (2) pooling by aquifer group, (3) parameters predicted from the graph's facts

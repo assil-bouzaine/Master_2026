@@ -12,14 +12,18 @@ missing. **Nothing here runs before Gate 3 and the git tag of the analysis plan*
 - **Routing:** every arm goes through `src/models/routing.py`: `baseline` (the panel's rules, no
   graph: arms A and B), `C`, `D`, and the controls `E_degree:<d>`, `E_distance:<d>`, `F_random:<d>`,
   `F_complete` (`src/kg/controls.py`, five draws each).
-- **Fitting protocol:** early stopping on validation or 3,000 fixed steps with pooling *(Gate 3,
-  point 1; the twin's grid decides)*; the pooled λ chosen on validation in R1, nested (other folds
-  only) in R2 (§10).
+- **Fitting protocol:** accuracy contrasts in B1–B7 use pooled λ = 0.01 with early stopping on
+  validation, and explanation claims use pooled λ = 0.1 for 3,000 fixed steps in B2conv
+  *(Gate 3, point 1)*.
+- **Launch defaults:** changing `P4_MODE`, `P4_LAM`, `P4_FIXED` or `P4_RECHARGE` from `pooled`,
+  `0.01`, empty or `linear`, respectively, requires `P4_OVERRIDE=1`.
 - **Starts:** 10 per run (item 18 point 4); a same-arm band (random halves of the starts) beside
   every primary contrast.
 - **Machine:** Kaggle CPU for every arm of a contrast (one machine type per contrast, item 18).
 - **Data:** dataset v4, export policy "main", pumping reconstruction (1) unless the block says
   otherwise.
+- **Recharge:** the main input is rain minus a fitted share of evapotranspiration (`linear`), with
+  effective rain (PE) as is included in B7 *(Gate 3, point 7)*.
 - **Measure:** per core well, log(RMSE_x / RMSE_y) in the drought phase; median over wells, its
   cluster-bootstrap interval and the cluster sign-flip test (14 clusters), Holm within each family
   (item 18 point 3; families: Gate 3 point 14).
@@ -34,27 +38,31 @@ current, (2) flat drinking water, (3) crop calendar.
 |---|---|---|---|---|---|---|
 | B1 | RQ1, knowledge as information (B vs A) | `--arm baseline --statics A` vs `--statics B`, rung 3 | 9 | 3 | 2 × 9 × 3 = 54 | 540 |
 | B1c | facts or name tags? (controls of B) | B with `--static-control nametags`, `shuffled` | 9 | 1 | 2 × 9 = 18 | 180 |
-| B2 | RQ1, edge semantics (D vs C), primary form: routing | `--arm C` vs `--arm D`, rung 4 *(with or without set-B facts: Gate 3, point 2)* | 9 | 3 | 2 × 9 × 3 = 54 | 540 |
+| B2 | RQ1, edge semantics (D vs C), primary form: routing | `--arm C` vs `--arm D`, rung 4 | 9 | 3 | 2 × 9 × 3 = 54 | 540 |
+| B2conv | explanation claims (D vs C) | B2 arms with `--mode pooled --lam 0.1 --fixed-steps 3000` | R1 | 3 | 2 × 3 = 6 | 60 |
 | B3 | is D's gain semantic, local or density? | `E_degree`, `E_distance`, `F_random` (5 draws each), `F_complete` | R1, R2 | 1 | 16 × 6 = 96 | 960 |
 | B4 | RQ2, sign constraints | arm D: hard, none, soft with λ_s ∈ {1, 10, 100} *(Gate 3, point 6)* | R1, R2 | 3 | 5 × 6 × 3 = 90 | 900 |
 | B5 | rung 5, message passing (secondary) | `--message 1` on C and D (+ the B3 controls on R1) | R1, R2 | 1 | 2 × 6 + 16 = 28 | 280 |
 | B6 | pump-link policy sensitivity | D vs C with the `confident-only` and `all-links` exports | R1, R2 | 1 | 2 × 2 × 6 = 24 | 240 |
-| B7 | recharge sensitivities | D with unit-wide recharge cells; D with soil drainage instead of PE | R1 | 1 | 2 | 20 |
-| | | | | | **366** | **3,660** |
+| B7 | recharge sensitivities | D with unit-wide recharge cells, soil drainage (`--recharge drainc`), or effective rain as is (`--recharge pe`) | R1 | 1 | 3 | 30 |
+| | | | | | **373** | **3,730** |
+
+The scripts also assemble 51 sets of leave-wells-out folds.
+
+For B4, choose the strongest soft penalty whose R1 median core validation NSE is within one
+same-arm band half-width of the best score in its reconstruction *(Gate 3, point 6)*.
 
 **Cost.** Measured on Kaggle CPU (2,516 fits of the twin, real shapes, one thread per fit): an
 early-stopped start takes a median 20 s (90th percentile 35 s), a 3,000-step start 98 s. With four
 fits at once and 11 hours per session (2,640 CPU-minutes):
 
-| Protocol | CPU-minutes for 3,660 starts | Kaggle sessions |
-|---|---|---|
-| early stopping (20–35 s per start) | 1,200–2,100 | 1 |
-| 3,000 fixed steps (98 s per start) | about 6,000 | 2–3 |
+| Protocol | Starts | CPU-minutes | Kaggle sessions |
+|---|---|---|---|
+| early stopping (20–35 s per start) | 3,670 | about 1,220–2,140 | 1 |
+| 3,000 fixed steps (98 s per start) | 60 | 98 | < 1 |
 
-So compute does not limit Phase 4: the whole table fits in one to three sessions, and a second
-reconstruction-wide repeat of any block is affordable. The limit is the number of contrasts we can
-read honestly: only B1 and B2 (RQ1) and B4 (RQ2) are confirmatory families; B1c, B3, B5–B7 are
-declared now but reported as exploratory controls and sensitivities (§10, item 20).
+The estimates total about 1,320–2,240 CPU-minutes. The confirmatory families are B1 and B2 (RQ1)
+and B4 (RQ2). B1c, B3 and B5–B7 are exploratory controls and sensitivities (§10, item 20).
 
 ## 3. Code still missing before the first Phase 4 run
 

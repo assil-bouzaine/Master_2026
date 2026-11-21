@@ -232,6 +232,87 @@ def test_soft_and_none():
     assert n_wrong[1.0] < n_wrong[None], n_wrong
 
 
+def test_gate3_signs():
+    """--signs gate3 (Gate 3 points 7-9): recharge, pumping and unattributed pumping signed for every
+    well; the river signed only at the wells of the mask (slot river_c), free elsewhere; canal free.
+    The soft penalty under --sign-ref gate3 and the canal-only soft prior refer to the right signs;
+    the saved outputs merge the two river slots."""
+    N, T, K = 6, 160, 40
+    X0 = toy_inputs(N, T, K)
+    mask_wells = {"w0", "w3"}
+    codes = [f"w{i}" for i in range(N)]
+
+    def split(X):
+        d = {"codes": codes, "X": {k: v.copy() for k, v in X.items()}}
+        return R.split_river(d, mask_wells)
+
+    data = split(X0)
+    assert data["river_c_mask"].tolist() == [True, False, False, True, False, False]
+    assert np.allclose(data["X"]["river_c"] + data["X"]["river"], X0["river"])
+    g = torch.Generator().manual_seed(5)
+    net = R.ResponseModel(np.arange(N) % 2, 2, "pooled", kernel_weeks=K, amax=20.0, init_sd=1.5,
+                          generator=g, pumping=R.GATE3_STRESSES, signs="gate3")
+    assert net.names == ("recharge", "pumping", "pumping_unattributed", "river_c", "river", "canal")
+    assert net.sign.tolist() == [1.0, -1.0, -1.0, 1.0, 0.0, 0.0]
+    with torch.no_grad():                      # free slots of both signs; signed slots from any raw value
+        net.delta[:, :6] = torch.tensor([[-2.0, 2.0, 1.5, -3.0, -1.0, -0.5],
+                                         [1.0, -1.0, 0.5, 2.0, 0.7, 0.4],
+                                         [-0.5, 0.5, -2.0, -1.0, -1.5, 1.2],
+                                         [0.3, 1.0, 1.0, -2.0, 1.0, -1.0],
+                                         [2.0, -2.0, 0.0, 0.5, -0.2, 0.3],
+                                         [-1.0, 0.0, -1.0, 1.0, 0.9, -0.8]])
+    gain = net.parameters_physical()[0].detach().numpy()
+    assert (gain[:, 0] >= 0).all() and (gain[:, 1] <= 0).all() and (gain[:, 2] <= 0).all() and (gain[:, 3] >= 0).all()
+    assert (gain[:, 4] < 0).any() and (gain[:, 5] < 0).any(), "river (unmasked) and canal must be free"
+    with torch.no_grad():
+        base = net(tt(data["X"])).numpy()
+    m = data["river_c_mask"]
+    for name, sign, wells in (("rain", 1, slice(None)), ("ETP", -1, slice(None)), ("pump_gw", -1, slice(None)),
+                              ("pump_un", -1, slice(None)), ("river", 1, m)):
+        X2 = {k: v.copy() for k, v in X0.items()}
+        X2[name][:, 60:] += 1.0
+        with torch.no_grad():
+            d = net(tt(split(X2)["X"])).numpy() - base
+        assert (sign * d[wells] >= -1e-5).all() and (sign * d[wells]).max() > 0, name
+    X2 = {k: v.copy() for k, v in X0.items()}
+    X2["river"][:, 60:] += 1.0
+    with torch.no_grad():
+        d = net(tt(split(X2)["X"])).numpy() - base
+    free_wells = np.where(~m & (gain[:, 4] < 0))[0]
+    assert len(free_wells) and (d[free_wells] < -1e-6).any(), "an unmasked river gain may lower the head"
+    # the references of the soft penalty
+    nets = {}
+    for key, kw in (("none_ref_gate3", dict(signs="none", sign_ref="gate3")),
+                    ("canal_prior", dict(signs="gate3", soft_stresses=("canal",))),
+                    ("none_ref_structure", dict(signs="none", pumping="arm"))):
+        kw = {"pumping": R.GATE3_STRESSES} | kw
+        nets[key] = R.ResponseModel(np.arange(N) % 2, 2, "free", kernel_weeks=K, amax=20.0, **kw)
+    assert nets["none_ref_gate3"].expected.tolist() == [1.0, -1.0, -1.0, 1.0, 0.0, 0.0]
+    assert nets["canal_prior"].expected.tolist() == [0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+    assert nets["none_ref_structure"].expected.tolist() == [1.0, -1.0, -1.0, 1.0, 1.0], "unchanged default"
+    # at the start (no noise) a signed slot starts from the initial gain, a free one from 0
+    g0 = R.ResponseModel(np.arange(N) % 2, 2, "pooled", kernel_weeks=K, amax=20.0, pumping=R.GATE3_STRESSES,
+                         signs="gate3").parameters_physical()[0].detach().numpy()
+    assert np.allclose(g0[:, [0, 3]], R.INIT["gain"], rtol=1e-5) and np.allclose(g0[:, [4, 5]], 0.0)
+    # outputs: one "river" column, the parameters of the slot each well feeds
+    with torch.no_grad():
+        net.d.zero_()
+    data |= {"head": np.zeros((N, T)), "mu": np.zeros((N, T)), "sd": np.ones((N, T)),
+             "weeks": np.arange(T), "groups": ["a", "b"], "group_of": np.arange(N) % 2}
+    data["weeks"] = np.array(np.datetime64("2010-01-04") + 7 * np.arange(T), dtype="datetime64[ns]")
+    pz, c, p = R.seed_outputs(net, data)
+    slot_cols = [k.format("river_c") for k in ("gain_{}", "a_{}_wk", "n_{}", "mean_lag_{}_wk",
+                                             "impl_mean_lag_{}_wk", "impl_peak_lag_{}_wk")]
+    assert "river_c" not in c.columns and not set(slot_cols) & set(p.columns)
+    with torch.no_grad():
+        full = net.contributions(tt(data["X"])).numpy()
+    want = (full[:, 3] + full[:, 4]).reshape(-1)
+    assert np.allclose(c["river"].to_numpy(), want, atol=1e-6)
+    assert np.allclose(p["gain_river"], np.where(m, gain[:, 3], gain[:, 4]))
+    assert p["river_constrained"].tolist() == m.tolist()
+    assert np.allclose(pz * 1.0, c.drop(columns=["code_bss", "week"]).sum(1).to_numpy().reshape(N, T), atol=1e-5)
+
+
 def test_fft_conv():
     N, T, K = 6, 160, 40
     X = tt(toy_inputs(N, T, K))

@@ -95,14 +95,29 @@ p4_step() (
     return 0
   fi
 
-  local mode=${P4_MODE:-pooled} lam=${P4_LAM:-0.1} fixed=${P4_FIXED:-}
-  local recharge=${P4_RECHARGE:-linear}   # the main recharge stress (Gate 3 point 7: linear or pe)
+  local mode=${P4_MODE-pooled} lam=${P4_LAM-0.01} fixed=${P4_FIXED-}
+  local recharge=${P4_RECHARGE-linear} b2_regimes=all
+  if [[ ${P4_OVERRIDE:-0} != 1 ]]; then
+    local -a changed=()
+    [[ $mode == pooled ]] || changed+=(P4_MODE)
+    [[ $lam == 0.01 ]] || changed+=(P4_LAM)
+    [[ -z $fixed ]] || changed+=(P4_FIXED)
+    [[ $recharge == linear ]] || changed+=(P4_RECHARGE)
+    if (( ${#changed[@]} )); then
+      echo "$1: ${changed[*]} differ from the declared Phase 4 defaults. Set P4_OVERRIDE=1 to proceed." >&2
+      return 1
+    fi
+  fi
+  if [[ $1 == p4_B2conv ]]; then
+    mode=pooled lam=0.1 fixed=3000 b2_regimes=r1
+  fi
   local statics=${P4_RUNG4_STATICS:-} p4_failed=0
   local -a p4_seeds reconstructions soft_grid rung4=() p4_pids=()
   read -r -a p4_seeds <<< "${P4_SEEDS:-0 1 2 3 4 5 6 7 8 9}"
   read -r -a reconstructions <<< "${P4_RECONS:-1 2 3}"
   read -r -a soft_grid <<< "${P4_SOFT_GRID:-1 10 100}"
-  local -a p4_flags=(--mode "$mode" --lam "$lam" --recharge "$recharge" --conv fft --seeds "${p4_seeds[@]}")
+  # --signs gate3: the signs Gate 3 approved, the same for every arm (analysis plan §14 item 23)
+  local -a p4_flags=(--mode "$mode" --lam "$lam" --recharge "$recharge" --conv fft --signs gate3 --seeds "${p4_seeds[@]}")
   if [[ -n $fixed ]]; then p4_flags+=(--fixed-steps "$fixed"); fi
   if [[ -n $statics ]]; then rung4=(--statics "$statics"); fi
   export PFE_THREADS=1
@@ -125,10 +140,10 @@ p4_step() (
       for control in nametags shuffled; do
         p4_enqueue "p4_B1c_B_${control}_r1" all 1 --arm baseline --statics B --static-control "$control"
       done ;;
-    p4_B2)
+    p4_B2|p4_B2conv)
       for reconstruction in "${reconstructions[@]}"; do
         for arm in C D; do
-          p4_enqueue "p4_B2_${arm}_r${reconstruction}" all "$reconstruction" --arm "$arm" "${rung4[@]}"
+          p4_enqueue "${1}_${arm}_r${reconstruction}" "$b2_regimes" "$reconstruction" --arm "$arm" "${rung4[@]}"
         done
       done ;;
     p4_B3)
@@ -136,10 +151,11 @@ p4_step() (
     p4_B4)
       for reconstruction in "${reconstructions[@]}"; do
         p4_enqueue "p4_B4_D_hard_r${reconstruction}" r1-r2 "$reconstruction" --arm D "${rung4[@]}"
-        p4_enqueue "p4_B4_D_none_r${reconstruction}" r1-r2 "$reconstruction" --arm D "${rung4[@]}" --signs none
+        # none and soft keep the gate3 stress slots and refer to the gate3 signs (the later --signs wins)
+        p4_enqueue "p4_B4_D_none_r${reconstruction}" r1-r2 "$reconstruction" --arm D "${rung4[@]}" --signs none --sign-ref gate3
         for soft in "${soft_grid[@]}"; do
           p4_enqueue "p4_B4_D_soft${soft}_r${reconstruction}" r1-r2 "$reconstruction" \
-            --arm D "${rung4[@]}" --signs none --soft "$soft"
+            --arm D "${rung4[@]}" --signs none --sign-ref gate3 --soft "$soft"
         done
       done ;;
     p4_B5)
@@ -158,11 +174,13 @@ p4_step() (
         done
       done ;;
     p4_B7)
-      # recharge sensitivities of arm D (options added 2026-11-20, worker task T14): the unit-wide
-      # recharge cells, and soil drainage instead of the main recharge stress (the later
-      # --recharge overrides P4_RECHARGE's: argparse keeps the last value)
+      # Use unit-wide cells, soil drainage or effective rain for these sensitivities.
+      # Argparse keeps the last --recharge value.
       p4_enqueue p4_B7_D_unitwide_r1 r1 1 --arm D "${rung4[@]}" --recharge-relation recharge_unitwide
-      p4_enqueue p4_B7_D_drainage_r1 r1 1 --arm D "${rung4[@]}" --recharge drainc ;;
+      p4_enqueue p4_B7_D_drainage_r1 r1 1 --arm D "${rung4[@]}" --recharge drainc
+      p4_enqueue p4_B7_D_pe_r1 r1 1 --arm D "${rung4[@]}" --recharge pe
+      # Gate 3 point 9: no hard canal sign; a soft prior towards >= 0 on the canal gain only
+      p4_enqueue p4_B7_D_canalsoft_r1 r1 1 --arm D "${rung4[@]}" --soft 10 --soft-stresses canal ;;
   esac
   p4_wait
   return "$p4_failed"
@@ -281,7 +299,7 @@ for s in $STEPS; do
                     done
                     waitall "${pids[@]}" || rc=1
                     exit "$rc" ) ;;
-    p4_B[1-7]|p4_B1c) p4_step "$s" ;;
+    p4_B[1-7]|p4_B1c|p4_B2conv) p4_step "$s" ;;
     final:*)      $PY -m src.models.tune --model "${s#final:}" --final-only ;;   # v3 choice
     regimes:*)    $PY -m src.models.regimes --model "${s#regimes:}" ;;
     *)            echo "unknown step $s"; false ;;

@@ -129,26 +129,57 @@ def test_reconstructions():
 
 
 def test_soft_selection():
-    class SoftRuns:
-        def __init__(self):
+    class SoftRuns(A.SavedRuns):
+        def __init__(self, scores, weeks):
             self.calls = []
+            self.scores = scores
+            self.splits = {"validation": [str(weeks[0].date()), str(weeks[-2].date())]}
 
         def metrics(self, run, regime):
             self.calls.append((run, regime))
-            if "100" in run:
+            if run not in self.scores:
                 return None
-            validation = 0.6 if "soft1_" in run else 0.8
+            validation = self.scores[run]
             return pd.concat([table(run).assign(NSE=1 - validation),
-                              table(run).assign(split="validation", NSE=validation)])
+                              table(run).assign(split="validation", NSE=validation),
+                              table(run).assign(split="validation", code_bss="noncore", core=False,
+                                                NSE=1 - validation)])
 
-    runs, missing = SoftRuns(), set()
-    template = "p4_B4_D_soft{best}_r1"
-    picked, scores = A._select_soft(runs, template, 2, [1, 10], missing)
-    assert picked == 10 and len(scores) == 2 and not missing
-    assert runs.calls == [("p4_B4_D_soft1_r2", ""), ("p4_B4_D_soft10_r2", "")]
-    picked, _ = A._select_soft(runs, template, 2, [1, 10, 100], missing)
-    assert picked is None and missing == {"p4_B4_D_soft100_r2"}
-    print("  5a. The soft setting uses core R1 validation, and an incomplete grid stays pending.")
+        def frames(self, run, regime):
+            assert (run, regime) == (names[0], "")
+            # Large errors on the flagged and test weeks make their exclusion measurable.
+            return {seed: heads.assign(pred=heads["head"] + np.where(
+                heads["week"] < weeks[-2], 0.5 * (seed >= 5), 1000 * seed)) for seed in range(10)}
+
+    weeks = pd.date_range("2020-01-05", periods=28, freq="W-SUN")
+    heads = pd.DataFrame({"code_bss": "w", "week": weeks, "head": np.tile([-1.0, 1.0], 14)})
+    mask = heads.loc[heads["week"].eq(weeks[-2]), ["code_bss", "week"]]
+    template, declared = "p4_B4_D_soft{best}_r1", [1, 10, 100]
+    names = [f"p4_B4_D_soft{setting}_r2" for setting in declared]
+    missing = set()
+    with TemporaryDirectory() as tmp:
+        heads.to_parquet(Path(tmp) / "heads_weekly.parquet", index=False)
+        with patch.object(A, "DS", Path(tmp)), patch.object(A, "load_mask", return_value=mask):
+            runs = SoftRuns(dict(zip(names, [0.9375, 0.75, 0.7])), weeks)
+            best = A._select_soft(runs, template, 2, declared, missing)
+            assert best[:2] == (1, "best") and len(best[2]) == 3 and not missing
+            assert runs.calls == [(name, "") for name in names]
+            # Each half's NSE is 1 minus the square of its mean offset.
+            np.testing.assert_allclose(runs.validation_nse_half_width(names[0], runs.metrics(names[0], "")), 0.15)
+            runs.scores.update(zip(names[1:], [0.875, 0.8]))
+            stronger = A._select_soft(runs, template, 2, declared, missing)
+            assert stronger[:2] == (100, "within the band of the best")
+            runs.scores.pop(names[-1])
+            pending = A._select_soft(runs, template, 2, declared, missing)
+            assert pending[:2] == (None, None) and missing == {names[-1]}
+
+    config = {"smallest_effect": 0.05, "alpha": 0.05, "families": {}, "reconstructions": [2]}
+    report = {"soft": {1: best, 2: stronger, 3: pending}, "controls": [], "missing": sorted(missing), "pending": {}}
+    rendered = A.render(config, report)
+    assert "| 1 | 1 | best |" in rendered and "| 2 | 100 | within the band of the best |" in rendered
+    assert "| 3 | pending complete grid |" in rendered
+    print("  5a. The core R1 validation band has half-width 0.15. The best and strongest within-band settings, "
+          "and the pending grid, are reported.")
 
 
 def test_seed_layout():

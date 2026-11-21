@@ -27,6 +27,7 @@ import pandas as pd
 
 from src.analysis import ladder_report as ladder, stats
 from src.config import DATASET, ROOT
+from src.dataset.placeholders import load_mask
 from src.models.evaluate import DS, MIN_WEEKS, PREDICTION_KEYS, RESULTS, score
 from src.models.response import SD_FLOOR
 
@@ -182,6 +183,43 @@ class SavedRuns:
             self._bands[key] = bounds, tuple(sorted(frames))
         return self._bands[key]
 
+    def validation_nse_half_width(self, run, metrics):
+        """Compare two five-start means using the median core validation NSE."""
+        frames = self.frames(run, "")
+        if tuple(sorted(frames)) != PLAN_SEEDS:
+            return None
+        scores = ladder.per_well(metrics, split="validation")
+        codes = scores[np.isfinite(scores)].index
+        heads = pd.read_parquet(DS / "heads_weekly.parquet", columns=["code_bss", "week", "head"])
+        start, end = self.splits["validation"]
+        heads = heads.loc[heads["week"].between(start, end) & heads["code_bss"].isin(codes)]
+        mask = load_mask()
+        if mask is not None:
+            keys = ["code_bss", "week"]
+            heads = heads.loc[~pd.MultiIndex.from_frame(heads[keys]).isin(pd.MultiIndex.from_frame(mask[keys]))]
+        observed = heads.pivot(index="week", columns="code_bss", values="head")
+        wide = np.stack([frames[seed].pivot(index="week", columns="code_bss", values="pred")
+                         .reindex_like(observed).to_numpy() for seed in PLAN_SEEDS])
+        # The ensemble score requires a prediction from every start on a scored week.
+        obs = observed.where(np.isfinite(wide).all(axis=0))
+        scorable = (obs.notna().sum() >= MIN_WEEKS).to_numpy()
+        obs, wide = obs.to_numpy()[:, scorable], wide[:, :, scorable]
+        variance = np.nansum((obs - np.nanmean(obs, axis=0)) ** 2, axis=0)
+        variable = np.isfinite(variance) & (variance > 0)
+        if not variable.any():
+            return None
+        obs, wide, variance = obs[:, variable], wide[:, :, variable], variance[variable]
+        rng = np.random.default_rng(2026)
+        differences = []
+        for _ in range(ladder.N_BAND):
+            halves = rng.permutation(PLAN_STARTS).reshape(2, -1)
+            pred = wide[halves].mean(axis=1)
+            nse = 1 - np.nansum((pred - obs) ** 2, axis=1) / variance
+            a, b = np.median(nse, axis=1)
+            differences.append(a - b)
+        lo, hi = np.percentile(differences, [2.5, 97.5])
+        return (hi - lo) / 2 if np.isfinite([lo, hi]).all() else None
+
     def coverage(self, run, regime):
         path = self.results / run
         if regime != "_lwo":
@@ -325,17 +363,26 @@ def _compare(runs, spec, a, b, regime, reconstruction, missing, *, family=None, 
 
 
 def _select_soft(runs, stem, reconstruction, declared, missing):
-    entries = []
+    entries, tables = [], {}
     for setting in declared:
         run = _run_name(stem.format(best=setting), "", reconstruction)
         table = runs.metrics(run, "")
+        tables[run] = table
         val = ladder.per_well(table, split="validation").median() if table is not None else np.nan
         if not np.isfinite(val):
             missing.add(run + (" (no core validation NSE)" if table is not None else ""))
         entries.append((setting, run, val))
-    if any(not np.isfinite(v) for _, _, v in entries):
-        return None, entries
-    return max(entries, key=lambda entry: entry[2])[0], entries
+    if not entries or any(not np.isfinite(v) for _, _, v in entries):
+        return None, None, entries
+    best, run, best_score = max(entries, key=lambda entry: (entry[2], entry[0]))
+    stronger = [(setting, val) for setting, _, val in entries if setting > best]
+    if stronger:
+        half_width = runs.validation_nse_half_width(run, tables[run])
+        if half_width is not None:
+            within = [setting for setting, val in stronger if val >= best_score - half_width]
+            if within:
+                return max(within), "within the band of the best", entries
+    return best, "best", entries
 
 
 def compute(config, runs):
@@ -351,8 +398,8 @@ def compute(config, runs):
                 if reconstruction not in selections:
                     selections[reconstruction] = _select_soft(
                         runs, stem, reconstruction, config["soft_candidates"], missing)
-                best, _ = selections[reconstruction]
-                if best is None:
+                selected, _, _ = selections[reconstruction]
+                if selected is None:
                     if runs.metrics(b, regime) is None:
                         missing.add(b)
                     for setting in config["soft_candidates"]:
@@ -362,7 +409,7 @@ def compute(config, runs):
                     if family is not None:
                         families.append(_contrast_row(runs, spec, None, b, regime, reconstruction, family))
                     continue
-                stem = stem.format(best=best)
+                stem = stem.format(best=selected)
             a = _run_name(stem, regime, reconstruction)
             row = _compare(runs, spec, a, b, regime, reconstruction, missing, family=family)
             if row is not None:
@@ -479,13 +526,14 @@ def render(config, report, development=False):
         lines += ["", "**Development only.** These are saved ladder runs and illustrative control draws."]
     if report["soft"]:
         values = []
-        for reconstruction, (best, entries) in sorted(report["soft"].items()):
-            values.append([reconstruction, "pending complete grid" if best is None else best,
+        for reconstruction, (selected, reason, entries) in sorted(report["soft"].items()):
+            values.append([reconstruction, "pending complete grid" if selected is None else selected, reason or "—",
                            "<br>".join(f"{name}: {_number(val)}" for _, name, val in entries)])
         lines += ["", "## Soft-penalty selection", "",
-                  "Choose on the R1 median core validation NSE within each reconstruction. "
+                  "Choose the strongest penalty within one same-arm band half-width of the best R1 median "
+                  "core validation NSE for each reconstruction. "
                   "R2 uses the selected R1 setting.", "",
-                  _table(["Recon.", "Selected penalty", "R1 validation NSE by run"], values)]
+                  _table(["Recon.", "Selected penalty", "Reason", "R1 validation NSE by run"], values)]
     for family in config["families"]:
         rows = [row for row in report["families"] if row["family"] == family]
         lines += ["", f"## {family}", "", _contrast_table(rows, development)]

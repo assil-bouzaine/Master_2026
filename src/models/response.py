@@ -55,6 +55,16 @@ doi:10.1111/gwat.12925), but written in PyTorch and fitted for every well at onc
   recharge, river and canal signs are pending at Gate 3) are built in, the other gains are free.
   --wells: only these wells (the two-well demonstration path). No real-data contrast between
   arms is scored before the twin's design is written and the plan is tagged (items 17-18).
+- --signs gate3 (the signs Gate 3 approved, points 7-9, Assil 2026-11-20/21; analysis plan §14
+  item 23), the same for every arm: recharge >= 0, pumping and unattributed pumping <= 0
+  (abstraction never raises the head, CLAUDE.md §3), the river >= 0 only at the wells whose river
+  edges arm D's export marks `constrained` (three wells in the decided graph), canal water free. Those
+  wells' river input moves to its own stress slot, river_c, so that a raw parameter means the same
+  thing at every well of a slot and pooling towards the group mean is not bent by softplus. The
+  saved contributions and parameters merge the two slots into "river" (column river_constrained).
+  --signs none --sign-ref gate3 gives RQ2's "none" on the same slots, with --soft L its "soft"
+  (the penalty refers to the gate3 signs); --signs gate3 --soft L --soft-stresses canal is the canal
+  soft prior of point 9 (only the canal gain is penalised, towards >= 0).
 - The RQ2 settings (analysis plan §14 item 19, amendment point 9): --signs structure is "hard";
   --signs none leaves every gain a free number ("none"); --signs none --soft L adds L times the
   share of each well's training variance carried by contributions whose gain has the wrong sign
@@ -119,17 +129,25 @@ from src.models.manifest import write_manifest, write_schema
 STRESSES = ("recharge", "pumping", "canal")
 STRESS_SETS = {"sum": STRESSES,
                "split": ("recharge", "pumping_permanent", "pumping_seasonal", "canal"),
-               "arm": ("recharge", "pumping", "pumping_unattributed", "river", "canal")}
+               "arm": ("recharge", "pumping", "pumping_unattributed", "river", "canal"),
+               # --signs gate3 / --sign-ref gate3: the river in two slots, "river_c" for the wells whose
+               # river sign the graph constrains and "river" for the others (each well feeds one slot)
+               "arm_gate3": ("recharge", "pumping", "pumping_unattributed", "river_c", "river", "canal")}
 STRESS_INPUT = {"pumping": "pump_gw", "pumping_permanent": "pump_pp", "pumping_seasonal": "pump_sp",
-                "pumping_unattributed": "pump_un", "river": "river", "canal": "canal"}
+                "pumping_unattributed": "pump_un", "river": "river", "river_c": "river_c", "canal": "canal"}
 SIGN = {"recharge": 1.0, "pumping": -1.0, "pumping_permanent": -1.0, "pumping_seasonal": -1.0,
-        "pumping_unattributed": -1.0, "river": 1.0, "canal": 1.0}
+        "pumping_unattributed": -1.0, "river": 1.0, "river_c": 1.0, "canal": 1.0}
 # --signs approved: the signs an export policy has approved as constraints (configs/
 # constraint_decisions.csv: pumping); 0 = no sign built in, the gain is a free number
 SIGN_SETS = {"structure": SIGN,
              "approved": {s: (v if s.startswith("pumping") and s != "pumping_unattributed" else 0.0)
                           for s, v in SIGN.items()},
-             "none": {s: 0.0 for s in SIGN}}      # RQ2 "none" (and "soft" with --soft)
+             "none": {s: 0.0 for s in SIGN},      # RQ2 "none" (and "soft" with --soft)
+             # Gate 3 points 7-9 (Assil, 2026-11-20/21): recharge does not lower the head; abstraction,
+             # attributed or not, never raises it (CLAUDE.md §3); the river sign only where arm D's export
+             # marks the well's river edge constrained (slot river_c); canal water: no built-in sign
+             "gate3": {s: (0.0 if s in ("river", "canal") else v) for s, v in SIGN.items()}}
+GATE3_STRESSES = "arm_gate3"
 WINTER_MONTHS = (1, 2, 3, 10, 11, 12)   # the permanent part of pumping is their mean, per year
 # fixed input scales (the same for every well, so that shared gains mean the same thing):
 # rain, ETP, PE and DRAINC in cm/week; pumping in 1e5 m3/week; canal volume in 10 Mm3/week
@@ -162,7 +180,8 @@ class ResponseModel(nn.Module):
 
     def __init__(self, group_of, n_groups, mode="free", kernel_weeks=KERNEL_WEEKS, amax=A_MAX,
                  recharge="linear", init_sd=0.0, generator=None, pumping="sum", gain_scale=None,
-                 signs="structure", conv="direct", statics=None, static_net="linear"):
+                 signs="structure", conv="direct", statics=None, static_net="linear",
+                 sign_ref="structure", soft_stresses=None):
         super().__init__()
         if mode not in ("free", "pooled", "shared"):
             raise ValueError(mode)
@@ -176,8 +195,14 @@ class ResponseModel(nn.Module):
         self.mode, self.K, self.amax, self.recharge = mode, int(kernel_weeks), float(amax), recharge
         self.names = STRESS_SETS[pumping]
         self.register_buffer("sign", torch.tensor([SIGN_SETS[signs][s] for s in self.names]))
-        # the design's signs, for the soft penalty; not saved, so checkpoints keep their keys
-        self.register_buffer("expected", torch.tensor([SIGN[s] for s in self.names]), persistent=False)
+        # the design's signs, for the soft penalty; not saved, so checkpoints keep their keys.
+        # sign_ref: the set the penalty refers to ("structure" = SIGN; "gate3" = the decided set);
+        # soft_stresses: only these stresses are penalised, towards their structural sign (the canal
+        # soft prior of Gate 3 point 9 under --signs gate3)
+        ref = SIGN_SETS[sign_ref]
+        expected = [(SIGN[s] if s in soft_stresses else 0.0) if soft_stresses is not None else ref[s]
+                    for s in self.names]
+        self.register_buffer("expected", torch.tensor(expected), persistent=False)
         self.register_buffer("group_of", torch.as_tensor(group_of, dtype=torch.long))
         self.register_buffer("lag", torch.arange(self.K, dtype=torch.float32) + 0.5)
         # metres per unit of gain: 1 (gains in metres) or the well's training sd (--gain-units sd)
@@ -316,6 +341,30 @@ def _input_columns(columns, recharge):
     return (*columns, "DRAINC") if recharge == "drainc" else columns
 
 
+def gate3_river_wells(policy="main"):
+    """The wells whose river sign is built in under the gate3 signs: every river edge of the well in
+    arm D's export is `constrained` (eligible evidence about the well's own unit, and the policy's
+    constraint decision approves river exchange: configs/constraint_decisions.csv, Gate 3 point 8).
+    Read from arm D whatever the arm of the run, so every arm has the same constraint setting
+    (analysis plan §10, experiment contract)."""
+    from src.models.routing import load_edges
+    ed, _ = load_edges("D", policy)
+    river = ed[ed["relation"] == "river"]
+    ok = river.groupby("dst")["constrained"].all()
+    return set(ok.index[ok.astype(bool)])
+
+
+def split_river(data, wells):
+    """Move the river input of `wells` to the slot river_c (sign built in) and leave the others in
+    river (free), in place; data["river_c_mask"] records which wells feed river_c."""
+    mask = np.array([c in wells for c in data["codes"]], dtype=bool)
+    X = data["X"]
+    X["river_c"] = np.where(mask[:, None], X["river"], 0.0).astype(np.float32)
+    X["river"] = np.where(mask[:, None], 0.0, X["river"]).astype(np.float32)
+    data["river_c_mask"] = mask
+    return data
+
+
 def panel_arrays(P, kernel_weeks=KERNEL_WEEKS, routed=None, *, recharge="linear"):
     """Panel -> wells, weeks, padded inputs and targets.
     Inputs: dict name -> (N, T + K - 1) float32, scaled by SCALE, gaps and the K - 1 weeks
@@ -367,9 +416,10 @@ def train_seed(seed, data, mode, lam=0.0, steps=4000, lr=0.05, patience=15, eval
                kernel_weeks=KERNEL_WEEKS, amax=A_MAX, recharge="linear", init_sd=0.5,
                train_mask=None, es_wells=None, fixed_steps=None, state_out=None, pumping="sum",
                gain_units="m", signs="structure", soft=None, conv="direct", statics=None,
-               static_net="linear", static_l2=0.0):
+               static_net="linear", static_l2=0.0, sign_ref="structure", soft_stresses=None):
     """One start. Returns (model, best validation median NSE, best step). `soft`: weight of the
-    soft sign penalty (with signs "none"). `statics` (N, F): the standardised facts of rung 3
+    soft sign penalty (with signs "none", or with `soft_stresses` naming free stresses only), which
+    refers to the signs of `sign_ref`. `statics` (N, F): the standardised facts of rung 3
     (data["codes"] order), mapped to the raw parameters by `static_net`, whose weights get the
     ridge `static_l2`."""
     torch.manual_seed(seed)
@@ -388,7 +438,8 @@ def train_seed(seed, data, mode, lam=0.0, steps=4000, lr=0.05, patience=15, eval
     net = ResponseModel(data["group_of"], len(data["groups"]), mode, kernel_weeks, amax, recharge,
                         init_sd=init_sd, generator=gen, pumping=pumping,
                         gain_scale=sd_safe[:, 0] if gain_units == "sd" else None, signs=signs, conv=conv,
-                        statics=statics, static_net=static_net)
+                        statics=statics, static_net=static_net, sign_ref=sign_ref,
+                        soft_stresses=soft_stresses)
     opt = torch.optim.Adam([p for p in net.parameters() if p.requires_grad], lr=lr)
     if soft:
         mask_t = torch.from_numpy(np.asarray(train_mask, dtype=bool))
@@ -460,7 +511,24 @@ def seed_outputs(net, data):
         p[f"mean_lag_{s}_wk"] = a[:, r] * n[:, r]
         p[f"impl_mean_lag_{s}_wk"] = impl_mean[:, r]
         p[f"impl_peak_lag_{s}_wk"] = impl_peak[:, r]
+    if "river_c" in net.names:
+        c, p = merge_river_slots(c, p, data["river_c_mask"])
     return pz, c, p
+
+
+def merge_river_slots(c, p, mask):
+    """The two river slots of --signs gate3 as one "river" stress, so saved runs keep the columns of
+    every other routed run: each well feeds one slot (`mask`: river_c), the other slot's input is 0,
+    so its contribution is the sum of the two and its parameters are those of the slot it feeds.
+    `river_constrained` says which (its river gain is >= 0 by construction there)."""
+    mask = np.asarray(mask, dtype=bool)
+    c = c.assign(river=c["river"] + c["river_c"]).drop(columns="river_c")
+    kinds = ("gain_{}", "a_{}_wk", "n_{}", "mean_lag_{}_wk", "impl_mean_lag_{}_wk", "impl_peak_lag_{}_wk")
+    for k in kinds:
+        p[k.format("river")] = np.where(mask, p[k.format("river_c")], p[k.format("river")])
+    p = p.drop(columns=[k.format("river_c") for k in kinds])
+    p["river_constrained"] = mask
+    return c, p
 
 
 def _arm_name(s):
@@ -518,6 +586,12 @@ def main():
                          "none: every gain free (RQ2)")
     ap.add_argument("--soft", type=float, default=None,
                     help="with --signs none: weight of the soft sign penalty (RQ2)")
+    ap.add_argument("--sign-ref", choices=["structure", "gate3"], default=None,
+                    help="the signs the soft penalty refers to and the stress slots: gate3 (implied by "
+                         "--signs gate3) reads arm D's export; needs --arm")
+    ap.add_argument("--soft-stresses", nargs="+", default=None,
+                    help="with --soft: penalise only these stresses, towards their structural sign; each "
+                         "must be free under --signs (the canal soft prior of Gate 3 point 9)")
     ap.add_argument("--conv", choices=["direct", "fft"], default="direct",
                     help="the causal convolution: direct conv1d (default, earlier runs) or by FFT")
     ap.add_argument("--wells", nargs="*", default=None, help="only these wells (code_bss)")
@@ -543,8 +617,28 @@ def main():
     args = ap.parse_args()
     if args.mode == "pooled" and args.lam <= 0:
         ap.error("--mode pooled needs --lam > 0")
-    if args.soft is not None and args.signs != "none":
-        ap.error("--soft needs --signs none (a built-in sign cannot be violated)")
+    sign_ref = args.sign_ref or ("gate3" if args.signs == "gate3" else "structure")
+    if args.signs == "gate3" and sign_ref != "gate3":
+        ap.error("--signs gate3 refers to the gate3 signs (--sign-ref gate3)")
+    if sign_ref == "gate3" and args.arm is None:
+        ap.error("the gate3 signs read arm D's export: they need --arm")
+    soft_stresses = args.soft_stresses
+    if soft_stresses is not None:
+        if args.soft is None:
+            ap.error("--soft-stresses needs --soft")
+        stress_names = STRESS_SETS[GATE3_STRESSES if sign_ref == "gate3" else "arm"]
+        unknown = sorted(set(soft_stresses) - set(stress_names))
+        if unknown:
+            ap.error(f"--soft-stresses: unknown stresses {unknown}")
+        built_in = [s for s in soft_stresses if SIGN_SETS[args.signs][s] != 0]
+        if built_in:
+            ap.error(f"--soft-stresses {built_in} have a built-in sign under --signs {args.signs}")
+    elif args.soft is not None and args.signs != "none":
+        ap.error("--soft needs --signs none (a built-in sign cannot be violated), or --soft-stresses")
+    if args.sign_ref is None:     # the defaults leave the fingerprints of earlier runs unchanged
+        del args.sign_ref
+    if soft_stresses is None:
+        del args.soft_stresses
     if args.statics is None and (args.static_control or args.static_l2 is not None
                                  or args.static_net != "linear"):
         ap.error("--static-control, --static-net and --static-l2 need --statics")
@@ -594,7 +688,8 @@ def main():
     if arm is None:               # as above: defaults leave earlier fingerprints unchanged
         del args.arm, args.policy
     else:
-        pumping, names = "arm", STRESS_SETS["arm"]
+        pumping = GATE3_STRESSES if sign_ref == "gate3" else "arm"
+        names = STRESS_SETS[pumping]
     if signs == "structure":
         del args.signs
     if only is None:
@@ -624,6 +719,14 @@ def main():
         print(f"arm {arm} ({policy}): wells with each relation {{{', '.join(f'{k} {v['wells']}' for k, v in cov.items())}}} "
               f"of {sum(keep)}", flush=True)
     data = panel_arrays(P, args.kernel_weeks, routed, recharge=args.recharge)
+    river_c = None
+    if sign_ref == "gate3":
+        river_c = gate3_river_wells(policy)
+        split_river(data, river_c)
+        n_c = int(data["river_c_mask"].sum())
+        extra = (extra or {}) | {"gate3": {"river_constrained_wells": sorted(set(data["codes"]) & river_c),
+                                           "soft_stresses": soft_stresses}}
+        print(f"gate3 signs: river sign built in at {n_c} wells", flush=True)
     Z0 = None
     if statics is not None:
         from src.models.statics import standardise, static_table
@@ -655,10 +758,16 @@ def main():
     if Z0 is not None:            # the facts themselves, so a changed table never reuses a seed
         import hashlib
         fp_extra["statics_sha256"] = hashlib.sha256(np.ascontiguousarray(Z0, dtype=np.float32).tobytes()).hexdigest()
+    if river_c is not None:       # which wells carry the river sign is part of the experiment
+        fp_extra["river_constrained_wells"] = extra["gate3"]["river_constrained_wells"]
     fp = write_config(out, args, inputs, fp_extra or None)
     write_schema(out, {"nodes": data["codes"], "weeks": [str(data["weeks"][0])[:10], str(data["weeks"][-1])[:10]],
                        "inputs": inputs, "stresses": list(names),
-                       "signs": {s: SIGN_SETS[signs][s] for s in names}, **(extra or {}),
+                       "signs": {s: SIGN_SETS[signs][s] for s in names},
+                       # only off the default: earlier run folders keep their schema (write_schema
+                       # stops a run whose schema differs)
+                       **({"sign_ref": {s: SIGN_SETS[sign_ref][s] for s in names}}
+                          if sign_ref != "structure" else {}), **(extra or {}),
                        "groups": data["groups"], "group_of": data["group_of"].tolist(),
                        "kernel_weeks": args.kernel_weeks, "a_bounds_wk": [A_MIN, args.amax],
                        "n_bounds": [N_MIN, N_MAX], "f_max": F_MAX, "mode": args.mode})
@@ -677,7 +786,8 @@ def main():
                                           es_wells=keep, fixed_steps=fixed, state_out=state,
                                           pumping=pumping, gain_units=gain_units, signs=signs,
                                           soft=soft, conv=conv, statics=Z, static_net=static_net,
-                                          static_l2=static_l2 if Z is not None else 0.0)
+                                          static_l2=static_l2 if Z is not None else 0.0,
+                                          sign_ref=sign_ref, soft_stresses=soft_stresses)
         pz, contrib, params = seed_outputs(net, data)
         contrib.to_parquet(out / f"contrib_seed_{s}.parquet", index=False)
         params.to_csv(out / f"params_seed_{s}.csv", index=False)

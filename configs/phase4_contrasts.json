@@ -33,6 +33,32 @@
   "regimes": ["", "_lwo", "_f25", "_f50", "_refit"],
   "reconstructions": [1, 2, 3],
   "soft_candidates": [1, 10, 100],
+  "explanations": [
+    {
+      "name": "B2conv D vs C (converged, for explanations)",
+      "a": "p4_B2conv_D_r1",
+      "b": "p4_B2conv_C_r1",
+      "regimes": [""],
+      "reconstructions": [1],
+      "protocol": "pooled_l0.1_fixed3000"
+    },
+    {
+      "name": "B2conv D vs C (converged, for explanations)",
+      "a": "p4_B2conv_D_r2",
+      "b": "p4_B2conv_C_r2",
+      "regimes": [""],
+      "reconstructions": [2],
+      "protocol": "pooled_l0.1_fixed3000"
+    },
+    {
+      "name": "B2conv D vs C (converged, for explanations)",
+      "a": "p4_B2conv_D_r3",
+      "b": "p4_B2conv_C_r3",
+      "regimes": [""],
+      "reconstructions": [3],
+      "protocol": "pooled_l0.1_fixed3000"
+    }
+  ],
   "controls": [
     {
       "name": "D vs E_degree",
@@ -158,6 +184,20 @@
     {
       "name": "B7 D with soil drainage vs D",
       "a": "p4_B7_D_drainage_r1",
+      "b": "p4_B2_D_r1",
+      "regimes": [""],
+      "reconstructions": [1]
+    },
+    {
+      "name": "B7 D with effective rain (PE) vs D",
+      "a": "p4_B7_D_pe_r1",
+      "b": "p4_B2_D_r1",
+      "regimes": [""],
+      "reconstructions": [1]
+    },
+    {
+      "name": "B7 D with a soft canal prior vs D",
+      "a": "p4_B7_D_canalsoft_r1",
       "b": "p4_B2_D_r1",
       "regimes": [""],
       "reconstructions": [1]

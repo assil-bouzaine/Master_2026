@@ -25,6 +25,10 @@ worlds (k of n), not a median of 0/1 flags; the reading's verdicts wait for comp
 worlds), the bracket verdict for all four bracket cells, the protocol comparison pairs the worlds and
 counts ties, and recommends only on a strict majority; the worlds of one cell must share their
 settings (src.models.twin.identity), or the report stops.
+
+Slice F has its own reading (analysis plan §14 item 23). It records the pilot's choice of φ,
+uses the grid's seed-disagreement threshold, and compares the main F worlds to the base cell
+on the same seeds.
 """
 import json
 import sys
@@ -85,21 +89,21 @@ def load(runs=None):
     return pd.DataFrame(rows)
 
 
-def summary(x):
+def summary(x, *, always_quantiles=False):
     x = pd.to_numeric(x, errors="coerce").dropna()
     if not len(x):
         return "—"
-    lo, hi = (x.min(), x.max()) if len(x) < 10 else (x.quantile(0.025), x.quantile(0.975))
+    lo, hi = (x.quantile(0.025), x.quantile(0.975)) if always_quantiles or len(x) >= 10 else (x.min(), x.max())
     return f"{x.median():.3f} [{lo:.3f}, {hi:.3f}]"
 
 
-def count(x):
+def count(x, *, share=True):
     """A 0/1 flag over worlds -> "k of n (share)", n = the worlds where the flag can be evaluated
     (astra review point 5: a median of 0/1 flags hides the share)."""
     x = pd.to_numeric(x, errors="coerce").dropna()
     if not len(x):
         return "—"
-    return f"{int(x.sum())} of {len(x)} ({x.mean():.0%})"
+    return f"{int(x.sum())} of {len(x)}" + (f" ({x.mean():.0%})" if share else "")
 
 
 def table(df, cols, names, fmt=summary, evaluable=None):
@@ -124,9 +128,12 @@ ACCURACY_SLACK = 0.05  # "not worse in accuracy by more than 0.05" (drought NSE 
 SEED_FLAG_Q = 0.95     # shortcut test 2 flags a world above this quantile of the grid's (item 22)
 GRID_RUN = "twin_map"  # the base grid: the reference of worlds without wrong reasons
 MIN_POSITIVES = 5      # under this many worlds with wrong reasons, detection is "not estimable"
+BASE_CELL = "e0.1_u0.3_p0.3_n0.25_rec_base"
+SHORTCUT_PILOT = "twin_shortcut_pilot"
+SHORTCUT_PILOT_SEEDS = (900, 901, 902)
 
 
-def seed_thresholds(df):
+def seed_thresholds(df, *, arms=("C", "D")):
     """Shortcut test 2's flag threshold τ per (arm, setting): the 95th percentile (numpy's default
     linear interpolation) of the seed disagreement over the base grid's worlds of that arm and
     setting (analysis plan §14 item 22, proposed before kernel version 13 was pulled). The grid's
@@ -135,7 +142,7 @@ def seed_thresholds(df):
     out = {}
     grid = df[df["run"] == GRID_RUN] if "run" in df else df.iloc[0:0]
     for setting, g in grid.groupby("setting"):
-        for a in ("C", "D"):
+        for a in arms:
             col = f"seed_disagreement_pumping_{a}"
             x = pd.to_numeric(g[col], errors="coerce").dropna() if col in g else pd.Series(dtype=float)
             if len(x):
@@ -143,14 +150,14 @@ def seed_thresholds(df):
     return out
 
 
-def test2_rates(df, tau):
+def test2_rates(df, tau, *, arms=("C", "D")):
     """Detection and false-alarm rates of shortcut test 2 per run, cell and setting (item 22):
     flagged = seed disagreement above τ of its arm and setting; detection = flagged among the
     worlds with wrong reasons (score 6), false alarm = flagged among the others."""
     out = ["| run | cell | setting | arm | τ | worlds | wrong reasons | detection | false alarms |",
            "|---|---|---|---|---:|---:|---:|---:|---:|"]
     for (run, cell, setting), g in df.groupby(["run", "cell", "setting"], sort=True):
-        for a in ("C", "D"):
+        for a in arms:
             w, sd = f"wrong_reasons_{a}", f"seed_disagreement_pumping_{a}"
             if (a, setting) not in tau or w not in g or sd not in g:
                 continue
@@ -189,6 +196,93 @@ def test2_section(df):
 def _q(x, q):
     x = pd.to_numeric(x, errors="coerce").dropna()
     return float(x.quantile(q)) if len(x) else np.nan
+
+
+def _median(x, fmt=".3f"):
+    med = _q(x, 0.5)
+    return format(med, fmt) if pd.notna(med) else "—"
+
+
+def _shortcut_scores(cell):
+    """One row per protocol and arm, using the per-well cut recorded in scores version 2."""
+    lines = ["| protocol | worlds | arm | score 6 | pumping recovery error | drought NSE | "
+             "score 5 head-change relative error | score 5 wells with right sign |",
+             "|---|---:|---|---:|---:|---:|---:|---:|"]
+    missing = pd.Series(dtype=float)
+    for setting, g in cell.groupby("setting"):
+        for a in ARMS:
+            wrong = count(g.get(f"wrong_reasons_{a}", missing), share=False)
+            recovery = summary(g.get(f"recovery_pumping_{a}", missing), always_quantiles=True)
+            nse = _median(g.get(f"nse_drought_{a}", missing))
+            rel_error = _median(g.get(f"intervention_well_rel_error_{a}", missing))
+            sign = _median(g.get(f"intervention_well_sign_{a}", missing))
+            lines.append(f"| {setting} | {g['world'].nunique()} | {a} | {wrong} | {recovery} | {nse} | "
+                         f"{rel_error} | {sign} |")
+    return "\n".join(lines)
+
+
+def _shortcut_pilot(cell):
+    """Count a pilot seed once if either protocol gives arm D wrong reasons."""
+    flags = cell.pivot(index="world", columns="setting", values="wrong_reasons_D").reindex(
+        index=SHORTCUT_PILOT_SEEDS, columns=PROTOCOLS)
+    wrong = flags.eq(1)
+    k = int(wrong.any(axis=1).sum())
+    counts = ", ".join(f"{p}: {int(wrong[p].sum())}" for p in PROTOCOLS)
+    if k:
+        worlds = "world" if k == 1 else "worlds"
+        return (f"The pilot has {k} {worlds} with wrong reasons for arm D (protocol {counts}): "
+                "the 20 worlds use φ = 1.0.")
+    if flags.isna().any().any():
+        return "The pilot choice is pending until score 6 for arm D is available for all three seeds under both protocols."
+    return (f"The pilot has no worlds with wrong reasons for arm D (protocol {counts}): "
+            "by the rule, the 20 worlds use φ = 2.0.")
+
+
+def _shortcut_comparison(cells, df):
+    """Compare each main F cell to the grid's base cell on the same seeds and protocol."""
+    line = "### Arm D against the base cell\n\nMedian change over matching seeds 0–19 (slice F minus base)."
+    keys = ["setting", "world"]
+    scores = ["recovery_pumping_D", "nse_drought_D"]
+    base = df[(df["run"] == GRID_RUN) & (df["cell"] == BASE_CELL)].reindex(columns=keys + scores)
+    lines = ["| cell | protocol | paired worlds | change in pumping recovery error | change in drought NSE |",
+             "|---|---|---:|---:|---:|"]
+    for (cell, setting), g in cells.groupby(["cell", "setting"]):
+        g = g[g["world"].between(0, PLANNED_WORLDS - 1)].reindex(columns=keys + scores)
+        paired = g.merge(base, on=keys, suffixes=("", "_base"), validate="one_to_one")
+        rec, nse = (_median(paired[s] - paired[f"{s}_base"], "+.3f") for s in scores)
+        lines.append(f"| {cell} | {setting} | {len(paired)} | {rec} | {nse} |")
+    return line + "\n\n" + "\n".join(lines)
+
+
+def shortcut_section(df):
+    """Read each F cell alone, with the pilot rule and matched base comparison of item 23."""
+    if "dial_variant" not in df:
+        return ""
+    f = df[df["dial_variant"].astype("string").str.startswith("F", na=False)]
+    if f.empty:
+        return ""
+    out = ["## Slice F: the planted shortcut (analysis plan §14 item 23)",
+           "Scores are medians over worlds, with the 2.5–97.5 % range for score 2. Score 5 cuts each "
+           "well's own true facilities. Score 6 counts worlds with wrong reasons among evaluable worlds."]
+    fields = ["real_far_explained_median_core", "real_far_facilities_median_core",
+              "real_far_local_pumping_corr_median_core", "real_core_with_far"]
+    labels = ["far-field variance share", "far-field facilities per core well",
+              "correlation with local pumping", "core wells with far-field facilities"]
+    for (run, cell, variant), g in f.groupby(["run", "cell", "dial_variant"], sort=False):
+        out.append(f"### {run} / {cell} (φ = {variant[1:]})\n\n" + _shortcut_scores(g))
+        if run == SHORTCUT_PILOT:
+            out.append(_shortcut_pilot(g.reindex(columns=["world", "setting", "wrong_reasons_D"])))
+        out.append("Realised generator fields (median over worlds):\n\n" + table(g, fields, labels, fmt=_median))
+    tau = seed_thresholds(df, arms=ARMS)
+    if tau:
+        out.append("### Shortcut test 2\n\nThresholds (τ) come from the grid for each arm and protocol.\n\n"
+                   + test2_rates(f, tau, arms=ARMS))
+    else:
+        out.append("Test 2 needs seed disagreement from `twin_map` to compute τ.")
+    main = f[f["run"] == "twin_shortcut"]
+    if not main.empty:
+        out.append(_shortcut_comparison(main, df))
+    return "\n\n".join(out)
 
 
 def reading(df):
@@ -403,6 +497,9 @@ def main():
                          + "\n".join(lines))
     if base.groupby(["dial_eps", "dial_u"]).ngroups > 1:
         parts.append(reading(df))
+    shortcut = shortcut_section(df)
+    if shortcut:
+        parts.append(shortcut)
     OUT.write_text("\n\n".join(parts) + "\n")
     print(f"-> {OUT}")
 

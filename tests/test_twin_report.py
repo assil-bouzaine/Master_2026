@@ -20,10 +20,13 @@ Added 2026-11-20 (astra review points 5, 6 and 10), on invented numbers too:
 8. Score 6 is a count of worlds ("4 of 20 (20%)"), not a median of 0/1 flags.
 9. The loader renames the first worlds' score 5 (plain-wide) and stops on a cell whose worlds were
    made with different settings.
+10. Slice F's scores, grid thresholds, pilot rule and paired comparison (item 23) are read from
+    hand-made world files. The section is omitted when the selected runs have no F cell.
 """
 import json
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -204,6 +207,110 @@ def test_seed_flag():
     assert int((grid["seed_disagreement_pumping_D"] > t).sum()) == 12
     assert "interim" not in TR.test2_section(df)
     assert "interim: 120 of 240" in TR.test2_section(df[df["world"] < 120])
+
+
+def _shortcut_fit(recovery_d, nse_d, disagreement, *, recovery_c=0.4, recovery_t=0.4):
+    scores = {"wells": 3, "log_rmse_D_over_C": -0.05, "log_rmse_T_over_C": -0.06,
+              "log_rmse_D_over_T": 0.01}
+    for a, rec, nse, sd, error, sign in zip(
+        ("C", "D", "T"), (recovery_c, recovery_d, recovery_t), (0.7, nse_d, 0.75),
+        disagreement, (0.8, 0.6, 0.4), (0.7, 0.8, 0.9),
+    ):
+        scores.update({f"recovery_pumping_{a}": rec, f"nse_drought_{a}": nse,
+                       f"seed_disagreement_pumping_{a}": sd, f"intervention_well_rel_error_{a}": error,
+                       f"intervention_well_sign_{a}": sign, f"intervention_plain_rel_error_{a}": 0.99})
+    return scores
+
+
+def _write_shortcut_world(root, run, seed, fits, *, variant=None, eps=0.1, realised=None):
+    dials = {"eps": eps, "u": 0.3, "pi": 0.3, "nu": 0.25, "timing": "reconstructed", "variant": variant}
+    cell = root / run / f"e{eps:g}_u0.3_p0.3_n0.25_rec_{variant or 'base'}"
+    cell.mkdir(parents=True, exist_ok=True)
+    config = {"dials": dials, "fits": ["free", "pooled:0.1:3000"], "arms": ["C", "D", "T"],
+              "starts": [0, 1], "steps": 4000, "export_release": "test", "policy": "main",
+              "kernel_weeks": 312, "conv": "fft"}
+    protocols = ("free", "pooled_l0.1_fixed3000")
+    rec = {"world": seed, "dials": dials, "realised": realised or {}, "config": config,
+           "fits": dict(zip(protocols, fits)), "per_well": {p: {"code_bss": ["A", "B", "C"]} for p in protocols},
+           "scores_version": 2}
+    (cell / f"world_{seed}.json").write_text(json.dumps(rec))
+
+
+def _write_shortcut_pilot(root, positives):
+    for seed in range(900, 903):
+        fits = [_shortcut_fit(0.6 if positives and seed in seeds else 0.4, 0.72, (0.2, 0.2, 0.2), recovery_t=0.7)
+                for seeds in ((900,), (900, 901))]
+        _write_shortcut_world(root, "twin_shortcut_pilot", seed, fits, variant="F1")
+
+
+def _render_twin(root, *runs):
+    out = root / "report.md"
+    with patch.multiple(TR, RESULTS=root, OUT=out), patch("sys.argv", ["twin_report", *runs]):
+        TR.main()
+    return out.read_text()
+
+
+def test_shortcut_section():
+    heading = "## Slice F: the planted shortcut (analysis plan §14 item 23)"
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        # Base seeds 0, 2 and 4 match F. Seed 19 is grid-only. The other cell contributes to τ.
+        for seed, rec, nse, pooled_rec, sd in [(0, 0.1, 0.83, 0.3, 0.1), (2, 0.2, 0.70, 0.1, 0.2),
+                                                (4, 0.49, 0.75, 0.2, 0.3), (19, 0.2, 0.90, 0.2, 0.4),
+                                                (1, 0.1, 0.90, 0.1, 0.5)]:
+            disagreement = (sd, sd + 0.1, sd + 0.2)
+            fits = (_shortcut_fit(rec, nse, disagreement),
+                    _shortcut_fit(pooled_rec, 0.62, tuple(2 * v for v in disagreement)))
+            _write_shortcut_world(root, "twin_map", seed, fits, eps=0.25 if seed == 1 else 0.1)
+        _write_shortcut_pilot(root, positives=True)
+        rec = (0.6, 0.7, 0.8, 0.9, 1.0, 0.2, 0.3)
+        nse = (0.72, 0.75, 0.77, 0.76, 0.71, 0.55, 0.81)
+        for seed, (rec_d, nse_d) in enumerate(zip(rec, nse)):
+            flag = 2.0 if seed in (0, 1, 2, 3, 5) else 0.0
+            fits = (_shortcut_fit(rec_d, nse_d, (flag, flag, flag), recovery_c=0.55 if seed == 0 else 0.4,
+                                  recovery_t=0.8 if seed == 2 else 0.4),
+                    _shortcut_fit(0.6 if seed in (0, 5) else 0.35, 0.72, (flag, flag, flag)))
+            realised = {"far_explained_median_core": 0.1 + seed * 0.01, "far_facilities_median_core": 20 + seed,
+                        "far_local_pumping_corr_median_core": 0.8 + seed * 0.01, "core_with_far": 30 + seed % 3}
+            _write_shortcut_world(root, "twin_shortcut", seed, fits, variant="F1", realised=realised)
+
+        report = _render_twin(root, "twin_map", "twin_shortcut_pilot", "twin_shortcut")
+        assert heading in report
+        text = report.split(heading, 1)[1]
+        assert "e0.1_u0.3_p0.3_n0.25_rec_F1 (φ = 1)" in text
+        assert "| free | 7 | D | 5 of 7 | 0.700 [0.215, 0.985] | 0.750 | 0.600 | 0.800 |" in text
+        assert "| free | 7 | C | 1 of 7 |" in text and "| free | 7 | T | 1 of 7 |" in text
+        assert "| 0.130 | 23.000 | 0.830 | 31.000 |" in text
+        assert "| free | C | 0.480 | 7 | 1 | 1 of 1 (not estimable) | 4 of 6 (67%) |" in text
+        assert "| free | D | 0.580 | 7 | 5 | 4 of 5 (80%) | 1 of 2 (50%) |" in text
+        assert "| free | T | 0.680 | 7 | 1 | 1 of 1 (not estimable) | 4 of 6 (67%) |" in text
+        assert "| pooled_l0.1_fixed3000 | D | 1.160 | 7 | 2 | 2 of 2 (not estimable) | 3 of 5 (60%) |" in text
+        assert "pilot has 2 worlds with wrong reasons for arm D (protocol free: 1, pooled_l0.1_fixed3000: 2): " \
+               "the 20 worlds use φ = 1.0." in text
+        assert "| e0.1_u0.3_p0.3_n0.25_rec_F1 | free | 3 | +0.510 | -0.040 |" in text
+        assert "| e0.1_u0.3_p0.3_n0.25_rec_F1 | pooled_l0.1_fixed3000 | 3 | +0.250 | +0.100 |" in text
+        assert heading not in _render_twin(root, "twin_map")
+
+
+def test_shortcut_pilot_without_positives():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        _write_shortcut_pilot(root, positives=False)
+        fit = _shortcut_fit(0.4, 0.72, (0.1, 0.2, 0.3))
+        _write_shortcut_world(root, "twin_map", 0, (fit, fit))
+        fit = _shortcut_fit(0.7, 0.72, (0.3, 0.3, 0.3))
+        _write_shortcut_world(root, "twin_shortcut", 0, (fit, fit), variant="F2")
+        with patch.object(TR, "RESULTS", root):
+            df = TR.load()
+        text = TR.shortcut_section(df)
+        assert "| free | 3 | D | 0 of 3 |" in text
+        assert "| free | D | 0.200 | 3 | 0 | no positive case | 0 of 3 (0%) |" in text
+        assert "pilot has no worlds with wrong reasons for arm D (protocol free: 0, pooled_l0.1_fixed3000: 0): " \
+               "by the rule, the 20 worlds use φ = 2.0." in text
+        assert "e0.1_u0.3_p0.3_n0.25_rec_F2 (φ = 2)" in text
+        assert "pilot choice is pending" in TR.shortcut_section(df[df["world"] != 902])
+        assert "The pilot has" not in TR.shortcut_section(df[df["run"] != "twin_shortcut_pilot"])
+
 
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):

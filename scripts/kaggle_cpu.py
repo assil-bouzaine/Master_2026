@@ -53,6 +53,8 @@ BUNDLE, WHEELS, KERNEL = "pfe-v4-cpu-bundle", "pfe-wheels-cp313", "pfe-v4-cpu"
 VERSION_GRACE_S = 120      # after "ready": time for Kaggle to unpack a new dataset version
 WATCH_S, WATCH_STEP_S = 360, 30   # how long the start of a pushed kernel is watched
 DEFAULT_STEPS = "naive lgbm lgbm_final lgbm_regimes pastas wellmodel"
+EXPORT_POLICIES = ("main", "confident-only", "all-links")
+EXPORT_REQUIRED_FILES = ("manifest.json", "edges_D.parquet", "nodes.parquet")
 # The kernel and dispatcher control the interpreter, session, and result paths.
 RUNNER_ENV = {"PY", "PYTHONPATH", "PYTHONIOENCODING", "PYTHONUNBUFFERED", "STEPS", "JOBS",
               "STATUS_FILE", "PFE_DATASET", "PFE_THREADS", "PFE_RESULTS", "BUDGET_H", "SYNC_S",
@@ -140,11 +142,46 @@ def bundle_state(stage, archive):
     return True
 
 
-def bundle(stage=STAGE, slim=False):
-    """Build the CPU archive, optionally omitting inputs for Pastas and the land-use tests."""
+def validate_export_overrides(overrides):
+    """Check that each chosen folder has the export files needed for analysis plan §14 item 23."""
+    folders = {}
+    for policy, path in (overrides or {}).items():
+        if policy not in EXPORT_POLICIES:
+            sys.exit(f"Unknown export policy {policy!r}. Choose from {', '.join(EXPORT_POLICIES)}.")
+        folder = Path(path).expanduser().resolve()
+        missing = [name for name in EXPORT_REQUIRED_FILES if not (folder / name).is_file()]
+        if missing:
+            sys.exit(f"Export override for {policy} at {folder} is missing {', '.join(missing)}.")
+        folders[policy] = folder
+    return folders
+
+
+def parse_export_overrides(assignments):
+    """Turn repeatable POLICY=PATH options into the mapping used by the bundler."""
+    overrides = {}
+    for assignment in assignments:
+        policy, separator, path = assignment.partition("=")
+        if not separator or not policy or not path:
+            sys.exit("--export-override expects POLICY=PATH")
+        overrides[policy] = path
+    return validate_export_overrides(overrides)
+
+
+def bundle(stage=STAGE, slim=False, export_override=None):
+    """Build the CPU archive, with optional export replacements for the Phase 4 twin."""
+    overrides = validate_export_overrides(export_override)
+    ds = stage / "dataset"
+    target = ds.resolve()
+    for policy, folder in overrides.items():
+        if folder.is_relative_to(target) or target.is_relative_to(folder):
+            sys.exit(f"Export override for {policy} at {folder} overlaps the bundle staging folder {target}.")
     sys.path.insert(0, str(ROOT))
     from src.config import INTERIM, PROCESSED, RAW
     dataset = "v4"
+    export_root = PROCESSED / "kg"
+    export_prefix = f"export_{dataset}_"
+    exports = sorted(path for path in export_root.glob(f"{export_prefix}*")
+                     if path.name.removeprefix(export_prefix) not in overrides)
     routing_inputs = [RAW / "safran" / "grid_cells_66.parquet",
                       INTERIM / f"pumping_weekly_cropcal_{dataset}.parquet"]
     for path in routing_inputs:
@@ -153,14 +190,15 @@ def bundle(stage=STAGE, slim=False):
     daily = [] if slim else sorted((RAW / "safran").glob("sim2_66_[0-9]*.parquet"))
     panels = sorted(p for p in (V4 / "_cache").glob("panel*.parquet")
                     if not slim or not p.match("panel_lu_*.parquet"))
-    include = [ROOT / "src", ROOT / "scripts" / "run_v4_cpu.sh", ROOT / "requirements.txt",
+    # scripts/p4_queue.py: the Phase 4 queue that the p4_queue step of run_v4_cpu.sh calls
+    include = [ROOT / "src", ROOT / "scripts" / "run_v4_cpu.sh", ROOT / "scripts" / "p4_queue.py",
+               ROOT / "requirements.txt",
                ROOT / "tests" / "__init__.py", ROOT / "tests" / "test_ealstm.py",
                PROCESSED / f"dataset_{dataset}", *daily,
-               *routing_inputs, *sorted((PROCESSED / "kg").glob(f"export_{dataset}_*")),
+               *routing_inputs, *exports,
                *panels,
                *sorted((V4 / "_cache").glob("panel*.json")),  # land-use identity records
                *sorted(V4.glob("*_tuning/best.json")), *sorted(V4.glob("*_tuned/best.json"))]
-    ds = stage / "dataset"
     shutil.rmtree(ds, ignore_errors=True)
     ds.mkdir(parents=True)
     with zipfile.ZipFile(ds / "cpu_bundle.zip", "w", zipfile.ZIP_DEFLATED) as z:
@@ -169,6 +207,14 @@ def bundle(stage=STAGE, slim=False):
             for f in files:
                 if "__pycache__" not in f.parts:
                     z.write(f, f.relative_to(ROOT))
+        for policy, folder in overrides.items():
+            print(f"Export override for {policy}: {folder}")
+            files = sorted(path.relative_to(folder) for path in folder.rglob("*") if path.is_file())
+            if not any(len(path.parts) > 1 and path.parts[0] == "controls" for path in files):
+                print(f"Warning: export override for {policy} has no controls/ files.")
+            destination = export_root.relative_to(ROOT) / f"{export_prefix}{policy}"
+            for path in files:
+                z.write(folder / path, destination / path)
     with_state = bundle_state(stage, ds / "state.zip")
     print(f"cpu_bundle.zip: {(ds / 'cpu_bundle.zip').stat().st_size / 1e6:.1f} MB"
           + (", with state.zip" if with_state else ""))
@@ -188,14 +234,14 @@ def parse_env(assignments):
     return env
 
 
-def push(steps, budget, env_assignments=()):
+def push(steps, budget, env_assignments=(), export_override=None):
     env = parse_env(env_assignments)
     if env:
         print(f"kernel environment overrides: {json.dumps(env)}")
     u = user()
     if "ready" not in kg("datasets", "status", f"{u}/{WHEELS}", check=False):
         sys.exit(f"dataset {u}/{WHEELS} missing: run `scripts/kaggle_cpu.py wheels` first")
-    upload(bundle(), BUNDLE)
+    upload(bundle(stage=STAGE, export_override=export_override), BUNDLE)
     kd = STAGE / "kernel"
     shutil.rmtree(kd, ignore_errors=True)
     kd.mkdir(parents=True)
@@ -306,13 +352,17 @@ def main(argv=None):
     ap.add_argument("--budget", type=float, default=11.0, help="hours before a clean stop")
     ap.add_argument("--env", action="append", default=[], metavar="KEY=VALUE",
                     help="override a dispatcher environment setting on push (repeatable)")
+    ap.add_argument("--export-override", action="append", default=[], metavar="POLICY=PATH",
+                    help="bundle a chosen graph export folder on push (repeatable)")
     a = ap.parse_args(argv)
     if a.env and a.action != "push":
         ap.error("--env is only supported by push")
+    if a.export_override and a.action != "push":
+        ap.error("--export-override is only supported by push")
     if a.action == "wheels":
         wheels()
     elif a.action == "push":
-        push(a.steps, a.budget, a.env)
+        push(a.steps, a.budget, a.env, parse_export_overrides(a.export_override))
     elif a.action == "kernel":
         push_kernel()
     elif a.action == "pull":

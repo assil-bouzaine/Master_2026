@@ -72,11 +72,12 @@ def launcher_text(steps, budget, overrides, bundle_md5):
     ])
 
 
-def push(steps, budget, assignments, full=False):
+def push(steps, budget, assignments, full=False, export_override=None):
     overrides = kaggle_cpu.parse_env(assignments)
     if "PIP_ONLINE" in overrides:
         sys.exit("--env cannot override PIP_ONLINE: the runner controls it")
-    dataset = kaggle_cpu.bundle(stage=STAGE, slim=not full)
+    bundle_options = {"export_override": export_override} if export_override else {}
+    dataset = kaggle_cpu.bundle(stage=STAGE, slim=not full, **bundle_options)
     bundle, state = dataset / "cpu_bundle.zip", dataset / "state.zip"
     # Kaggle ships the runner as its kernel. Colab needs it inside the bundle.
     with zipfile.ZipFile(bundle, "a", zipfile.ZIP_DEFLATED) as archive:
@@ -126,6 +127,8 @@ def main(argv=None):
     push_parser.add_argument("--budget", type=float, default=23, help="hours before a clean stop")
     push_parser.add_argument("--env", action="append", default=[], metavar="KEY=VALUE",
                              help="override a dispatcher environment setting (repeatable)")
+    push_parser.add_argument("--export-override", action="append", default=[], metavar="POLICY=PATH",
+                             help="bundle a chosen graph export folder (repeatable)")
     push_parser.add_argument("--full", action="store_true", help="include daily SAFRAN and land-use panels")
     log_parser = actions.add_parser("log", help="Print the last lines of the Drive run log")
     log_parser.add_argument("-n", type=int, default=15, help="number of lines to print")
@@ -133,7 +136,8 @@ def main(argv=None):
     actions.add_parser("pull", help="Download, merge and rescore the finished runs")
     args = parser.parse_args(argv)
     if args.action == "push":
-        push(args.steps, args.budget, args.env, full=args.full)
+        push(args.steps, args.budget, args.env, full=args.full,
+             export_override=kaggle_cpu.parse_export_overrides(args.export_override))
     elif args.action == "log":
         if args.n < 0:
             log_parser.error("-n must be zero or greater")

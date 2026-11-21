@@ -248,7 +248,7 @@ print({runner.name!r}, "exit", exit_code, flush=True)
 """
 
 
-def start_job(name, stage, kind, steps, env, bundle_md5):
+def start_job(name, stage, kind, steps, env, bundle_md5, export_metadata=None):
     launcher = stage / "launch.py"
     write_private(launcher, launcher_text(kind, steps, env))
     log = stage / "exec.log"
@@ -257,21 +257,32 @@ def start_job(name, stage, kind, steps, env, bundle_md5):
     with log.open("wb") as stream:
         process = run_colab(["exec", "-s", name, "-f", str(launcher), "--timeout", "3600"],
                             stdout=stream, timeout=None)
-    write_json(stage / "job.json", dict(kind=kind, steps=steps, env=env, bundle_md5=bundle_md5,
-                                       pid=process.pid, pid_start_ticks=process_start(process.pid),
-                                       start_utc=started))
+    job = dict(kind=kind, steps=steps, env=env, bundle_md5=bundle_md5, pid=process.pid,
+               pid_start_ticks=process_start(process.pid), start_utc=started)
+    if export_metadata:
+        job["export_override"] = export_metadata
+    write_json(stage / "job.json", job)
     print(f"Started {kind} job for {name} (local PID {process.pid}).")
 
 
-def push_cpu(name, stage, steps, budget, assignments, full):
+def push_cpu(name, stage, steps, budget, assignments, full, export_override=None):
     require_idle(name, stage)
     overrides = kaggle_cpu.parse_env(assignments)
     if "PIP_ONLINE" in overrides:
         sys.exit("--env cannot override PIP_ONLINE: the runner controls it")
-    dataset = kaggle_cpu.bundle(stage=stage, slim=not full)
+    bundle_options = {"export_override": export_override} if export_override else {}
+    dataset = kaggle_cpu.bundle(stage=stage, slim=not full, **bundle_options)
     bundle, state = dataset / "cpu_bundle.zip", dataset / "state.zip"
+    export_metadata = {}
     with zipfile.ZipFile(bundle, "a", zipfile.ZIP_DEFLATED) as archive:
         archive.write(ROOT / RUNNER, RUNNER)
+        for policy, folder in (export_override or {}).items():
+            manifest = f"data/processed/kg/export_v4_{policy}/manifest.json"
+            with archive.open(manifest) as source:
+                manifest_md5 = hashlib.file_digest(source, "md5").hexdigest()
+            export_metadata[policy] = {"path": str(folder), "manifest_md5": manifest_md5}
+    if export_metadata:
+        print(f"Export override metadata: {json.dumps(export_metadata)}")
     if not state.exists():
         with zipfile.ZipFile(state, "w"):
             pass
@@ -281,7 +292,7 @@ def push_cpu(name, stage, steps, budget, assignments, full):
     env = dict(KAGGLE_INPUT="/content/input", KAGGLE_WORK=CPU, PFE_CODE="/content/pfe",
                PIN_TARGET="/content/pins", PFE_STATE="/content/pfe_state", PIP_ONLINE="1",
                BUDGET_H=str(budget), SYNC_S="300", **overrides)
-    start_job(name, stage, "cpu", steps, env, digest)
+    start_job(name, stage, "cpu", steps, env, digest, export_metadata=export_metadata)
 
 
 def push_gpu(name, stage, steps, dataset):
@@ -414,6 +425,8 @@ def main(argv=None):
             commands.add_argument("--steps", required=True)
             if action == "push-cpu":
                 commands.add_argument("--env", metavar="KEY=VALUE", nargs="+", action="extend", default=[])
+                commands.add_argument("--export-override", action="append", default=[], metavar="POLICY=PATH",
+                                      help="bundle a chosen graph export folder (repeatable)")
                 commands.add_argument("--budget", type=float, default=23)
                 commands.add_argument("--full", action="store_true")
             else:
@@ -439,7 +452,8 @@ def main(argv=None):
         if args.action == "up":
             up(args.name, stage, args.runtime, args.require_cpu_model)
         elif args.action == "push-cpu":
-            push_cpu(args.name, stage, args.steps, args.budget, args.env, args.full)
+            push_cpu(args.name, stage, args.steps, args.budget, args.env, args.full,
+                     export_override=kaggle_cpu.parse_export_overrides(args.export_override))
         elif args.action == "push-gpu":
             push_gpu(args.name, stage, args.steps, args.dataset)
         elif args.action == "pull":

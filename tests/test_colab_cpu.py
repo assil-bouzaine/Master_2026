@@ -347,6 +347,7 @@ def test_gpu_bundle(root):
     shutil.copyfile(local.ROOT / "scripts" / script.name, script)
     (src / "config.py").write_text("from pathlib import Path\n"
                                    "ROOT = Path(__file__).resolve().parents[1]\n"
+                                   "DATASET = 'v4'\nPROCESSED = ROOT / 'data' / 'processed'\n"
                                    "DATASET_DIR = ROOT / 'data' / 'processed' / 'dataset_v4'\n"
                                    "RAW = ROOT / 'data' / 'raw'\nRESULTS_DIR = ROOT / 'results' / 'v4'\n")
     ordinary = ("panel.parquet", "panel_f25.parquet", "panel_f50.parquet")

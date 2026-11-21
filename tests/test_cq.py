@@ -617,7 +617,7 @@ def test_cq8_rivers_fixture(s, g):
     assert "doi:10.3133/tm6A16" in reasons[("R1", "RiverExchange")] and "Gate 3" in reasons[("R1", "RiverExchange")]
     assert "vertical leakage" in reasons[("R2", "RiverExchange")]
     assert "geometric only" in reasons[("R4", "RiverExchange")] and "independent" in reasons[("R5", "RiverExchange")]
-    assert "hedged" in reasons[("R6", "CanalReturnFlow")]
+    assert "only a synthesis" in reasons[("R6", "CanalReturnFlow")]
     st = {k: one(s, "cq08_status", W=d(f"piezometer/{k}"))
           for k in ("R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "W7", "W1")}
     assert {k: (v["status"], v["river"], v["canal"]) for k, v in st.items()} == {
@@ -1233,8 +1233,10 @@ def test_data_rivers(store):
         assert all(r["measuredAt"] in (None, b) for r in canal_rows), (b, "a measurement made at another well")
         mine_c = [r for r in cinf if r["viaCode"] == code]
         assert bool(mine_c) == bool(ret), (b, "a canal influence exactly where a return is documented")
+        measured_own = any(r["method"] in ("DifferentialGauging", "GeochemicalTracing", "WaterBalanceEstimate")
+                           for r in own)
         assert all((local(r["eligibility"]) == "EligibleConstraint") ==
-                   (st6["stated"] and not any(x["direction"] == "NoExchange" for x in canal_rows)) for r in mine_c), b
+                   (measured_own and not any(x["direction"] == "NoExchange" for x in canal_rows)) for r in mine_c), b
         # river signs: eligible only with a statement about the unit itself (never an aggregate alone)
         for r in rinf:
             if local(r["eligibility"]) == "EligibleConstraint":

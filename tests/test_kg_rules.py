@@ -41,9 +41,11 @@
         where one statement states independence and another an exchange, ineligible; R6's
         watercourse has no pool gauge: an association and no influence; a statement that does not
         delimit its stretch applies to no zone
-   CQ6  canals: R1's canal on its unit's outcrop with a stated return statement gives an eligible
-        canal influence of the intake group; R6's, with a hedged one, an ineligible one; the river
-        and canal influences are selected exactly with the wells' attributions
+   CQ6  canals: R1's canal on its unit's outcrop with measured/traced return statements gives an
+        eligible canal influence of the intake group; R6's (hedged synthesis + aggregate statement)
+        and R13's (stated synthesis only) give ineligible ones; R14's (hedged differential gauging)
+        gives an eligible one; the river and canal influences are selected exactly with the wells'
+        attributions
    The fixture graph, with the rule outputs, has no violation.
 3. Negative controls, each inserted on purpose and reported as a violation: an ordering chained
    across two polygons, a self-paired well link, an eligible influence with an unknown sign,
@@ -65,7 +67,7 @@
    influence over cover, an eligible river influence without a documented exchange, a river
    influence from a gauge outside the pool, two river influences on one path, a missing river
    influence, a river piece in a section of another watercourse, a statement without its passage,
-   an eligible canal influence on a hedged statement, a canal statement about a river section, a
+   an eligible canal influence on a synthesis statement, a canal statement about a river section, a
    distance along the river off the main stem, a canal reach typed as a river reach, a documented
    lateral association without its statement, an association whose unit is not the well's, a
    missing canal influence.
@@ -276,10 +278,11 @@ class Fixture:
 
 def build_fixture():
     fx = Fixture()
-    A, B, C, X, Y, Z, U, V = (fx.unit(c) for c in "ABCXYZUV")
+    A, B, C, X, Y, Z, U, V, M = (fx.unit(c) for c in "ABCXYZUVM")
     fx.polygon(1, [A, B, C])
     fx.polygon(2, [X, Y])
     fx.polygon(3, [Y, Z])
+    fx.polygon(4, [M])                                   # single-layer: no stratigraphic pair, canal method tests
     G = d("unit-group/g")
     fx.g.add((G, RDF.type, L.HydrogeologicalUnitGroup))
     fx.g.add((G, RDFS.label, Literal("group g", lang="en")))
@@ -297,8 +300,8 @@ def build_fixture():
     fx.well("W8", -30000, -30000, Y, L.Probable, depth=70)   # no Y outcrop in its zone; unit-wide only
     add_landuse(fx)
     add_forcing(fx, (A, B, C, X, Y, Z))
-    add_rivers(fx, {"A": A, "B": B, "X": X, "Z": Z})
-    return fx, {"A": A, "B": B, "C": C, "X": X, "Y": Y, "Z": Z, "U": U, "V": V, "G": G}
+    add_rivers(fx, {"A": A, "B": B, "X": X, "Z": Z, "M": M})
+    return fx, {"A": A, "B": B, "C": C, "X": X, "Y": Y, "Z": Z, "U": U, "V": V, "M": M, "G": G}
 
 
 def add_forcing(fx, described):
@@ -347,11 +350,12 @@ def add_forcing(fx, described):
         a((x, PROV.wasGeneratedBy, d("execution/polygon-cell-intersection")))
 
 
-# CQ5, CQ6: wells R1-R12 (far from the others: no well link, no pumping or recharge path), each with
+# CQ5, CQ6: wells R1-R14 (far from the others: no well link, no pumping or recharge path), each with
 # its reach search zone; (zone, reach, watercourse or None for a canal, polygon or None off the map,
 # length m, section(s) or None)
 RIVER_WELLS = (("R1", "X"), ("R2", "Z"), ("R3", "B"), ("R4", "X"), ("R5", "X"), ("R6", "A"),
-               ("R7", "X"), ("R8", "B"), ("R9", "B"), ("R10", "X"), ("R11", "X"), ("R12", "X"))
+               ("R7", "X"), ("R8", "B"), ("R9", "B"), ("R10", "X"), ("R11", "X"), ("R12", "X"),
+               ("R13", "M"), ("R14", "M"))
 RIVER_PIECES = (("R1", "r1", "WC1", 2, 1500.0, "FRDRT1"), ("R1", "k1", None, 2, 800.0, None),
                 ("R2", "r2", "WC2", 3, 1200.0, None),
                 ("R3", "r3", "WC1", 2, 700.0, "t-sec2"),
@@ -364,7 +368,9 @@ RIVER_PIECES = (("R1", "r1", "WC1", 2, 1500.0, "FRDRT1"), ("R1", "k1", None, 2, 
                 ("R9", "r9", "WC1", 2, 400.0, "FRDRT1"),
                 ("R10", "r10a", "WC4", 2, 600.0, "t-up"), ("R10", "r10b", "WC4", 2, 600.0, "t-down"),
                 ("R11", "r11", "WC4", 2, 700.0, ("t-up", "FRDRT4")),
-                ("R12", "r12", "WC4", 2, 700.0, ("t-up", "FRDRT5")))
+                ("R12", "r12", "WC4", 2, 700.0, ("t-up", "FRDRT5")),
+                ("R13", "k13", None, 4, 350.0, None),
+                ("R14", "k14", None, 4, 450.0, None))
 # sections: id -> watercourse; overlapping pairs (both orders are written, as src/kg/rivers.py does)
 RIVER_SECTIONS = {"FRDRT1": "WC1", "FRDRT3": "WC1", "t-sec2": "WC1",
                   "t-up": "WC4", "t-down": "WC4", "FRDRT4": "WC4", "FRDRT5": "WC4"}
@@ -385,22 +391,24 @@ RIVER_RELATIONS = {("R1", "G1"): (1000.0, "UpstreamOfZone", 2000.0), ("R1", "G2"
                    ("R8", "G4"): (300.0, "AlongZoneStretch", 0.0),
                    ("R9", "G1"): (1500.0, "UpstreamOfZone", 1800.0), ("R9", "G2"): (2600.0, "DownstreamOfZone", 2900.0)}
 # statement, mechanism, section (or None), watercourse (or None), unit (a tuple: an aggregate of
-# those units), direction, hedging, period (or None), measured at (a fixture well, or None)
+# those units), direction, hedging, method, period (or None), measured at (a fixture well, or None)
 SUMMER_2020, SEPT_2017, YEAR_2011 = ("2020-06-01", "2020-08-31"), ("2017-09-11", "2017-09-13"), ("2011-01-01", "2011-12-31")
-RIVER_STATEMENTS = (("S1", "RiverExchange", "FRDRT1", "WC1", "X", "AquiferToSurface", "StatedFinding", None, None),
-                    ("S2", "RiverExchange", "t-sec2", "WC1", "B", "ExchangeEquilibrium", "StatedFinding", None, None),
-                    ("S3", "RiverExchange", "FRDRT3", "WC1", "X", "NoExchange", "StatedFinding", SUMMER_2020, None),
-                    ("S4", "RiverExchange", "FRDRT3", "WC1", "X", "SurfaceToAquifer", "StatedFinding", SUMMER_2020, None),
-                    ("S5", "RiverExchange", None, "WC1", "X", "SurfaceToAquifer", "StatedFinding", None, None),
-                    ("S7", "RiverExchange", "FRDRT1", "WC1", ("X", "B"), "AquiferToSurface", "StatedFinding", None, None),
-                    ("S8", "RiverExchange", "t-up", "WC4", "X", "AquiferToSurface", "StatedFinding", SEPT_2017, None),
-                    ("S9", "RiverExchange", "t-down", "WC4", "X", "SurfaceToAquifer", "StatedFinding", SEPT_2017, None),
-                    ("S10", "RiverExchange", "FRDRT4", "WC4", "X", "SurfaceToAquifer", "StatedFinding", YEAR_2011, None),
-                    ("S11", "RiverExchange", "FRDRT5", "WC4", "X", "SurfaceToAquifer", "StatedFinding", None, None),
-                    ("C1", "CanalReturnFlow", None, None, "X", "SurfaceToAquifer", "StatedFinding", None, None),
-                    ("C2", "CanalReturnFlow", None, None, "A", "SurfaceToAquifer", "HedgedFinding", None, None),
-                    ("C3", "CanalReturnFlow", None, None, ("A", "X"), "SurfaceToAquifer", "StatedFinding", None, None),
-                    ("C4", "CanalReturnFlow", None, None, "X", "SurfaceToAquifer", "StatedFinding", None, "R1"))
+RIVER_STATEMENTS = (("S1", "RiverExchange", "FRDRT1", "WC1", "X", "AquiferToSurface", "StatedFinding", "SynthesisStatement", None, None),
+                    ("S2", "RiverExchange", "t-sec2", "WC1", "B", "ExchangeEquilibrium", "StatedFinding", "SynthesisStatement", None, None),
+                    ("S3", "RiverExchange", "FRDRT3", "WC1", "X", "NoExchange", "StatedFinding", "DifferentialGauging", SUMMER_2020, None),
+                    ("S4", "RiverExchange", "FRDRT3", "WC1", "X", "SurfaceToAquifer", "StatedFinding", "DifferentialGauging", SUMMER_2020, None),
+                    ("S5", "RiverExchange", None, "WC1", "X", "SurfaceToAquifer", "StatedFinding", "SynthesisStatement", None, None),
+                    ("S7", "RiverExchange", "FRDRT1", "WC1", ("X", "B"), "AquiferToSurface", "StatedFinding", "SynthesisStatement", None, None),
+                    ("S8", "RiverExchange", "t-up", "WC4", "X", "AquiferToSurface", "StatedFinding", "DifferentialGauging", SEPT_2017, None),
+                    ("S9", "RiverExchange", "t-down", "WC4", "X", "SurfaceToAquifer", "StatedFinding", "DifferentialGauging", SEPT_2017, None),
+                    ("S10", "RiverExchange", "FRDRT4", "WC4", "X", "SurfaceToAquifer", "StatedFinding", "DifferentialGauging", YEAR_2011, None),
+                    ("S11", "RiverExchange", "FRDRT5", "WC4", "X", "SurfaceToAquifer", "StatedFinding", "SynthesisStatement", None, None),
+                    ("C1", "CanalReturnFlow", None, None, "X", "SurfaceToAquifer", "StatedFinding", "DifferentialGauging", None, None),
+                    ("C2", "CanalReturnFlow", None, None, "A", "SurfaceToAquifer", "HedgedFinding", "SynthesisStatement", None, None),
+                    ("C3", "CanalReturnFlow", None, None, ("A", "X"), "SurfaceToAquifer", "StatedFinding", "WaterBalanceEstimate", None, None),
+                    ("C4", "CanalReturnFlow", None, None, "X", "SurfaceToAquifer", "StatedFinding", "GeochemicalTracing", None, "R1"),
+                    ("C5", "CanalReturnFlow", None, None, "M", "SurfaceToAquifer", "StatedFinding", "SynthesisStatement", None, "R13"),
+                    ("C6", "CanalReturnFlow", None, None, "M", "SurfaceToAquifer", "HedgedFinding", "DifferentialGauging", None, "R14"))
 
 
 def add_rivers(fx, u):
@@ -521,7 +529,7 @@ def add_rivers(fx, u):
     a((doc, L.sourceUrl, Literal("https://example.org/report.pdf", datatype=XSD.anyURI)))
     a((doc, L.md5, Literal("0" * 32)))
     a((doc, L.retrievalDate, Literal("2026-11-06", datatype=XSD.date)))
-    for sid, mech, secn, wc, units, direction, hedging, period, site in RIVER_STATEMENTS:
+    for sid, mech, secn, wc, units, direction, hedging, method, period, site in RIVER_STATEMENTS:
         pa = d(f"passage/{sid}")
         a((pa, RDF.type, L.DocumentPassage))
         a((pa, L.inDocument, doc))
@@ -540,7 +548,7 @@ def add_rivers(fx, u):
         a((s, L.unitMapping, L.UnitListedBySource))
         a((s, L.exchangeDirection, getattr(L, direction)))
         a((s, L.hedging, getattr(L, hedging)))
-        a((s, L.evidenceMethod, L.SynthesisStatement if period is None else L.DifferentialGauging))
+        a((s, L.evidenceMethod, getattr(L, method)))
         if period:
             a((s, L.periodStart, Literal(period[0], datatype=XSD.date)))
             a((s, L.periodEnd, Literal(period[1], datatype=XSD.date)))
@@ -807,14 +815,18 @@ def test_fixtures(rules, shapes, net):
     # CQ6: canal-unit associations and canal influences
     canal = {(z.rsplit("/", 1)[-1], u_.rsplit("/", 1)[-1]): ln for z, u_, ln in select(
         g, "SELECT ?z ?u ?l WHERE { ?c a lulcw:CanalUnitAssociation ; lulcw:withinExtent ?z ; lulcw:associationUnit ?u ; lulcw:lengthOnOutcropM ?l }")}
-    assert canal == {("R1", "X"): 800.0, ("R6", "A"): 400.0, ("R7", "X"): 300.0}, canal   # R8's canal is off the map
+    assert canal == {("R1", "X"): 800.0, ("R6", "A"): 400.0, ("R7", "X"): 300.0,
+                     ("R13", "M"): 350.0, ("R14", "M"): 450.0}, canal   # R8's canal is off the map
     capp = {(a_.split("/reach-zone/")[1].split("/")[0], s_.rsplit("/", 1)[-1]) for a_, s_ in select(
         g, "SELECT ?a ?s WHERE { ?a a lulcw:CanalUnitAssociation ; lulcw:applicableStatement ?s }")}
-    assert capp == {("R1", "C1"), ("R1", "C4"), ("R6", "C2"), ("R7", "C1")}, capp   # C4 measured at R1 only
+    assert capp == {("R1", "C1"), ("R1", "C4"), ("R6", "C2"), ("R7", "C1"),
+                    ("R13", "C5"), ("R14", "C6")}, capp   # C4 measured at R1, C5 at R13, C6 at R14
     cinf = {w.rsplit("/", 1)[-1]: e.split("#")[-1] for w, e in select(
         g, "SELECT ?w ?e WHERE { ?i lulcw:mechanism lulcw:CanalReturnFlow ; lulcw:targetEntity ?w ; lulcw:constraintEligibility ?e }")}
-    assert cinf == {"R1": "EligibleConstraint", "R6": "IneligibleConstraint",       # C2 hedged; C3 an aggregate
-                    "R7": "EligibleConstraint"}, cinf
+    assert cinf == {"R1": "EligibleConstraint", "R6": "IneligibleConstraint",       # C2 synthesis; C3 aggregate
+                    "R7": "EligibleConstraint",                                     # C1 differential gauging
+                    "R13": "IneligibleConstraint",                                  # C5 stated synthesis only
+                    "R14": "EligibleConstraint"}, cinf                              # C6 hedged differential gauging
     rsel = {(w.rsplit("/", 1)[-1], p.rsplit("/", 1)[-1]) for w, p in select(
         g, "SELECT ?w ?p WHERE { ?i lulcw:mechanism lulcw:RiverExchange ; lulcw:targetEntity ?w ; lulcw:selectedUnder ?p }")}
     assert rsel == {(w, p) for w in ("R1", "R2", "R3", "R4", "R5", "R7") for p in ("main", "confident-only", "all-links")}, rsel
@@ -979,7 +991,8 @@ def test_negative_controls(g, shapes, net):
     a3 = d("reach-zone/R3/river/WC1/B/documented-lateral")
     i1, i2 = d("influence/river/on-outcrop/G1/to/R1/1"), d("influence/river/over-cover/G4/to/R2/1")
     i4 = d("influence/river/on-outcrop/G1/to/R4/1")
-    c1, c6 = d("influence/canal/plain/to/R1/1"), d("influence/canal/plain/to/R6/1")
+    c1, c6, c13 = (d("influence/canal/plain/to/R1/1"), d("influence/canal/plain/to/R6/1"),
+                   d("influence/canal/plain/to/R13/1"))
     twin_r = d("influence/river/on-outcrop/G2/to/R1/1")
     elig = lambda i: ([(i, L.constraintEligibility, L.EligibleConstraint)], now(i, L.constraintEligibility))  # noqa: E731
     cases |= {
@@ -1004,8 +1017,8 @@ def test_negative_controls(g, shapes, net):
         "a statement without its passage": (
             [], [(d("exchange-statement/S1"), PROV.wasDerivedFrom, d("passage/S1"))],
             "ExchangeStatementShape", None),
-        "an eligible canal influence on a hedged statement": (
-            *elig(c6), "RiverCanalInfluenceShape", "rests on no stated canal-return statement"),
+        "an eligible canal influence on a synthesis statement": (
+            *elig(c13), "RiverCanalInfluenceShape", "rests on no measured or traced canal-return statement about its unit"),
         "a canal-return statement about a river section": (
             [(d("exchange-statement/C1"), L.aboutSection, d("water-body/FRDRT1"))], (),
             "ExchangeStatementShape", "names a river section"),
@@ -1048,7 +1061,7 @@ def test_negative_controls(g, shapes, net):
             [], [(d("reach-zone/R6/canal/A"), L.localizedStatement, d("exchange-statement/C3"))], "CanalInfluenceKeyShape",
             "is not localised to it"),
         "a canal influence made eligible by an aggregate statement alone": (
-            *elig(d("influence/canal/plain/to/R6/1")), "RiverCanalInfluenceShape", "rests on no stated canal-return statement"),
+            *elig(c6), "RiverCanalInfluenceShape", "rests on no measured or traced canal-return statement about its unit"),
         "a constraint approved while its proxy is pending": (
             [(d("constraint-decision/RiverExchange"), L.constraintApproval, L.AcceptedStatus)],
             now(d("constraint-decision/RiverExchange"), L.constraintApproval), "ConstraintDecisionShape",

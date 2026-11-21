@@ -9,8 +9,9 @@
    pending decision), R1's river and canal edges (eligible, not constrained), R8's river answer
    (unknown: only off-map reaches), and the depth-2 reach through well links.
 3. Data (the validated release): the inventory's totals equal independent counts of the selected
-   influences and well links in the graph; no recharge, river or canal sign is constrained before
-   Gate 3; every well has one row per relation.
+   influences and well links in the graph; constrained counts follow Gate 3's decided
+   configs/constraint_decisions.csv (recharge and eligible rivers constrained; canals rejected);
+   every well has one row per relation.
 """
 import pandas as pd
 import pyoxigraph as ox
@@ -88,16 +89,18 @@ def test_data():
         elig_kg = q(f"""SELECT (COUNT(DISTINCT ?i) AS ?n) WHERE {{ ?i lulcw:mechanism lulcw:{mech} ;
             lulcw:selectedUnder {main} ; lulcw:constraintEligibility lulcw:EligibleConstraint }}""")[0][0]
         assert int((got["n_sources"] > 0).sum()) == int(wells_kg) and int(got["eligible"].sum()) == int(elig_kg), (rel, wells_kg, elig_kg)
-        assert int(got["constrained"].sum()) == 0, rel                    # pending until Gate 3
+        want_con = int(got["eligible"].sum()) if rel == "river" else 0    # Gate 3: river accepted, canal rejected
+        assert int(got["constrained"].sum()) == want_con, (rel, int(got["constrained"].sum()), want_con)
     rech = df[df["relation"] == "recharge"]
-    assert int(rech["constrained"].sum()) == 0 and (rech.loc[rech["n_sources"] > 0, "weight_sum"] > 0.999).all()
+    assert int(rech["constrained"].sum()) == int(rech["eligible"].sum()) and (
+        rech.loc[rech["n_sources"] > 0, "weight_sum"] > 0.999).all()
     n_links = int(q(f"SELECT (COUNT(DISTINCT ?l) AS ?n) WHERE {{ ?l a lulcw:WellLink ; lulcw:selectedUnder {main} }}")[0][0])
     assert int(df.loc[df["relation"] == "well_link", "n_sources"].sum()) == 2 * n_links, n_links
     pairs = q(f"""SELECT (COUNT(*) AS ?n) WHERE {{ SELECT DISTINCT ?f ?w WHERE {{ ?i lulcw:mechanism lulcw:PumpingDrawdown ;
         lulcw:driverEntity ?f ; lulcw:targetEntity ?w ; lulcw:selectedUnder {main} }} }}""")[0][0]
     assert int(df.loc[df["relation"] == "pumping", "n_sources"].sum()) == int(pairs), pairs
     print(f"  3. data (release of {m['released']}): {len(df)} rows; river, canal, recharge, well-link and "
-          f"pumping totals = independent counts of the graph; no recharge, river or canal sign constrained")
+          f"pumping totals = independent counts of the graph; recharge and eligible river signs constrained, canal rejected")
 
 
 def main():

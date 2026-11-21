@@ -1125,10 +1125,11 @@ WHERE {
 # group (the canal input of the models, as in arm C), where a source documents canal return flow
 # into the unit, or into an aggregate it belongs to localised by its outcrop (a statement from
 # surface water to the aquifer); none where nothing does (decided by Assil on 2026-11-06, analysis
-# plan §14 item 16). Sign: canal return raises the alluvium head; eligible only with a stated (not
-# hedged) return statement about the unit itself and no statement that the unit is not influenced by
-# the canals; whether the plain's summed diversions are an adequate proxy, and whether the sign
-# constrains a model, are the export policy's decisions (pending until Gate 3).
+# plan §14 item 16). Sign: canal return raises the alluvium head; eligible only with an applicable
+# return statement about the unit itself backed by measurement or tracing (lulcw:DifferentialGauging,
+# lulcw:GeochemicalTracing or lulcw:WaterBalanceEstimate, hedged or stated; Gate 3 point 9) and no
+# statement that the unit is not influenced by the canals; whether the plain's summed diversions are
+# an adequate proxy, and whether the sign constrains a model, are the export policy's decisions.
 lulcwr:canalInfluence a sh:SPARQLRule ;
     sh:order 4 ;
     sh:prefixes <https://w3id.org/lulcw/rules> ;
@@ -1154,12 +1155,14 @@ CONSTRUCT {
 }
 WHERE {
     {
-        SELECT ?ca (COUNT(DISTINCT ?sr) AS ?nret) (COUNT(DISTINCT ?ss) AS ?nstated) WHERE {
+        SELECT ?ca (COUNT(DISTINCT ?sr) AS ?nret) (COUNT(DISTINCT ?sm) AS ?nmeas) WHERE {
             ?ca lulcw:derivationRule $this ; lulcw:applicableStatement|lulcw:localizedStatement ?sr .
             ?sr lulcw:exchangeDirection ?dr .
             FILTER (?dr = lulcw:SurfaceToAquifer)
-            OPTIONAL { ?ca lulcw:applicableStatement ?sr . ?sr lulcw:hedging ?h .
-                       FILTER (?h = lulcw:StatedFinding) BIND (?sr AS ?ss) }
+            OPTIONAL { ?ca lulcw:applicableStatement ?sr . ?sr lulcw:evidenceMethod ?em .
+                       FILTER (?em = lulcw:DifferentialGauging || ?em = lulcw:GeochemicalTracing
+                               || ?em = lulcw:WaterBalanceEstimate)
+                       BIND (?sr AS ?sm) }
         }
         GROUP BY ?ca
     }
@@ -1178,12 +1181,12 @@ WHERE {
         GROUP BY ?ca
     }
     BIND (COALESCE(?nno, 0) AS ?kn)
-    BIND (IF(?nstated > 0 && ?kn = 0, lulcw:EligibleConstraint, lulcw:IneligibleConstraint) AS ?elig)
+    BIND (IF(?nmeas > 0 && ?kn = 0, lulcw:EligibleConstraint, lulcw:IneligibleConstraint) AS ?elig)
     BIND (IF(?kn > 0,
              "The sources disagree: one documents canal return flow into this unit, another finds the unit not influenced by canal water; no sign is used.",
-             IF(?nstated > 0,
-                "A source states canal return flow into this unit itself (canal seepage and irrigation returns), so more canal water does not lower its head. A diverted volume is not a recharge volume, the driver sums the plain's intakes, and no command-area map says which parcels a canal serves (CQ6): whether that sum is an adequate proxy of the water reaching the unit, and whether the sign constrains a model, are the export policy's decisions (lulcw:ConstraintDecision, pending until Gate 3; analysis plan, section 14 items 16 and 17).",
-                "The canal return flow into this unit is only reported or hedged by the sources, or documented only for an aggregate it belongs to (localised by the canals on its outcrop): no sign is used."))
+             IF(?nmeas > 0,
+                "A source documents canal return flow into this unit itself by measurement or tracing (differential gauging, geochemical tracing, or water-balance estimate), so more canal water does not lower its head. A diverted volume is not a recharge volume, the driver sums the plain's intakes, and no command-area map says which parcels a canal serves (CQ6): whether that sum is an adequate proxy of the water reaching the unit, and whether the sign constrains a model, are the export policy's decisions (lulcw:ConstraintDecision; Gate 3 points 9 and 10).",
+                "The canal return flow into this unit rests on no measured or traced statement about the unit itself (only a synthesis, or only about an aggregate it belongs to, localised by the canals on its outcrop): no sign is used."))
           AS ?why)
     BIND (CONCAT("Weekly canal diversion volume of the plain's surface-water intakes (the canal input of the models); canal reaches run ",
                  STR(xsd:integer(ROUND(?len))), " m on the outcrop of unit ", ?ucode, " within ",

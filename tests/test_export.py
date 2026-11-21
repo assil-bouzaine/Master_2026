@@ -237,7 +237,7 @@ def test_pandas(store, ed, meta):
             assert set(got[b]) == set(cells), (rel, b, sorted(set(got[b]) ^ set(cells))[:6])
             assert all(abs(got[b][c] - w) <= 1e-5 for c, w in cells.items()), (rel, b)
             assert abs(sum(got[b].values()) - sum(cells.values())) <= 1e-5 * len(cells) + 1e-9, (rel, b)
-        assert (e["sign"] == "PositiveResponse").all() and e["eligible"].all() and not e["constrained"].any()
+        assert (e["sign"] == "PositiveResponse").all() and e["eligible"].all() and e["constrained"].all()
         assert _dropped(meta, rel) == {
             "edges": dropped_edges, "wells": sorted(dropped_wells)}, (rel, "pandas oracle")
         dropped_counts[rel] = (dropped_edges, len(dropped_wells))

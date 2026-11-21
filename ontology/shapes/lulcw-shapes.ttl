@@ -1200,7 +1200,7 @@ SELECT $this WHERE {
                          FILTER (?d = lulcw:AquiferToSurface || ?d = lulcw:SurfaceToAquifer || ?d = lulcw:ExchangeEquilibrium) }
             || EXISTS { ?as lulcw:applicableStatement|lulcw:localizedStatement ?n . ?n lulcw:exchangeDirection lulcw:NoExchange . })
 }""" ] , [
-        sh:message "an eligible canal influence rests on no stated canal-return statement" ;
+        sh:message "an eligible canal influence rests on no measured or traced canal-return statement about its unit" ;
         sh:prefixes <https://w3id.org/lulcw/shapes> ;
         sh:select """
 SELECT $this WHERE {
@@ -1208,7 +1208,9 @@ SELECT $this WHERE {
           prov:wasDerivedFrom ?ca .
     ?ca lulcw:associationUnit ?u .
     FILTER NOT EXISTS { ?ca lulcw:applicableStatement ?s . ?s lulcw:exchangeDirection lulcw:SurfaceToAquifer ;
-                        lulcw:hedging lulcw:StatedFinding . }
+                        lulcw:evidenceMethod ?em .
+                        FILTER (?em = lulcw:DifferentialGauging || ?em = lulcw:GeochemicalTracing
+                                || ?em = lulcw:WaterBalanceEstimate) }
 }""" ] , [
         sh:message "a canal influence's path does not join the canal intake group to the well (the well's attribution naming the association's unit, the canal association in the well's zone with a canal-return statement)" ;
         sh:prefixes <https://w3id.org/lulcw/shapes> ;

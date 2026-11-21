@@ -4,6 +4,8 @@ Dataset: PFE_DATASET (default v3). For the dataset v4 re-runs (analysis plan v2 
 %env PFE_DATASET=v4 before the run line: STEPS then defaults to V4_STEPS (the final seeds of
 every neural baseline first, then their regimes, then Chronos-2; docs/gpu_howto.md). The
 bundle must have been made with PFE_DATASET=v4.
+Set STEPS=taccari_D to run the five-seed R1 black-box comparison on arm D's edges
+with the bundled Taccari tuning selection (Gate 3 point 21).
 
 Notebook cells (runtime type T4 GPU; docs/gpu_howto.md, Colab section):
     from google.colab import drive; drive.mount('/content/drive')       # Assil clicks Allow
@@ -19,7 +21,8 @@ It:
    the EA-LSTM steps are dropped if it fails); when STEPS has chronos2_ft, removes Colab's
    `datasets` package if it does not import with the pinned pyarrow (drop_broken_datasets);
 4. runs STEPS through scripts/run_gpu.sh and copies the results to Drive every SYNC_S seconds
-   and at the end. The runs work on local disk because SQLite (the Optuna studies) is not
+   and at the end. On a fresh Drive, bundled seed JSONs provide the refit epoch counts.
+   The runs work on local disk because SQLite (the Optuna studies) is not
    safe on the Drive mount; databases are copied with SQLite's backup API, so a copy is
    never caught in the middle of a write.
 Free sessions stop without warning: mount Drive again and re-run the same line to resume

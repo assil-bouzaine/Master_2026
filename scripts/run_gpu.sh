@@ -33,7 +33,7 @@ if [ -n "${PIN_TARGET:-}" ]; then
       || echo "!! pinned packages not installed"
   }
   export PYTHONPATH="$PIN_TARGET${PYTHONPATH:+:$PYTHONPATH}"
-  PY=python3
+  PY=${PY:-python3}
 else
   if [ ! -x "$VENV/bin/python" ]; then
     python3 -m venv --system-site-packages "$VENV"
@@ -43,7 +43,7 @@ else
     "$VENV/bin/python" -m pip install -q --upgrade pip
     "$VENV/bin/python" -m pip install -q --no-deps -r "$VENV/req_gpu.txt"
   }
-  PY="$VENV/bin/python"
+  PY=${PY:-"$VENV/bin/python"}
   # Some images ship torchaudio/torchvision built for another torch; transformers
   # imports them if present and crashes. Shadow them with versions matching the
   # system torch (installed --no-deps into the venv; torch itself is untouched).
@@ -68,13 +68,14 @@ if [ -n "${PFE_RESULTS:-}" ] && [ ! -f "$PFE_RESULTS/_cache/panel.parquet" ]; th
   mkdir -p "$PFE_RESULTS/_cache"
   cp results/"$PFE_DATASET"/_cache/panel*.parquet "$PFE_RESULTS/_cache/"
 fi
-# dataset v4 re-runs reuse the configurations selected on v3 (scripts/v4_from_v3.py): bring
-# the bundled best.json files next to the results, without overwriting a later selection
+# Bring bundled tuning choices and the final seeds' refit epoch records next to the results.
+# Keep files that are already there, including records from a resumed run.
 if [ -n "${PFE_RESULTS:-}" ]; then
-  for f in results/"$PFE_DATASET"/*_tuning/best.json results/"$PFE_DATASET"/*_tuned/best.json; do
+  for f in results/"$PFE_DATASET"/*_tuning/best.json results/"$PFE_DATASET"/*_tuned/best.json \
+           results/"$PFE_DATASET"/*_tuned/seed_*.json; do
     [ -f "$f" ] || continue
     t="$PFE_RESULTS/${f#results/$PFE_DATASET/}"
-    [ -f "$t" ] || { mkdir -p "$(dirname "$t")"; cp "$f" "$t"; }
+    [ -f "$t" ] || { mkdir -p "$(dirname "$t")"; cp -n "$f" "$t"; }
   done
 fi
 # v3 default sweep (docs/analysis_plan.md): default models for comparability, equal-budget
@@ -87,6 +88,22 @@ for s in $STEPS; do
     setup)       ;;                                           # venv and pins only
     stgnn)       $PY -m src.models.stgnn ;;                   # distance-graph ST-GNN, 5 seeds
     taccari)     $PY -m src.models.taccari ;;                 # Taccari-graph ST-GNN, 5 seeds
+    taccari_D)                                               # Gate 3 point 21, R1, 5 default seeds
+      # Use the same four tuning flags as src.models.regimes, from the bundled selection.
+      python3 -c '
+import json
+import os
+import sys
+from pathlib import Path
+
+python, best = sys.argv[1:]
+params = json.loads(Path(best).read_text())["params"]
+cmd = [python, "-m", "src.models.taccari", "--edges", "D", "--run", "taccari_D"]
+for name in ("lookback", "hidden", "dropout", "lr"):
+    cmd.extend(["--" + name, str(params[name])])
+os.execvp(python, cmd)
+' "$PY" "results/$PFE_DATASET/taccari_tuning/best.json"
+      ;;
     lstm)        $PY -m src.models.lstm ;;                    # default LSTM, 5 seeds
     ealstm)      $PY -m src.models.lstm --arch ealstm --run ealstm ;;
     chronos2)    $PY -m src.models.chronos2 ;;                # zero-shot

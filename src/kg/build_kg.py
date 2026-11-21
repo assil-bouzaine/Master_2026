@@ -78,7 +78,7 @@ from src.analysis.bdlisa_profile import GPKG, group_of
 from src.analysis.bnpe_profile import load as load_bnpe
 from src.analysis.piezo_profile import PLAIN_BBOX
 from src.config import CRS_L93, CRS_WGS84, DATASET, DATASET_DIR, INTERIM, PROCESSED, RAW, ROOT
-from src.kg import forcing, landuse, rivers
+from src.kg import forcing, landuse, pressure, rivers
 from src.kg import pump_attribution as pa
 
 L = Namespace("https://w3id.org/lulcw#")
@@ -119,6 +119,9 @@ RELEASES = {
                               "https://hubeau.eaufrance.fr/api/v1/prelevements/"),
     "bdlisa-v3-occ": ("BD LISA V3, Occitanie extract (GeoPackage)", "2026-10-05",
                       "https://bdlisa.eaufrance.fr"),
+    "hubeau-piezo-chronicles": ("Hub'Eau niveaux_nappes daily chronicles of the département 66 "
+                                "stations", "2026-10-05",
+                                "https://hubeau.eaufrance.fr/api/v1/niveaux_nappes/chroniques"),
 }
 
 
@@ -699,6 +702,46 @@ def annual_records(kg, rel, d):
     return len(d)
 
 
+# ----------------------------------------------------------------------------- CQ14 pressure states
+def pressure_states(kg, rel, wells):
+    """CQ14 (Gate 3 point 15; analysis plan §14 item 23): one lulcw:PressureStateSummary, a SOSA
+    observation, per well and training window (train, f25, f50): the days of the window with a depth
+    to water, the days with the water above the station's measurement reference, and their share in
+    percent (src/kg/pressure.py, equal to the dataset's artesian share). A window without any depth
+    value gets days = 0 and no result: unknown, never 0. The rules (order 66) derive the
+    confinement assessment from these summaries, never from the geological stack alone."""
+    release = rel["hubeau-piezo-chronicles"]
+    intervals = {}
+    for name, (start, end) in pressure.windows().items():
+        iv = kg.node(iri("interval", "training-window", name), TIME.ProperInterval)
+        stop = (end + pd.Timedelta(days=1)).date().isoformat()      # the day after the last one
+        for p, day in ((TIME.hasBeginning, start.date().isoformat()), (TIME.hasEnd, stop)):
+            inst = kg.node(iri("instant", day), TIME.Instant)
+            kg.add(inst, TIME.inXSDDate, Literal(day, datatype=XSD.date))
+            kg.add(iv, p, inst)
+        kg.add(iv, RDFS.comment, Literal(
+            f"training window {name}: measurement days {start.date()} to {end.date()}, start "
+            "inclusive, end exclusive", lang="en"))
+        intervals[name] = iv
+    keys = {w.code_bss: (w.bss_id if isinstance(w.bss_id, str) and w.bss_id else w.code_bss)
+            for w in wells.itertuples(index=False)}
+    table = pressure.summaries(list(keys))
+    for r in table.itertuples(index=False):
+        key = keys[r.code_bss]
+        o = kg.node(iri("pressure-state", key, r.window), L.PressureStateSummary)
+        kg.add(o, SOSA.hasFeatureOfInterest, iri("piezometer", key))
+        kg.add(o, SOSA.observedProperty, L.HeadAboveReferenceShare)
+        kg.add(o, SOSA.usedProcedure, L.HeadAboveReferenceCount)
+        kg.add(o, SOSA.phenomenonTime, intervals[r.window])
+        kg.add(o, L.assessmentWindow, Literal(r.window))
+        kg.add(o, L.daysObserved, Literal(int(r.days), datatype=XSD.integer))
+        kg.add(o, L.daysAboveReference, Literal(int(r.days_above), datatype=XSD.integer))
+        if r.days:
+            kg.add(o, SOSA.hasSimpleResult, dbl(r.share_pct))
+        kg.add(o, PROV.wasDerivedFrom, record(kg, "hubeau-piezo-chronicle", r.code_bss, release))
+    return len(table)
+
+
 def policies(kg):
     decisions = constraint_decisions(kg)
     admits = {"main": (L.Confident, L.Probable), "confident-only": (L.Confident,),
@@ -817,6 +860,7 @@ def main():
     assert set(unit) == units_all, "units differ from the closure's"
     n_bodies, n_unknown_pz = piezometers(kg, rel, rule, ex, unit, wells, w_pts, w_cp, stacks,
                                          poly, pile, ext["plain-box"][0])
+    n_pressure = pressure_states(kg, rel, wells)
     ev_table = evaluations(kg, rule, ex, ev)
     counts = facilities(kg, rel, rule, ex, unit, groups, fac, f_pts, f_cp, stacks,
                         ext["plain-box-margin"][0], ev_table)
@@ -837,8 +881,8 @@ def main():
     kg.add(head, OWL.imports, URIRef("https://w3id.org/lulcw/meta"))
     kg.add(head, DCT.title, Literal(f"LULC-Water knowledge graph, dataset {DATASET}", lang="en"))
     kg.add(head, DCT.description, Literal(
-        "Source facts and qualified assertions for the competency questions CQ1-CQ8, CQ11 and "
-        "CQ12 (tasks 12.5-12.7); derived links come from the SHACL-AF rules of task 12.6.",
+        "Source facts and qualified assertions for the competency questions CQ1-CQ8, CQ11, CQ12 "
+        "and CQ14 (tasks 12.5-12.7); derived links come from the SHACL-AF rules of task 12.6.",
         lang="en"))
     kg.add(head, DCT.created, Literal(date.today().isoformat(), datatype=XSD.date))
     kg.add(head, PROV.wasGeneratedBy, ex["kg"])
@@ -865,6 +909,7 @@ def main():
         "piezometers_without_recorded_unit": n_unknown_pz, "groundwater_bodies": n_bodies,
         "facilities_with_group_level_split": counts["group_split"],
         "facilities_absent_from_dataset": counts["absent"], "annual_records": n_rec,
+        "pressure_state_summaries": n_pressure,
         "polygons": len(keep), "polygons_in_plain_box": int(keep.intersects(plain_box).sum()),
         "piezometers_without_polygon": int(w_cp.isna().sum()),
         "facilities_without_polygon": int(f_cp.isna().sum()),

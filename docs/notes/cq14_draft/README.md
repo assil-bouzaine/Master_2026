@@ -21,3 +21,9 @@ evidence → covered + unknown; outcropping → unknown, never unconfined; water
 confined, probable; no depth → unknown, share unbound; window choice; negative controls for every
 shape; data check against `bdlisa_station_stacks.csv` and `pressure_state_v4`), docs (CQ14 in
 `docs/competency_questions.md`, `docs/ontology_design.md`), then one release, exports, controls, tests.
+
+2026-11-21 evening: the share check compares with the exact ratio (|share - 100 x above / days| <= 0.05 + float
+slack): Python rounds halves to even (round(0.25, 1) = 0.2), SPARQL ROUND away from zero, so a check on rounded
+values would flag correct summaries. `build_kg_pressure.py` holds the facts function and its wiring.
+Applied 2026-11-21 ≈ 23:50 (ontology 0.8.0); the stack OPTIONAL repeats `?w lulcw:locatedInPolygon ?p`
+(a left join on an unbound ?p would match any polygon holding the unit). The files here are now superseded.

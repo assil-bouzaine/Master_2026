@@ -27,6 +27,10 @@
 #   order 63  river influences, gauge of arm C's pool -> piezometer (CQ5, CQ8)
 #   order 64  canal-unit associations, the canal-return statements that apply, and canal
 #             influences from the plain's canal intake group (CQ6, CQ8)
+#   order 65  hydrogeological settings: the place of each monitoring attribution's unit in the
+#             BD LISA stack under the well, and the units covering it (CQ14)
+#   order 66  confinement assessments per setting and training window, from the pressure-state
+#             summaries only: confined (probable) or unknown (CQ14)
 #   order 90  a well link or an influence is selected by a policy only if every unit
 #             attribution it derives from is (an unaccepted segment blocks the path); last, so
 #             that it sees every derived path (it ran at order 40 until the recharge influences)
@@ -1014,7 +1018,7 @@ WHERE {
              IF(?kn > 0,
                 "A source states that this unit is independent of the river in a section of the zone (for the unit itself, or for an aggregate it belongs to, localised by its outcrop): no sign is used.",
                 IF(?kc > 0,
-                   "A source documents an exchange between this unit itself and a section of the zone. Where river and aquifer are connected, the exchange flux grows with the river stage whatever its direction (the MODFLOW river package, Harbaugh 2005, doi:10.3133/tm6A16), so a higher stage does not lower the head. The documented direction is a state kept with its period, not the sign, and the dated or undated statements (cq05_statements) serve as one static hypothesis for every modelled week. The gauge's discharge stands for the stage near the well only up to the withdrawals and inflows in between: whether it is an adequate proxy, and whether the sign constrains a model, are the export policy's decisions (lulcw:ConstraintDecision, pending until Gate 3; analysis plan, section 14 items 16 and 17).",
+                   "A source documents an exchange between this unit itself and a section of the zone. Where river and aquifer are connected, the exchange flux grows with the river stage whatever its direction (the MODFLOW river package, Harbaugh 2005, doi:10.3133/tm6A16), so a higher stage does not lower the head. The documented direction is a state kept with its period, not the sign, and the dated or undated statements (cq05_statements) serve as one static hypothesis for every modelled week. The gauge's discharge stands for the stage near the well only up to the withdrawals and inflows in between: whether it is an adequate proxy, and whether the sign constrains a model, are the export policy's decisions (lulcw:ConstraintDecision; Gate 3 points 8 and 10; analysis plan, section 14 items 16, 17 and 23).",
                    IF(?kl > 0,
                       "A source documents an exchange in a section of the zone only for an aggregate this unit belongs to (a groundwater body or a group of formations), localised to the unit because the river runs on its outcrop there: documented at the aggregate's scale, not for the unit itself, so no sign is used until the localisation is reviewed (Gate 3; Codex review of 2026-11-06, R1).",
                       "No source documents an exchange between this unit and the sections of the zone: the association is geometric only, so no sign is used."))))
@@ -1278,4 +1282,131 @@ WHERE {
     rdfs:label "canal-unit association and canal influence"@en ;
     rdfs:seeAlso lulcwr:canalOnOutcrop , lulcwr:canalApplicableStatement , lulcwr:canalLocalizedStatement ,
         lulcwr:canalInfluence ;
-    rdfs:comment "For each reach search zone and unit a monitoring attribution of the zone's well names: the length of canal reaches on the unit's outcrop, the canal-return statements naming the unit itself (a measurement at a site only in that site's zone) and those about an aggregate it belongs to (localised, a separate inference); then, where a statement documents canal return flow into the unit or its aggregate, one influence of the plain's canal intake group (the canal input of the models) on the well per attribution, sign non-decreasing, eligible only with a stated return statement about the unit itself and no statement that the unit is not influenced by canal water. No command-area map exists (CQ6): a diverted volume is not a recharge volume (CQ6, CQ8)."@en .
+    rdfs:comment "For each reach search zone and unit a monitoring attribution of the zone's well names: the length of canal reaches on the unit's outcrop, the canal-return statements naming the unit itself (a measurement at a site only in that site's zone) and those about an aggregate it belongs to (localised, a separate inference); then, where a statement documents canal return flow into the unit or its aggregate, one influence of the plain's canal intake group (the canal input of the models) on the well per attribution, sign non-decreasing, eligible only with a return statement about the unit itself backed by measurement or tracing (differential gauging, geochemical tracing or a water-balance estimate; Gate 3 point 9) and no statement that the unit is not influenced by canal water. No command-area map exists (CQ6): a diverted volume is not a recharge volume (CQ6, CQ8)."@en .
+
+
+#################################################################
+# CQ14: cover, confinement and pressure state at a monitoring point
+#################################################################
+
+lulcwr:SettingShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/hydrogeological-setting> ;
+    sh:order 65 ;
+    sh:rule lulcwr:hydrogeologicalSetting , lulcwr:coveringUnits .
+
+# One setting per monitoring attribution of a piezometer: the position of its candidate unit in the
+# stack of the polygon under the point (outcropping at order 1, covered below), cover unknown when
+# the attribution has no target or its unit is not in that stack. Mapped cover only: no confinement.
+# The stack lookup uses its own variable (?lu): an OPTIONAL whose unit were ?u itself would bind any
+# layer's unit when the attribution has none; and it repeats the well's polygon, since a left join
+# on an unbound ?p (a well in no polygon) would take any polygon whose stack holds the unit.
+lulcwr:hydrogeologicalSetting a sh:SPARQLRule ;
+    sh:order 1 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?s a lulcw:HydrogeologicalSetting ;
+        lulcw:settingOf ?w ; lulcw:settingAttribution ?a ; lulcw:settingUnit ?u ;
+        lulcw:settingPolygon ?p ; lulcw:stackPosition ?o ; lulcw:coverStatus ?status ;
+        lulcw:assessmentReason ?why ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasDerivedFrom ?a , ?l ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    ?a lulcw:attributedEntity ?w ; lulcw:role ?role ; lulcw:rank ?rank .
+    FILTER (?role = lulcw:MonitoringRole)
+    ?w lulcw:bssCode ?bss .
+    OPTIONAL { ?a lulcw:candidateUnit ?u . }
+    OPTIONAL { ?w lulcw:locatedInPolygon ?p . }
+    OPTIONAL {
+        ?w lulcw:locatedInPolygon ?p .
+        ?p lulcw:hasStackLayer ?l .
+        ?l lulcw:layerUnit ?lu ; lulcw:layerOrder ?o .
+        FILTER (BOUND(?u) && ?lu = ?u)
+    }
+    BIND (IF(!BOUND(?u) || !BOUND(?o), lulcw:CoverUnknown,
+             IF(?o = 1, lulcw:Outcropping, lulcw:Covered)) AS ?status)
+    BIND (IF(!BOUND(?u), "The monitored unit of this attribution is unknown, so its place in the stack under the point is unknown.",
+          IF(!BOUND(?p), "The point lies in no BD LISA polygon of the graph: the stack under it is unknown.",
+          IF(!BOUND(?o), "The candidate unit is not in the stack of the BD LISA polygon under the point (for example a unit missing from the regional extract): its cover is unknown.",
+          IF(?o = 1, "The candidate unit is the first layer of the BD LISA stack under the point: mapped at the surface. An outcropping multilayer unit may still hold confined horizons; cover says nothing about confinement.",
+             "Other units are mapped above the candidate unit in the BD LISA stack under the point. Mapped cover is not confinement: BRGM documents covered yet unconfined settings.")))) AS ?why)
+    BIND (IRI(CONCAT("https://w3id.org/lulcw/data/setting/", ENCODE_FOR_URI(?bss), "/", STR(?rank))) AS ?s)
+}
+""" .
+
+# The units mapped above a covered unit in the stack under the point.
+lulcwr:coveringUnits a sh:SPARQLRule ;
+    sh:order 2 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+CONSTRUCT { ?s lulcw:coveringUnit ?uc . }
+WHERE {
+    ?s lulcw:derivationRule $this ; lulcw:settingPolygon ?p ; lulcw:stackPosition ?o .
+    ?p lulcw:hasStackLayer ?lc .
+    ?lc lulcw:layerOrder ?oc ; lulcw:layerUnit ?uc .
+    FILTER (?oc < ?o)
+}
+""" .
+
+lulcwr:ConfinementShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/confinement-assessment> ;
+    sh:order 66 ;
+    sh:rule lulcwr:confinementAssessment .
+
+# Per setting and training window: confined (probable) when the water stood above the point's
+# measurement reference on some day of the window (a free water table cannot rise above the ground),
+# else unknown; never from the stack alone, and never unconfined or semi-confined (no evidence type
+# of this release supports them). A window without a depth value leaves the state unknown, with the
+# pressure itself unknown, not zero.
+lulcwr:confinementAssessment a sh:SPARQLRule ;
+    sh:order 1 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?c a lulcw:ConfinementAssessment ;
+        lulcw:assessedSetting ?s ; lulcw:assessmentWindow ?win ; lulcw:confinementState ?state ;
+        lulcw:confidence ?conf ; lulcw:assessmentReason ?why ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasDerivedFrom ?s , ?ps ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    ?s lulcw:settingOf ?w ; lulcw:settingAttribution ?a ; lulcw:coverStatus ?cover .
+    ?a lulcw:rank ?rank .
+    ?w lulcw:bssCode ?bss .
+    ?ps sosa:hasFeatureOfInterest ?w ; lulcw:assessmentWindow ?win ; lulcw:daysObserved ?days ;
+        lulcw:daysAboveReference ?above .
+    OPTIONAL { ?ps sosa:hasSimpleResult ?share . }
+    BIND (BOUND(?share) && ?above > 0 AS ?pressure)
+    BIND (IF(?pressure, lulcw:ConfinedState, lulcw:ConfinementUnknown) AS ?state)
+    BIND (IF(?pressure, lulcw:Probable, ?unset) AS ?conf)
+    BIND (IF(?pressure,
+             CONCAT("The water stood above the station's measurement reference on ", STR(?above), " of ",
+                    STR(?days), " days of the window: a free water table cannot rise above the ground, so the monitored layer was confined at the point on those days. Probable, not confident: the reference is the station's measurement reference, usually the ground or the top of the casing, not surveyed ground."),
+          IF(?days = 0,
+             "No depth to water in the window: its pressure state is unknown (not zero), and so is the confinement.",
+             CONCAT("The water never stood above the measurement reference in the window (", STR(?days),
+                    " days), which does not show a free water table. ",
+                    IF(?cover = lulcw:Covered, "The unit is covered at the point, but mapped cover does not establish confinement: unknown.",
+                    IF(?cover = lulcw:Outcropping, "The unit is mapped at the surface at the point, but an outcropping multilayer unit may hold confined horizons: unknown.",
+                       "The unit's place in the stack is unknown too: unknown."))))) AS ?why)
+    BIND (IRI(CONCAT("https://w3id.org/lulcw/data/confinement/", ENCODE_FOR_URI(?bss), "/", STR(?rank), "/", ?win)) AS ?c)
+}
+""" .
+
+
+<https://w3id.org/lulcw/data/rule/hydrogeological-setting> a lulcw:DerivationRule ;
+    rdfs:label "hydrogeological setting"@en ;
+    rdfs:seeAlso lulcwr:hydrogeologicalSetting , lulcwr:coveringUnits ;
+    rdfs:comment "One setting per monitoring attribution of a piezometer: the position of its candidate unit in the BD LISA stack of the elementary polygon under the point (outcropping at order 1, covered below it, with the covering units), cover unknown when the attribution has no unit or its unit is not in that stack. Mapped cover is geological: it never establishes confinement (CQ14)."@en .
+
+<https://w3id.org/lulcw/data/rule/confinement-assessment> a lulcw:DerivationRule ;
+    rdfs:label "confinement assessment"@en ;
+    rdfs:seeAlso lulcwr:confinementAssessment ;
+    rdfs:comment "Per setting and training window (train, f25, f50): confined, with confidence probable, when the water stood above the station's measurement reference on some day of the window (a free water table cannot rise above the ground; the reference is not surveyed ground); otherwise unknown, with its reason. Never from the stack alone, never unconfined or semi-confined (no evidence type of this release supports them); a window without a depth value leaves the pressure and the state unknown (CQ14)."@en .

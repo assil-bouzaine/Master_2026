@@ -591,6 +591,19 @@ and which of these properties remains unknown?
 - **Ontology needs / dependencies:** local hydrogeological setting, confinement
   assessment and pressure-state summary; CQ1/CQ3/CQ13. No `ConfinedSetting` rule based
   only on stack position, and no unconditional “local rain cannot affect this well”.
+- **Implemented 2026-11-21 (ontology 0.8.0; Gate 3 point 15).** Facts: one
+  `lulcw:PressureStateSummary` (SOSA observation) per well and training window (train, f25,
+  f50) from the Hub'Eau daily depths with the dataset's quality filter (`src/kg/pressure.py`,
+  equal to the dataset's artesian share): days with a depth, days with the water above the
+  **station's measurement reference** (a depth below zero; the reference is usually the
+  ground or the casing top, not surveyed ground), the share; days = 0 leaves the share
+  unbound. Rules (order 65) `lulcw:HydrogeologicalSetting` per monitoring attribution: stack
+  position, cover status (outcropping, covered with its covering units, cover unknown) in the
+  polygon under the well; (order 66) `lulcw:ConfinementAssessment` per setting and window:
+  confined (probable) only when the water stood above the reference on some day, otherwise
+  unknown with its reason; unconfined and semi-confined are never derived (no evidence type
+  supports them). Queries `tests/cq/cq14_setting.rq` and `cq14_status.rq`; shapes check counts,
+  cover/position agreement, the pressure evidence of every confined state and completeness.
 
 ### CQ15 — Probable irrigation from remote sensing
 

@@ -1364,3 +1364,131 @@ SELECT DISTINCT $this ?value WHERE {
     ?d1 lulcw:decisionMechanism ?value . ?d2 lulcw:decisionMechanism ?value .
     FILTER (?d1 != ?d2)
 }""" ] .
+
+
+#################################################################
+# CQ14: cover, confinement and pressure state at a monitoring point (0.8.0, 2026-11-21)
+#################################################################
+
+lulcwsh:PressureStateSummaryShape a sh:NodeShape ;
+    sh:targetClass lulcw:PressureStateSummary ;
+    sh:property [ sh:path sosa:hasFeatureOfInterest ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:Piezometer ] ,
+        [ sh:path sosa:observedProperty ; sh:minCount 1 ; sh:maxCount 1 ; sh:hasValue lulcw:HeadAboveReferenceShare ] ,
+        [ sh:path sosa:usedProcedure ; sh:minCount 1 ; sh:maxCount 1 ; sh:hasValue lulcw:HeadAboveReferenceCount ] ,
+        [ sh:path lulcw:assessmentWindow ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ( "train" "f25" "f50" ) ] ,
+        [ sh:path lulcw:daysObserved ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ; sh:minInclusive 0 ] ,
+        [ sh:path lulcw:daysAboveReference ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ; sh:minInclusive 0 ] ,
+        [ sh:path sosa:hasSimpleResult ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minInclusive 0.0 ; sh:maxInclusive 100.0 ] ,
+        [ sh:path sosa:phenomenonTime ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path prov:wasDerivedFrom ; sh:minCount 1 ] ;
+    sh:sparql [
+        sh:message "a pressure summary's counts and share disagree (days above > days, a share without days, no share with days, or a share further than a rounding step from 100 x above / days)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:daysObserved ?d ; lulcw:daysAboveReference ?a .
+    OPTIONAL { $this sosa:hasSimpleResult ?r . }
+    FILTER (?a > ?d || (?d = 0 && BOUND(?r)) || (?d > 0 && !BOUND(?r))
+            || (?d > 0 && BOUND(?r) && ABS(?r - 100 * ?a / ?d) > 0.051))
+}""" ] .
+
+lulcwsh:HydrogeologicalSettingShape a sh:NodeShape ;
+    sh:targetClass lulcw:HydrogeologicalSetting ;
+    sh:property [ sh:path lulcw:settingOf ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:Piezometer ] ,
+        [ sh:path lulcw:settingAttribution ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:UnitAttribution ] ,
+        [ sh:path lulcw:settingUnit ; sh:maxCount 1 ; sh:class lulcw:HydrogeologicalUnit ] ,
+        [ sh:path lulcw:settingPolygon ; sh:maxCount 1 ; sh:class lulcw:ElementaryPolygon ] ,
+        [ sh:path lulcw:stackPosition ; sh:maxCount 1 ; sh:datatype xsd:integer ; sh:minInclusive 1 ] ,
+        [ sh:path lulcw:coverStatus ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:in ( lulcw:Outcropping lulcw:Covered lulcw:CoverUnknown ) ] ,
+        [ sh:path lulcw:coveringUnit ; sh:class lulcw:HydrogeologicalUnit ] ,
+        [ sh:path lulcw:assessmentReason ; sh:minCount 1 ] ,
+        [ sh:path lulcw:derivationRule ; sh:minCount 1 ] ,
+        [ sh:path prov:wasDerivedFrom ; sh:minCount 1 ] ;
+    sh:sparql [
+        sh:message "a setting's cover status disagrees with its stack position and covering units (outcropping: order 1, nothing above; covered: order above 1 and at least one covering unit; cover unknown: no position)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:coverStatus ?st .
+    OPTIONAL { $this lulcw:stackPosition ?o . }
+    OPTIONAL { $this lulcw:coveringUnit ?c . }
+    FILTER ((?st = lulcw:Outcropping && (!BOUND(?o) || ?o != 1 || BOUND(?c)))
+            || (?st = lulcw:Covered && (!BOUND(?o) || ?o <= 1 || !BOUND(?c)))
+            || (?st = lulcw:CoverUnknown && BOUND(?o)))
+}""" ] , [
+        sh:message "the setting's unit is not the candidate unit of its attribution, or its position is not the unit's order in the stack of the polygon under the point" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:settingAttribution ?a ; lulcw:settingOf ?w .
+    OPTIONAL { $this lulcw:settingUnit ?u . }
+    OPTIONAL { ?a lulcw:candidateUnit ?cu . }
+    OPTIONAL { $this lulcw:stackPosition ?o ; lulcw:settingPolygon ?p . }
+    FILTER ((BOUND(?u) != BOUND(?cu)) || (BOUND(?u) && ?u != ?cu)
+            || (BOUND(?o) && NOT EXISTS { ?w lulcw:locatedInPolygon ?p . ?p lulcw:hasStackLayer ?l .
+                                         ?l lulcw:layerUnit ?u ; lulcw:layerOrder ?o . }))
+}""" ] .
+
+lulcwsh:ConfinementAssessmentShape a sh:NodeShape ;
+    sh:targetClass lulcw:ConfinementAssessment ;
+    sh:property [ sh:path lulcw:assessedSetting ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:HydrogeologicalSetting ] ,
+        [ sh:path lulcw:assessmentWindow ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ( "train" "f25" "f50" ) ] ,
+        [ sh:path lulcw:confinementState ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:in ( lulcw:ConfinedState lulcw:UnconfinedState lulcw:SemiConfinedState lulcw:ConfinementUnknown ) ] ,
+        [ sh:path lulcw:assessmentReason ; sh:minCount 1 ] ,
+        [ sh:path lulcw:derivationRule ; sh:minCount 1 ] ;
+    sh:sparql [
+        sh:message "a confined state rests on no pressure summary of its own well and window with water above the reference: confinement is never derived from the stack alone" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:confinementState lulcw:ConfinedState ; lulcw:assessedSetting ?s ; lulcw:assessmentWindow ?win .
+    ?s lulcw:settingOf ?w .
+    FILTER NOT EXISTS { $this prov:wasDerivedFrom ?ps . ?ps a lulcw:PressureStateSummary ;
+                        sosa:hasFeatureOfInterest ?w ; lulcw:assessmentWindow ?win ;
+                        lulcw:daysAboveReference ?a . FILTER (?a > 0) }
+}""" ] , [
+        sh:message "an unconfined or semi-confined state: no evidence type of this release supports it" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:confinementState ?st .
+    FILTER (?st = lulcw:UnconfinedState || ?st = lulcw:SemiConfinedState)
+}""" ] , [
+        sh:message "a confined state without its confidence (probable: the reference is not surveyed ground), or an unknown one with a confidence" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:confinementState ?st .
+    OPTIONAL { $this lulcw:confidence ?c . }
+    FILTER ((?st = lulcw:ConfinedState && (!BOUND(?c) || ?c != lulcw:Probable))
+            || (?st = lulcw:ConfinementUnknown && BOUND(?c)))
+}""" ] .
+
+# Whole-graph completeness: every monitoring attribution has exactly one setting, and every setting
+# one assessment per window for which its well has a pressure summary.
+lulcwsh:Cq14CompletenessShape a sh:NodeShape ;
+    sh:targetNode lulcw:MonitoringRole ;
+    sh:sparql [
+        sh:message "a monitoring attribution without exactly one hydrogeological setting" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    ?value lulcw:role $this ; lulcw:attributedEntity ?w .
+    ?w a lulcw:Piezometer .
+    FILTER (NOT EXISTS { ?s lulcw:settingAttribution ?value . }
+            || EXISTS { ?s1 lulcw:settingAttribution ?value . ?s2 lulcw:settingAttribution ?value . FILTER (?s1 != ?s2) })
+}""" ] , [
+        sh:message "a setting without exactly one confinement assessment for a window its well has a pressure summary for" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    ?value lulcw:settingOf ?w .
+    ?ps sosa:hasFeatureOfInterest ?w ; lulcw:assessmentWindow ?win .
+    ?ps a lulcw:PressureStateSummary .
+    FILTER (NOT EXISTS { ?c lulcw:assessedSetting ?value ; lulcw:assessmentWindow ?win . }
+            || EXISTS { ?c1 lulcw:assessedSetting ?value ; lulcw:assessmentWindow ?win .
+                        ?c2 lulcw:assessedSetting ?value ; lulcw:assessmentWindow ?win . FILTER (?c1 != ?c2) })
+}""" ] .

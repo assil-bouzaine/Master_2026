@@ -528,7 +528,39 @@ notebooks/       exploration only; anything that matters moves into src/
 
 ### ▶ Where we are (read this first in a new session)
 
-**2026-11-21 (Saturday), stopped ≈ 17:05 at Assil's request. START HERE.**
+**2026-11-21 (Saturday) evening session, from ≈ 22:25. START HERE (supersedes the 17:05 list below).**
+- **Colab through Google's command-line tool** (`colab`, google-colab-cli 0.8.0, `uv tool install
+  google-colab-cli`; Assil authorized it 22:3x, token in the keyring). No browser tab, no Drive mount:
+  `colab new -s NAME --gpu L4 | --tpu v5e1 | --high-mem`, `colab upload`, `colab exec -s NAME -f launch.py`
+  (**pass `--timeout 3600` and print a heartbeat**: the client quits after 30 s of silence; the job goes on),
+  `colab ssh -s NAME -- '...' </dev/null > out`, `colab usage`, **`colab stop -s NAME`** (a session bills until
+  stopped; `colab sessions` lists them). Measured (Pro): high-mem CPU 8 vCPU 0.26 units/h; **TPU v5e1 24 vCPU
+  (AMD EPYC 7B13) 3.09/h**; L4 12 vCPU 1.94/h; A100 12 vCPU 6.73/h; H100 not entitled; G4 unavailable; v6e1
+  timed out. Balance 193.98 at 23:00. Worker task T37 writes `scripts/colab_cli.py` (up/push-cpu/push-gpu/log/
+  status/pull/stop) from the manual run `results/_colab_cli/gpu1/` (Taccari refit on an L4).
+- **Colab GPU session 3 imported** (`scripts/colab_pull.py --dir`): Chronos-2 ×3, Taccari lwo/f25/f50; reports
+  regenerated (`docs/results_baselines_v4.md`, uncommitted until the refit is in). Refit: running on L4 `gpu1`
+  (pull `colab ssh -s gpu1 -- 'tar czf - -C /content/persist results_gpu' > x.tgz`, extract,
+  `colab_pull.py --dir <x>/results_gpu`, then **`colab stop -s gpu1`**).
+- **Committed:** T35 (`taccari_D` GPU step, refit records in the bundle), T36 (`colab_pull.py --drive/--dir`),
+  `regimes:<model>:<regime>` step in run_gpu.sh (uncommitted: commit with the refit).
+- **Codex on hold (Assil, 2026-11-21 23:39): "don't give codex anymore job after this run, wait for me untill i
+  tell u to give them more work".** Let cxa/cxb/cxc finish T41/T42/T40, review and commit, then no new Codex
+  task until Assil says so. Neon (Gemini) is not affected. **Assil's Codex subscription ends at midnight
+  (2026-11-22 00:00)**: all Codex workers closed at 23:53 (T40, T41, T42 delivered); assume no Codex after.
+- **Workers (fresh process per task, Assil 2026-11-21 evening: 1 Neon + 2–3 Sol 6.2 high):** neon T34 (finish
+  T29's release: done through exports/controls/kg_tables, tests running at 23:01), cxa T37 (colab_cli.py), cxb
+  T39 (paper baseline tables). Briefed, not started: T38 (neon next: `scripts/p4_queue.py`, a dependency-aware
+  queue of the 378 Phase 4 fits, `--shard`, heartbeat), T40 (cxc: `tests/test_cq14.py`, after the lead applies
+  CQ14).
+- **CQ14:** drafts in `docs/notes/cq14_draft/` (+ `build_kg_pressure.py`; the share check now compares with the
+  exact ratio). Apply after T34 is committed; also fix the stale `rule/canal-influence` rdfs:comment ("stated" →
+  measured or traced). Then one release (build_kg, apply_rules, inventory, 3 exports, 3 controls, kg_tables,
+  term_usage), `scripts/run_tests.py`, commit, `git tag analysis-plan-v2` (ask before pushing).
+- **Phase 4 plan:** after the tag, `p4_queue` on 1–2 TPU v5e1 runtimes (`--require-cpu-model "AMD EPYC 7B13"`,
+  one machine type for every arm), ≈ 1–1.5 h; the black box `taccari_D` on an L4 at the same time.
+
+**2026-11-21 (Saturday), stopped ≈ 17:05 at Assil's request.**
 - **Compute moved to Colab** (Assil: "use that instead of kaggle"): 200 compute units on his AI Pro
   Google account = Chrome account index 3 (`authuser=3`; Chrome's default Colab account is another
   one: switch through the avatar menu). Colab images now run Python 3.13; no background execution

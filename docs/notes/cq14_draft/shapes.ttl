@@ -16,14 +16,14 @@ lulcwsh:PressureStateSummaryShape a sh:NodeShape ;
         [ sh:path sosa:phenomenonTime ; sh:minCount 1 ; sh:maxCount 1 ] ,
         [ sh:path prov:wasDerivedFrom ; sh:minCount 1 ] ;
     sh:sparql [
-        sh:message "a pressure summary's counts and share disagree (days above > days, a share without days, no share with days, or a share other than 100 x above / days rounded to 0.1)" ;
+        sh:message "a pressure summary's counts and share disagree (days above > days, a share without days, no share with days, or a share further than a rounding step from 100 x above / days)" ;
         sh:prefixes <https://w3id.org/lulcw/shapes> ;
         sh:select """
 SELECT $this WHERE {
     $this lulcw:daysObserved ?d ; lulcw:daysAboveReference ?a .
     OPTIONAL { $this sosa:hasSimpleResult ?r . }
     FILTER (?a > ?d || (?d = 0 && BOUND(?r)) || (?d > 0 && !BOUND(?r))
-            || (?d > 0 && BOUND(?r) && ABS(?r - ROUND(1000 * ?a / ?d) / 10) > 0.051))
+            || (?d > 0 && BOUND(?r) && ABS(?r - 100 * ?a / ?d) > 0.051))
 }""" ] .
 
 lulcwsh:HydrogeologicalSettingShape a sh:NodeShape ;

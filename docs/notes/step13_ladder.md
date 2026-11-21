@@ -707,3 +707,46 @@ version 13 is pulled.
   export dropped 12 tiny recharge cells: a negligible but real difference).
 - Uploads to Drive are uneven (twice an upload hung at 100 % before Drive confirmed it): keep
   bundles slim, check the MD5 on Drive before a session starts.
+
+## 2026-11-21, evening: Colab from the terminal, the last baselines, the canal criterion's release, CQ14
+
+### What was done
+- **Colab through Google's command-line tool** (`colab`, google-colab-cli 0.8.0; Assil authorized it once in a
+  terminal tab). Sessions are created, used and stopped from the laptop's terminal: no notebook tab, no Drive
+  mount. Every runtime type was probed for a few seconds (balance unchanged at 193.98 units):
+
+  | Runtime | vCPUs (cores) | RAM | Units/hour |
+  |---|---|---|---|
+  | CPU, high RAM | 8 (4), AMD EPYC 7B12 | 50 GB | 0.26 |
+  | TPU v5e1 | 24 (12), AMD EPYC 7B13 | 47 GB | 3.09 |
+  | L4 GPU | 12 (6), Intel Xeon 2.20 GHz | 52 GB | 1.94 |
+  | A100 GPU | 12 (6), Intel Xeon 2.20 GHz | 83 GB | 6.73 |
+
+  H100: not in Assil's plan; G4: unavailable; TPU v6e1: no machine after 9 minutes. `scripts/colab_cli.py` (T37)
+  wraps it: `up` (with a CPU-model check), `push-cpu`/`push-gpu`, `log`, `status`, `pull`, `stop`.
+- **Colab GPU session 3 pulled and scored** (`scripts/colab_pull.py --dir`, T36): Chronos-2 zero-shot,
+  cross-learning and fine-tuned; the Taccari graph's left-out wells, 25 % and 50 % windows. Its refit had failed
+  (the new account's Drive did not hold the finals' epoch records); T35 puts those records in the GPU bundle, and the
+  refit ran on an L4 through the command-line tool (10 min of training, about 1 unit). Every v4 baseline now exists
+  (`docs/results_baselines_v4.md`). Forecasts: fine-tuned Chronos-2 reaches a drought NSE of 0.79 at 4 weeks
+  (anomaly persistence 0.70, LightGBM 0.69) and the cross-learning variant 0.40 at 12 weeks.
+- **Canal eligibility by the source's method** (Gate 3 point 9; T29 by Neon, finished as T34) and the release with
+  Gate 3's constraint decisions: recharge edges and the river edges of 3 wells (C2-1, 10962X0074/PZ,
+  10962X0075/PZ) are now sign-constrained in the export; canal edges stay free (2 eligible wells). All 12 graph test
+  suites pass.
+- **CQ14 applied** (ontology 0.8.0): settings, pressure summaries and confinement assessments (see
+  `docs/competency_questions.md`, CQ14, "Implemented"). Two fixes found on the way: a left join on an unbound polygon
+  would have matched any polygon holding the unit; pySHACL refuses sub-selects that do not project `$this`.
+
+### Why
+- Phase 4 is about 3,800 single-threaded fits: what speeds it up is cores, not a GPU. One TPU v5e1 runtime has 24
+  vCPUs, three times Kaggle's, and a queue that runs every independent fit at once (T38) avoids waiting for whole
+  blocks: about 1–1.5 hours instead of 4.
+- The L4 costs what the T4 cost in session 3 (≈ 1.9 units per hour) and is faster, so GPU jobs go there.
+
+### What to consider
+- `colab exec` stops waiting after 30 s without output; the job goes on, but the runner prints a heartbeat and asks
+  for a long timeout so that nothing depends on that.
+- A session bills until `colab stop`: the refit's session sat idle for about 20 minutes because my watcher used
+  `pgrep -f` on a pattern that its own command line contained (it always found itself). `colab_cli.py` brackets one
+  letter of its patterns for that reason.

@@ -230,6 +230,19 @@ derive mapped cover from stack position; require separate local hydraulic
 evidence for confinement. `pct_days_artesian` is a head-above-ground proxy
 whose datum and training window must be recorded, not a universal aquifer type.
 
+As built in 0.8.0 (2026-11-21): three nodes kept apart per well.
+`lulcw:HydrogeologicalSetting` (one per monitoring attribution; `settingUnit`,
+`settingPolygon`, `stackPosition`, `coverStatus` ∈ {Outcropping, Covered, CoverUnknown},
+`coveringUnit`), `lulcw:PressureStateSummary` (a `sosa:Observation` of
+`HeadAboveReferenceShare` by the procedure `HeadAboveReferenceCount`, with `daysObserved`,
+`daysAboveReference`, `assessmentWindow` and an OWL-Time interval; no result when no day was
+measured) and `lulcw:ConfinementAssessment` (`assessedSetting`, `assessmentWindow`,
+`confinementState` ∈ {ConfinedState, UnconfinedState, SemiConfinedState, ConfinementUnknown},
+`confidence`, `assessmentReason`). The rules derive only ConfinedState (probable: the
+reference is the station's measurement reference) and ConfinementUnknown; the other two
+states exist so that a future evidence type (screens, pumping tests) has a place, and a shape
+refuses them until then.
+
 ### 4.5 Spatial and seasonal assertions
 
 Keep spatial witnesses for stratigraphic relations. A contact A–B in one

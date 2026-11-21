@@ -710,9 +710,9 @@
 <section id="model" data-title="The smart model and its tests" data-depth="80 m">
   <p class="chapter-no">Chapter 9</p>
   <h2>The smart model and its tests</h2>
-  <p class="short">Next, a model shaped by the knowledge map, with built-in rules, and tests that try hard to catch it cheating.</p>
+  <p class="short">A model shaped by the knowledge map, with rules about which way each cause can push and practice worlds that let us check its story.</p>
 
-  <p><strong>The <button class="term" data-term="hybrid">hybrid</button> model.</strong> It works like Pastas footprints, but the knowledge map decides which footprints exist. Each link in the map ("this pump, this well, same layer, 2 km") gets its own footprint, and the direction of each footprint is fixed: pumping can only push the level down, rain can only push it up. A small free part catches what the rules miss.</p>
+  <p><strong>The <button class="term" data-term="hybrid">hybrid</button> model.</strong> It adds footprints like Pastas. The knowledge map tells it which pumps, rain cells, rivers and canals can affect each well. More pumping can only lower the model's level or leave it steady. More water soaking in can only raise it or leave it steady. We will also try a small extra push that follows the same pattern every year.</p>
   <figure>
     <div class="panel">
       <svg viewBox="0 0 760 240" role="img" aria-label="The level is the sum of pushes: rain and canal leaks push it up, pumping pulls it down, and a small free part adds a little.">
@@ -731,7 +731,7 @@
         <text class="art-label" x="620" y="190">guessed level</text>
       </svg>
     </div>
-    <figcaption>A picture of the idea, not of real numbers. Because each push has its own bar, the model's explanation is exact: it can say how much each cause moved the level.</figcaption>
+    <figcaption>An example of how the pushes add up. The model can report the exact amount it gave to each cause in its guess.</figcaption>
   </figure>
 
   <p><strong>Rules.</strong> A <button class="term" data-term="constraint">rule</button> can be soft (the model is punished when it breaks it) or hard (the model is built so that it cannot break it: <button class="term" data-term="monotone">built-in</button>). The second review added a catch: the rule must hold on the whole path, so the free part must not see the pumping, otherwise it could undo the rule.</p>
@@ -756,20 +756,16 @@
   <h3>The practice world is built (16 November)</h3>
   <p>A <button class="term" data-term="twin">practice world</button> keeps everything real (the wells, the weeks, the rain, the pumps, the rivers, the canal, even the weeks when a well was not measured) and invents only the water levels, from footprints we choose. We also choose which pumps truly affect which well: the model never sees that. Then the same model is trained three times on the same world, and only the links change: by distance (<strong>C</strong>), by the knowledge map (<strong>D</strong>), and by the truth itself (<strong>T</strong>, the <button class="term" data-term="oracle">oracle</button>, which real data never have: it shows the most that links could give).</p>
   <p>Two dials say how wrong the map is: the share of its pump links that are false, and the share of the true pumping it misses. The real map sits at about 1 to 4 false links in 10 and misses up to two thirds of the nearby pumping. Because the truth is known, each version gets more than a score: is its pumping share right, is its timing right, does it predict correctly what happens if the true pumps are cut by 20 %?</p>
-  <p>While building it, two design points were corrected before any result: the map is never altered, the invented truth moves away from it (the measured error rates of the map are false links, and the first draft also deleted true ones); and a second version where the map is wrong about rain, rivers and canals too, so that the map is not given those for free. A first small run (3 worlds) is on Kaggle; then about 400 worlds over the dials.</p>
+  <p>We keep the map fixed and change the invented truth to make the map more or less wrong. In some worlds, the map also gets rain, rivers and canals wrong.</p>
 
-  <h3>What the big practice run found (20 November)</h3>
-  <p>240 practice worlds, 20 for each setting of the two dials (false links, missed pumping), each trained two ways: stopped early, and trained to the end with the wells of a layer pulled together. Three findings, all about these invented worlds, not about the real aquifer:</p>
-  <ul>
-    <li><strong>Better links hardly change the accuracy.</strong> The map's links (D) stay within about 1 to 2 % of distance (C) in every setting, and even the true links (T) gain only 2 to 9 %. So on the real data, "D is not more accurate than C" is what we should expect, not a sign that the map is useless.</li>
-    <li><strong>The map's links make the story right, but only with the right training.</strong> Trained to the end, D finds the true pumping share better than C in 82 % of the worlds, in every setting. Stopped early, only in 25 %.</li>
-    <li><strong>The rule written beforehand picks early stopping</strong> for the main model (a smaller pumping error in 8 settings out of 12, and slightly more accurate). The proposal for Gate 3 is therefore both, each with a fixed job: early stopping for the accuracy comparisons, training to the end for the explanations.</li>
-  </ul>
-  <p>Also: in none of the 240 worlds did a model look accurate while telling a wrong pumping story (by the definition written in advance), so the cheater tests have nothing to catch there. The harder worlds (a missing cause, a response the model does not have) and the sign-rule comparison finish on Kaggle (run of 20 November).</p>
+  <h3>What the fake worlds taught us</h3>
+  <p>These results come from 560 practice worlds whose water levels we made up. The knowledge map and the distance rule guessed those levels about equally well. Even the model given the true links made only 2–9 % smaller mistakes.</p>
+  <p>With long training and wells of the same layer learning together, the map got the pumping share closer to the truth than the distance rule did in 82 % of worlds. With the rules on, no world met our test for being "right for the wrong reasons". Slice F will test whether we can catch a shortcut when distant pumps, hidden from the model, lower the water in step with local pumping.</p>
+  <p>With the rules off, about one in five learned effects pointed the wrong way. When pumping was cut, the model usually got the rise or fall right, and the map's typical error on the size of the change was 60–75 %.</p>
 
   <h3>Catching a cheater</h3>
   <ul>
-    <li><strong>A practice world</strong> (<button class="term" data-term="twin">semi-synthetic twin</button>): fake water levels made from our real weather and pumps with rules we choose, so we know the right answer. Some practice worlds are deliberately made with rules the model does not have, a missing cause, or wrong links, so the test is not too easy. It is built (16 November, above); a small run comes first, to size the big one and to make sure the tests can catch a cheater at all.</li>
+    <li><strong>A practice world</strong> (<button class="term" data-term="twin">semi-synthetic twin</button>): we know the right answer because we made the water levels ourselves. We can give the model wrong links, hide a cause, or use a kind of footprint it cannot learn.</li>
     <li><strong>A scrambled map</strong> (<button class="term" data-term="rewiring">rewiring</button>): if the model does just as well with nonsense links, it was not using the map.</li>
     <li><strong>Agreement between repeats</strong>: if five trainings tell five different stories, none can be trusted.</li>
     <li><strong>Three ways of spreading pumping over the weeks</strong>: a conclusion must hold whichever guess we use.</li>
@@ -793,7 +789,7 @@
 <section id="next" data-title="What comes next" data-depth="90 m">
   <p class="chapter-no">Chapter 10</p>
   <h2>What comes next</h2>
-  <p class="short">Five more phases until the defence, with two checkpoints where the supervisor looks at the work before we go on.</p>
+  <p class="short">With the Gate 3 choices made, we finish the map and check it before freezing the plan and running the model.</p>
   <figure>
     <div class="panel">
       <svg viewBox="0 0 960 300" role="img" aria-label="Timeline from October 2026 to June 2027: knowledge map until 6 December, then the smart model until the end of January, explanations in February, the paper until 25 April, the thesis and defence until June.">
@@ -816,32 +812,25 @@
         <rect x="723" y="220" width="217" height="26" rx="5" fill="var(--other)"/>
         <text class="cat-label" x="730" y="238" fill="var(--paper)">Phase 7: thesis, defence</text>
         <line x1="190" y1="20" x2="190" y2="250" stroke="var(--critical)" stroke-width="2"/>
-        <text class="art-label" x="149" y="16">today, 16 Nov</text>
+        <text class="art-label" x="149" y="16">November update</text>
         <polygon points="256,96 262,102 256,108 250,102" fill="var(--ink)"/>
         <polygon points="440,134 446,140 440,146 434,140" fill="var(--ink)"/>
         <text class="art-sub" x="180" y="148">Gate 3</text>
         <text class="art-sub" x="410" y="184">Gate 4</text>
       </svg>
     </div>
-    <figcaption>Gate 3 (6 December): the supervisor reviews the knowledge map, and the analysis plan is frozen with a git tag. Gate 4 (31 January): results are frozen, no new experiments after it. The paper is submitted by the end of April 2027. The defence date is not known yet.</figcaption>
+    <figcaption>The calendar is a rough guide. The Gate 3 choices are on the next page. We finish testing the map before freezing the plan, then freeze the results before writing them up.</figcaption>
   </figure>
 
-  <h3>Right now</h3>
-  <ul>
-    <li>All the rivals of version 3 have finished and are in the scores chart. We stopped the EA-LSTM's extra tests (wells left out, less data) on 23 October, because version 4 redoes them with a fairer split. The results go into the monthly report for the supervisor.</li>
-    <li><strong>The rivals are being re-run on version 4</strong> since your go of 24 October, never on your laptop. Done: the simple rivals, LightGBM, Pastas and its stability check, the EA-LSTM (Kaggle, processors only), the LSTM and the two graph networks (first Colab session, with a graphics card). The first version-4 results are in chapter 5. The EA-LSTM's last extra tests finished on Kaggle on 25 October. Chronos-2 and the rest of the Taccari tests run in the second Colab session (26 October, after your "allow" for Google Drive). Then the version-4 report becomes final.</li>
-    <li>The third check-up is done; you took its four decisions on 24 October (chapter 11).</li>
-    <li><strong>Crops come in (25 October).</strong> The yearly crop maps are downloaded, the crops are sorted into 14 groups with their water needs, and the weekly <button class="term" data-term="thirst">crop thirst</button> around each well is computed and tested.</li>
-    <li><strong>The crop test is done (26 October): no detectable help</strong> for the wells we score (chapter 7). The second Colab session runs since 26 October afternoon: Chronos-2 and the rest of the Taccari tests; then the version-4 report becomes final.</li>
-    <li>The knowledge map is filled, and its rules now draw the links between layers, wells and pumps, and hold the crops of every year around each well with their water needs and a dated "high irrigation demand" mark; a checker catches deliberate mistakes (25 October). On 26 October the checker went from 26 minutes to about 2, and we found that the saved map rounded its numbers to 7 digits, enough to make 2,068 crop areas disagree with their own parts; it now saves every number exactly. The first <strong>question tests</strong> are written: for seven of the core questions (a well's context, the layers, the neighbours, the pumps near a well, the yearly pumping by layer, the crops, the pump influences) the map answers from a stored query, says when it cannot answer and why, and its answers match the source tables. One check we liked: the share of pumping the main rule can place in a layer (62 %, 72 % with the layer families) comes out the same from the map as from the separate calculation done last week. Next: the export of the links for the model.</li>
-    <li><strong>Weather over the layers (27 October).</strong> For each well, the map now knows where its layer comes up to the surface within 5 km, which 8 km weather cells lie over that patch and how much of it each one covers; the numbers match an independent map calculation to within a few square metres. Two layers reach beyond our weather cells (15 % and 9 % of their surface outcrop), and the map now says so instead of pretending they are complete. A warning from the local water syndicate and a BRGM report, both read today: the deep Pliocene layer is fed mainly from elsewhere (the Têt valley upstream, the Corbières karst, water leaking down from the alluvium when the Pliocene is pumped), so "rain on the outcrop near the well" is only a rough stand-in. The map also became safer: it refuses to answer when its facts and its derived links come from different runs, and a "no" now needs a search that really happened.</li>
-    <li><strong>Rain becomes a link to the well (27 October, evening).</strong> Each weather cell over the outcrop of a well's own layer is now a link in the map, the same kind of record as a pump's link: "more rain here does not lower this well", with the cell's share of the outcrop, and labelled as a <button class="term" data-term="proxy">stand-in</button> for recharge, not recharge itself. Every such link lists the ways water also arrives that it leaves out (from neighbouring rocks, leaking from the layer above, from rivers, from canals), so an explanation can never pretend it is the whole story. 54 wells get 1 to 5 cells each; 5 Pliocene wells get none, because their layer does not come up to the surface within 5 km (the map says "searched, none found", not "no recharge"); one well's layer is not in the geology database (the map says "unknown"). Whether the model must obey this sign is decided at Gate 3.</li>
-    <li><strong>Rivers and canals join the map (6 November).</strong> The map now holds the river and canal stretches within 5 km of each well, cut by the geology map, so it knows which layer lies under every piece of river; the river gauges; and 32 sentences quoted from four reports (with their page) about where a river feeds the ground or the ground feeds the river. From your four decisions of the morning, the main model's river links follow: <strong>35 wells</strong> get one from the nearest of arm C's 5 gauges. Only 7 of them get a "which way" rule (a higher river does not lower the well), because only there does the river run on the well's own layer, or a report says they swap water; 18 deep wells are linked only through the gravel layer above them, so no rule. 17 wells sit near rivers without one of those gauges (the Réart, for example): no link, and the results will say so. For one stretch of the Têt the reports disagree (losing water to the ground in one, gaining in a 2017 measurement); the map keeps both, with their dates. Canals: 5 wells get a link, where a report says canal water leaks into the well's layer; for the other 37 with a canal nearby, no report says so, and no map of which fields each canal serves exists. We also found that the map's question checker had become very slow (43 seconds for one well); it now takes a fraction of a second.</li>
-    <li><strong>A second look the same afternoon (Codex's review).</strong> Some report sentences were about a whole groundwater body (8 layers at once) but the map had read them as if they named each layer; that made two "the river swaps water sideways with this layer" links that no report actually supports, and gave three wells a "which way" rule on body-level wording only. Now a sentence about a group stays about the group: it can describe the river beside a layer the river runs on, but it never creates a link or a rule by itself. Result: <strong>34 wells</strong> keep a river link, and only <strong>3</strong> keep a "which way" rule (MILLAS C2-1 and two wells at Corbère, all backed by BRGM's 2017 measurements of that very layer). Also: a measurement made in one well (BRGM's water mix at MILLAS C2-1) no longer counts for another well; a search whose rivers run partly off the geology map now says "unknown" instead of "nothing found"; two reports only "disagree" when they talk about the same stretch of river under comparable dates; every rule about a river, canal or rain proxy now waits for your Gate 3 decision before it can constrain the model (pumping's rule is approved since 23 October). Building a list of every link between our vocabulary and the standard ones also showed that "every piezometer is a drilled well" was wrong: a few stations are springs (Fontestramar, for example), so that link is now a looser "close match".</li>
-    <li><strong>A review of everything, and the model's first steps (10 November).</strong> The sixth check-up (chapter 7) led to five decisions. The links of versions C and D now come out of the knowledge map as tables, checked four ways (the map, its stored questions, the whole-map queries and plain table rules give the same links). The first two steps of the model <button class="term" data-term="ladder">ladder</button> ran on Kaggle (chapter 9). A BRGM paper modelling two of our wells was read; its response times are now the yardstick for ours.</li>
-    <li><strong>The practice world is built (16 November).</strong> The follow-up runs corrected a claim of 10 November: the model's gain over Pastas came from stopping its training early (chapter 9). The <button class="term" data-term="twin">practice world</button> that will say which training gives the right story is built and tested; its first small run (3 worlds) is done: the map's links make the guesses about 6 % better than distance, as good as the true links, but they do not yet give a truer pumping share; the full run (about 400 worlds) is on Kaggle. The same day: the crop classes now point to the European land-use list (INSPIRE HILUCS), and an outside checker of ontologies (OOPS!) found no serious mistake; five small gaps it showed were fixed. All the decisions waiting for the supervisor are gathered in one sheet, <code>docs/gate3_decisions.md</code>.</li>
-    <li><strong>An outside review, and the big practice run (18 to 20 November).</strong> Two Codex helpers now take small, well-defined jobs; Claude writes their instructions and checks their work. An outside review found 17 real problems; each was checked and fixed. The most important: the practice world's "cut the pumps by 20 %" test cut the pumps of every well at once, not each well's own as the plan says (now as written); one river's 8 missing weeks of autumn 2021 were filled using a measurement from the test period (now filled from the training years, for the Phase 4 runs); and the Phase 4 report could have called a result "detected" while another test of its family was still missing (now it waits). The big practice run finished its 240 main worlds (chapter 10, above).</li>
-  </ul>
+  <h3>First the map, then the runs</h3>
+  <ol>
+    <li><strong>Finish the knowledge map.</strong> Add CQ14, the question about what covers each well's layer, how sealed in it is and what pressure the water is under. Build the map and its link tables once more, then run the full set of tests.</li>
+    <li><strong>Freeze the plan.</strong> Mark the exact version in Git with a tag, so we can show which rules we chose before the new runs.</li>
+    <li><strong>Run Phase 4 on your Colab compute units.</strong> There are 378 planned model fits. The <button class="term" data-term="thirst">crop thirst</button> stays in a side test. We also try a different <button class="term" data-term="proxy">stand-in</button> for water soaking in and check what each step of the <button class="term" data-term="ladder">ladder</button> adds.</li>
+    <li><strong>Run the extra checks.</strong> Try slice F of the <button class="term" data-term="twin">practice world</button> to see if we can catch the hidden cause. Train the Taccari network as a black box on the same map links as our model. Rerun Chronos-2 for the paper's forecasting comparison.</li>
+    <li><strong>Explain the answers in Phase 5.</strong> Turn the model's pushes into short sentences, and check each one against what the model did and what the map can back up.</li>
+    <li><strong>Write the paper.</strong> Show where the knowledge helped and how sure we can be.</li>
+  </ol>
   <p class="nextlink"><a href="#decisions">Next: the decisions board</a></p>
 </section>
 
@@ -849,7 +838,33 @@
 <section id="decisions" data-title="The decisions board" data-depth="100 m">
   <p class="chapter-no">Chapter 11</p>
   <h2>The decisions board</h2>
-  <p class="short">Every important choice, in one place, with the reason in one or two lines, and the ones still waiting for you.</p>
+  <p class="short">The latest choices that settle how we test the model, followed by the earlier decisions.</p>
+  <h3>Gate 3 · November 2026</h3>
+  <ul class="decisions">
+    <li><div class="q">1. When do we stop training? · 20 November</div><div class="a">Stop early for the accuracy comparisons. For explanations, let C and D train to the end with wells of the same layer learning together.</div></li>
+    <li><div class="q">2. Which steps of the ladder? · 20 November</div><div class="a">Test steps 3 to 5. The main comparison of C and D is at step 4, where the links decide what reaches each well.</div></li>
+    <li><div class="q">3. How much better is worth noticing? · 20 November</div><div class="a">Set the mark at 5 % less error and train from 10 random starts so we can see how much the scores wobble.</div></li>
+    <li><div class="q">4. How do we split pumping? · 20 November</div><div class="a">Try splitting pumping into a steady part and a seasonal part in a side test.</div></li>
+    <li><div class="q">5. How do we test for cheating? · 21 November</div><div class="a">Keep the practice worlds and the cutoff for the repeat-agreement test. Run slice F with hidden distant pumping after the tag.</div></li>
+    <li><div class="q">6. How strong should the soft rules be? · 21 November</div><div class="a">Try penalties of 1, 10 and 100. Choose the strongest whose practice score is within the best setting's usual variation across repeats, and show all the scores.</div></li>
+    <li><div class="q">7. How do we count water soaking in? · 20 November, clarified 21 November</div><div class="a">Use rain minus a share of the water that could evaporate. More of it can raise the level or leave it steady. Try effective rain as supplied in a side test.</div></li>
+    <li><div class="q">8. Where does the river rule apply? · 20 November</div><div class="a">A higher river can only raise the level or leave it steady at the 3 wells with evidence for their own layer. Reports about whole groups of layers do not qualify, and a disagreement elsewhere leaves local evidence valid.</div></li>
+    <li><div class="q">9. How do we treat canal leaks? · 20 November</div><div class="a">Use measurements or tracing to show that canal water enters the layer. Let the canal effect go either way in the main runs, and nudge it upwards in a side test.</div></li>
+    <li><div class="q">10. Which stand-ins can we trust? · 20 November</div><div class="a">River flow at a gauge can stand in for river height, with some uncertainty. The total water diverted into canals is a weak clue about how much seeps into one layer.</div></li>
+    <li><div class="q">11. Do crop water needs go in? · 20 November</div><div class="a">Keep crop water needs for the side test of model B.</div></li>
+    <li><div class="q">12. Which weather squares do we leave out? · 20 November</div><div class="a">Leave a square out of the model's rain links if it covers less than a thousandth of the area where the layer reaches the surface.</div></li>
+    <li><div class="q">13. What if there are several paths to a well? · 20 November</div><div class="a">Keep one link from each cause to each well and give it a rule about direction only when all its paths agree.</div></li>
+    <li><div class="q">14. Which comparisons get a formal test? · 20 November</div><div class="a">Group B against A and D against C together, and group soft rules against no rules and built-in rules against no rules together. Test the error ratio once per pair and adjust for testing more than one pair in each group.</div></li>
+    <li><div class="q">15. Which map questions do we finish? · 20 November</div><div class="a">Finish CQ14 on cover, how sealed in the layer is and pressure before the tag. Count CQ4–CQ6 as done. Keep CQ9, CQ13 and CQ16 small or for later.</div></li>
+    <li><div class="q">16. What goes in the paper? · 20 November</div><div class="a">Put Chronos-2 and the forecast comparison in the paper as well as the thesis. Keep the extra Pastas tests and the test with time reversed in the thesis, score text extraction on the 32 checked statements, and try EuroCrops if time allows.</div></li>
+    <li><div class="q">17. What can we publish from the project files? · 21 November <span class="badge wait">waiting for the supervisor</span></div><div class="a">Ask the supervisor and SAVE Water about releasing files before the paper is published.</div></li>
+    <li><div class="q">18. How do we scramble the links? · 20 November</div><div class="a">Keep each point's link count in one check and use roughly the same pumping distances in another. Also try the same number of links drawn at random, and link every pair.</div></li>
+    <li><div class="q">19. How do the well facts guide the model? · 20 November</div><div class="a">Use a weighted sum of the facts in sets A and B, with the same strength of pull as in shared training. Redraw name tags and shuffled facts at each start, and judge B against A mainly on wells left out.</div></li>
+    <li><div class="q">20. What can the small extra push learn? · 20 November</div><div class="a">Try runs with and without a small push based on the week of the year and the well's facts. It repeats each year and is a side test.</div></li>
+    <li><div class="q">21. Which black box do we compare with? · 20 November</div><div class="a">Run the Taccari network on D's links in the main setup, from 5 random starts in one Colab session with a graphics card.</div></li>
+  </ul>
+  <h3>Earlier decisions and notes</h3>
+  <p>These filters show the earlier records. The dated Gate 3 choices above settle several of their open questions.</p>
   <div class="filters" id="decision-filters" role="group" aria-label="Which decisions to show">
     <button class="btn" type="button" data-f="all" aria-pressed="true">All</button>
     <button class="btn" type="button" data-f="made">Decided</button>
@@ -858,7 +873,7 @@
   <ul class="decisions" id="decision-list"></ul>
   <details class="deeper">
     <summary>Go deeper</summary>
-    <p>The decisions still open for the supervisor's review (Gate 3), with the options and a recommendation for each: <code>docs/gate3_decisions.md</code>. The full table of decisions with their reasons: <code>docs/supervisor_questions.md</code> §1 and <code>CLAUDE.md</code> §3. The e-mails to send are in <code>docs/supervisor_questions.md</code> §4–5, the note about Corneilla in §6.</p>
+    <p>The Gate 3 choices and their reasons are in <code>docs/gate3_decisions.md</code>. For the settings used in the runs, see <code>docs/analysis_plan.md</code> §14, item 23.</p>
   </details>
   <p class="nextlink"><a href="#words">Next: the word list</a></p>
 </section>

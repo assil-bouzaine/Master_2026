@@ -12,9 +12,9 @@ What it covers, in simple words with pictures:
 6. the four data versions
 7. the two reviews
 8. the knowledge map
-9. the future model and its tests
-10. the timeline
-11. every decision, made or waiting
+9. the smart model and what the practice worlds taught us
+10. the timeline and the next steps
+11. the Gate 3 choices and the earlier decisions
 12. a searchable word list
 
 Files:

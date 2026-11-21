@@ -112,6 +112,8 @@ os.execvp(python, cmd)
     tune_lstm)   $PY -m src.models.tune_lstm --trials 24 ;;   # v2 tuner (kept for v2 reruns)
     tune:*)      $PY -m src.models.tune --model "${s#tune:}" --trials 24 ;;
     final:*)     $PY -m src.models.tune --model "${s#final:}" --final-only ;;   # v4: v3 choice
+    regimes:*:*) m=${s#regimes:}                               # one regime: regimes:<model>:<lwo|f25|f50|refit>
+                 $PY -m src.models.regimes --model "${m%%:*}" --only "${m#*:}" ;;
     regimes:*)   $PY -m src.models.regimes --model "${s#regimes:}" ;;
     *)           echo "unknown step $s" ;;
   esac || echo "!! step $s failed, continuing"

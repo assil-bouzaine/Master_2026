@@ -1397,3 +1397,13 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
     - *Machine (decided 2026-11-21).* Phase 4 and slice F run on Assil's Colab compute units
       (`scripts/colab_cpu.py`, the Kaggle runner on Colab; files through rclone), one runtime type for
       every arm of a contrast; Kaggle CPU is the fallback. The machine is recorded with every run.
+      *Made concrete the same evening (Assil: "use that ... speed up the process"), before the tag and
+      before any real-data arm:* the runs go through Google's Colab command-line tool
+      (`scripts/colab_cli.py`, no browser or Drive) on **TPU v5e1 runtimes** (measured: 24 vCPUs, AMD EPYC
+      7B13, 3.09 compute units per hour; the CPU-only alternatives have 8–12 vCPUs), **one CPU model for
+      every arm of every block**: a session whose CPU model differs is stopped before any fit. The fits are
+      executed by a dependency-aware queue (`scripts/p4_queue.py`) that runs **exactly the commands of the
+      dry run** of `scripts/run_v4_cpu.sh` (its test checks the identity), as soon as their inputs exist
+      (a refit after its R1 fit, an assembly after its five folds), possibly split over two sessions of
+      that runtime type (each dependency chain whole on one session); the order of execution changes, the commands, seeds and settings do not. The
+      black box (Gate 3 point 21) runs on an L4 GPU runtime.

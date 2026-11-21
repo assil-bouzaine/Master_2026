@@ -31,7 +31,7 @@ RELATIONS = ("pumping", "pumping_unattributed", "recharge", "recharge_unitwide",
 EXPECTED_GROUPS = (
     ("Hydrogeology", "HydrogeologicalUnit HydrogeologicalUnitGroup MultilayerAquiferSystem "
      "GroundwaterBody AlluvialAquifer KarstAquifer ConfiningUnit ElementaryPolygon StackLayer"),
-    ("Monitoring", "Piezometer MonitoringStation ObservationSeries"),
+    ("Monitoring", "Piezometer MonitoringStation ObservationSeries PressureStateSummary"),
     ("Abstraction", "AbstractionFacility Intake AnnualAbstractionRecord UnitAttribution SurfaceWaterIntake "
      "CanalIntakeGroup"),
     ("Surface water", "Watercourse RiverReach ReachPiece RiverSection RiverGauge GaugePool GaugeZoneRelation "

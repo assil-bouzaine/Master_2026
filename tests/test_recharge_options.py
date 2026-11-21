@@ -128,8 +128,13 @@ def test_b7_options():
         links = edges[edges["relation"] == relation]
         assert len(links) and not links.duplicated(["dst", "src"]).any() and links["weight"].gt(0).all()
         counts[relation] = links.groupby("dst")["src"].nunique()
-        np.testing.assert_allclose(links.groupby("dst")["weight"].sum(), 1.0, rtol=0, atol=1e-12)
-        print(f"  {relation}: {len(counts[relation])} wells, {len(links)} edges, weights sum to 1 per well")
+        # Gate 3 point 12: cells holding under 0.001 of an outcrop are dropped from the export (the
+        # graph keeps them), so a well's stored weights may sum to slightly under 1; routing
+        # renormalises them to 1 (src/kg/export.py docstring, weighted_weather below).
+        sums = links.groupby("dst")["weight"].sum()
+        assert ((sums > 0.99) & (sums <= 1 + 1e-12)).all(), sums[(sums <= 0.99) | (sums > 1 + 1e-12)]
+        print(f"  {relation}: {len(counts[relation])} wells, {len(links)} edges, weights sum to at most 1 "
+              f"per well (lowest {sums.min():.6f}: tiny cells dropped; routing renormalises)")
     comparisons = pd.DataFrame(counts).fillna(0)
     assert (comparisons["recharge_unitwide"] >= comparisons["recharge"]).all()
     wider = comparisons["recharge_unitwide"] > comparisons["recharge"]

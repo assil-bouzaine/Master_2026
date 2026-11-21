@@ -312,6 +312,26 @@ for s in $STEPS; do
                     done
                     waitall "${pids[@]}" || rc=1
                     exit "$rc" ) ;;
+    twin_shortcut_pilot)  # slice F, the planted shortcut (analysis plan §14 item 23): 3-world pilot,
+                  # seeds 900-902 (never reused), both protocols, arms C, D, T
+                  ( export PFE_THREADS=1; T="$PY -m src.models.twin"; pids=(); rc=0
+                    for w in 900 901 902; do
+                      $T --run twin_shortcut_pilot --variant F --far-share "${TWIN_FAR:-1}" --worlds "$w" \
+                        --fits free pooled:0.1:3000 &
+                      pids+=("$!")
+                    done
+                    waitall "${pids[@]}" || rc=1
+                    exit "$rc" ) ;;
+    twin_shortcut)  # slice F: 20 worlds paired with the base cell's seeds 0-19 (TWIN_FAR=2 if the pilot
+                  # has no world with wrong reasons for arm D under either protocol: item 23's rule)
+                  ( export PFE_THREADS=1; T="$PY -m src.models.twin"; pids=(); rc=0
+                    for part in 0-4 5-9 10-14 15-19; do
+                      $T --run twin_shortcut --variant F --far-share "${TWIN_FAR:-1}" --worlds "$part" \
+                        --fits free pooled:0.1:3000 &
+                      pids+=("$!")
+                    done
+                    waitall "${pids[@]}" || rc=1
+                    exit "$rc" ) ;;
     p4_B[1-8]|p4_B1c|p4_B2conv) p4_step "$s" ;;
     final:*)      $PY -m src.models.tune --model "${s#final:}" --final-only ;;   # v3 choice
     regimes:*)    $PY -m src.models.regimes --model "${s#regimes:}" ;;

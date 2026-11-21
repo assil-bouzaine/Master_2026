@@ -28,6 +28,9 @@
    disjoint true facilities and a cross-link in the arm, a well's input moves only through its own
    true facilities; the old plain-wide cut also moves it through the other well's. On a real world
    the truth's per-well cut equals its plain-wide cut (a well feels only its own true facilities).
+9. Variant F (item 23, the planted shortcut): the annulus facilities (10-25 km) are routed by no
+   arm; the drawdown carries the share phi of the real well's variance with a non-positive gain;
+   the other contributions are untouched and phi = 0 gives the base world bit for bit.
 8. Parallel manifest writers keep every world and session record (astra review point 14).
 """
 import json
@@ -212,6 +215,46 @@ def test_variants():
     print(f"  4. variants: S (dead time {d} weeks exactly, recharge >= 0), I (only {len(imp)} imputed years "
           f"changed, mean factor {factor:.3f}), O (group '{W.OMITTED_GROUP}', share {W.OMITTED_SHARE}), "
           f"timing independent (annual totals kept, one profile: {y1} = {y2})")
+
+
+def test_far_field():
+    """Variant F (analysis plan §14 item 23, a planted shortcut): the annulus facilities are routed
+    by no arm (C <= 10 km, D and the truth's pairs <= 5 km); the drawdown carries the share phi of the
+    real well's training variance and only lowers heads (more far-field pumping, lower heads); with
+    phi = 0 the world is the base world bit for bit (variant F uses its own random stream)."""
+    b = base()
+    tr = b["train"]
+    M = W.far_field_matrix(b)
+    far_fac = set(M.columns[(M.to_numpy() > 0).any(0)])
+    for arm, e in (("C", b["ec"]), ("D", b["ed"])):
+        routed = set(e.loc[e["relation"].isin(("pumping", "pumping_unattributed")), "src"])
+        assert not any((M.loc[w, f] > 0) for w, f in zip(e["dst"], e["src"])
+                       if f in far_fac and e is not None and f in routed and w in M.index), arm
+    w0 = W.make_world(b, 2, **W.BASE)
+    wF = W.make_world(b, 2, **dict(W.BASE, variant="F0.3"))
+    has = M.sum(1).to_numpy() > 0
+    sd_real = np.maximum(R.panel_arrays(b["P"], b["K"], w0["routed"]["truth"])["sd"][:, 0], R.SD_FLOOR)
+    share = wF["far"][:, tr].var(1) / sd_real ** 2
+    assert np.allclose(share[has], 0.3, rtol=1e-6) and (wF["far"][~has] == 0).all(), share[has][:5]
+    for k in ("recharge", "pumping", "river", "canal"):             # the other contributions untouched
+        assert np.array_equal(wF["contrib"][k], w0["contrib"][k]), k
+    # more far-field pumping never raises a head: a non-positive gain on a convolution with
+    # non-negative weights (a uniform scaling of the volumes is absorbed by the variance scaling, so
+    # the sign is checked on the gain and on the co-movement with the summed volumes)
+    data = R.panel_arrays(b["P"], b["K"], w0["routed"]["truth"])
+    far1, rec = W.far_field(b, b["vol"], data["group_of"], len(data["groups"]), tr, sd_real, 2, 0.3)
+    assert np.array_equal(far1, wF["far"]), "the world's far field is the documented computation"
+    assert (rec["gain"] <= 0).all() and (rec["gain"][has] < 0).all()
+    S = (b["vol"].to_numpy() @ M.to_numpy().T).T
+    corr = [np.corrcoef(far1[i, tr], S[i, tr])[0, 1] for i in np.where(has)[0]]
+    assert np.median(corr) < 0, np.median(corr)
+    wF0 = W.make_world(b, 2, **dict(W.BASE, variant="F0"))
+    assert np.array_equal(wF0["head"], w0["head"], equal_nan=True), "phi = 0 must give the base world"
+    r = wF["realised"]
+    assert r["core_with_far"] > 20 and np.isfinite(r["far_local_pumping_corr_median_core"])
+    print(f"  9. variant F: {len(far_fac)} annulus facilities routed by no arm; share 0.3 at {int(has.sum())} wells; "
+          f"never raises a head; phi = 0 is the base world; median correlation with local pumping "
+          f"{r['far_local_pumping_corr_median_core']:.2f}, explained share {r['far_explained_median_core']:.2f}")
 
 
 def test_reproducible():

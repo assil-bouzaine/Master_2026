@@ -1369,15 +1369,22 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       dataset's groundwater facilities at more than 10 km and at most 25 km from it, which no arm routes
       (C: ≤ 10 km, D and the truth's pumping pairs: ≤ 5 km) and the oracle T does not see either:
       s_far,i(t) = Σ_f V_f(t) over those facilities (the weekly volumes the learners see), a Gamma
-      response with a mean lag drawn like recharge's (8–40 weeks, group mean and well deviation), a
-      non-positive gain scaled so that its training variance is **φ = 0.3** of the real well's, added on
-      top of the other contributions like variant O's driver. Regional and local pumping share their
+      response with a mean lag drawn like local pumping's (2–12 weeks, group mean and well deviation),
+      a non-positive gain scaled so that its training variance is **φ = 1.0** of the real well's, added
+      on top of the other contributions like variant O's driver. Regional and local pumping share their
       usage profiles and their year-to-year totals, so a learner can credit local pumping for the
       regional drawdown: accurate heads with a wrong pumping contribution. Cell: the base (ε = 0.1,
-      u = 0.3, π = 0.3, ν = 0.25, timing reconstructed); both protocols; arms C, D, T; 20 worlds after a
-      3-world pilot. **Rule fixed now:** if the pilot has no world with wrong reasons for arm D under
-      either protocol, the 20 worlds use φ = 0.6 instead (the slice exists to provide positive cases;
-      the pilot worlds are not reused). Reported: score 6 per arm and protocol, test 2's detection and
+      u = 0.3, π = 0.3, ν = 0.25, timing reconstructed); both protocols; arms C, D, T; 20 worlds (seeds
+      0–19, paired with the base cell's) after a 3-world pilot (seeds 900–902, not reused). **Rule fixed
+      now:** if the pilot has no world with wrong reasons for arm D under either protocol, the 20 worlds
+      use φ = 2.0 instead (the slice exists to provide positive cases). *Revised the same day, before any
+      F world was fitted, from generator diagnostics only* (3 seeds, `tests/test_twin.py` check 8): the
+      first draft (a recharge-like lag of 8–40 weeks, φ = 0.3) gave the drawdown a median correlation
+      of only 0.16–0.55 with the true local pumping contribution, too weak for a learner to confuse them
+      (2–12 weeks: 0.88–0.96; pressure travels fast in confined layers), and at φ = 0.3 even a complete
+      transfer to the pumping contribution would leave its drought recovery error at about 0.33–0.36,
+      under score 6's 0.5 (φ = 1.0: 0.49–0.54, the drawdown then explaining about a quarter of the
+      noise-free head's variance). Reported: score 6 per arm and protocol, test 2's detection and
       false-alarm rates with the grid's τ, score 5 (the expected failure: the right sign with an
       overestimated size). Read alone against the base cell, like every slice. Test 3 (rewiring) is not
       run on the twin: its power stays uncalibrated and its real-data result is read as a control

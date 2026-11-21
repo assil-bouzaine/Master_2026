@@ -30,7 +30,9 @@ Dials:
     variant  None, or one of: "I" hidden year-to-year variation where pumping is imputed, "O" an
              omitted slow driver in one aquifer group, "S" responses the model does not have
              (recharge only above a threshold, pumping delayed by a dead time), "G" the truth's
-             recharge, river and canal edges are arm C's instead of arm D's
+             recharge, river and canal edges are arm C's instead of arm D's, "F<phi>" a planted
+             shortcut: a drawdown from the facilities 10-25 km from the well, which no arm routes,
+             carrying the share phi of the well's variance (analysis plan §14 item 23)
 
 Truth graph: recharge, river and canal edges are arm D's (arm C's in variant G); a well without a
 recharge edge in D gets its own cell, arm C's edge (the graph's silence is not absence of recharge,
@@ -79,6 +81,11 @@ SHARE_RIVER = SHARE_CANAL = 0.1
 MIN_RECHARGE_SHARE = 0.2
 AR_RANGE = (0.8, 0.97)
 OMITTED_SHARE, OMITTED_GROUP = 0.15, "Pliocene multilayer"
+# variant F (item 23, a planted shortcut): facilities more than 10 km and at most 25 km from the well
+# (arm C routes <= 10 km, arm D and the truth's pumping pairs <= 5 km), a response like local pumping's
+# (pressure travels fast in confined layers; a recharge-like 8-40 weeks gave a correlation of only
+# 0.16-0.55 with the local pumping contribution, 2-12 weeks 0.88-0.96), share phi = 1.0 by default
+FAR_KM, FAR_LAG_WEEKS, FAR_SHARE = (10.0, 25.0), LAG_WEEKS["pumping"], 1.0
 THRESHOLD_Q, DEAD_WEEKS = 0.60, 8
 CUT = 0.20                      # the controlled intervention: true-edge facilities -20 % in the drought
 GRID = {"eps": (0.0, 0.1, 0.25, 0.5), "u": (0.0, 0.3, 0.6)}
@@ -88,7 +95,7 @@ SLICES = ({"pi": 0.1}, {"pi": 0.5}, {"nu": 1.0}, {"timing": "independent"},
 ARMS = ("C", "D", "T")
 OTHER = ("recharge", "river", "canal")
 PAIR = ["src", "dst", "weight", "distance_m"]
-STREAM = {"params": 1, "u": 2, "eps": 3, "hidden": 4, "omitted": 5, "noise": 6}
+STREAM = {"params": 1, "u": 2, "eps": 3, "hidden": 4, "omitted": 5, "noise": 6, "far": 7}
 CONV = "fft"            # the learner's convolution (src/models/response.py --conv; same numbers, faster)
 RIVER_RULE = "legacy"   # the river gap rule of every world (src/models/features.py river_series), pinned
 
@@ -281,6 +288,46 @@ def truth_contributions(X, a, n, f, K, variant=None, train=None, gain=None):
     return c if gain is None else c * gain[:, :, None]
 
 
+def far_field_matrix(base, km=FAR_KM):
+    """(wells, facilities) 0/1 table: the dataset's groundwater facilities at more than km[0] and at
+    most km[1] kilometres from each well (variant F). Columns follow the volume table."""
+    from src.kg.export import _dist, tables
+    wells, fac, _, _ = tables()
+    w = wells.set_index("code_bss").loc[base["codes"]].reset_index()
+    fac = fac[fac["code_ouvrage"].isin(base["vol"].columns)].reset_index(drop=True)
+    d = _dist(w, fac) / 1000.0
+    m = pd.DataFrame(((d > km[0]) & (d <= km[1])).astype(float), index=base["codes"],
+                     columns=fac["code_ouvrage"])
+    return m.reindex(columns=base["vol"].columns, fill_value=0.0)
+
+
+def far_field(base, vol, group_of, n_groups, train, sd_real, seed, phi):
+    """Variant F: the truth's drawdown from far-field pumping, (N, T) metres, and its record. The
+    weekly volumes of the annulus facilities (those the learners see) are summed per well, scaled and
+    padded like every input, convolved with a Gamma response drawn like local pumping's (a group mean
+    lag log-uniform in FAR_LAG_WEEKS, a well deviation), and given a non-positive gain so that their
+    training variance is phi times the real well's. No arm routes these facilities and the oracle T
+    does not see them, as for variant O's driver."""
+    K, N = base["K"], len(base["codes"])
+    M = far_field_matrix(base)
+    S = (vol.to_numpy() @ M.to_numpy().T).T / R.SCALE["pump_gw"]          # (N, T)
+    mean = np.where(train[None], S, np.nan)
+    mean = np.nan_to_num(np.nanmean(mean, axis=1, keepdims=True))
+    X = np.concatenate([np.repeat(mean, K - 1, axis=1), S], axis=1)[:, None, :]   # (N, 1, T + K - 1)
+    rng = _gen(seed, "far")
+    lo, hi = FAR_LAG_WEEKS
+    lag = np.exp(rng.uniform(np.log(lo), np.log(hi), n_groups))[group_of] * np.exp(rng.normal(0.0, WELL_SD, N))
+    n = np.clip(rng.uniform(*SHAPE, n_groups)[group_of] * np.exp(rng.normal(0, 0.1, N)), *SHAPE)
+    a = np.clip(lag / n, R.A_MIN * 1.01, R.A_MAX * 0.99)
+    kern = R.ResponseModel(np.zeros(N, dtype=int), 1, "free", K).kernels(
+        torch.as_tensor(a[:, None], dtype=torch.float32), torch.as_tensor(n[:, None], dtype=torch.float32))
+    unit = _convolve(torch.as_tensor(X, dtype=torch.float32), kern).numpy().astype(np.float64)[:, 0]
+    sd_unit = unit[:, train].std(1)
+    gain = np.where(sd_unit > 0, -np.sqrt(phi) * sd_real / np.where(sd_unit > 0, sd_unit, 1.0), 0.0)
+    rec = {"facilities": M.sum(1).to_numpy(), "a": a, "n": n, "gain": gain}
+    return unit * gain[:, None], rec
+
+
 def make_world(base, seed, eps=0.1, u=0.3, pi=0.3, nu=0.25, timing="reconstructed", variant=None):
     """One world (one seed, one cell of dials)."""
     codes, weeks, K, train = base["codes"], base["weeks"], base["K"], base["train"]
@@ -320,7 +367,11 @@ def make_world(base, seed, eps=0.1, u=0.3, pi=0.3, nu=0.25, timing="reconstructe
         rw = np.cumsum(_gen(seed, "omitted").normal(0, 1, len(weeks)))
         rw = (rw - rw[train].mean()) / rw[train].std()
         omitted[in_g] = (np.sqrt(OMITTED_SHARE) * clean[in_g][:, train].std(1))[:, None] * rw[None]
-    signal = clean + omitted
+    far, far_rec = np.zeros_like(clean), None
+    if variant is not None and variant.startswith("F"):          # the planted shortcut (item 23)
+        far, far_rec = far_field(base, vol_truth, group_of, len(groups), train, sd_real, seed,
+                                 float(variant[1:]))
+    signal = clean + omitted + far
     g = _gen(seed, "noise")
     phi = g.uniform(*AR_RANGE, len(codes))
     e = g.normal(0, 1, signal.shape)
@@ -348,10 +399,21 @@ def make_world(base, seed, eps=0.1, u=0.3, pi=0.3, nu=0.25, timing="reconstructe
                 "core_with_attributed_pumping": int((core & (rec["attributed"].to_numpy() > 0)).sum()),
                 "core_with_river": int((core & (share[:, 2] > 0)).sum()),
                 "core_with_canal": int((core & (share[:, 3] > 0)).sum())}
+    if far_rec is not None:
+        with np.errstate(invalid="ignore", divide="ignore"):
+            far_explained = far[:, train].var(1) / signal[:, train].var(1)
+            corr = np.array([np.corrcoef(far[i, train], contrib[i, 1][train])[0, 1]
+                             if far[i, train].std() > 0 and contrib[i, 1][train].std() > 0 else np.nan
+                             for i in range(len(codes))])
+        realised |= {"far_explained_median_core": _nanmed(far_explained[core]),
+                     "far_facilities_median_core": float(np.median(far_rec["facilities"][core])),
+                     "far_local_pumping_corr_median_core": _nanmed(corr[core]),
+                     "core_with_far": int((core & (far_rec["facilities"] > 0)).sum())}
     return {"seed": seed, "dials": {"eps": eps, "u": u, "pi": pi, "nu": nu, "timing": timing, "variant": variant},
             "codes": codes, "weeks": weeks, "split": data["split"], "core": core,
             "group_of": group_of, "groups": groups, "head": head, "clean": level + signal,
-            "contrib": {s: contrib[:, r] for r, s in enumerate(TRUTH)}, "omitted": omitted, "noise": noise,
+            "contrib": {s: contrib[:, r] for r, s in enumerate(TRUTH)}, "omitted": omitted, "far": far,
+            "noise": noise,
             "level": level[:, 0], "params": {"a": a, "n": n, "f": f, "gain": gain, "share": share, "phi": phi},
             "routed": routed, "edges": edges, "vol": vol, "vol_truth": vol_truth, "draws": rec,
             "realised": realised, "river_rule": base["river_rule"]}
@@ -662,8 +724,9 @@ def cells(args):
         return [dict(BASE, eps=e, u=u) for e in GRID["eps"] for u in GRID["u"]]
     if args.slices:
         return [dict(BASE, **s) for s in SLICES]
+    variant = f"F{args.far_share:g}" if args.variant == "F" else args.variant   # phi in the cell's tag
     return [{"eps": args.eps, "u": args.u, "pi": args.pi, "nu": args.nu, "timing": args.timing,
-             "variant": args.variant}]
+             "variant": variant}]
 
 
 def main():
@@ -677,7 +740,9 @@ def main():
     ap.add_argument("--pi", type=float, default=BASE["pi"])
     ap.add_argument("--nu", type=float, default=BASE["nu"])
     ap.add_argument("--timing", choices=["reconstructed", "independent"], default=BASE["timing"])
-    ap.add_argument("--variant", choices=["I", "O", "S", "G"], default=None)
+    ap.add_argument("--variant", choices=["I", "O", "S", "G", "F"], default=None)
+    ap.add_argument("--far-share", type=float, default=FAR_SHARE,
+                    help="variant F: the far-field drawdown's share of the well's variance (item 23)")
     ap.add_argument("--fits", nargs="+", default=["free", "pooled:0.01"],
                     help="learner settings: free, pooled:<λ>, pooled:<λ>:<fixed steps>, each with "
                          "an optional +none or +soft<λ_s> (RQ2; default hard)")

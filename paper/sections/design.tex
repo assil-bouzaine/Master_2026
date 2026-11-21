@@ -50,8 +50,70 @@ the map were fixed before any world was read. A cell \emph{pays} when the median
 its worlds is at most $-0.05$, the smallest effect of interest proposed for the real-data contrasts,
 and its 97.5\,\% quantile is below zero. % SESOI: Gate 3 point 3
 
-\subsection{Real-data contrasts}
-% TODO: specify the comparisons, controls and pumping sensitivities.
+\subsection{Real-data contrasts}\label{sec:contrasts}
+% Sources: docs/phase4_runs.md; docs/gate3_decisions.md (points 1–4, 6–14, 18–21);
+% docs/analysis_plan.md §4, §8, §10, §14 items 18, 20, 23. Written before any Phase 4 run.
 
-\subsection{Metrics and statistics}
-% TODO: specify the metrics, paired support, uncertainty and multiplicity.
+Eight pre-registered blocks (B1--B8) plus a converged explanation block (B2conv) share one pooled
+response-model backbone (\cref{sec:models}), so each primary contrast varies one factor. RQ1 tests
+knowledge in two forms: as \emph{information} in B1, comparing knowledge-graph facts plus dataset
+attributes (arm~B) against dataset attributes alone (arm~A) as static inputs at rung~3
+(\cref{sec:ladder}), read mainly on left-out wells; and as \emph{structure}, primarily by routing
+in B2 (arm~D's knowledge-graph links against arm~C's distance rules at rung~4) and secondarily by
+message passing at rung~5 in B5. Two controls guard RQ1: B1c replaces arm~B's facts with random
+name tags or shuffled facts drawn per start \citep{Heudorfer2024On}; B3 replaces arm~D's edges with
+degree-preserving rewiring ($E_{\mathrm{degree}}$), distance-matched rewiring ($E_{\mathrm{distance}}$,
+a locality control for pumping only), random graphs ($F_{\mathrm{random}}$, five draws each) and
+the complete graph ($F_{\mathrm{complete}}$).
+
+RQ2 is tested on arm~D in B4: hard signs by construction (recharge $\ge 0$, attributed and
+unattributed pumping $\le 0$, river $\ge 0$ at the three eligible wells, canal free;
+\cref{sec:signs}), no signs (none), and soft penalties on the declared grid
+$\lambda_s \in \{1, 10, 100\}$. Per reconstruction, validation selects the strongest $\lambda_s$
+whose R1 median core NSE lies within one same-arm band half-width of the best grid score (reused in
+R2), reporting all three as a dose--response. Three sensitivity blocks follow: B6 reruns D versus C
+with confident pump links only and with all links alongside the main policy (\cref{sec:kg-export});
+B7 replaces arm~D's main recharge input (rain minus a fitted share of evapotranspiration over local
+outcrops) with unit-wide outcrops, soil drainage, or effective rain as is, and adds a soft canal
+prior ($\lambda_s = 10$); B8 adds a bounded fixed seasonal residual (day-of-year harmonics, seeing no
+stress so hard signs hold) with and without on rungs~3--5.
+
+Contrasts span R1, R2 (\nDataFolds{} grouped leave-wells-out folds), R3 (\SI{25}{\percent} and
+\SI{50}{\percent} windows) and a train-plus-validation refit in B1, B1c and B2 (R1--R2 in B3--B6;
+R1 in B2conv, B7, B8; \cref{sec:periods}). Primary blocks (B1, B2, B2conv, B4) run under all three
+pumping reconstructions of \cref{sec:inputs}; a conclusion must hold under all three. Two fitting
+protocols carry fixed roles: early stopping on validation ($\lambda = 0.01$) for accuracy contrasts
+(B1--B8), and converged pooling ($\lambda = 0.1$, 3,000 fixed steps; B2conv) for explanation claims
+(RQ3--RQ4; \cref{sec:twin}). Every run uses 10 starts on one machine type for every arm of a
+contrast. Confirmatory families, pre-specified on the drought benchmark, are RQ1 (B versus A, D
+versus C) and RQ2 (soft versus none, hard versus none); all other contrasts (B1c, B3, B5--B8,
+secondary regimes, subgroups) are exploratory.
+
+\subsection{Metrics and statistics}\label{sec:metrics}
+% Sources: docs/analysis_plan.md §1, §2, §6, §14 items 18, 23; docs/gate3_decisions.md (points 3, 14);
+% src/analysis/stats.py; src/dataset/placeholders.py. Written before any Phase 4 run.
+
+The primary contrast measure is, per core well (\nDataCoreWells{} wells), the log ratio of
+drought-phase RMSEs, $\log(\mathrm{RMSE}_a / \mathrm{RMSE}_b)$ (negative favours arm~$a$),
+summarised by its median over core wells. Because NSE and skill differences always share sign,
+testing one ratio avoids splitting multiplicity; median NSE \citep{Nash1970River}, skill against
+training climatology \citep{Schaefli2007Do}, datum-free KGE$''$ \citep{Tang2021Sc} and RMSE remain
+in every table as descriptions. Drought and recovery phases follow \cref{sec:periods}
+(\cref{tab:periods}); recovery scores remain secondary and provisional.
+
+Spatial dependence is handled by grouping core wells into \baselineClusterCount{} Lambert-93 cells
+of \SI{10}{km}. Effect sizes come first: the median paired log RMSE ratio and its \SI{95}{\percent}
+cluster-bootstrap interval (4,000 resamples). Hypotheses use an exact two-sided cluster sign-flip
+test over all sign patterns of the \baselineClusterCount{} clusters (smallest attainable $p = 2/2^{14} \approx 1.2\times10^{-4}$),
+Holm-adjusted within each confirmatory family (two tests per family). A claim requires
+$p_{\mathrm{Holm}} < 0.05$ and a bootstrap interval excluding zero; grid-size and shift
+sensitivities accompany the \SI{10}{km} test.
+
+The smallest effect of interest is \SI{5}{\percent} less error (log ratio $-0.05$), classifying
+each primary contrast as detected, compatible with no effect larger than the interval's end, or
+undecided. Beside each primary contrast sits its same-arm band from random disjoint five-start
+halves of the 10 starts (both arms pooled); differences inside it are indistinguishable from
+training noise. Every contrast requires paired support (the same wells and weeks for both arms,
+strictly enforced for primary contrasts), and runs of at least 28 days at depth \SI{0.00}{m} are
+masked as placeholder weeks from every scored variant (one core well, 60 drought weeks), with the
+unmasked primary table also reported.

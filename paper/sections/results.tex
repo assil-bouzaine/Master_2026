@@ -45,6 +45,65 @@ cell that pays would be outlined; none does.}
 \label{fig:twin-map}
 \end{figure}
 
+\subsection{Baselines and the forecasting reference}\label{sec:res-baselines}
+% Numbers: \baseline... macros of paper/tables/baselines_numbers.tex (paper/tools/baseline_tables.py,
+% from src/analysis/baseline_report.py on v4); full tables are docs/results_baselines_v4.md.
+
+All baseline results are exploratory, because the test period was examined during model development
+and error diagnosis. \Cref{tab:baselines-simulation} reports the simulation baselines over the
+\nDataCoreWells{} core wells. In the drought phase, the climatology floor has a median NSE of
+\baselineClimatologyDroughtNSE{} (zero skill by definition). The hydrology reference of record,
+Pastas \citep{Collenteur2019Pastas} built from training heads only with each well's start chosen by
+the frozen training-RMSE rule, reaches drought NSE \baselinePastasDroughtNSE{} and skill
+\baselinePastasDroughtSkill{}. Every tuned learned baseline improves on both: the five single
+architectures span drought NSE \baselineEALSTMDroughtNSE{} (EA-LSTM) to \baselineLSTMDroughtNSE{}
+(LSTM; distance-graph ST-GNN \baselineDistanceSTGNNDroughtNSE{}) and skill
+\baselineEALSTMDroughtSkill{} to \baselineLSTMDroughtSkill{} (distance-graph ST-GNN
+\baselineDistanceSTGNNDroughtSkill{}), while the validation-selected ensemble reaches drought NSE
+\baselineEnsembleDroughtNSE{} (skill \baselineEnsembleDroughtSkill{}).
+
+The Pastas reference is sensitive to its optimisation starting values. Refitted per well from
+\baselinePastasStarts{} starting values (training heads only), its core-well median drought NSE
+spans \baselinePastasStartMinDroughtNSE{} to \baselinePastasStartMaxDroughtNSE{}, with a median
+per-well range of \baselinePastasWellRangeMedian{}; the frozen rule yields
+\baselinePastasDroughtNSE{}. In the spatially clustered sign-flip test over
+\baselineClusterCount{} grid cells of \SI{10}{km} (Holm-adjusted across models), only the ensemble
+outperforms the reference of record on drought NSE (median paired difference
+\baselineEnsembleDiffDroughtNSE{}, $p_{\mathrm{Holm}} = \baselineEnsemblePHolmDroughtNSE$; on
+drought skill both the ensemble, $p_{\mathrm{Holm}} = \baselineEnsemblePHolmDroughtSkill$, and the
+distance-graph ST-GNN, $p_{\mathrm{Holm}} = \baselineDistanceSTGNNPHolmDroughtSkill$, pass).
+Repeating the drought-NSE cluster test against each of the \baselinePastasStarts{} individual
+starts confirms this: the ensemble passes ($p_{\mathrm{Holm}} < 0.05$) against
+\baselineEnsembleStartsPass{} of \baselinePastasStarts{} starts
+($p_{\mathrm{Holm}} \le \baselineEnsembleStartsMaxPHolm$), whereas the five tuned single models
+pass against only \baselineSingleStartsPassMin{} to \baselineSingleStartsPassMax{} of the
+\baselinePastasStarts{} starts.
+
+Across the generalisation regimes, leaving out monitored wells in the five spatial folds (R2)
+hurts every tuned model sharply: median drought NSE drops to between
+\baselineRegimeTwoMinDroughtNSE{} and \baselineRegimeTwoMaxDroughtNSE{}, and drought skill to
+between \baselineRegimeTwoMinDroughtSkill{} and \baselineRegimeTwoMaxDroughtSkill{}. By contrast,
+training on \SI{50}{\percent} or \SI{25}{\percent} of the training period (R3) costs little,
+leaving drought skill between \baselineRegimeThreeMinDroughtSkill{} and
+\baselineRegimeThreeMaxDroughtSkill{} and drought NSE between \baselineRegimeThreeMinDroughtNSE{}
+and \baselineRegimeThreeMaxDroughtNSE{}.
+
+\Cref{tab:baselines-forecast} turns to the forecasting hindcast, where past observed heads up to
+the issue week are available alongside reconstructed forcings and predictions are scored at
+\num{4} and \num{12} weeks against anomaly persistence. Chronos-2 \citep{Ansari2025Chronos} leads at
+both horizons during the drought: at \num{4} weeks, \baselineChronosFourVariant{} reaches drought
+NSE \baselineChronosFourDroughtNSE{} (skill \baselineChronosFourDroughtSkill{}), ahead of anomaly
+persistence (\baselineAnomalyPersistenceFourDroughtNSE{}) and LightGBM
+(\baselineLightGBMFourDroughtNSE{}); at \num{12} weeks, \baselineChronosTwelveVariant{} reaches
+\baselineChronosTwelveDroughtNSE{} (skill \baselineChronosTwelveDroughtSkill{}), against
+\baselineAnomalyPersistenceTwelveDroughtNSE{} for anomaly persistence and
+\baselineLightGBMTwelveDroughtNSE{} for LightGBM. These scores set the forecasting reference when
+recent heads are known; they do not address the head-free simulation task for which the
+ontology-guided hybrid is built.
+
+\input{tables/baselines_simulation}
+\input{tables/baselines_forecast}
+
 \subsection{Real data: the ladder and the graph arms}
 % TODO: present the ladder, arm contrasts and control results.
 

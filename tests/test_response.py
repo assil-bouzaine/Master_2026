@@ -19,6 +19,11 @@
    training on data with right signs leaves fewer wrong signs than without it.
 8. --conv fft gives the contributions and the gradients of the direct convolution (float
    precision), for every stress set.
+9. --residual seasonal (Gate 3 point 20): off-state leaves state-dict keys and outputs unchanged;
+   bound |r| < 0.25 sd; identical every year for equal day of year; starts at 0 matching the model
+   without residual; response signs hold under structure and gate3 with residual on; exact
+   decomposition including residual (and after merge_river_slots); a short toy fit reduces training
+   loss on heads carrying a fixed seasonal term the stresses cannot make.
 """
 import numpy as np
 import torch
@@ -483,6 +488,177 @@ def test_statics_heldout_wells():
         nse[name] = np.mean([1 - ((p[i] - y[i]) ** 2).sum() / ((y[i] - y[i].mean()) ** 2).sum()
                              for i in np.where(held)[0]])
     assert nse["facts"] > 0.9 and nse["facts"] > nse["group only"] + 0.05, nse
+
+
+def test_residual_none_bound_repeat_start():
+    """--residual none keeps the exact old state-dict keys and outputs; --residual seasonal starts
+    at 0 (identical predictions to none), respects |r| < 0.25 sd for random coefficients (and
+    never exceeds 0.25 sd even under extreme float32 saturation), and repeats identically for equal
+    day of year across years."""
+    import pandas as pd
+    N, T, K = 6, 160, 40
+    X = tt(toy_inputs(N, T, K, seed=7))
+    weeks = pd.date_range("2010-01-03", periods=T, freq="W")
+    sd = np.array([0.0002, 0.05, 0.5, 1.0, 2.5, 4.0], dtype=np.float32)
+    sd_safe = np.maximum(sd, R.SD_FLOOR)
+    bound = R.RESIDUAL_BOUND_SD * sd_safe
+    # 1. residual="none" matches calling the constructor without the new argument
+    g0, g1, g2 = (torch.Generator().manual_seed(9) for _ in range(3))
+    base = R.ResponseModel(np.arange(N) % 2, 2, "pooled", kernel_weeks=K, amax=20.0, init_sd=1.0,
+                           generator=g0, pumping="arm")
+    off = R.ResponseModel(np.arange(N) % 2, 2, "pooled", kernel_weeks=K, amax=20.0, init_sd=1.0,
+                          generator=g1, pumping="arm", residual="none")
+    assert list(base.state_dict().keys()) == list(off.state_dict().keys())
+    assert not any(k.startswith("res_") for k in off.state_dict())
+    assert off.residual() is None and off.residual_penalty().item() == 0.0
+    with torch.no_grad():
+        assert torch.equal(base(X), off(X))
+    # 4. start: res_coef is 0, residual is 0, predictions match base identically
+    on = R.ResponseModel(np.arange(N) % 2, 2, "pooled", kernel_weeks=K, amax=20.0, init_sd=1.0,
+                         generator=g2, pumping="arm", residual="seasonal",
+                         residual_basis=R.seasonal_basis(weeks), residual_bound=bound)
+    assert "res_bound" in dict(on.named_buffers()) and "res_bound" not in dict(on.named_parameters())
+    assert on.res_coef.shape == (N, 4) and on.res_coef.abs().max().item() == 0.0
+    assert on.residual_penalty().item() == 0.0
+    with torch.no_grad():
+        assert on.residual().abs().max().item() == 0.0
+        assert torch.equal(on(X), base(X))
+    # 2. bound: |r| < 0.25 sd for random coefficients (float64 check for huge scales too)
+    rng = torch.Generator().manual_seed(13)
+    for scale in (0.5, 2.0):
+        with torch.no_grad():
+            on.res_coef.copy_(torch.randn(N, 4, generator=rng) * scale)
+            r = on.residual().numpy()
+        assert (np.abs(r) < bound[:, None]).all(), (scale, (np.abs(r) / bound[:, None]).max())
+    with torch.no_grad():
+        on.res_coef.copy_(torch.randn(N, 4, generator=rng) * 1e4)
+        r_big = on.residual().numpy()
+        # float32 tanh saturates at 1.0 for |z| >= 10, so |r| never exceeds 0.25 sd
+        assert (np.abs(r_big) <= bound[:, None]).all()
+    assert abs(on.residual_penalty().item() - on.res_coef.detach().pow(2).mean().item()) < 1e-4
+    # 3. same every year: equal day of year -> identical residual
+    repeat_dates = pd.to_datetime(["2010-03-15", "2011-03-15", "2014-03-15", "2010-09-20", "2013-09-20"])
+    rep = R.ResponseModel(np.arange(N) % 2, 2, "free", kernel_weeks=K, amax=20.0,
+                          residual="seasonal", residual_basis=R.seasonal_basis(repeat_dates),
+                          residual_bound=bound)
+    with torch.no_grad():
+        rep.res_coef.copy_(torch.randn(N, 4, generator=torch.Generator().manual_seed(17)) * 1.5)
+        rr = rep.residual().numpy()
+    assert np.array_equal(rr[:, 0], rr[:, 1]) and np.array_equal(rr[:, 0], rr[:, 2])
+    assert np.array_equal(rr[:, 3], rr[:, 4]) and not np.allclose(rr[:, 0], rr[:, 3])
+
+
+def test_residual_signs_and_decomposition():
+    """With --residual seasonal on, finite-difference signs of both structure and gate3 hold (the
+    residual never moves when a stress moves), and seed_outputs preserves the exact decomposition
+    d + sum(contrib columns including residual) = prediction, including after merge_river_slots."""
+    import pandas as pd
+    N, T, K = 6, 160, 40
+    X0 = toy_inputs(N, T, K, seed=4)
+    weeks = pd.date_range("2010-01-03", periods=T, freq="W").to_numpy()
+    sd = np.repeat(np.array([0.4, 0.8, 1.2, 1.6, 2.0, 0.6], dtype=np.float64)[:, None], T, 1)
+    bound = R.RESIDUAL_BOUND_SD * np.maximum(sd[:, 0], R.SD_FLOOR)
+    basis = R.seasonal_basis(weeks)
+    codes = [f"w{i}" for i in range(N)]
+    # A. arm + structure signs
+    g = torch.Generator().manual_seed(2)
+    net = R.ResponseModel(np.arange(N) % 2, 2, "free", kernel_weeks=K, amax=20.0, init_sd=1.5,
+                          generator=g, pumping="arm", residual="seasonal",
+                          residual_basis=basis, residual_bound=bound)
+    with torch.no_grad():
+        net.res_coef.copy_(torch.randn(N, 4, generator=torch.Generator().manual_seed(21)) * 1.2)
+        base = net(tt(X0)).numpy()
+        r0 = net.residual().numpy().copy()
+    for name, sign in (("rain", 1), ("ETP", -1), ("pump_gw", -1), ("pump_un", -1), ("river", 1), ("canal", 1)):
+        X2 = {k: v.copy() for k, v in X0.items()}
+        X2[name][:, 60:] += 1.0
+        with torch.no_grad():
+            d = net(tt(X2)).numpy() - base
+            r1 = net.residual().numpy()
+        assert np.array_equal(r0, r1), f"residual moved when {name} changed"
+        assert (sign * d >= -1e-5).all() and (sign * d).max() > 0, name
+    data = {"codes": codes, "weeks": weeks, "X": X0, "head": np.zeros((N, T)), "mu": np.zeros((N, T)),
+            "sd": sd, "groups": ["a", "b"], "group_of": np.arange(N) % 2}
+    pz, c, p = R.seed_outputs(net, data)
+    assert "residual" in c.columns and set(("residual_bound_m", *R.RESIDUAL_COLS)) <= set(p.columns)
+    assert np.allclose(c["residual"].to_numpy(), r0.reshape(-1), atol=1e-6)
+    assert np.allclose(p["residual_bound_m"].to_numpy(), bound, atol=1e-6)
+    assert np.allclose(p[list(R.RESIDUAL_COLS)].to_numpy(), net.res_coef.detach().numpy(), atol=1e-6)
+    sum_c = c.drop(columns=["code_bss", "week"]).sum(1).to_numpy().reshape(N, T)
+    assert np.allclose(pz * sd, net.d.detach().numpy()[:, None] + sum_c, atol=1e-5)
+    # B. arm_gate3 + gate3 signs + merge_river_slots
+    mask_wells = {"w0", "w3"}
+
+    def split(X):
+        return R.split_river({"codes": codes, "X": {k: v.copy() for k, v in X.items()}}, mask_wells)
+
+    gdata = split(X0)
+    g = torch.Generator().manual_seed(5)
+    gnet = R.ResponseModel(np.arange(N) % 2, 2, "pooled", kernel_weeks=K, amax=20.0, init_sd=1.5,
+                           generator=g, pumping=R.GATE3_STRESSES, signs="gate3",
+                           residual="seasonal", residual_basis=basis, residual_bound=bound)
+    with torch.no_grad():
+        gnet.delta[:, :6] = torch.tensor([[-2.0, 2.0, 1.5, -3.0, -1.0, -0.5],
+                                          [1.0, -1.0, 0.5, 2.0, 0.7, 0.4],
+                                          [-0.5, 0.5, -2.0, -1.0, -1.5, 1.2],
+                                          [0.3, 1.0, 1.0, -2.0, 1.0, -1.0],
+                                          [2.0, -2.0, 0.0, 0.5, -0.2, 0.3],
+                                          [-1.0, 0.0, -1.0, 1.0, 0.9, -0.8]])
+        gnet.res_coef.copy_(torch.randn(N, 4, generator=torch.Generator().manual_seed(22)) * 1.2)
+        gbase = gnet(tt(gdata["X"])).numpy()
+        gr0 = gnet.residual().numpy().copy()
+    m = gdata["river_c_mask"]
+    for name, sign, wells in (("rain", 1, slice(None)), ("ETP", -1, slice(None)), ("pump_gw", -1, slice(None)),
+                              ("pump_un", -1, slice(None)), ("river", 1, m)):
+        X2 = {k: v.copy() for k, v in X0.items()}
+        X2[name][:, 60:] += 1.0
+        with torch.no_grad():
+            d = gnet(tt(split(X2)["X"])).numpy() - gbase
+        assert (sign * d[wells] >= -1e-5).all() and (sign * d[wells]).max() > 0, name
+    gdata |= {"weeks": weeks, "head": np.zeros((N, T)), "mu": np.zeros((N, T)),
+              "sd": sd, "groups": ["a", "b"], "group_of": np.arange(N) % 2}
+    gpz, gc, gp = R.seed_outputs(gnet, gdata)
+    assert "river_c" not in gc.columns and "residual" in gc.columns
+    assert "river_constrained" in gp.columns and set(("residual_bound_m", *R.RESIDUAL_COLS)) <= set(gp.columns)
+    assert np.allclose(gc["residual"].to_numpy(), gr0.reshape(-1), atol=1e-6)
+    gsum = gc.drop(columns=["code_bss", "week"]).sum(1).to_numpy().reshape(N, T)
+    assert np.allclose(gpz * sd, gnet.d.detach().numpy()[:, None] + gsum, atol=1e-5)
+
+
+def test_residual_toy_fit():
+    """On heads carrying a fixed seasonal term the stresses cannot make, a short toy fit with
+    --residual seasonal reduces the training loss far below the model without residual, and
+    respects the residual bound and pooled penalty."""
+    import pandas as pd
+    N, T, K = 4, 200, 30
+    weeks = pd.date_range("2010-01-03", periods=T, freq="W").to_numpy()
+    basis = R.seasonal_basis(weeks)
+    # constant stresses: the response convolutions are constant and cannot produce a seasonal wave
+    X = {k: np.zeros((N, T + K - 1), dtype=np.float32) for k in ("rain", "ETP", "PE", "pump_gw", "canal")}
+    sd = np.repeat(np.array([1.0, 1.5, 2.0, 0.8])[:, None], T, 1)
+    true_coef = np.array([[0.6, -0.4, 0.3, 0.2],
+                          [-0.5, 0.5, -0.2, 0.3],
+                          [0.4, 0.6, 0.1, -0.4],
+                          [-0.3, -0.5, 0.4, 0.1]], dtype=np.float32)
+    head = (R.RESIDUAL_BOUND_SD * sd[:, :1]) * np.tanh(true_coef @ basis.T)
+    split = np.array([["train"] * 140 + ["validation"] * 60] * N, dtype=object)
+    data = {"X": X, "head": head, "mu": np.zeros_like(head), "sd": sd, "split": split,
+            "core": np.ones((N, T), bool), "groups": ["a", "b"], "group_of": np.arange(N) % 2,
+            "codes": [f"w{i}" for i in range(N)], "weeks": weeks}
+    losses = {}
+    for res_kind in ("none", "seasonal"):
+        net, _, _ = R.train_seed(0, data, "pooled", lam=0.01, steps=300, lr=0.05, kernel_weeks=K,
+                                 amax=20.0, init_sd=0.0, fixed_steps=300, residual=res_kind)
+        with torch.no_grad():
+            pred = net(tt(X)).numpy()
+        losses[res_kind] = float(np.mean(((pred[:, :140] - head[:, :140]) / sd[:, :140]) ** 2))
+        if res_kind == "seasonal":
+            r = net.residual().detach().numpy()
+            assert (np.abs(r) < R.RESIDUAL_BOUND_SD * sd[:, :1]).all()
+            pz, c, p = R.seed_outputs(net, data)
+            sum_c = c.drop(columns=["code_bss", "week"]).sum(1).to_numpy().reshape(N, T)
+            assert np.allclose(pz * sd, net.d.detach().numpy()[:, None] + sum_c, atol=1e-5)
+    assert losses["seasonal"] < 0.05 * losses["none"], losses
 
 
 if __name__ == "__main__":

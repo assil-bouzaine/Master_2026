@@ -86,6 +86,14 @@ doi:10.1111/gwat.12925), but written in PyTorch and fitted for every well at onc
   wells, drawn per start (Heudorfer et al. 2024, doi:10.5194/hess-28-525-2024). f never sees a
   stress, so the signs still hold by construction. Rung 5 (message passing over the arm's well
   links) feeds f the aggregated facts of the neighbours as well (src/models/message.py).
+- --residual seasonal (Gate 3 point 20, Assil 2026-11-20; analysis plan §10 conditions 2, 6 and 8):
+  adds a bounded per-well seasonal residual r_i(t) = B_i * tanh(sum_{k=1..2} [a_ik cos(2*pi*k*tau_t)
+  + b_ik sin(2*pi*k*tau_t)]), with tau_t = (day of year - 1) / 365.25 and fixed bound B_i = 0.25 sd_i,
+  starting at 0 with penalty --lam * mean(coef^2) in pooled mode (0 otherwise). It sees only the day
+  of the year and the well index (never a stress nor a close proxy, conditions 2 and 6), so response
+  signs hold by construction and the shape repeats every year: it can absorb a seasonal misfit but
+  cannot explain a drought. Run as a with/without row outside the confirmatory contrasts, with its
+  share of the drought variance reported (condition 8).
 - Weeks before the first forcing week (2000) are filled with each input's training mean,
   as Pastas does.
 
@@ -162,9 +170,24 @@ A_MIN, A_MAX = 0.5, 52.0     # Gamma scale a, weeks
 N_MIN, N_MAX = 0.5, 3.0      # Gamma shape n
 F_MAX = 1.5                  # evaporation factor of the linear recharge
 SD_FLOOR = 1e-3              # m; a well whose training heads never move
+RESIDUAL_HARMONICS = 2       # Gate 3 point 20: 2 seasonal harmonics (4 coefficients per well)
+RESIDUAL_BOUND_SD = 0.25     # fixed bound B_i = 0.25 * sd_i so |r_i(t)| < 0.25 sd_i
+RESIDUAL_COLS = ("res_c1", "res_s1", "res_c2", "res_s2")
 INIT = {"gain": 0.1,                                                  # m per unit stress
         "a": {"recharge": 6.0}, "a_other": 13.0,                      # weeks
         "n": 1.5, "f": 0.6}
+
+
+def seasonal_basis(weeks, harmonics=RESIDUAL_HARMONICS):
+    """(T, 2 * harmonics) float32: [cos(2*pi*k*tau), sin(2*pi*k*tau)] for k = 1..harmonics,
+    with tau = (day of year - 1) / 365.25 (identical every year, Gate 3 point 20)."""
+    doy = pd.DatetimeIndex(weeks).dayofyear.to_numpy(dtype=np.float64)
+    tau = (doy - 1.0) / 365.25
+    cols = []
+    for k in range(1, harmonics + 1):
+        angle = 2.0 * math.pi * k * tau
+        cols.extend((np.cos(angle), np.sin(angle)))
+    return np.column_stack(cols).astype(np.float32)
 
 
 def _logit(p):
@@ -181,12 +204,15 @@ class ResponseModel(nn.Module):
     def __init__(self, group_of, n_groups, mode="free", kernel_weeks=KERNEL_WEEKS, amax=A_MAX,
                  recharge="linear", init_sd=0.0, generator=None, pumping="sum", gain_scale=None,
                  signs="structure", conv="direct", statics=None, static_net="linear",
-                 sign_ref="structure", soft_stresses=None):
+                 sign_ref="structure", soft_stresses=None, residual="none",
+                 residual_basis=None, residual_bound=None):
         super().__init__()
         if mode not in ("free", "pooled", "shared"):
             raise ValueError(mode)
         if conv not in ("direct", "fft"):
             raise ValueError(conv)
+        if residual not in ("none", "seasonal"):
+            raise ValueError(residual)
         if statics is not None and mode == "free":
             # free deviations would absorb whatever the facts explain: the static map would not
             # be identified, and only held-out wells would see it
@@ -245,6 +271,22 @@ class ResponseModel(nn.Module):
                 raise ValueError(static_net)
             last = self.static_map if static_net == "linear" else self.static_map[2]
             nn.init.zeros_(last.weight)
+        # Gate 3 point 20: bounded fixed seasonal residual, only registered when on so residual="none"
+        # keeps the exact same parameters and state-dict keys as earlier runs.
+        self.residual_kind = residual
+        self.res_coef = None
+        if residual == "seasonal":
+            if residual_basis is None or residual_bound is None:
+                raise ValueError("seasonal residual needs residual_basis and residual_bound")
+            basis = torch.as_tensor(np.asarray(residual_basis), dtype=torch.float32)
+            if basis.ndim != 2 or basis.shape[1] != 2 * RESIDUAL_HARMONICS:
+                raise ValueError(f"residual_basis must be (weeks, {2 * RESIDUAL_HARMONICS}), got {tuple(basis.shape)}")
+            bound = torch.as_tensor(np.asarray(residual_bound), dtype=torch.float32)
+            if bound.ndim != 1 or bound.shape[0] != N or (bound <= 0).any():
+                raise ValueError(f"residual_bound must be positive ({N},), got {tuple(bound.shape)}")
+            self.register_buffer("res_basis", basis)
+            self.register_buffer("res_bound", bound)
+            self.res_coef = nn.Parameter(torch.zeros(N, 2 * RESIDUAL_HARMONICS))
 
     def raw(self):
         p = self.group_mean[self.group_of] + self.delta         # (N, 3R + 1)
@@ -292,11 +334,26 @@ class ResponseModel(nn.Module):
         c = Fn.conv1d(S.reshape(1, N * R, L), w, groups=N * R).reshape(N, R, L - self.K + 1)
         return gain[..., None] * c
 
+    def residual(self):
+        """(N, T) in metres: bounded fixed seasonal residual, or None when residual is off."""
+        if self.res_coef is None:
+            return None
+        return self.res_bound[:, None] * torch.tanh(self.res_coef @ self.res_basis.T)
+
     def forward(self, X):
-        return self.d[:, None] + self.contributions(X).sum(1)    # (N, T), m above mu
+        out = self.d[:, None] + self.contributions(X).sum(1)    # (N, T), m above mu
+        if self.res_coef is not None:
+            out = out + self.residual()
+        return out
 
     def penalty(self):
         return (self.delta ** 2).mean()
+
+    def residual_penalty(self):
+        """Mean squared harmonic coefficient: penalised with --lam in pooled mode, 0 otherwise."""
+        if self.res_coef is None:
+            return torch.zeros(())
+        return (self.res_coef ** 2).mean()
 
     def static_penalty(self):
         """Mean squared weight of the static map (a ridge): without it, a map from 13 facts to the
@@ -416,12 +473,13 @@ def train_seed(seed, data, mode, lam=0.0, steps=4000, lr=0.05, patience=15, eval
                kernel_weeks=KERNEL_WEEKS, amax=A_MAX, recharge="linear", init_sd=0.5,
                train_mask=None, es_wells=None, fixed_steps=None, state_out=None, pumping="sum",
                gain_units="m", signs="structure", soft=None, conv="direct", statics=None,
-               static_net="linear", static_l2=0.0, sign_ref="structure", soft_stresses=None):
+               static_net="linear", static_l2=0.0, sign_ref="structure", soft_stresses=None,
+               residual="none"):
     """One start. Returns (model, best validation median NSE, best step). `soft`: weight of the
     soft sign penalty (with signs "none", or with `soft_stresses` naming free stresses only), which
     refers to the signs of `sign_ref`. `statics` (N, F): the standardised facts of rung 3
     (data["codes"] order), mapped to the raw parameters by `static_net`, whose weights get the
-    ridge `static_l2`."""
+    ridge `static_l2`. `residual`: "none" or "seasonal" (Gate 3 point 20)."""
     torch.manual_seed(seed)
     torch.set_num_threads(int(os.environ.get("PFE_THREADS", 4)))
     gen = torch.Generator().manual_seed(seed)
@@ -435,11 +493,14 @@ def train_seed(seed, data, mode, lam=0.0, steps=4000, lr=0.05, patience=15, eval
     wgt = obs / np.maximum(obs.sum(1, keepdims=True), 1) / sd_safe ** 2     # per well: mean / var
     wgt = torch.from_numpy((wgt / max((obs.sum(1) > 0).sum(), 1)).astype(np.float32))
     es_core = core & (es_wells[:, None] if es_wells is not None else True)
+    res_basis = seasonal_basis(data["weeks"]) if residual == "seasonal" else None
+    res_bound = RESIDUAL_BOUND_SD * sd_safe[:, 0] if residual == "seasonal" else None
     net = ResponseModel(data["group_of"], len(data["groups"]), mode, kernel_weeks, amax, recharge,
                         init_sd=init_sd, generator=gen, pumping=pumping,
                         gain_scale=sd_safe[:, 0] if gain_units == "sd" else None, signs=signs, conv=conv,
                         statics=statics, static_net=static_net, sign_ref=sign_ref,
-                        soft_stresses=soft_stresses)
+                        soft_stresses=soft_stresses, residual=residual,
+                        residual_basis=res_basis, residual_bound=res_bound)
     opt = torch.optim.Adam([p for p in net.parameters() if p.requires_grad], lr=lr)
     if soft:
         mask_t = torch.from_numpy(np.asarray(train_mask, dtype=bool))
@@ -450,11 +511,16 @@ def train_seed(seed, data, mode, lam=0.0, steps=4000, lr=0.05, patience=15, eval
     for step in range(1, n_steps + 1):
         if soft:
             c = net.contributions(X)
-            loss = (wgt * (net.d[:, None] + c.sum(1) - y) ** 2).sum() + soft * net.soft_penalty(c, mask_t, sd_t)
+            pred = net.d[:, None] + c.sum(1)
+            if net.res_coef is not None:
+                pred = pred + net.residual()
+            loss = (wgt * (pred - y) ** 2).sum() + soft * net.soft_penalty(c, mask_t, sd_t)
         else:
             loss = (wgt * (net(X) - y) ** 2).sum()
         if mode == "pooled" and lam > 0:
             loss = loss + lam * net.penalty()
+            if net.res_coef is not None:
+                loss = loss + lam * net.residual_penalty()
         if static_l2:
             loss = loss + static_l2 * net.static_penalty()
         opt.zero_grad()
@@ -496,13 +562,18 @@ def seed_outputs(net, data):
         contrib = net.contributions(X).numpy()                   # (N, R, T)
         gain, a, n, f = (t.numpy() for t in net.parameters_physical())
         d = net.d.numpy()
+        res = None if net.res_coef is None else net.residual().numpy()   # (N, T)
     out = d[:, None] + contrib.sum(1)
+    if res is not None:
+        out = out + res
     pz = (out / np.maximum(data["sd"], SD_FLOOR)).astype(np.float32)
     N, R, T = contrib.shape
     idx = pd.MultiIndex.from_product([data["codes"], pd.DatetimeIndex(data["weeks"])],
                                      names=["code_bss", "week"])
-    c = pd.DataFrame({s: contrib[:, r].reshape(-1).astype(np.float32)
-                      for r, s in enumerate(net.names)}, index=idx).reset_index()
+    c_cols = {s: contrib[:, r].reshape(-1).astype(np.float32) for r, s in enumerate(net.names)}
+    if res is not None:
+        c_cols["residual"] = res.reshape(-1).astype(np.float32)
+    c = pd.DataFrame(c_cols, index=idx).reset_index()
     p = pd.DataFrame({"code_bss": data["codes"], "group": [data["groups"][g] for g in data["group_of"]],
                       "d_m": d, "f": f})
     impl_mean, impl_peak = kernel_moments(a, n, net.K)
@@ -511,8 +582,16 @@ def seed_outputs(net, data):
         p[f"mean_lag_{s}_wk"] = a[:, r] * n[:, r]
         p[f"impl_mean_lag_{s}_wk"] = impl_mean[:, r]
         p[f"impl_peak_lag_{s}_wk"] = impl_peak[:, r]
-    if "river_c" in net.names:
-        c, p = merge_river_slots(c, p, data["river_c_mask"])
+    if res is not None:
+        coef = net.res_coef.detach().numpy()
+        p["residual_bound_m"] = net.res_bound.numpy()
+        for j, col in enumerate(RESIDUAL_COLS):
+            p[col] = coef[:, j]
+    if "river_c" in net.names:     # the wells feeding river_c (split_river records them)
+        mask = data.get("river_c_mask")
+        if mask is None:
+            mask = np.abs(np.asarray(data["X"]["river_c"])).sum(1) > 0
+        c, p = merge_river_slots(c, p, mask)
     return pz, c, p
 
 
@@ -614,6 +693,9 @@ def main():
     ap.add_argument("--message", type=int, default=0,
                     help="rung 5: hops of message passing over the arm's well links (needs --statics "
                          "and --arm; arm D's links are kept by the per-regime depth threshold)")
+    ap.add_argument("--residual", choices=["none", "seasonal"], default="none",
+                    help="Gate 3 point 20: bounded fixed seasonal residual per well "
+                         "(2 day-of-year harmonics, |r| < 0.25 sd; default none)")
     args = ap.parse_args()
     if args.mode == "pooled" and args.lam <= 0:
         ap.error("--mode pooled needs --lam > 0")
@@ -669,11 +751,13 @@ def main():
         ap.error("--message needs --statics (the facts it passes) and --arm (the links it passes them over)")
     if not message:
         del args.message
-    soft, conv = args.soft, args.conv
+    soft, conv, residual = args.soft, args.conv, args.residual
     if soft is None:              # the defaults leave the fingerprints of earlier runs unchanged
         del args.soft
     if conv == "direct":
         del args.conv
+    if residual == "none":
+        del args.residual
     run = args.run or f"resp_{args.mode}"
     pumping = args.pumping
     if pumping == "sum":          # the default leaves the fingerprints of earlier runs unchanged
@@ -767,7 +851,11 @@ def main():
                        # only off the default: earlier run folders keep their schema (write_schema
                        # stops a run whose schema differs)
                        **({"sign_ref": {s: SIGN_SETS[sign_ref][s] for s in names}}
-                          if sign_ref != "structure" else {}), **(extra or {}),
+                          if sign_ref != "structure" else {}),
+                       **({"residual": {"kind": residual, "harmonics": RESIDUAL_HARMONICS,
+                                        "bound_sd": RESIDUAL_BOUND_SD}}
+                          if residual != "none" else {}),
+                       **(extra or {}),
                        "groups": data["groups"], "group_of": data["group_of"].tolist(),
                        "kernel_weeks": args.kernel_weeks, "a_bounds_wk": [A_MIN, args.amax],
                        "n_bounds": [N_MIN, N_MAX], "f_max": F_MAX, "mode": args.mode})
@@ -787,7 +875,8 @@ def main():
                                           pumping=pumping, gain_units=gain_units, signs=signs,
                                           soft=soft, conv=conv, statics=Z, static_net=static_net,
                                           static_l2=static_l2 if Z is not None else 0.0,
-                                          sign_ref=sign_ref, soft_stresses=soft_stresses)
+                                          sign_ref=sign_ref, soft_stresses=soft_stresses,
+                                          residual=residual)
         pz, contrib, params = seed_outputs(net, data)
         contrib.to_parquet(out / f"contrib_seed_{s}.parquet", index=False)
         params.to_csv(out / f"params_seed_{s}.csv", index=False)

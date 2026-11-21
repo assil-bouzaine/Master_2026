@@ -75,13 +75,21 @@ def test_seed_exports():
         with torch.no_grad():
             _, a, n, _ = net.parameters_physical()
             weights = net.kernels(a, n).numpy()
-        for index, stress in enumerate(net.names):
-            np.testing.assert_array_equal(params[f"mean_lag_{stress}_wk"], (a * n).numpy()[:, index])
+        # --signs gate3 layout: the saved "river" is the slot each well feeds (river_c where its
+        # river_c input is non-zero: every toy well here), so river_c has no columns of its own
+        slot = {stress: np.full(2, index) for index, stress in enumerate(net.names)}
+        if "river_c" in slot:
+            fed = np.abs(inputs["river_c"]).sum(1) > 0
+            slot["river"] = np.where(fed, slot.pop("river_c"), slot["river"])
+        rows = np.arange(2)
+        for stress, index in slot.items():
+            np.testing.assert_array_equal(params[f"mean_lag_{stress}_wk"], (a * n).numpy()[rows, index])
             np.testing.assert_allclose(params[f"impl_mean_lag_{stress}_wk"],
-                                       (weights[:, index] * np.arange(net.K)).sum(axis=-1), rtol=0, atol=0)
+                                       (weights[rows, index] * np.arange(net.K)).sum(axis=-1), rtol=0, atol=0)
             np.testing.assert_array_equal(params[f"impl_peak_lag_{stress}_wk"],
-                                          weights[:, index].argmax(axis=-1))
-    print("  2. Every stress in the sum, split and arm layouts retains its continuous mean "
+                                          weights[rows, index].argmax(axis=-1))
+        assert not any(col.endswith("river_c_wk") for col in params.columns)
+    print("  2. Every stress in the sum, split, arm and gate3 layouts retains its continuous mean "
           "and exports the implemented mean and peak using the model's kernel length.")
 
 

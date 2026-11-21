@@ -71,6 +71,19 @@ fits at once and 11 hours per session (2,640 CPU-minutes):
 The estimates total about 1,320–2,240 CPU-minutes. The confirmatory families are B1 and B2 (RQ1)
 and B4 (RQ2). B1c, B3 and B5–B7 are exploratory controls and sensitivities (§10, item 20).
 
+**Running the blocks with the queue (`scripts/p4_queue.py`).** Running each block one after another
+in `scripts/run_v4_cpu.sh` runs every arm's regimes serially, which leaves most cores idle on a
+24-vCPU Colab runtime. Instead, `scripts/p4_queue.py` runs `scripts/run_v4_cpu.sh` with
+`P4_DRYRUN=1`, parses those exact commands, and schedules individual fits across up to `--jobs`
+processes (`auto` = all CPUs, `PFE_THREADS=1` per process). It enforces only the two true
+dependencies (a refit waits for its R1 fit; `assemble_lwo` waits for its five folds), starts the
+longest chains first so refits do not trail at the end, writes one log per command under
+`results/v4/_p4_logs/`, and prints periodic heartbeat lines for Colab's CLI runner. Work can be
+split across machines with 1-based `--shard I/K` (connected components stay whole and are balanced
+by fit count), or invoked via the `p4_queue` step in `scripts/run_v4_cpu.sh` (`P4_CONFIRMED=1`,
+`P4_PARALLEL`, optional `P4_SHARD` and `P4_QUEUE_STEPS`). Re-running is safe because completed
+starts are cached on disk (`cached_seed`).
+
 ## 3. Code still missing before the first Phase 4 run
 
 | Piece | Status (2026-11-18) |

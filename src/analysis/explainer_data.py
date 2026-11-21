@@ -8,7 +8,7 @@ a chart comes from here. Sources:
     data/processed/dataset_v3, dataset_v4      wells, weekly levels, folds, build records
     data/processed/dataset_v4/placeholder_weeks.parquet   weeks left out of the scores
     data/processed/dataset_v1, dataset_v2      build records (meta.json)
-    results/v3/<run>/metrics_summary.csv       scores of the baselines (v3 report)
+    results/v4/<run>/metrics_summary.csv       scores of the baselines (v4 report)
     data/interim/pump_unit_attribution_eval.json   task 12.3
 The numbers quoted in the text (Step 4 counts, BNPE totals, ...) come from CLAUDE.md and
 the step notes.
@@ -24,14 +24,14 @@ import pandas as pd
 from src.config import CRS_L93, CRS_WGS84, INTERIM, PROCESSED, ROOT, TEST_PERIODS
 
 OUT = ROOT / "docs" / "explainer" / "data.js"
-RESULTS_V3 = ROOT / "results" / "v3"
+RESULTS_V4 = ROOT / "results" / "v4"
 LAYER = {"recent alluvium": "alluvium", "ancient alluvium": "alluvium",
          "Pliocene multilayer": "pliocene", "Corbières karst": "karst"}
 EXAMPLES = ["10908X0263/FIGUER", "10971X0155/PD5", "10972X0003/ALENYA", "10903X0034/PZSTGL",
             "10906X0039/C2-1", "10906X0038/C2-2"]
 RUNS = [("naive_climatology", "Normal-year guess", "guess"),
-        ("pastas_seasonal_canal", "Pastas, the hydrologists' tool", "hydro"),
-        ("pastas_wellmodel", "Pastas with pump distances", "hydro"),
+        ("pastas_seasonal_canal_trainobs_beststart", "Pastas (yardstick, study years only)", "hydro"),
+        ("pastas_wellmodel", "Pastas with pump distances (historical)", "hydro"),
         ("lgbm_noclim_tuned", "LightGBM (many small decision trees)", "ml"),
         ("lstm_tuned", "LSTM (a network with memory)", "ml"),
         ("ealstm_tuned", "EA-LSTM (memory steered by each well's fixed facts)", "ml"),
@@ -97,7 +97,7 @@ def versions():
 def scores():
     out = []
     for run, label, kind in RUNS:
-        f = RESULTS_V3 / run / "metrics_summary.csv"
+        f = RESULTS_V4 / run / "metrics_summary.csv"
         if not f.exists():
             continue
         s = pd.read_csv(f)

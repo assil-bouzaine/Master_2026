@@ -460,3 +460,33 @@ Use one machine type for all arms of a Phase 4 contrast.
 
 Pull after the session finishes. Finished model runs go to `results/v4` and are rescored there.
 After a budget stop or disconnect, run the same cell in a CPU session to resume from Drive.
+
+## Colab through the command-line tool
+
+Use the configured Google Colab CLI (`colab`) from the repository root. A named session
+uses paid compute units until it is stopped. Choose `cpu`, `highmem`, `v5e1`, `l4`, `a100`
+or `t4` with `up --runtime`. For Phase 4, use the same machine type for every arm of a
+contrast. On later sessions, pass the recorded CPU model as `--require-cpu-model "MODEL"`
+to stop the new session if its model differs.
+
+```bash
+export PYTHONIOENCODING=utf-8 PFE_DATASET=v4
+.venv/bin/python -m scripts.colab_cli up cpu-v4 --runtime highmem
+.venv/bin/python -m scripts.colab_cli push-cpu cpu-v4 --steps "p4_B1 p4_B2" \
+    --env P4_CONFIRMED=1 --env 'P4_PARALLEL=$(nproc)'
+```
+
+Use the Phase 4 example after Gate 3 and the plan tag. Add `--full` for Pastas or land-use
+steps. For a GPU job, build a fresh bundle, then pick a GPU runtime and the steps to run.
+
+```bash
+.venv/bin/python scripts/make_gpu_bundle.py
+.venv/bin/python -m scripts.colab_cli up gpu-v4 --runtime l4
+.venv/bin/python -m scripts.colab_cli push-gpu gpu-v4 --steps "chronos2"
+```
+
+For either job, use its name with `log NAME -n 20` and `status NAME`. When the local exec
+client and remote runner have both ended, run `pull NAME` and then `stop NAME`. The pull
+imports results using the existing CPU or GPU importer. Local session records and pulled
+archives are in `results/_colab_cli/NAME/`. Use `stop NAME --force` if you deliberately
+want to release the VM without a final pull.

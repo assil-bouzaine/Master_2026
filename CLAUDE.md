@@ -528,6 +528,41 @@ notebooks/       exploration only; anything that matters moves into src/
 
 ### ▶ Where we are (read this first in a new session)
 
+**2026-11-21 (Saturday), afternoon: Gate 3 closed except point 17; decisions in code; Colab on Assil's
+AI Pro account. START HERE.**
+- **Compute moved to Colab** (Assil: "use that instead of kaggle"; 200 compute units on
+  assil's AI Pro Google account = Chrome account index 3, `authuser=3`; Python 3.13 images; no
+  background execution: keep the tab open, laptop plugged in). Files go through **rclone** (remote
+  `gdrive`, that account's Drive). CPU steps: `scripts/colab_cpu.py push --steps "..." --env ...`,
+  then in Colab the printed two-line cell (mount Drive, run the launcher); `log`, `status`, `pull`.
+  GPU steps: `scripts/make_gpu_bundle.py` + `rclone copyto gpu_bundle.zip gdrive:pfe_colab/` + a
+  launcher script (see `results/_colab_gpu/run_session3.sh`).
+- **Colab GPU session 3 RUNNING** (notebook `pfe_v4_gpu_session3.ipynb`, T4, started 15:37 UTC):
+  chronos2 ✅, chronos2_xl, chronos2_ft, regimes:taccari (≈ 3.5-4 h). Check: `rclone cat
+  gdrive:pfe_colab/results_gpu/run_colab.log | tail`. When done: `rclone copy gdrive:pfe_colab/results_gpu
+  <dir>` then `scripts/colab_pull.py` (it expects a zip: zip the folder first) `--version v4`, then the v4
+  reports. Touch the tab every ≈ 45 min.
+- **Workers** (memory `codex-worker-orchestration`): cxa (Sol, T31 explainer), cxb (Sol, T30 twin
+  report slice F), neon (Gemini, T29: canal method criterion + ONE graph release with the new
+  `configs/constraint_decisions.csv`, exports, controls, tests). Stop giving tasks at 70 % of a 5-h window.
+- **Done today** (step note `step13_ladder.md`, last section; plan §14 item 23): kernel 13 read; Gate 3
+  points 5, 6, 7 decided; `--signs gate3`; Phase 4 defaults/guard, B2conv, B7 (PE, soft canal), B8
+  (residual), 378 fits; tiny recharge cells dropped; seasonal residual; Colab CPU path; slice F.
+- **Before the tag `analysis-plan-v2`, in order:** (1) review + commit T29 (release with the decided
+  constraints: expect recharge constrained, river constrained at 3 wells); (2) **CQ14** (Claude; design
+  in the step note and below: `src/kg/pressure.py` done; next the ontology terms
+  HydrogeologicalSetting / PressureStateSummary / ConfinementAssessment + CoverStatus and
+  ConfinementState schemes, build_kg facts from `pressure_state_v4.parquet`, rules (setting from the
+  stack under the well; confined only from head above the reference, probable; else unknown), shapes,
+  `tests/cq/cq14_*.rq`, fixtures, oracle), then one more release + exports + controls; (3) review T30, T31;
+  (4) `scripts/run_tests.py` (full) at the commit to tag; (5) `git tag analysis-plan-v2`; (6) Phase 4 on
+  Colab CPU (`colab_cpu.py push --steps "p4_B1 ... p4_B8 p4_B2conv" --env P4_CONFIRMED=1 --env
+  'P4_PARALLEL=$(nproc)'`; one runtime type for all arms), slice F (`twin_shortcut_pilot`, then
+  `twin_shortcut` with the 12:41 export), the black box (`taccari.py --edges D`, GPU).
+- **Assil (unchanged list):** the professor's e-mail (§7 of `docs/supervisor_questions.md`: his edits,
+  then French), the two data e-mails, the AGROVOC gold set, Earth Engine, the paywalled papers. The
+  empty "Untitled1.ipynb" in his other Google account's Drive can be deleted.
+
 **2026-11-20, end of the evening: Gate 3 decided by Assil (18 of 21 points), everything pushed; tomorrow: kernel version 13, points 5-6, the professor's e-mail. START HERE.**
 - **Gate 3 with Assil (2026-11-20 ≈ 19:10-19:30, asked 4 at a time, recommendation first):** answers
   in `docs/gate3_decisions.md`, last section ("Assil's decisions"). All as recommended except **point

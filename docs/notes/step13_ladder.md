@@ -648,3 +648,62 @@ Correction: the oracle's ceiling is a 2-8 % RMSE reduction (log T/C −0.021 to 
 not "2-9 %" as said in the morning (that rounded the log ratio).
 Codex account at 19:00: 41 % of the five-hour window left; no new worker task until kernel
 version 13 is pulled.
+
+## 2026-11-21: the twin complete, Gate 3 closed (but point 17), the decisions turned into code
+
+### What was done
+- **Kaggle kernel version 13 pulled** (twin slices 160 of 160 worlds, RQ2 180 worlds, no failed
+  step) and the report regenerated (`docs/results_twin_v4.md`, now complete for kernels 11-13).
+- **The reading, by the rules fixed beforehand** (item 19 point 10, item 22):
+  - no world of any slice has wrong reasons by score 6 (0 of 20 per slice and protocol); the only
+    case is 1 of 20 in slice G without sign constraints. Shortcut test 2 therefore has **no positive
+    case** anywhere; its false alarms on the slices are 0-25 % (above the nominal 5 % in the harder
+    slices: ν = 1, slices G, I, O), so seed disagreement measures difficulty more than wrong reasons;
+  - RQ2 on the twin: without signs about 19 % of the fitted gains have the wrong sign, and the
+    intervention's sign is right in 86-91 % of the wells; soft λ_s = 1 barely helps (17 %); hard signs
+    remove every violation and cost at most 0.03 in log RMSE (slices G, O, S);
+  - the size of a pumping effect is poorly recovered even by the oracle: after a −20 % cut, median
+    relative error 0.60-0.75 (D) and 0.33-0.57 (T). Explanations will state directions, not sizes.
+- **Gate 3 points 5, 6 and 7 (clarified) decided by Assil** (AskUserQuestion, recommendation first,
+  all four accepted; `docs/gate3_decisions.md`): freeze the twin plus a planted-shortcut slice F; λ_s
+  grid with ties to the stronger; main recharge input rain − f·ETP (PE a B7 row); rclone for Colab.
+- **The decisions in code** (lead + three workers, every piece reviewed, re-tested, committed):
+  - `--signs gate3` (Claude): the decided signs for every arm; the river sign only at the wells whose
+    river edges D marks constrained, in their own stress slot (pooling with softplus would otherwise
+    have pushed those three wells towards large river gains); `--sign-ref`, `--soft-stresses`;
+  - Phase 4 defaults and guard, `p4_B2conv`, B7 rows PE and soft canal prior, λ_s selection (cxa, T26);
+    B8 (the residual's rows, Claude); 378 fits declared (`tests/test_phase4_steps.py`);
+  - the export drops recharge cells under 0.001 of an outcrop (neon, T25): 12 local edges, 195
+    unit-wide; the KG tables compare the inventory without them (Claude);
+  - `--residual seasonal` (neon, T28), bounded to 0.25 sd, blind to every driver;
+  - the Colab CPU path (cxa, T27, T27b): the Kaggle runner on Colab through rclone, a two-line cell,
+    slim bundles (111 → 55 MB);
+  - `configs/constraint_decisions.csv`: recharge and river approved, canal rejected (Claude);
+  - slice F in the twin (Claude) and its design revised from generator diagnostics before any fit
+    (lag 2-12 weeks: correlation with local pumping 0.88-0.96 instead of 0.16-0.55; φ = 1.0 so that a
+    full transfer would cross score 6's threshold: 0.49-0.54 instead of 0.33-0.36);
+  - analysis plan item 23 records all of it.
+- **Colab on Assil's AI Pro account** (200 compute units; T4, Python 3.13 images, background
+  execution only on Ultra, so the tab stays open): session 3 (`pfe_v4_gpu_session3.ipynb`) runs
+  chronos2, chronos2_xl, chronos2_ft and regimes:taccari from 15:37 UTC (bundle MD5 5918f1d1…,
+  `results/_colab_gpu/session3_bundle.txt`). The October session-2 results stay on the other account
+  and are not needed (re-run with the current code).
+- **CQ14 started** (Claude): `src/kg/pressure.py` (days with the water above the measurement
+  reference per well and window; equals the dataset's artesian shares for all 195 well-windows,
+  `tests/test_pressure.py`).
+
+### Why
+- A planted shortcut is the standard way to give a detector positive cases; without one, the plan's
+  own success criterion for RQ3 (§10: "at least one case of accurate heads with wrong driver
+  contributions is detected") could not be checked.
+- The gate3 sign set exists because the earlier settings did not match the decisions: `structure`
+  constrained every river and canal gain, `approved` only pumping, and the soft penalty referred to
+  the structural signs.
+
+### What to consider
+- Test 2 on real data is a stability statistic, not a flag (item 23): its τ lives on the twin's
+  noise-free scale.
+- Slice F runs with the 12:41 export of 2026-11-16 to stay paired with the base cell (the current
+  export dropped 12 tiny recharge cells: a negligible but real difference).
+- Uploads to Drive are uneven (twice an upload hung at 100 % before Drive confirmed it): keep
+  bundles slim, check the MD5 on Drive before a session starts.

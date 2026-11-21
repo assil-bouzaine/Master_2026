@@ -528,39 +528,68 @@ notebooks/       exploration only; anything that matters moves into src/
 
 ### ▶ Where we are (read this first in a new session)
 
-**2026-11-21 (Saturday) evening session, from ≈ 22:25. START HERE (supersedes the 17:05 list below).**
-- **Colab through Google's command-line tool** (`colab`, google-colab-cli 0.8.0, `uv tool install
-  google-colab-cli`; Assil authorized it 22:3x, token in the keyring). No browser tab, no Drive mount:
-  `colab new -s NAME --gpu L4 | --tpu v5e1 | --high-mem`, `colab upload`, `colab exec -s NAME -f launch.py`
-  (**pass `--timeout 3600` and print a heartbeat**: the client quits after 30 s of silence; the job goes on),
-  `colab ssh -s NAME -- '...' </dev/null > out`, `colab usage`, **`colab stop -s NAME`** (a session bills until
-  stopped; `colab sessions` lists them). Measured (Pro): high-mem CPU 8 vCPU 0.26 units/h; **TPU v5e1 24 vCPU
-  (AMD EPYC 7B13) 3.09/h**; L4 12 vCPU 1.94/h; A100 12 vCPU 6.73/h; H100 not entitled; G4 unavailable; v6e1
-  timed out. Balance 193.98 at 23:00. Worker task T37 writes `scripts/colab_cli.py` (up/push-cpu/push-gpu/log/
-  status/pull/stop) from the manual run `results/_colab_cli/gpu1/` (Taccari refit on an L4).
-- **Colab GPU session 3 imported** (`scripts/colab_pull.py --dir`): Chronos-2 ×3, Taccari lwo/f25/f50; reports
-  regenerated (`docs/results_baselines_v4.md`, uncommitted until the refit is in). Refit: running on L4 `gpu1`
-  (pull `colab ssh -s gpu1 -- 'tar czf - -C /content/persist results_gpu' > x.tgz`, extract,
-  `colab_pull.py --dir <x>/results_gpu`, then **`colab stop -s gpu1`**).
-- **Committed:** T35 (`taccari_D` GPU step, refit records in the bundle), T36 (`colab_pull.py --drive/--dir`),
-  `regimes:<model>:<regime>` step in run_gpu.sh (uncommitted: commit with the refit).
-- **Codex on hold (Assil, 2026-11-21 23:39): "don't give codex anymore job after this run, wait for me untill i
-  tell u to give them more work".** Let cxa/cxb/cxc finish T41/T42/T40, review and commit, then no new Codex
-  task until Assil says so. Neon (Gemini) is not affected. **Assil's Codex subscription ends at midnight
-  (2026-11-22 00:00)**: all Codex workers closed at 23:53 (T40, T41, T42 delivered); assume no Codex after.
-- **Workers (fresh process per task, Assil 2026-11-21 evening: 1 Neon + 2–3 Sol 6.2 high):** neon T34 (finish
-  T29's release: done through exports/controls/kg_tables, tests running at 23:01), cxa T37 (colab_cli.py), cxb
-  T39 (paper baseline tables). Briefed, not started: T38 (neon next: `scripts/p4_queue.py`, a dependency-aware
-  queue of the 378 Phase 4 fits, `--shard`, heartbeat), T40 (cxc: `tests/test_cq14.py`, after the lead applies
-  CQ14).
-- **CQ14:** drafts in `docs/notes/cq14_draft/` (+ `build_kg_pressure.py`; the share check now compares with the
-  exact ratio). Apply after T34 is committed; also fix the stale `rule/canal-influence` rdfs:comment ("stated" →
-  measured or traced). Then one release (build_kg, apply_rules, inventory, 3 exports, 3 controls, kg_tables,
-  term_usage), `scripts/run_tests.py`, commit, `git tag analysis-plan-v2` (ask before pushing).
-- **Phase 4 plan:** after the tag, `p4_queue` on 1–2 TPU v5e1 runtimes (`--require-cpu-model "AMD EPYC 7B13"`,
-  one machine type for every arm), ≈ 1–1.5 h; the black box `taccari_D` on an L4 at the same time.
+**2026-11-22 (Sunday) ≈ 00:40, stopped at Assil's request after the running work finished. START HERE.**
+Everything below is committed; the tag `analysis-plan-v2` exists **locally only (ask Assil before pushing it or
+any commit)**. No Colab session, no worker and no laptop job is left running.
 
-**2026-11-21 (Saturday), stopped ≈ 17:05 at Assil's request.**
+**Done in the evening session (2026-11-21 22:25 → 2026-11-22 00:40; step note `step13_ladder.md`, last section):**
+- **Colab from the terminal.** Google's Colab CLI (`colab`, google-colab-cli 0.8.0, installed with `uv tool install
+  google-colab-cli`; Assil did the one-time OAuth in a terminal tab, token in the keyring). `scripts/colab_cli.py`
+  (T37) wraps it: `up NAME --runtime cpu|highmem|v5e1|l4|a100|t4 [--require-cpu-model M]`, `push-cpu NAME --steps
+  ... [--env K=V] [--export-override POLICY=PATH]`, `push-gpu NAME --steps ...` (needs a fresh `gpu_bundle.zip`),
+  `log`, `status`, `pull` (tar over ssh into the existing importers), `stop` (refuses before a final pull). Measured
+  runtimes (Pro): high-mem CPU 8 vCPU (AMD EPYC 7B12) 0.26 units/h; **TPU v5e1 24 vCPU (AMD EPYC 7B13), torch
+  2.14.1+cpu preinstalled, 47 GB, 3.09/h**; L4 12 vCPU 1.94/h (= the T4's price, faster); A100 6.73/h; H100 not
+  entitled, G4 unavailable, v6e1 no machine. `colab exec` quits after 30 s without output (the runner prints a
+  heartbeat and passes `--timeout 3600`); a session bills until `colab stop` (`colab sessions` lists them).
+  Balance ≈ 192.7 units at the stop (used tonight ≈ 1.3).
+- **Every v4 baseline exists:** Colab GPU session 3 pulled (`scripts/colab_pull.py --dir`, T36): Chronos-2 ×3, Taccari
+  lwo/f25/f50; the Taccari refit re-run on an L4 through the CLI (T35 put the finals' epoch records in the GPU
+  bundle; new GPU step `regimes:<model>:<regime>`). Forecast: fine-tuned Chronos-2 drought NSE 0.79 at 4 weeks
+  (anomaly persistence 0.70), cross-learning 0.40 at 12 weeks. `docs/results_baselines_v4.md` regenerated.
+- **Graph:** T29/T34 (Neon): canal eligibility by the source's method; release with Gate 3's constraint decisions
+  (recharge and the river edges of 3 wells constrained, canals free). **CQ14 = ontology 0.8.0** (Claude; tests T40 by
+  cxc): `HydrogeologicalSetting`, `PressureStateSummary`, `ConfinementAssessment`, rules orders 65-66, shapes,
+  `tests/cq/cq14_*.rq`, `tests/test_cq14.py`; release of 2026-11-21 23:00 UTC, no violation; 65 settings (25
+  outcropping, 29 covered, 11 unknown), confined in train 9 / f25 5 / f50 6 wells. Exports regenerated (edges
+  identical to T34's except recharge weights at 1e-16).
+- **Phase 4 tooling:** `scripts/p4_queue.py` (T38, Neon): the dry run's exact 378 fits + 51 assemblies as a
+  dependency-aware queue (`--jobs auto`, `--shard I/K` balanced 189/189, heartbeat), step `p4_queue` in
+  run_v4_cpu.sh, the script now in the CPU bundle. Bundle option `--export-override` (T42). Analysis plan item 23
+  amended (Phase 4 on TPU v5e1, one CPU model for every arm, the queue).
+- **Paper:** baseline + forecast tables (T39) and §6 "Baselines and the forecasting reference" (T43); §5.2
+  real-data contrasts and §5.3 metrics and statistics (T44), written before any Phase 4 run. Explainer's contest
+  chapter on final v4 numbers (T41).
+- **Twin slice F done** (Colab high-mem through the CLI, frozen 12:41 export; `docs/results_twin_v4.md`, "Slice F"):
+  the pilot had no wrong-reason world for arm D, so by the rule the 20 worlds used φ = 2.0 (regional drawdown =
+  34 % of the noise-free head's variance, correlation 0.93 with local pumping). Score 6 (wrong reasons): D 2 of 20
+  under early stopping and 0 of 20 under converged pooling; C 2 and 1; T 1 and 0. Shortcut test 2 detects 0 of D's
+  2 cases (not estimable), false alarms 0-20 %. Reading for the step note and Assil: even a strong planted shortcut
+  rarely produces wrong reasons; test 2 cannot be calibrated on so few positive cases. Not yet discussed.
+- **Tests:** full suite at c9d83a1 57/59; the 2 stale expectations fixed (80b8942), all pass. Tag
+  `analysis-plan-v2` at 80b8942.
+- **Workers:** Assil's **Codex subscription ended at midnight** and he put Codex on hold ("wait for me until i tell
+  u to give them more work"): no Codex worker unless he says so. Neon (Gemini 4 Neon, `agy`) remains; its 5-hour
+  window was at 50 % at 00:10 (stop at 70 %). Fresh process per task (Assil).
+
+**Next, in order:**
+1. **Ask Assil** to push the commits and the tag (`git push && git push origin analysis-plan-v2`).
+2. **Phase 4** (CPU, ≈ 45-60 min, ≈ 5-6 units): build nothing by hand; for two sessions
+   `.venv/bin/python -m scripts.colab_cli up p4a --runtime v5e1 --require-cpu-model "AMD EPYC 7B13"` (same for
+   `p4b`), then `push-cpu p4a --steps p4_queue --env P4_CONFIRMED=1 --env 'P4_PARALLEL=$(nproc)' --env P4_SHARD=1/2`
+   (`p4b`: `P4_SHARD=2/2`), `--budget 6`. If Colab refuses a second v5e1 session, run one without `P4_SHARD`.
+   Watch `log`/`status`; `pull` each when finished, then `stop`. Then `src/analysis/arms_report.py` (contrasts,
+   same-arm bands, Holm families) and the reading in the step note.
+3. **Black box** at the same time (Gate 3 point 21): `PFE_DATASET=v4 .venv/bin/python scripts/make_gpu_bundle.py`,
+   `colab_cli up bb --runtime l4`, `push-gpu bb --steps taccari_D`, pull, stop.
+4. **Slice F**: discuss the reading above with Assil (what it means for RQ3's success criterion, analysis plan §10:
+   positive cases exist but are rare and test 2 misses D's); note: run `twin_report` without arguments (with a
+   single run name it rewrites `docs/results_twin_v4.md` with that run only).
+5. Paper §6.2-6.5 from Phase 4; explanations (Phase 5); BD LISA / BD TOPO / RPG citations once their pages verify.
+**Assil (unchanged):** the professor's e-mail (`docs/supervisor_questions.md` §7: his edits, then French), the two
+data e-mails, the AGROVOC gold set, Earth Engine, the paywalled papers; Gate 3 point 17 (public repository).
+
+**2026-11-21 (Saturday), stopped ≈ 17:05 at Assil's request (superseded by the list above).**
 - **Compute moved to Colab** (Assil: "use that instead of kaggle"): 200 compute units on his AI Pro
   Google account = Chrome account index 3 (`authuser=3`; Chrome's default Colab account is another
   one: switch through the avatar menu). Colab images now run Python 3.13; no background execution
@@ -1211,7 +1240,7 @@ Assil's review of the competency questions.
 | 12.3 | **CQ2 data step:** attribute each groundwater abstraction point to a unit, with provenance and confidence | ✅ 2026-10-23: `src/kg/pump_attribution.py` → `data/interim/pump_unit_attribution.parquet`. Rules measured on 130 recorded boreholes (flag True → alluvium 95 %; flag False + Pliocene under the point → Pliocene 92 %; False alone 53/112). The record is depth-checked. "Probable" only for the uses that were measured. Plain volume 2012–24: confident 27 %, probable 45 %, possible 21 %, unknown 7 % |
 | 12.4 | Ontology module `lulcw:` + imports/alignments in `ontology/`; IRIs and metadata; the quality gates in `tests/` | ✅ 0.1.0 on 2026-10-24 for the 6 MUST CQs: 191 terms (FR/EN labels, definitions), local copies of the reused terms (`src/kg/build_imports.py`), alignments to GWML2/HyFO and SWEET, `python -m tests.test_ontology` (ELK + HermiT consistent, negative control, ROBOT report). SHOULD/COULD modules still to do; OOPS! done 2026-11-16 (ontology 0.7.1, `docs/oops_report.md`); the w3id redirect postponed by Assil until the ontology is published (2026-11-16). 2026-11-06 afternoon: 0.7.0 (Codex review) and gate 8, the alignment ledger (`ontology/alignments/ledger.csv`): required and forbidden subsumptions checked by HermiT; `Piezometer` and `RiverReach` are close matches of `GW_Well` and `HY_FlowPath` |
 | 12.5 | KG instantiation from the parquet tables (rdflib → Turtle → pyoxigraph) | ✅ 2026-10-24: `src/kg/build_kg.py` (61 s) → `data/processed/kg/lulcw_kg_v4.ttl`, 205,650 triples: 65 piezometers (station, head series, groundwater body, polygon; 60 recorded monitoring units, 5 explicit unknowns), 47 units typed by the written rule, 201 BD LISA polygons with stacks, 2,187 groundwater facilities with the 12.3 attributions (resolution-aware: flag_true = alluvium group probable, exact entity possible), 12,951 annual declared volumes (SOSA, with acquisition mode), provenance and 3 export policies. Facts only: derived links come from the 12.6 rules. `tests/test_kg.py`: 8 checks against pandas oracles + 2 negative controls. Ontology 0.1.1 (`EnergyUse`, `geo:hasMetricArea`) |
-| 12.6 | SHACL shapes and SHACL-AF rules: Influence links, `ProbablyIrrigatedParcel`, `HighIrrigationDemandZone`, `ConfinedSetting` | 🔄 2026-10-25, links part done: `ontology/rules/lulcw-rules.ttl` (SHACL-AF, pySHACL) and `ontology/shapes/lulcw-shapes.ttl` (SHACL), run by `src/kg/apply_rules.py`: 95 direct contacts + 13 indirect orderings, each witnessed by its polygon (plain = Step 6b's 26 edges), 47 same-unit well links ≤ 5 km, 1,848 pump → well influences (1,830 exact-unit: non-increasing sign, eligible; 18 group-level: sign unknown, not eligible), policy selections (a path is selected only if both its attributions are); shapes: no violation (8 notes: wells without an investigation depth); rules 65 s, validation 51 s. `tests/test_kg_rules.py`: CQ3/CQ8/CQ11/CQ2 fixtures, 9 negative controls, pandas oracles. Ontology 0.2.0 (`admitsConfidence`, `searchRadiusM`). Land-use part done the same evening: ontology 0.3.0 (land-use module, 39 terms), `src/kg/landuse.py` (198 crop codes, 14 classes + unmapped with FAO-56 parameters, 65 zones, 13,684 clipped areas, 1,430 calendar-year demand estimates; graph 356,377 triples), rules: crop class of every code (198 mapped, none unmapped), 5,465 class areas, 715 dated demand categories (248 high; threshold 597,028 m³ = upper tercile of 2015–2019); no violation; tests: CQ7 fixtures, 13 negative controls, pandas oracles pass. 2026-10-26: validation 26 min → 134 s (rules 121 s), doubles stored exactly, 16 negative controls, stored-file sum check. 2026-10-27: CQ4 coverages and cell weights (order 60), recharge-proxy influences (order 61), path selection last (order 90); 32 negative controls. 2026-11-06: river-unit associations (on outcrop 41, over cover 54, documented lateral 4) and their statements (order 62), 43 river influences from arm C's pool gauges (order 63), 42 canal associations and 5 canal influences (order 64); whole-graph completeness shapes; 47 negative controls. Left: `ProbablyIrrigatedParcel` with 12.10; `ConfinedSetting` with CQ14. 2026-11-06 afternoon (Codex review): aggregate statements never evidence about a member (lateral links 4 → 2, eligible river signs 7 → 3 wells), localised on outcrop instead (`localizedStatement`); measurements at a site apply in its zone only; constraint decisions on the policies; 59 negative controls |
+| 12.6 | SHACL shapes and SHACL-AF rules: Influence links, `ProbablyIrrigatedParcel`, `HighIrrigationDemandZone`, `ConfinedSetting` | 🔄 2026-10-25, links part done: `ontology/rules/lulcw-rules.ttl` (SHACL-AF, pySHACL) and `ontology/shapes/lulcw-shapes.ttl` (SHACL), run by `src/kg/apply_rules.py`: 95 direct contacts + 13 indirect orderings, each witnessed by its polygon (plain = Step 6b's 26 edges), 47 same-unit well links ≤ 5 km, 1,848 pump → well influences (1,830 exact-unit: non-increasing sign, eligible; 18 group-level: sign unknown, not eligible), policy selections (a path is selected only if both its attributions are); shapes: no violation (8 notes: wells without an investigation depth); rules 65 s, validation 51 s. `tests/test_kg_rules.py`: CQ3/CQ8/CQ11/CQ2 fixtures, 9 negative controls, pandas oracles. Ontology 0.2.0 (`admitsConfidence`, `searchRadiusM`). Land-use part done the same evening: ontology 0.3.0 (land-use module, 39 terms), `src/kg/landuse.py` (198 crop codes, 14 classes + unmapped with FAO-56 parameters, 65 zones, 13,684 clipped areas, 1,430 calendar-year demand estimates; graph 356,377 triples), rules: crop class of every code (198 mapped, none unmapped), 5,465 class areas, 715 dated demand categories (248 high; threshold 597,028 m³ = upper tercile of 2015–2019); no violation; tests: CQ7 fixtures, 13 negative controls, pandas oracles pass. 2026-10-26: validation 26 min → 134 s (rules 121 s), doubles stored exactly, 16 negative controls, stored-file sum check. 2026-10-27: CQ4 coverages and cell weights (order 60), recharge-proxy influences (order 61), path selection last (order 90); 32 negative controls. 2026-11-06: river-unit associations (on outcrop 41, over cover 54, documented lateral 4) and their statements (order 62), 43 river influences from arm C's pool gauges (order 63), 42 canal associations and 5 canal influences (order 64); whole-graph completeness shapes; 47 negative controls. Left: `ProbablyIrrigatedParcel` with 12.10. CQ14 done 2026-11-21 (ontology 0.8.0): settings (order 65) and confinement assessments (order 66) replace the planned `ConfinedSetting` class. 2026-11-06 afternoon (Codex review): aggregate statements never evidence about a member (lateral links 4 → 2, eligible river signs 7 → 3 wells), localised on outcrop instead (`localizedStatement`); measurements at a site apply in its zone only; constraint decisions on the policies; 59 negative controls |
 | 12.7 | CQ tests: one SPARQL query plus an oracle per CQ (`tests/cq/`) | 🔄 2026-10-26: 7 of the 9 MUST CQs done: CQ1, 2, 3, 7, 8, 11, 12 (`tests/cq/*.rq` with a status query each, `tests/test_cq.py`: fixtures incl. conflicting/unknown/missing cases and the 100 m³ facility never counted twice; data against the source tables; main policy 2012–24 = 61.8 % exact / 72.3 % with groups, as `docs/pump_coverage.md`; CQ8's 1,848 influences = CQ2's candidates; ≈ 3 min). Left: CQ10 (needs model outputs), CQ15 (needs 12.10), fixture contracts of the 7 SHOULD/COULD. CQ4 (SHOULD, needed by 12.8) done 2026-10-27: four queries, fixtures, a GeoPandas oracle, negative answers only after a completed search, clipping reported; the same evening CQ8 got the recharge proxies (`cq08_influences` both mechanisms, `cq08_status` with the recharge search). CQ5 and CQ6 done 2026-11-06: `cq05_associations`, `cq05_statements`, `cq05_gauges`, `cq05_status`, `cq06_chain`, `cq06_status`, CQ8's river and canal statuses; fixtures incl. not searched, incomplete search and stale outputs; data for every well against a GeoPandas oracle; anchors C2-1, C2-2, MEDALU. Heavy tests as sub-selects marked `#bind-parameters` (`src/kg/cq.py`: an EXISTS over a large predicate costs 0.1–0.5 s in pyoxigraph 0.5). 2026-11-06 afternoon (Codex review): off-map reaches make CQ8 unknown and CQ5 partial; conflicts only for the same or overlapping stretches with comparable dates; an optional requested period in CQ5/CQ6; `cq08_influences` reports the constraint decision and whether a sign is constrained |
 | 12.8 | Export SPARQL → `HeteroData` (arms C, D, E, F use the same export) | ⬜ design decided by Assil on 2026-10-26 (analysis plan §14 item 14): one node per facility; depth threshold by training correlation; D's weather, river and canal edges from the KG, so **CQ4, CQ5, CQ6 come first** (CQ6 may stay a documented gap: no supply-area polygons yet). CQ4 extent: 5 km disc (Assil, 2026-10-26); CQ4 done 2026-10-27 (coverages and weights, then the recharge-proxy influences: D's weather edges, local and unit-wide); CQ5 and CQ6 done 2026-11-06 (Assil's decisions of that day, analysis plan §14 item 16): river edges for 35 wells (24 core; eligible sign 7, over cover only 18), no pool gauge for 17 (4 core), canal edges for 5 (2 eligible); command areas a documented gap. Per-regime depth threshold confirmed by Assil on 2026-11-06. **Next.** Codex review of 2026-10-26: per-well, per-relation inventory before any arm, per-regime depth threshold, export bound to the graph release (analysis plan §14 item 15). **Step 1 done 2026-11-06:** `src/kg/inventory.py`, the per-well, per-relation inventory of D (`inventory_v4_main.parquet`; `tests/test_inventory.py`): river 34 wells (23 core), recharge 54 (27), canal 5 (4), well links 38 (22), pumping 43 (24); only pumping edges constrained (step note, last section). Step 2 (C, D and the equivalence test) done 2026-11-10; **2026-11-18:** E and F as control graphs (`src/kg/controls.py`, 5 draws, bound to the export) and the per-regime depth threshold (`src/models/depth_threshold.py`: every v4 regime keeps all 47 pairs); exports of the confident-only and all-links policies built |
 | 12.9 | Alignment experiment: RPG → AGROVOC gold set + OntoAligner (P/R/F1) | 🔄 2026-10-26: AGROVOC Core snapshot of 2026-10-26 (`src/ingest/agrovoc.py`, 74.4 MB, 42,082 concepts); candidates for the 198 codes (`src/kg/agrovoc_candidates.py` → `configs/lu_agrovoc_candidates.csv`: homonyms through AGROVOC's qualifiers and a crop/land tie-break; 64 exact, 131 overlap, 3 none); gold template and tools (`src/kg/agrovoc_gold.py`). Next: Assil's gold set, then OntoAligner on Colab, then the alignments into the graph (CQ7 turns supported) |
@@ -1223,7 +1252,7 @@ Assil's review of the competency questions.
 | LU-4 | Pre-registered land-use ablation on Kaggle CPU (§14 item 13) | ✅ 2026-10-26: Kaggle kernel 6 (10 runs), main contrast on vs none (Assil, before the pull); **no detectable improvement** for either model (drought median ΔNSE +0.016 / +0.001, p_holm 1.0; LSTM interval up to +0.16; not an equivalence claim), placebo, wide and frozen none either; LSTM machine effect −0.032; hashes and the LightGBM reproducibility checked before scoring; `results/v4/land_use_test.csv`, step 12d note |
 | LU-5 | = 12.10, validated against Agreste irrigated areas, else a heuristic | ⬜ |
 | LU-6 | End-to-end example (alluvium + Pliocene well): RPG parcels → KG path → Gate 3 | 🔄 2026-10-26: first version `docs/lu6_example.md` (generated by `src/analysis/lu6_example.py` from the CQ queries): MILLAS C2-1 and PONTEILLA NYLS-1, crops 2015–25, demand, pumping paths and policy acceptance, 2024 accounting, LU-4; rivers and canals (CQ5, CQ6) added 2026-11-06; missing: CQ15 (satellite rule), CQ10 (model results) |
-| Gate 3 | Ontology review with the supervisor | ⬜ |
+| Gate 3 | Ontology review with the supervisor | ✅ decided by Assil 2026-11-20/21 (`docs/gate3_decisions.md`, analysis plan §14 item 23); tag `analysis-plan-v2` 2026-11-22 (local); point 17 waits for the supervisor |
 
 Then Phase 4: the main-model decision, the twin, the arms (`docs/roadmap.md`).
 

@@ -750,3 +750,12 @@ version 13 is pulled.
 - A session bills until `colab stop`: the refit's session sat idle for about 20 minutes because my watcher used
   `pgrep -f` on a pattern that its own command line contained (it always found itself). `colab_cli.py` brackets one
   letter of its patterns for that reason.
+- **Slice F, the planted shortcut, done** (late evening; Colab high-mem CPU session through `colab_cli`, the frozen
+  12:41 export through `--export-override`). Pilot (seeds 900–902, φ = 1): no world with wrong reasons for arm D, so
+  by the rule fixed before the pilot the 20 worlds used φ = 2.0. With φ = 2 the regional drawdown holds 34 % of the
+  noise-free head's variance and correlates 0.93 with local pumping, yet score 6 counts few worlds with wrong
+  reasons: arm D 2 of 20 with early stopping and 0 of 20 with converged pooling (C: 2 and 1; T: 1 and 0). Shortcut
+  test 2 flags neither of D's two cases (detection not estimable on two cases); its false alarms are 0–20 %.
+  *What to consider:* the models rarely hand the regional drawdown to local pumping strongly enough to cross score
+  6's threshold, even when it is planted; test 2's power stays unknown. RQ3's success criterion (§10) needs a
+  discussion with Assil before Phase 4's real-data reading.

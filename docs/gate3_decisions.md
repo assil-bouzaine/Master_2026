@@ -17,8 +17,8 @@ Nothing here is decided until Assil decides it. The recommendations are Claude's
 | 2 | Rungs 3–5 of the ladder; routing (rung 4) as the primary form of D vs C | Confirm | — |
 | 3 | Smallest effect of interest for the primary contrasts | A median RMSE reduction of 5 % (log ratio −0.05), with 10 seeds | — |
 | 4 | Permanent + seasonal pumping as the main structure | No: keep it as a sensitivity | — |
-| 5 | The twin's design (item 19 and its amendments) | Confirm and freeze with the tag; shortcut test 2 flags a world whose seed disagreement is above the 95th percentile of the grid's, per arm and protocol (item 22, proposed before kernel version 13 was pulled) | Slices and RQ2 (kernel version 13) |
-| 6 | RQ2: the weight λ_s of the soft sign penalty on real data | A declared grid {1, 10, 100}, chosen on validation | Twin |
+| 5 | The twin's design (item 19 and its amendments) | Confirm and freeze with the tag; shortcut test 2 flags a world whose seed disagreement is above the 95th percentile of the grid's, per arm and protocol (item 22, proposed before kernel version 13 was pulled); after version 13 (no positive case anywhere): add a planted-shortcut slice | Decided 2026-11-21 |
+| 6 | RQ2: the weight λ_s of the soft sign penalty on real data | A declared grid {1, 10, 100}, chosen on validation, ties to the stronger | Decided 2026-11-21 |
 | 7 | Recharge: does "effective rain raises the head" constrain the model? PE or max(PE, 0)? | Yes, with PE as is; max(PE, 0) as a sensitivity | — |
 | 8 | Rivers: constrain the sign where eligible (3 wells)? body-level statements? conflicting directions? | Constrain only where eligible; body-level statements stay ineligible; a conflicting direction keeps the sign eligible | — |
 | 9 | Canals: eligibility by the source's wording or by its method; constrain? | Method criterion; no hard canal constraint, a soft-prior sensitivity instead | — |
@@ -277,3 +277,16 @@ Asked one point at a time with Claude's recommendation first; recorded as they w
 
 Still open: points 5 and 6 (after kernel version 13), 17 (the supervisor and SAVE Water). Assil chose
 to push the repository on 2026-11-20 (before point 17's answer).
+
+**2026-11-21, after kernel version 13 was pulled and read** (`docs/results_twin_v4.md`: the slices'
+score 6 is 0 of 20 in every slice for both protocols, 1 of 20 in slice G only under RQ2's "none";
+test 2's false alarms on the slices 0–25 %, detection "no positive case" everywhere):
+
+| # | Decision |
+|---|---|
+| 5 | **Freeze the twin and test 2's threshold** (τ = the 95th percentile of the grid's seed disagreement, per arm and protocol, item 22) **plus one planted-shortcut slice F** declared in the tagged plan: pumping beyond 5 km of the well, never routed to it, whose drawdown moves with the local pumping, so that a learner can credit local pumping for it; run after the tag (about 40 worlds); labelled as added after the slices were read |
+| 6 | **Soft penalty λ_s:** the declared grid {1, 10, 100}; the best validation score wins, but a stronger λ_s whose validation score lies within the same-arm band of the best is preferred (the strongest such); all three reported as a dose-response |
+| 7 (clarified) | **Main recharge input: rain − f·ETP** over the arm's recharge cells (`P4_RECHARGE=linear`, the hydrology reference's form; validation NSE 0.51 against 0.45 for PE), its gain ≥ 0 ("more recharge never lowers the head"); **PE as is becomes a B7 sensitivity row**; max(PE, 0) is dropped |
+
+Also decided the same day (not Gate 3 points): training moves from Kaggle to Assil's Colab compute
+units (Google AI Pro, 200 units), files travel between the laptop and Drive with rclone.

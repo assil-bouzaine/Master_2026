@@ -201,6 +201,34 @@
       "b": "p4_B2_D_r1",
       "regimes": [""],
       "reconstructions": [1]
+    },
+    {
+      "name": "B8 B (rung 3) with the seasonal residual vs without",
+      "a": "p4_B8_B_r1",
+      "b": "p4_B1_B_r1",
+      "regimes": [""],
+      "reconstructions": [1]
+    },
+    {
+      "name": "B8 C (rung 4) with the seasonal residual vs without",
+      "a": "p4_B8_C_r1",
+      "b": "p4_B2_C_r1",
+      "regimes": [""],
+      "reconstructions": [1]
+    },
+    {
+      "name": "B8 D (rung 4) with the seasonal residual vs without",
+      "a": "p4_B8_D_r1",
+      "b": "p4_B2_D_r1",
+      "regimes": [""],
+      "reconstructions": [1]
+    },
+    {
+      "name": "B8 D (rung 5) with the seasonal residual vs without",
+      "a": "p4_B8_D5_r1",
+      "b": "p4_B5_D_r1",
+      "regimes": [""],
+      "reconstructions": [1]
     }
   ]
 }

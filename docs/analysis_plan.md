@@ -1279,3 +1279,114 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       reasons; a 5 % false-alarm rate on worlds known to be right is the conventional level. Whether,
       and how, τ carries over to the real arms' seed disagreement (whose scale has no noise-free sd)
       is decided at Gate 3 with these rates.
+23. **Gate 3 decisions and the frozen Phase 4 settings (decided by Assil on 2026-11-20 evening and
+    2026-11-21, after the twin's grid, slices and RQ2 runs were read; written before the tag
+    `analysis-plan-v2` and before any real-data arm; points and wording in `docs/gate3_decisions.md`).**
+    Every point below is now part of the plan; the numbers refer to the Gate 3 sheet.
+    - *What the twin showed (kernel versions 11–13, all 560 worlds, `docs/results_twin_v4.md`; synthetic
+      heads only).* Routing by the graph (D) and by distance (C) give the same accuracy in every cell
+      (D / C between −0.025 and +0.009), and even the oracle T gains only 2–9 %: a real-data D vs C
+      contrast without a detected gain is the expected outcome (item 19 point 10 (d)). Converged pooling
+      makes D's pumping contribution better than C's in 82 % of the worlds; early stopping does not
+      (25 %). No world of the grid or of any slice has wrong reasons by score 6 (0 of 20 per slice and
+      protocol; 1 of 20 in slice G without sign constraints), so shortcut test 2 has no positive case;
+      its false alarms on the slices are 0–25 % (D: 0–20 %). Without sign constraints about 19 % of the
+      fitted gains have the wrong sign and the intervention's sign is right in 86–91 % of the wells; the
+      soft penalty at λ_s = 1 changes this little (17 %, 91–96 %); hard signs remove every violation at
+      an accuracy cost of at most 0.03 in log RMSE (slices G, O, S). The size of the head change after
+      a −20 % pumping cut is recovered with a median relative error of 0.60–0.75 (D) and 0.33–0.57 (T):
+      **explanations state the sign and direction of a pumping effect, and its size only with this
+      uncertainty** (§12).
+    - *Point 1, fitting protocols, fixed roles.* **Accuracy** (every block B1–B7 and their
+      contrasts): mode pooled, **λ = 0.01** (the pooled λ the ladder chose on validation, item 18; the
+      twin's early-stopping protocol was the free mode, which λ = 0.01 matches on the real data within
+      noise, +0.014), early stopping as in rungs 1–2; one backbone for every arm (rung 3 needs pooling).
+      **Explanations** (RQ3–RQ4: contributions, their agreement over starts, the template text):
+      pooled λ = 0.1 for 3,000 fixed steps (the twin's converged protocol), block **B2conv**: arms C and
+      D, R1, the three reconstructions (`p4_B2conv_<arm>_r<k>`). λ is fixed from rung 2 for every arm,
+      so no arm-specific selection exists and the nested rule of §10 does not apply to D vs C.
+      `scripts/run_v4_cpu.sh` holds these as defaults and refuses other values unless
+      `P4_OVERRIDE=1` (`tests/test_phase4_steps.py`).
+    - *Points 2–4, 13, 14, 18, 19, 21.* Confirmed as written in items 18 and 20: rungs 3–5, routing
+      (rung 4) the primary form of D vs C; smallest effect of interest −0.05 (log RMSE ratio), 10
+      starts, the same-arm band beside each primary contrast; permanent + seasonal pumping a sensitivity
+      only; one edge per driver and well; families RQ1 = {B vs A, D vs C}, RQ2 = {soft vs none, hard vs
+      none}, one test each (cluster sign-flip on the log RMSE ratio, Holm within the family); the
+      control graphs E_degree, E_distance (a locality control for pumping only), F_random, F_complete;
+      rung 3 with fact sets A and B, the linear map, ridge = the pooled λ, name tags and shuffled facts
+      per start, B vs A read mainly on the leave-wells-out folds; the black box = the Taccari-style
+      ST-GNN on arm D's edges (`taccari.py --edges D`), R1, 5 seeds, one GPU session.
+    - *Points 7–10, the signs (`--signs gate3` in `src/models/response.py`; `configs/
+      constraint_decisions.csv`).* Built in for every arm alike, so the constraint setting is held fixed
+      between arms (§10 contract): **recharge ≥ 0** (DiffuseRecharge approved, point 7); **pumping ≤ 0**,
+      attributed and unattributed (CLAUDE.md §3: abstraction never raises the head; a facility in a
+      disconnected unit has a gain near 0, which the sign allows); **river ≥ 0 only at the wells whose
+      river edges arm D's export marks constrained** (eligible evidence about the well's own unit; three
+      wells expected: 10906X0039/C2-1 and two at Corbère; body-level statements stay ineligible, a
+      conflicting direction elsewhere keeps an eligible sign eligible, point 8); **canal free** (proxy
+      rejected, point 10; no hard sign, point 9). The constrained river wells feed a separate stress slot
+      (`river_c`) so that a pooled raw parameter means the same thing at every well of a slot; outputs
+      merge the two slots. RQ2's settings on real data: hard = `--signs gate3`; none = `--signs none
+      --sign-ref gate3`; soft = none + the penalty referring to the gate3 signs. The twin's RQ2 used the
+      structural signs (every relation), which were the truth there.
+    - *Point 7 clarified (2026-11-21): the main recharge input is rain − f·ETP* over the arm's recharge
+      cells (the hydrology reference's form; validation NSE 0.51 against 0.45 for PE); its gain ≥ 0
+      implements "more effective rain does not lower the head". **Effective rain as is (PE) is a B7
+      sensitivity row** (`p4_B7_D_pe_r1`); max(PE, 0) is dropped. The graph keeps naming the cell's
+      effective rainfall as the recharge proxy; the paper states that the models use rain − f·ETP of the
+      same cells.
+    - *Point 6, λ_s.* B4 runs λ_s ∈ {1, 10, 100}. Per reconstruction, the best R1 median core
+      validation NSE wins, but the strongest λ_s whose validation score lies within the same-arm band
+      half-width of the best (random disjoint halves of the ten starts, `arms_report._select_soft`) is
+      preferred; R2 uses the R1 choice. All three are reported as a dose-response (violation rate,
+      intervention sign, accuracy).
+    - *Point 9, canals.* Eligibility by the source's method: an eligible canal influence needs a
+      statement about the unit itself documenting canal return by measurement or tracing (differential
+      gauging, geochemical tracing, water balance), whatever its hedging; a synthesis sentence alone is
+      not enough (the same two wells as the wording criterion today). The **soft canal prior** is a B7
+      row: `--signs gate3 --soft 10 --soft-stresses canal` (`p4_B7_D_canalsoft_r1`), the canal gain alone
+      pulled towards ≥ 0 at every well with a canal input.
+    - *Point 11.* No crop-demand influence in Phase 4's main runs; it stays in arm B's ablation.
+    - *Point 12.* The export drops recharge edges whose cell holds under 0.001 of an outcrop (12 local
+      edges at 12 wells, 195 unit-wide at 37 wells, every policy); the graph keeps them.
+    - *Point 15.* CQ14 (cover, confinement and pressure state per well) is built before the tag; CQ9,
+      CQ13 and CQ16 stay minimal fixtures or future work.
+    - *Point 16.* Chronos-2 and the forecasting comparison go in the paper as well as the thesis; the
+      Pastas sensitivity rows and the time-reversed test stay in the thesis; text extraction is scored
+      on the 32 curated statements; EuroCrops only if time allows. The Chronos-2 runs of Colab session 2
+      (October, on another Google account) are replaced by a new session on Assil's account
+      (2026-11-21): the same steps with the current code.
+    - *Point 20, the residual.* `--residual seasonal`: per well r(t) = 0.25 sd · tanh(two day-of-year
+      harmonics), starting at 0, penalised with the pooled λ; it sees no stress (§10 conditions 2, 6),
+      so the signs still hold by construction. With/without rows, R1, reconstruction 1, never in a
+      confirmatory family: block **B8** (`p4_B8_B_r1` = B1's B, `p4_B8_C_r1` and `p4_B8_D_r1` = B2's,
+      `p4_B8_D5_r1` = B5's D), each read against its row without the residual, with the residual's share
+      of the drought variance and its correlation with the constrained drivers (§10 condition 8).
+    - *Point 5, the twin: frozen as written (items 19, 22), plus slice F, a planted shortcut (decided
+      2026-11-21 after the slices were read; no F world exists at this writing).* The slices produced no
+      world with wrong reasons, so the shortcut tests have no positive case; slice F is built to have
+      them. **Variant F (far-field pumping):** the truth adds to every well a drawdown from the
+      dataset's groundwater facilities at more than 10 km and at most 25 km from it, which no arm routes
+      (C: ≤ 10 km, D and the truth's pumping pairs: ≤ 5 km) and the oracle T does not see either:
+      s_far,i(t) = Σ_f V_f(t) over those facilities (the weekly volumes the learners see), a Gamma
+      response with a mean lag drawn like recharge's (8–40 weeks, group mean and well deviation), a
+      non-positive gain scaled so that its training variance is **φ = 0.3** of the real well's, added on
+      top of the other contributions like variant O's driver. Regional and local pumping share their
+      usage profiles and their year-to-year totals, so a learner can credit local pumping for the
+      regional drawdown: accurate heads with a wrong pumping contribution. Cell: the base (ε = 0.1,
+      u = 0.3, π = 0.3, ν = 0.25, timing reconstructed); both protocols; arms C, D, T; 20 worlds after a
+      3-world pilot. **Rule fixed now:** if the pilot has no world with wrong reasons for arm D under
+      either protocol, the 20 worlds use φ = 0.6 instead (the slice exists to provide positive cases;
+      the pilot worlds are not reused). Reported: score 6 per arm and protocol, test 2's detection and
+      false-alarm rates with the grid's τ, score 5 (the expected failure: the right sign with an
+      overestimated size). Read alone against the base cell, like every slice. Test 3 (rewiring) is not
+      run on the twin: its power stays uncalibrated and its real-data result is read as a control
+      (semantics, locality, density), not as a shortcut detector.
+    - *Test 2 on real data (a consequence of point 5).* τ is defined on the twin's scale (units of a
+      noise-free sd, which real data do not have), so it is not carried over: on real data the seed
+      disagreement of each arm's contributions is reported as a stability statistic, in units of the
+      well's training sd, beside the twin's distributions, never as a pass/fail flag.
+    - *Point 17* (public repository) waits for the supervisor and SAVE Water.
+    - *Machine (decided 2026-11-21).* Phase 4 and slice F run on Assil's Colab compute units
+      (`scripts/colab_cpu.py`, the Kaggle runner on Colab; files through rclone), one runtime type for
+      every arm of a contrast; Kaggle CPU is the fallback. The machine is recorded with every run.

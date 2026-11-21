@@ -14,7 +14,7 @@ import sys
 from src.analysis import arms_report as A
 
 ROOT = Path(__file__).resolve().parents[1]
-STEPS = ("p4_B1", "p4_B1c", "p4_B2", "p4_B2conv", "p4_B3", "p4_B4", "p4_B5", "p4_B6", "p4_B7")
+STEPS = ("p4_B1", "p4_B1c", "p4_B2", "p4_B2conv", "p4_B3", "p4_B4", "p4_B5", "p4_B6", "p4_B7", "p4_B8")
 
 
 def dry_run(steps, **settings):
@@ -100,8 +100,8 @@ def test_full_plan():
     expected_fits.update((name, None) for name in runs if not name.endswith("_lwo"))
     fit_ids = [(flag(cmd, "--run"), flag(cmd, "--fold") if "--fold" in cmd else None) for cmd in fits]
     counts = Counter(name.split("_")[1] for name, _ in fit_ids)
-    assert counts == {"B1": 54, "B1c": 18, "B2": 54, "B2conv": 6, "B3": 96, "B4": 90, "B5": 28, "B6": 24, "B7": 4}
-    assert len(fit_ids) == 374 and set(fit_ids) == expected_fits
+    assert counts == {"B1": 54, "B1c": 18, "B2": 54, "B2conv": 6, "B3": 96, "B4": 90, "B5": 28, "B6": 24, "B7": 4, "B8": 4}
+    assert len(fit_ids) == 378 and set(fit_ids) == expected_fits
     assert len(assemblies) == 51 and set(assemblies) == {name for name in runs if name.endswith("_lwo")}
 
     b7 = []
@@ -127,6 +127,10 @@ def test_full_plan():
             assert flag(cmd, "--recharge") == "linear"
     assert b7 == [("p4_B7_D_unitwide_r1", "linear"), ("p4_B7_D_drainage_r1", "drainc"), ("p4_B7_D_pe_r1", "pe"),
                   ("p4_B7_D_canalsoft_r1", "linear")]
+    # B8 (Gate 3 point 20): every row has the seasonal residual, nothing else does
+    for cmd in fits:
+        assert (flag(cmd, "--residual") == "seasonal") == flag(cmd, "--run").startswith("p4_B8_") \
+            if "--residual" in cmd else not flag(cmd, "--run").startswith("p4_B8_"), flag(cmd, "--run")
     canal = [cmd for cmd in fits if flag(cmd, "--run") == "p4_B7_D_canalsoft_r1"][0]
     assert flag(canal, "--soft") == "10" and flag(canal, "--soft-stresses") == "canal"
     print(f"  2. {len(fits)} declared fits across {len(runs)} run IDs and {len(assemblies)} fold assemblies. {dict(counts)}")

@@ -186,6 +186,14 @@ p4_step() (
       p4_enqueue p4_B7_D_pe_r1 r1 1 --arm D "${rung4[@]}" --recharge pe
       # Gate 3 point 9: no hard canal sign; a soft prior towards >= 0 on the canal gain only
       p4_enqueue p4_B7_D_canalsoft_r1 r1 1 --arm D "${rung4[@]}" --soft 10 --soft-stresses canal ;;
+    p4_B8)
+      # Gate 3 point 20: the fixed seasonal residual, one with/without row per rung (R1, reconstruction 1),
+      # each read against its row without the residual; never in a confirmatory family (item 23)
+      p4_enqueue p4_B8_B_r1 r1 1 --arm baseline --statics B --residual seasonal
+      for arm in C D; do
+        p4_enqueue "p4_B8_${arm}_r1" r1 1 --arm "$arm" "${rung4[@]}" --residual seasonal
+      done
+      p4_enqueue p4_B8_D5_r1 r1 1 --arm D --statics B --message 1 --residual seasonal ;;
   esac
   p4_wait
   return "$p4_failed"
@@ -304,7 +312,7 @@ for s in $STEPS; do
                     done
                     waitall "${pids[@]}" || rc=1
                     exit "$rc" ) ;;
-    p4_B[1-7]|p4_B1c|p4_B2conv) p4_step "$s" ;;
+    p4_B[1-8]|p4_B1c|p4_B2conv) p4_step "$s" ;;
     final:*)      $PY -m src.models.tune --model "${s#final:}" --final-only ;;   # v3 choice
     regimes:*)    $PY -m src.models.regimes --model "${s#regimes:}" ;;
     *)            echo "unknown step $s"; false ;;

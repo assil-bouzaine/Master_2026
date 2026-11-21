@@ -19,7 +19,9 @@ missing. **Nothing here runs before Gate 3 and the git tag of the analysis plan*
   `0.01`, empty or `linear`, respectively, requires `P4_OVERRIDE=1`.
 - **Starts:** 10 per run (item 18 point 4); a same-arm band (random halves of the starts) beside
   every primary contrast.
-- **Machine:** Kaggle CPU for every arm of a contrast (one machine type per contrast, item 18).
+- **Machine:** one Colab runtime type on Assil's compute units for every arm of a contrast (decided
+  2026-11-21; `scripts/colab_cpu.py`, item 23); Kaggle CPU is the fallback. One machine type per
+  contrast (item 18).
 - **Data:** dataset v4, export policy "main", pumping reconstruction (1) unless the block says
   otherwise.
 - **Recharge:** the main input is rain minus a fitted share of evapotranspiration (`linear`), with
@@ -44,8 +46,13 @@ current, (2) flat drinking water, (3) crop calendar.
 | B4 | RQ2, sign constraints | arm D: hard, none, soft with λ_s ∈ {1, 10, 100} *(Gate 3, point 6)* | R1, R2 | 3 | 5 × 6 × 3 = 90 | 900 |
 | B5 | rung 5, message passing (secondary) | `--message 1` on C and D (+ the B3 controls on R1) | R1, R2 | 1 | 2 × 6 + 16 = 28 | 280 |
 | B6 | pump-link policy sensitivity | D vs C with the `confident-only` and `all-links` exports | R1, R2 | 1 | 2 × 2 × 6 = 24 | 240 |
-| B7 | recharge sensitivities | D with unit-wide recharge cells, soil drainage (`--recharge drainc`), or effective rain as is (`--recharge pe`) | R1 | 1 | 3 | 30 |
-| | | | | | **373** | **3,730** |
+| B7 | recharge and canal sensitivities | D with unit-wide recharge cells, soil drainage (`--recharge drainc`), effective rain as is (`--recharge pe`), or a soft canal prior (`--soft 10 --soft-stresses canal`, Gate 3 point 9) | R1 | 1 | 4 | 40 |
+| B8 | the fixed seasonal residual (Gate 3 point 20), with/without | `--residual seasonal` on B1's B (rung 3), B2's C and D (rung 4), B5's D (rung 5) | R1 | 1 | 4 | 40 |
+| | | | | | **378** | **3,780** |
+
+Every fit carries `--signs gate3` (Gate 3 points 7–9, analysis plan §14 item 23): recharge ≥ 0,
+pumping ≤ 0 (attributed and unattributed), the river ≥ 0 only at the wells whose river edges arm D
+marks constrained, canal free; B4's none and soft use `--signs none --sign-ref gate3`.
 
 The scripts also assemble 51 sets of leave-wells-out folds.
 
@@ -71,7 +78,7 @@ and B4 (RQ2). B1c, B3 and B5–B7 are exploratory controls and sensitivities (§
 | Fact table of rung 3 (`src/models/statics.py`) | in progress (brief T03) |
 | Pumping reconstructions (2) and (3) in the routed path | in progress (brief T06); arms A/B route through `baseline` for this reason |
 | Arms report: contrasts, same-arm bands, coverage per relation, draw-vs-start variance of the controls | to write (extend `src/analysis/ladder_report.py`) |
-| Kaggle steps for B1–B7 in `scripts/run_v4_cpu.sh` | to write after Gate 3 (settings depend on points 1, 2, 6) |
+| Steps for B1–B8 and B2conv in `scripts/run_v4_cpu.sh` | done 2026-11-21 (declared defaults, guard, `tests/test_phase4_steps.py`) |
 | Exports for the policy sensitivities (`python -m src.kg.export --policy confident-only`, `all-links`) | to build (B6) |
 | Soil-drainage recharge input (B7) | to add to routing (DRAINC from SAFRAN) |
 | The bounded residual network ("each rung with and without it", item 18) | not designed: Gate 3 |

@@ -424,3 +424,31 @@ Kernels run in the background (laptop may be off), up to 12 h per session.
   for the final and 17 h for the regimes on 4 CPUs: two pushes.
 - **Pastas stability check:** steps `pastas_starts` (10 starting points per well) and
   `pastas_trainobs` (the same with training-period heads only), about 1 min per run.
+
+## Colab CPU (compute units, rclone)
+
+From the laptop, use the configured `gdrive` rclone remote to stage the CPU bundle and resume state.
+
+```bash
+export PYTHONIOENCODING=utf-8 PFE_DATASET=v4
+.venv/bin/python -m scripts.colab_cpu push --steps "p4_B1 p4_B2" --env P4_CONFIRMED=1
+```
+
+Use the Phase 4 example after Gate 3 and the plan tag. Open a Colab notebook, choose a **CPU**
+runtime and select high RAM if offered. Run the printed cell, also saved in
+`results/_colab_cpu/colab_cell.txt`, and allow the Drive mount. The runner installs the pinned
+CPU packages and runs locally in Colab, with results copied to `pfe_colab_cpu/work` on Drive
+every five minutes. The default time budget is 23 hours and `push --budget H` sets it in hours.
+
+Check `!nproc` in the runtime before spending compute units. Phase 4 uses four jobs per batch by
+default. To use the session's CPU count, add `--env 'P4_PARALLEL=$(nproc)'` to `push`.
+Use one machine type for all arms of a Phase 4 contrast.
+
+```bash
+.venv/bin/python -m scripts.colab_cpu log -n 20
+.venv/bin/python -m scripts.colab_cpu status
+.venv/bin/python -m scripts.colab_cpu pull
+```
+
+Pull after the session finishes. Finished model runs go to `results/v4` and are rescored there.
+After a budget stop or disconnect, run the same cell in a CPU session to resume from Drive.

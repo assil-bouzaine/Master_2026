@@ -68,11 +68,16 @@ p4_enqueue() {
   if [[ ${P4_DRYRUN:-0} == 1 ]]; then
     p4_regimes "$@" || p4_failed=1
   else
-    # An arm and reconstruction run their regimes in order. Up to four
-    # independent jobs share the CPUs, with one fit active per job.
+    local parallel=${P4_PARALLEL:-4}
+    if [[ ! $parallel =~ ^[1-9][0-9]*$ ]]; then
+      echo "P4_PARALLEL must be a positive integer" >&2
+      p4_failed=1
+      return 1
+    fi
+    # Each job runs one fit at a time, in regime order.
     p4_regimes "$@" &
     p4_pids+=("$!")
-    if (( ${#p4_pids[@]} == 4 )); then
+    if (( ${#p4_pids[@]} == parallel )); then
       p4_wait
     fi
   fi

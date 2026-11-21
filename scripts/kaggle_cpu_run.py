@@ -13,6 +13,9 @@ Pushed by scripts/kaggle_cpu.py (docs/gpu_howto.md, "Kaggle CPU"). On Kaggle it:
    at the end. A step that would run past BUDGET_H is stopped, so the output is saved before
    Kaggle's 12 h session limit. Push again to continue.
 
+On Colab, scripts/colab_cpu.py points the runner at Drive and sets PIP_ONLINE=1. The
+runner installs from PyPI and restores the last files saved to Drive before it starts.
+
 After dispatch, the kernel exits successfully even if steps failed. Kaggle may only keep the
 results of a successful kernel, and its output is the only copy of the session's work. The
 local pull reads run_status.json and reports step failures after retrieving that work.
@@ -47,6 +50,12 @@ DEADLINE = time.time() + BUDGET_H * 3600
 CHECKED = ["numpy", "pandas", "pyarrow", "scipy", "lightgbm", "pastas", "numba", "llvmlite",
            "matplotlib", "geopandas", "shapely", "pyproj", "rdflib", "pyoxigraph",
            "requests"]    # import names = pin names
+# Same list as scripts/kaggle_cpu.py. Kaggle runs this file on its own.
+PINNED = ["numpy", "pandas", "pyarrow", "scipy", "lightgbm", "narwhals", "pastas", "numba",
+          "llvmlite", "matplotlib", "contourpy", "cycler", "fonttools", "kiwisolver", "pillow",
+          "pyparsing", "packaging", "python-dateutil", "six", "pytz", "tzdata", "geopandas",
+          "pyogrio", "shapely", "pyproj", "certifi", "charset-normalizer", "tqdm",
+          "rdflib", "pyoxigraph", "requests", "idna", "urllib3"]
 
 
 def log(msg):
@@ -71,13 +80,11 @@ def unpack():
 
 
 def restore():
-    """Results of earlier pushes (state.zip, or its extracted results_cpu/v4) -> RESULTS. They are
-    unpacked outside the output folder (since 2026-11-10): a session's output holds only the runs it
-    touched (save()), so a pull no longer downloads every earlier run again (1,400 files, 90 min)."""
+    """Restore state.zip, then extracted inputs, then newer results saved to the work folder."""
     for z in INPUT.rglob("state.zip"):
         with zipfile.ZipFile(z) as f:
             f.extractall(STATE)
-    for d in [STATE / "results_cpu" / "v4", *INPUT.rglob("results_cpu/v4")]:
+    for d in [STATE / "results_cpu" / "v4", *INPUT.rglob("results_cpu/v4"), WORK / "results_cpu" / "v4"]:
         if d.is_dir() and any(d.iterdir()):
             shutil.copytree(d, RESULTS, dirs_exist_ok=True)
             log(f"restored earlier results from {d}")
@@ -94,18 +101,30 @@ def shell_env(status_file):
                 PYTHONUNBUFFERED="1", JOBS=str(len(os.sched_getaffinity(0))), STATUS_FILE=str(status_file))
 
 
+def read_pins():
+    return dict(re.findall(r"^([A-Za-z0-9_.-]+)==([^\s#]+)", (CODE / "requirements.txt")
+                           .read_text(), flags=re.M))
+
+
 def install():
-    """Pinned wheels -> PINS (no index: the session has no internet); versions checked."""
-    wheels = sorted({w.name: w for w in INPUT.rglob("*.whl")}.values())
-    if not wheels:
-        sys.exit(f"no wheels under {INPUT}: attach the dataset made by kaggle_cpu.py wheels")
-    r = subprocess.run([sys.executable, "-m", "pip", "install", "-q", "--no-index", "--no-deps",
-                        "--upgrade", "--target", str(PINS), *map(str, wheels)],
-                       capture_output=True, text=True)
+    """Install into PINS from the attached wheels or from PyPI and check the versions."""
+    online = os.environ.get("PIP_ONLINE") == "1"
+    if online:
+        pins = read_pins()
+        packages = [f"{name}=={pins[name]}" for name in PINNED if name in pins]
+        options = ["--target", str(PINS), "--upgrade", *packages]
+        installed = f"{len(packages)} PyPI packages"
+    else:
+        wheels = sorted({w.name: w for w in INPUT.rglob("*.whl")}.values())
+        if not wheels:
+            sys.exit(f"no wheels under {INPUT}: attach the dataset made by kaggle_cpu.py wheels")
+        options = ["-q", "--no-index", "--no-deps", "--upgrade", "--target", str(PINS), *map(str, wheels)]
+        installed = f"{len(wheels)} wheels"
+    r = subprocess.run([sys.executable, "-m", "pip", "install", *options], capture_output=True, text=True)
     if r.returncode:
         sys.exit(f"pip install failed:\n{r.stdout}{r.stderr}")
-    pins = dict(re.findall(r"^([A-Za-z0-9_.-]+)==([^\s#]+)", (CODE / "requirements.txt")
-                           .read_text(), flags=re.M))
+    if not online:
+        pins = read_pins()
     code = "import importlib; " + "; ".join(
         f"print('{m}==' + importlib.import_module('{m}').__version__)" for m in CHECKED)
     code += "; import src.models.naive, src.models.lgbm, src.models.pastas_baseline"
@@ -116,7 +135,7 @@ def install():
            if got.get(m) != pins.get(m)]
     if r.returncode or bad:
         sys.exit(f"pinned versions not in use: {', '.join(bad)}\n{r.stderr}")
-    log(f"{len(wheels)} wheels installed; versions = requirements.txt for {', '.join(CHECKED)}")
+    log(f"{installed} installed; versions = requirements.txt for {', '.join(CHECKED)}")
 
 
 def ealstm_ok(env):

@@ -245,7 +245,7 @@ def download_output(destination):
     kg("kernels", "output", f"{u}/{KERNEL}", "-p", str(destination), "-o")
 
 
-def pull(stage=STAGE, results=V4):
+def pull(stage=STAGE, results=V4, download=None):
     incoming = stage / "output_incoming"
     output = stage / "output"
     previous = stage / "output_prev"
@@ -253,7 +253,9 @@ def pull(stage=STAGE, results=V4):
     if incoming.exists():
         shutil.rmtree(incoming)
     incoming.mkdir(parents=True)
-    download_output(incoming)
+    if download is None:
+        download = download_output
+    download(incoming)
     if not (incoming / "run_kaggle_cpu.log").is_file():
         sys.exit(f"download is missing {incoming / 'run_kaggle_cpu.log'}")
 

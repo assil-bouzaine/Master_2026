@@ -20,7 +20,7 @@ INCLUDE = [ROOT / "src", ROOT / "scripts" / "run_gpu.sh", ROOT / "scripts" / "co
            ROOT / "requirements.txt", ROOT / "tests" / "__init__.py",
            ROOT / "tests" / "test_ealstm.py", ROOT / "tests" / "test_taccari.py",
            DATASET_DIR, RAW / "safran" / "grid_cells_66.parquet"]
-INCLUDE += sorted((RESULTS_DIR / "_cache").glob("panel*.parquet"))
+INCLUDE += sorted(p for p in (RESULTS_DIR / "_cache").glob("panel*.parquet") if not p.match("panel_lu_*"))
 INCLUDE += sorted(RESULTS_DIR.glob("*_tuning/best.json"))
 
 with zipfile.ZipFile(OUT, "w", zipfile.ZIP_DEFLATED) as z:

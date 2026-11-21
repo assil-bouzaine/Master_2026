@@ -336,8 +336,7 @@ selections, makes the bundles, pulls and scores.
 ```bash
 .venv/bin/python scripts/v4_from_v3.py                       # v3 best.json -> results/v4
 .venv/bin/python scripts/kaggle_cpu.py push                  # CPU baselines -> Kaggle
-PFE_DATASET=v4 .venv/bin/python scripts/make_gpu_bundle.py   # dataset v4, its panels
-                                                              # (full, f25, f50), best.json
+PFE_DATASET=v4 .venv/bin/python scripts/make_gpu_bundle.py   # dataset v4, ordinary panels (full, f25, f50), best.json
 ```
 
 Upload the new `gpu_bundle.zip` to Drive `pfe_colab/` (it replaces the v3 bundle; the v3
@@ -427,7 +426,9 @@ Kernels run in the background (laptop may be off), up to 12 h per session.
 
 ## Colab CPU (compute units, rclone)
 
-From the laptop, use the configured `gdrive` rclone remote to stage the CPU bundle and resume state.
+From the laptop, use the configured `gdrive` rclone remote to stage the CPU bundle, resume state
+and `run_colab_cpu.sh` launcher. The default slim bundle is for Phase 4 and the twin. Use
+`push --full` for the standard CPU baseline sweep with Pastas or for the land-use steps.
 
 ```bash
 export PYTHONIOENCODING=utf-8 PFE_DATASET=v4
@@ -435,10 +436,11 @@ export PYTHONIOENCODING=utf-8 PFE_DATASET=v4
 ```
 
 Use the Phase 4 example after Gate 3 and the plan tag. Open a Colab notebook, choose a **CPU**
-runtime and select high RAM if offered. Run the printed cell, also saved in
-`results/_colab_cpu/colab_cell.txt`, and allow the Drive mount. The runner installs the pinned
-CPU packages and runs locally in Colab, with results copied to `pfe_colab_cpu/work` on Drive
-every five minutes. The default time budget is 23 hours and `push --budget H` sets it in hours.
+runtime and select high RAM if offered. Run the two-line cell printed by `push` and saved in
+`results/_colab_cpu/colab_cell.txt`. It mounts Drive and starts the uploaded launcher.
+The runner installs the pinned CPU packages and runs locally in Colab, with results copied to
+`pfe_colab_cpu/work` on Drive every five minutes. The default budget is 23 hours and
+`push --budget H` sets it in hours.
 
 Check `!nproc` in the runtime before spending compute units. Phase 4 uses four jobs per batch by
 default. To use the session's CPU count, add `--env 'P4_PARALLEL=$(nproc)'` to `push`.

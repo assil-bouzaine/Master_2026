@@ -140,8 +140,8 @@ def bundle_state(stage, archive):
     return True
 
 
-def bundle(stage=STAGE):
-    """Code + data of the CPU baselines -> dataset folder/cpu_bundle.zip."""
+def bundle(stage=STAGE, slim=False):
+    """Build the CPU archive, optionally omitting inputs for Pastas and the land-use tests."""
     sys.path.insert(0, str(ROOT))
     from src.config import INTERIM, PROCESSED, RAW
     dataset = "v4"
@@ -150,11 +150,14 @@ def bundle(stage=STAGE):
     for path in routing_inputs:
         if not path.is_file():
             raise FileNotFoundError(f"required routing input is missing: {path}")
+    daily = [] if slim else sorted((RAW / "safran").glob("sim2_66_[0-9]*.parquet"))
+    panels = sorted(p for p in (V4 / "_cache").glob("panel*.parquet")
+                    if not slim or not p.match("panel_lu_*.parquet"))
     include = [ROOT / "src", ROOT / "scripts" / "run_v4_cpu.sh", ROOT / "requirements.txt",
                ROOT / "tests" / "__init__.py", ROOT / "tests" / "test_ealstm.py",
-               PROCESSED / f"dataset_{dataset}", *sorted((RAW / "safran").glob("sim2_66_[0-9]*.parquet")),
+               PROCESSED / f"dataset_{dataset}", *daily,
                *routing_inputs, *sorted((PROCESSED / "kg").glob(f"export_{dataset}_*")),
-               *sorted((V4 / "_cache").glob("panel*.parquet")),
+               *panels,
                *sorted((V4 / "_cache").glob("panel*.json")),  # land-use identity records
                *sorted(V4.glob("*_tuning/best.json")), *sorted(V4.glob("*_tuned/best.json"))]
     ds = stage / "dataset"

@@ -301,6 +301,12 @@ and on the laptop `.venv/bin/python scripts/colab_pull.py ~/Downloads/results_co
 (copies finished runs and tuning studies to `results/v3/`, rescores them). A zip of the Drive
 folder `pfe_colab/results_gpu` (Drive > Download) works too. Then re-run the sweep cell.
 
+To pull directly from Drive with the configured rclone remote, run
+`.venv/bin/python scripts/colab_pull.py --drive`. Add a remote path after `--drive` to use
+another folder. For a folder extracted from the Colab VM, run
+`.venv/bin/python scripts/colab_pull.py --dir PATH`. Add `--version v4` if the source contains
+the run folders directly. Both commands copy finished runs and tuning studies and rescore the runs.
+
 **Lessons (2026-10-23):**
 - Colab image: Python 3.13, torch 2.11.0+cu130. The pins go to `/content/pins` (`PIN_TARGET`,
   as on Kaggle); about 1 min per session.

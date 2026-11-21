@@ -111,7 +111,7 @@ def _check_instances(text, facts, rules):
           f"{len(expected_numbers)} numbers equal their JSON sources")
 
 
-def _check_coverage(text, edges_c, edges_d, nodes, inventory, stderr):
+def _check_coverage(text, edges_c, edges_d, nodes, inventory, stderr, manifest):
     core = _core_codes(nodes)
     rows = _data_rows(text)
     assert len(rows) == len(RELATIONS)
@@ -133,7 +133,7 @@ def _check_coverage(text, edges_c, edges_d, nodes, inventory, stderr):
             wanted += [c[key] for key in ("wells", "core_wells", "edges", "distinct_sources")]
         assert _numbers(" & ".join(cells)) == wanted, (relation, cells, wanted)
         expected_numbers.extend(wanted)
-        saved = inventory["totals"].get(relation)
+        saved = tables.without_dropped(inventory["totals"], manifest.get("dropped_small_cells", {})).get(relation)
         if saved is None:
             assert f"totals has no {relation}" in stderr
             continue
@@ -251,7 +251,8 @@ def test_generated_tables():
         assert outputs[0] == outputs[1]
         documents = {name: content.decode("utf-8") for name, content in outputs[0].items()}
         _check_instances(documents["kg_instances.tex"], facts, rules)
-        _check_coverage(documents["kg_coverage.tex"], edges_c, edges_d, nodes, inventory, result.stderr)
+        _check_coverage(documents["kg_coverage.tex"], edges_c, edges_d, nodes, inventory, result.stderr,
+                        json.loads((KG / "export_v4_main" / "manifest.json").read_text()))
         _check_macros(documents["kg_numbers.tex"], facts, rules, nodes, release)
         _check_latex(documents, release)
     print(f"  5. two CLI runs into different temporary folders produce identical bytes "

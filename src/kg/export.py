@@ -25,7 +25,10 @@ constrained, only if every path is. "constrained" follows the policy's constrain
 arms differ in which edges exist, not in how an edge is weighted: pumping exp(-d / 5 km), well
 links exp(-d / sigma) with sigma the median distance of C's 3-nearest links; recharge edges carry
 the cell's share of the outcrop in D and 1 in C; river and canal edges 1 in D, C's river edges
-exp(-d / median well-gauge distance) as in the baseline.
+exp(-d / median well-gauge distance) as in the baseline. In arm D, recharge and recharge_unitwide
+edges whose aggregated cell share is below MIN_CELL_SHARE (0.001, Gate 3 point 12) are dropped
+from the export, while the knowledge graph keeps them. The routed models renormalise each well's
+remaining recharge weights to 1.
 
 D also lists, per well, the groundwater facilities of the dataset within 5 km that no selected
 pumping edge connects to it (relation "pumping_unattributed"): the volume outside the policy enters
@@ -60,6 +63,7 @@ C_NEAREST_WELLS, C_NEAREST_GAUGES = 3, 2
 C_PUMP_KM = 10.0            # arm C: facilities within this distance
 PUMP_DECAY_M = 5000.0       # both arms: pumping weight exp(-d / 5 km)
 D_RADIUS_M = 5000.0         # the search radius of the graph's pumping and well-link rules
+MIN_CELL_SHARE = 0.001      # Gate 3 point 12: drop recharge cells holding under 0.1 % of an outcrop
 CANAL = "canal-intakes:plain"
 EDGE_COLS = ["relation", "src_type", "src", "dst", "weight", "distance_m", "n_paths", "sign",
              "eligible", "constrained", "depth_diff_m", "association_types"]
@@ -158,6 +162,8 @@ SRC_TYPE = {"pumping": "facility", "recharge": "weather_cell", "recharge_unitwid
 def edges_d(store, kg_wells, wells, fac, policy):
     """Arm D: the selected influences and well links of the graph, one edge per driver and well."""
     rows, sigma = [], link_sigma(wells)
+    dropped = {rel: {"edges": 0, "eligible": 0, "constrained": 0, "wells": set()}
+               for rel in ("recharge", "recharge_unitwide")}
     dfac = _dist(wells, fac)
     fac_codes = fac["code_ouvrage"].to_numpy()
     row_of = {c: i for i, c in enumerate(wells["code_bss"])}
@@ -173,6 +179,12 @@ def edges_d(store, kg_wells, wells, fac, policy):
             by.setdefault((rel, r["driverCode"]), []).append(r)
         for (rel, src), paths in sorted(by.items()):
             a = aggregate(paths)
+            if rel in dropped and a["cell_weight"] is not None and a["cell_weight"] < MIN_CELL_SHARE:
+                dropped[rel]["edges"] += 1
+                dropped[rel]["eligible"] += int(a["eligible"])
+                dropped[rel]["constrained"] += int(a["constrained"])
+                dropped[rel]["wells"].add(w.code_bss)
+                continue
             weight = (np.exp(-a["distance_m"] / PUMP_DECAY_M) if rel == "pumping"
                       else a["cell_weight"] if rel.startswith("recharge") else 1.0)
             rows.append(edge(rel, SRC_TYPE[rel], src, w.code_bss, weight, a["distance_m"], a["n_paths"],
@@ -188,7 +200,10 @@ def edges_d(store, kg_wells, wells, fac, policy):
                 rows.append(edge("well_link", "well", r["neighbourCode"], w.code_bss,
                                  np.exp(-r["distanceM"] / sigma), r["distanceM"],
                                  depth_diff_m=r["depthDifferenceM"]))
-    return pd.DataFrame(rows, columns=EDGE_COLS)
+    dropped_summary = {rel: {"edges": info["edges"], "eligible": info["eligible"],
+                             "constrained": info["constrained"], "wells": sorted(info["wells"])}
+                       for rel, info in dropped.items()}
+    return pd.DataFrame(rows, columns=EDGE_COLS), dropped_summary
 
 
 def nodes_of(edge_tables, wells, fac, gauges, cells):
@@ -240,7 +255,8 @@ def main():
     wells, fac, gauges, cells = tables()
     kg_wells = dataset_wells(store)
     ec = edges_c(wells, fac, gauges)
-    ed = edges_d(store, kg_wells, wells, fac, rdflib.URIRef(D_IRI + f"policy/{args.policy}"))
+    ed, dropped_small_cells = edges_d(store, kg_wells, wells, fac,
+                                      rdflib.URIRef(D_IRI + f"policy/{args.policy}"))
     nodes = nodes_of([ec, ed], wells, fac, gauges, cells)
     out = out_dir(args.policy)
     out.mkdir(parents=True, exist_ok=True)
@@ -252,8 +268,10 @@ def main():
             "release_files": {k: v["sha256"] for k, v in m["files"].items()},
             "code_version": git_version(("src/kg", "ontology", "configs", "tests/cq")),
             "rules": {"C": {"nearest_wells": C_NEAREST_WELLS, "nearest_gauges": C_NEAREST_GAUGES,
-                            "pump_km": C_PUMP_KM}, "D": {"radius_m": D_RADIUS_M},
+                            "pump_km": C_PUMP_KM},
+                      "D": {"radius_m": D_RADIUS_M, "min_cell_share": MIN_CELL_SHARE},
                       "pump_decay_m": PUMP_DECAY_M, "well_link_sigma_m": link_sigma(wells)},
+            "dropped_small_cells": dropped_small_cells,
             "nodes": nodes["type"].value_counts().to_dict(),
             "nodes_without_series": {t: sorted(g["code"]) for t, g in no_series.groupby("type")},
             "arms": {"C": counts(ec, wells), "D": counts(ed, wells)}}
@@ -261,6 +279,9 @@ def main():
     for arm in ("C", "D"):
         print(f"arm {arm}: " + "; ".join(f"{rel} {c['edges']} edges, {c['wells']} wells ({c['core_wells']} core)"
                                          for rel, c in meta["arms"][arm].items()))
+    print(f"dropped small cells (< {MIN_CELL_SHARE:g}): " + "; ".join(
+        f"{rel} {info['edges']} edges ({len(info['wells'])} wells)"
+        for rel, info in dropped_small_cells.items()))
     print(f"nodes: {meta['nodes']}; without a series: "
           f"{ {t: len(v) for t, v in meta['nodes_without_series'].items()} }")
     print(f"-> {out.relative_to(ROOT)}")

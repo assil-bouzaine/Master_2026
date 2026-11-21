@@ -16,7 +16,10 @@ are obtained three other ways, and arm C's rules are recomputed by brute force:
      attributed to the well's recorded unit within 5 km, at a confidence the policy admits
      (tests.test_cq.pump_oracle restates the confidences); distances within 0.5 m;
    - recharge edges and their weights, local and unit-wide: GeoPandas on BD LISA and the raw
-     SAFRAN grid (tests.test_kg_rules.oracle_coverage), weights within 1e-5, summing to 1;
+     SAFRAN grid (tests.test_kg_rules.oracle_coverage), applying the Gate 3 point 12 cutoff
+     (cell share >= 0.001) independently on every side (inventory, whole-graph queries, pandas
+     oracle), weights within 1e-5, no well losing all recharge edges, manifest drop counts equal
+     to each oracle's;
    - the unattributed input: with the pumping edges it is exactly the dataset's groundwater
      facilities within 5 km of the well, each once.
    River and canal edges rest on curated documentary evidence: their source-level oracle is
@@ -30,17 +33,22 @@ Equal edges are necessary, not sufficient, for equal predictions (analysis plan 
 features, masks and a fixed-weight forward pass are compared when the tensors are built.
 """
 import json
+import math
 
 import numpy as np
 import pandas as pd
+import rdflib
 
-from src.config import DATASET, DATASET_DIR
+from src.config import DATASET, DATASET_DIR, ROOT
 from src.kg import export as E
 from src.kg import release
-from src.kg.cq import KG, kg_store
-from src.kg.inventory import THRESHOLDS, tag
+from src.kg.cq import KG, ask, kg_store
+from src.kg.inventory import THRESHOLDS, dataset_wells, edges_of, summarise, tag
 
 POLICY = "main"
+MIN_CELL_SHARE = 0.001      # Gate 3 point 12, applied independently of src.kg.export
+RECHARGE_RELS = ("recharge", "recharge_unitwide")
+D_IRI = "https://w3id.org/lulcw/data/"
 PRE = ("PREFIX lulcw: <https://w3id.org/lulcw#> PREFIX prov: <http://www.w3.org/ns/prov#> "
        "BASE <https://w3id.org/lulcw/data/> ")
 MECH = {"PumpingDrawdown": "pumping", "DiffuseRecharge": "recharge", "RiverExchange": "river",
@@ -53,10 +61,19 @@ def load():
             pd.read_parquet(out / "edges_D.parquet"), json.loads((out / "manifest.json").read_text()))
 
 
+
+def _dropped(meta, rel):
+    """The manifest's record of the dropped recharge edges of a relation: edges and wells (the
+    oracles recount them), after checking its eligible and constrained counts are consistent."""
+    d = meta["dropped_small_cells"][rel]
+    assert 0 <= d["constrained"] <= d["eligible"] <= d["edges"], (rel, d)
+    return {"edges": d["edges"], "wells": d["wells"]}
+
 def test_identity(nodes, ec, ed, meta):
     m = release.check()
     assert meta["release"] == m["released"] and meta["release_files"] == {
         k: v["sha256"] for k, v in m["files"].items()}, "the export was made from another release: run src.kg.export"
+    assert meta["rules"]["D"]["min_cell_share"] == MIN_CELL_SHARE
     assert not nodes.duplicated(["type", "code"]).any()
     have = set(zip(nodes["type"], nodes["code"]))
     for name, e in (("C", ec), ("D", ed)):
@@ -64,50 +81,103 @@ def test_identity(nodes, ec, ed, meta):
         assert not missing, f"arm {name}: edge endpoints that are not nodes: {sorted(missing)[:5]}"
         assert not e.duplicated(["relation", "src", "dst"]).any(), f"arm {name}: a driver connected twice"
     assert nodes["has_series"].all(), "a node without an input series"
+    for rel in RECHARGE_RELS:
+        rch = ed[ed["relation"] == rel]
+        assert (rch["weight"] >= MIN_CELL_SHARE).all(), (rel, float(rch["weight"].min()))
     print(f"  1. export bound to the release of {meta['release']}; {len(nodes)} nodes "
-          f"({nodes['type'].value_counts().to_dict()}), every edge endpoint is one, no driver twice")
+          f"({nodes['type'].value_counts().to_dict()}), every edge endpoint is one, no driver twice, "
+          f"every D recharge weight >= {MIN_CELL_SHARE:g}")
 
 
-def test_inventory(ed):
+def test_inventory(store, ed, meta):
     inv = pd.read_parquet(KG / f"inventory_{DATASET}_{POLICY}.parquet")
+    iri_of = dict(zip(*dataset_wells(store)[["code_bss", "iri"]].to_numpy().T))
+    policy_iri = rdflib.URIRef(D_IRI + f"policy/{POLICY}")
+    inf_by_well = {}
+    dropped = {rel: {"edges": 0, "wells": set()} for rel in RECHARGE_RELS}
     n = 0
     for r in inv.itertuples():
         e = ed[(ed["relation"] == r.relation) & (ed["dst"] == r.code_bss)]
         want = set(r.sources.split()) if isinstance(r.sources, str) and r.sources else set()
-        assert set(e["src"]) == want, (r.code_bss, r.relation, sorted(set(e["src"]) ^ want)[:4])
-        if r.relation == "well_link":
-            for t in THRESHOLDS:
-                got = len(e) if t is None else int((e["depth_diff_m"].abs() <= t).sum())
-                assert got == getattr(r, f"links_{tag(t)}"), (r.code_bss, t)
-        else:
-            assert int(e["eligible"].sum()) == r.eligible and int(e["constrained"].sum()) == r.constrained, \
+        if r.relation in RECHARGE_RELS:
+            if r.code_bss not in inf_by_well:
+                inf_by_well[r.code_bss] = edges_of(ask(store, "cq08_influences",
+                                                       W=rdflib.URIRef(iri_of[r.code_bss]), policy=policy_iri))
+            raw = inf_by_well[r.code_bss][r.relation]
+            assert set(raw) == want, (r.code_bss, r.relation, sorted(set(raw) ^ want)[:4])
+            kept = {}
+            for src, paths in raw.items():
+                ws = [p["cellWeight"] for p in paths if p["cellWeight"] is not None]
+                if math.fsum(ws) / len(ws) < MIN_CELL_SHARE:
+                    dropped[r.relation]["edges"] += 1
+                    dropped[r.relation]["wells"].add(r.code_bss)
+                else:
+                    kept[src] = paths
+            if raw:
+                assert kept, (r.code_bss, r.relation, "lost every recharge edge")
+            rec = summarise(kept) if kept else {"eligible": 0, "constrained": 0}
+            assert set(e["src"]) == set(kept), (r.code_bss, r.relation, sorted(set(e["src"]) ^ set(kept))[:4])
+            assert int(e["eligible"].sum()) == rec["eligible"] and int(e["constrained"].sum()) == rec["constrained"], \
                 (r.code_bss, r.relation)
+        else:
+            assert set(e["src"]) == want, (r.code_bss, r.relation, sorted(set(e["src"]) ^ want)[:4])
+            if r.relation == "well_link":
+                for t in THRESHOLDS:
+                    got = len(e) if t is None else int((e["depth_diff_m"].abs() <= t).sum())
+                    assert got == getattr(r, f"links_{tag(t)}"), (r.code_bss, t)
+            else:
+                assert int(e["eligible"].sum()) == r.eligible and int(e["constrained"].sum()) == r.constrained, \
+                    (r.code_bss, r.relation)
         n += len(e)
-    print(f"  2. arm D = the inventory: {n} edges, the same sources per well and relation, the same eligible "
-          f"and constrained edges, the same links under each depth threshold")
+    for rel in RECHARGE_RELS:
+        assert _dropped(meta, rel) == {
+            "edges": dropped[rel]["edges"], "wells": sorted(dropped[rel]["wells"])}, (rel, "inventory")
+    print(f"  2. arm D = the inventory (with cell share >= {MIN_CELL_SHARE:g} applied on its own weights): "
+          f"{n} edges, the same sources per well and relation, the same eligible and constrained edges, "
+          f"the same links under each depth threshold")
 
 
-def test_graph(store, ed):
-    got = {}
-    for b, mech, wide, n in store.query(PRE + f"""
-            SELECT ?b ?mech ?wide (COUNT(DISTINCT ?drv) AS ?n) WHERE {{
+def test_graph(store, ed, meta):
+    by = {}
+    for b, mech, wide, drv, w in store.query(PRE + f"""
+            SELECT ?b ?mech ?wide ?drv ?w WHERE {{
               ?i a lulcw:Influence ; lulcw:selectedUnder <policy/{POLICY}> ; lulcw:mechanism ?mech ;
                  lulcw:driverEntity ?drv ; lulcw:targetEntity/lulcw:bssCode ?b .
               OPTIONAL {{ ?i lulcw:withinExtent ?s }}
-              BIND (BOUND(?s) && !STRSTARTS(STR(?s), STR(<outcrop-zone/>)) AS ?wide) }}
-            GROUP BY ?b ?mech ?wide"""):
+              OPTIONAL {{ ?cw lulcw:cellWeight ?w . ?i prov:wasDerivedFrom ?cw . }}
+              BIND (BOUND(?s) && !STRSTARTS(STR(?s), STR(<outcrop-zone/>)) AS ?wide) }}"""):
         rel = MECH[mech.value.rsplit("#", 1)[-1]]
         if rel == "recharge" and wide.value == "true":
             rel = "recharge_unitwide"
-        got[(b.value, rel)] = int(n.value)
+        ws = by.setdefault((b.value, rel, drv.value), [])
+        if w is not None:
+            ws.append(float(w.value))
+    got = {}
+    undropped_wells = {rel: set() for rel in RECHARGE_RELS}
+    kept_wells = {rel: set() for rel in RECHARGE_RELS}
+    dropped = {rel: {"edges": 0, "wells": set()} for rel in RECHARGE_RELS}
+    for (b, rel, _), ws in by.items():
+        if rel in RECHARGE_RELS:
+            undropped_wells[rel].add(b)
+            if math.fsum(ws) / len(ws) < MIN_CELL_SHARE:
+                dropped[rel]["edges"] += 1
+                dropped[rel]["wells"].add(b)
+                continue
+            kept_wells[rel].add(b)
+        got[(b, rel)] = got.get((b, rel), 0) + 1
     e = ed[ed["relation"].isin(set(MECH.values()) | {"recharge_unitwide"})]
     want = e.groupby(["dst", "relation"]).size().to_dict()
     assert got == want, sorted(set(got.items()) ^ set(want.items()))[:6]
-    print(f"  3. arm D = whole-graph queries: {len(want)} (well, relation) pairs, the same number of distinct "
-          f"drivers among the influences the policy selects ({sum(want.values())} edges)")
+    for rel in RECHARGE_RELS:
+        assert kept_wells[rel] == undropped_wells[rel], (rel, sorted(undropped_wells[rel] - kept_wells[rel]))
+        assert _dropped(meta, rel) == {
+            "edges": dropped[rel]["edges"], "wells": sorted(dropped[rel]["wells"])}, (rel, "graph")
+    print(f"  3. arm D = whole-graph queries (with cell share >= {MIN_CELL_SHARE:g}): {len(want)} (well, relation) "
+          f"pairs, the same number of distinct drivers among the influences the policy selects "
+          f"({sum(want.values())} edges)")
 
 
-def test_pandas(store, ed):
+def test_pandas(store, ed, meta):
     from tests.test_cq import ADMITS, pump_oracle
     from tests.test_kg_rules import RADIUS, l93, oracle_coverage
     wells = pd.read_parquet(DATASET_DIR / "wells.parquet")
@@ -132,29 +202,45 @@ def test_pandas(store, ed):
     assert all(abs(got[k] - want[k]) < 0.5 for k in want)
     assert (e["sign"] == "NegativeResponse").all() and e["constrained"].all()
     n_pump = len(want)
-    # recharge: cells and weights
+    # recharge: cells and weights, applying the < 0.001 cutoff independently on the GeoPandas oracle
     described = {r[0].value for r in store.query(
         PRE + "SELECT ?c WHERE { ?u lulcw:bdlisaCode ?c ; prov:wasDerivedFrom ?r }")}
     oracle = oracle_coverage(described, wells)
     n_rch = 0
+    dropped_counts = {}
     for kind, rel in (("local", "recharge"), ("unit-wide", "recharge_unitwide")):
         e = ed[ed["relation"] == rel]
+        assert (e["weight"] >= MIN_CELL_SHARE).all(), (rel, float(e["weight"].min()))
         got = {b: dict(zip(g["src"], g["weight"])) for b, g in e.groupby("dst")}
-        want, sliver = {}, set()
+        want_full, want_kept, sliver = {}, {}, set()
+        dropped_edges, dropped_wells = 0, set()
         for b, u in zip(wells["code_bss"], wells["code_bdlisa"]):
             if not isinstance(u, str) or u not in described:
                 continue
             o, c, by_cell = oracle.get((b if kind == "local" else "forcing-cells", u), (0.0, 0.0, {}))
             if o >= 50.0 and c > 0:
-                want[b] = {cell: v / c for cell, v in by_cell.items() if v >= 1.0}
+                full = {cell: v / c for cell, v in by_cell.items() if v >= 1.0}
+                kept = {cell: w for cell, w in full.items() if w >= MIN_CELL_SHARE}
+                tiny = {cell: w for cell, w in full.items() if w < MIN_CELL_SHARE}
+                want_full[b] = full
+                want_kept[b] = kept
+                if full:
+                    assert kept, f"{rel}: {b} lost every recharge edge after dropping < {MIN_CELL_SHARE}"
+                if tiny:
+                    dropped_edges += len(tiny)
+                    dropped_wells.add(b)
             elif o > 0:
                 sliver.add(b)
-        assert set(got) - sliver == set(want), (rel, sorted((set(got) - sliver) ^ set(want))[:6])
-        for b, cells in want.items():
-            big = {c for c, w in cells.items() if w > 1e-5}
-            assert big <= set(got[b]) and all(abs(got[b].get(c, 0.0) - w) <= 1e-5 for c, w in cells.items()), (rel, b)
-            assert abs(sum(got[b].values()) - 1) <= 1e-9, (rel, b)
+        assert set(got) - sliver == set(want_full), (rel, sorted((set(got) - sliver) ^ set(want_full))[:6])
+        assert set(got) - sliver == set(want_kept), (rel, sorted((set(got) - sliver) ^ set(want_kept))[:6])
+        for b, cells in want_kept.items():
+            assert set(got[b]) == set(cells), (rel, b, sorted(set(got[b]) ^ set(cells))[:6])
+            assert all(abs(got[b][c] - w) <= 1e-5 for c, w in cells.items()), (rel, b)
+            assert abs(sum(got[b].values()) - sum(cells.values())) <= 1e-5 * len(cells) + 1e-9, (rel, b)
         assert (e["sign"] == "PositiveResponse").all() and e["eligible"].all() and not e["constrained"].any()
+        assert _dropped(meta, rel) == {
+            "edges": dropped_edges, "wells": sorted(dropped_wells)}, (rel, "pandas oracle")
+        dropped_counts[rel] = (dropped_edges, len(dropped_wells))
         n_rch += len(e)
     # the unattributed input
     t_wells, t_fac, _, _ = E.tables()
@@ -168,9 +254,11 @@ def test_pandas(store, ed):
         assert not (un & pu) and un == near - pu, b
         n_un += len(un)
     print(f"  4. arm D = pandas rules on the source tables: {n_pump} exact-unit pumping edges (attribution table, "
-          f"BNPE points, distances within 0.5 m), {n_rch} recharge edges with their weights (GeoPandas on BD LISA "
-          f"and the SAFRAN grid), {n_un} unattributed facility-well pairs = the other groundwater facilities "
-          f"within 5 km")
+          f"BNPE points, distances within 0.5 m), {n_rch} recharge edges with their weights >= {MIN_CELL_SHARE:g} "
+          f"(dropped: {dropped_counts['recharge'][0]} local across {dropped_counts['recharge'][1]} wells, "
+          f"{dropped_counts['recharge_unitwide'][0]} unit-wide across {dropped_counts['recharge_unitwide'][1]} "
+          f"wells; every well keeps >= 1 edge), {n_un} unattributed facility-well pairs = the other groundwater "
+          f"facilities within 5 km")
 
 
 def test_arm_c(ec, ed):
@@ -197,19 +285,20 @@ def test_arm_c(ec, ed):
         assert np.allclose(x["weight"], np.exp(-x["distance_m"] / E.PUMP_DECAY_M))
         x = e[e["relation"] == "well_link"]
         assert np.allclose(x["weight"], np.exp(-x["distance_m"] / sigma))
+    unchanged = ""
     print(f"  5. arm C by brute force: {len(w)} weather edges (each well's own cell), {len(r)} river edges (2 nearest "
           f"pool gauges), {len(p)} pumping edges (every groundwater facility within {E.C_PUMP_KM:g} km), {len(k)} "
           f"symmetric well links, the canal for the {wells['in_plain'].sum()} wells of the plain; no sign in C; "
-          f"the same distance weights in both arms")
+          f"the same distance weights in both arms{unchanged}")
 
 
 def main():
     nodes, ec, ed, meta = load()
     store = kg_store()
     test_identity(nodes, ec, ed, meta)
-    test_inventory(ed)
-    test_graph(store, ed)
-    test_pandas(store, ed)
+    test_inventory(store, ed, meta)
+    test_graph(store, ed, meta)
+    test_pandas(store, ed, meta)
     test_arm_c(ec, ed)
     print("test_export: all checks passed")
 

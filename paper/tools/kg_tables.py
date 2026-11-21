@@ -25,6 +25,7 @@ SOURCES = {
     "rules": KG / "lulcw_kg_v4_rules_summary.json",
     "release": KG / "lulcw_kg_v4_release.json",
     "inventory": KG / "inventory_v4_main.json",
+    "manifest": KG / "export_v4_main" / "manifest.json",
     "C": KG / "export_v4_main" / "edges_C.parquet",
     "D": KG / "export_v4_main" / "edges_D.parquet",
     "nodes": KG / "export_v4_main" / "nodes.parquet",
@@ -115,6 +116,19 @@ def coverage(edges, core):
             "constrained_edges": int(group["constrained"].eq(True).sum()),
             "distinct_sources": len(group[["src_type", "src"]].drop_duplicates()),
         }
+    return out
+
+
+def without_dropped(totals, dropped):
+    """The inventory's totals minus the recharge edges the export drops (cells under 0.001 of an
+    outcrop, Gate 3 point 12): the graph keeps them, the export and this table do not."""
+    out = {rel: dict(v) for rel, v in totals.items()}
+    for rel, d in (dropped or {}).items():
+        if rel in out:
+            for key, n in (("sources", d["edges"]), ("eligible_edges", d["eligible"]),
+                           ("constrained_edges", d["constrained"])):
+                if key in out[rel]:
+                    out[rel][key] -= n
     return out
 
 
@@ -248,7 +262,12 @@ def generate(out=OUT):
         "kg_coverage.tex": coverage_table(counts_c, counts_d, released),
         "kg_numbers.tex": number_macros(data["facts"], data["rules"], data["nodes"], released),
     }
-    for message in inventory_diagnostics(counts_d, data["inventory"]["totals"]):
+    dropped = data["manifest"].get("dropped_small_cells", {})
+    if dropped:
+        print("NOTE: the export drops " + "; ".join(f"{rel} {d['edges']} edges" for rel, d in dropped.items())
+              + " (cells under 0.001 of an outcrop, Gate 3 point 12): the inventory is compared without them.",
+              file=sys.stderr)
+    for message in inventory_diagnostics(counts_d, without_dropped(data["inventory"]["totals"], dropped)):
         print(message, file=sys.stderr)
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)

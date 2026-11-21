@@ -1,0 +1,39 @@
+# CQ14 · Cover, confinement and pressure state at a well, kept apart
+# (docs/competency_questions.md §4, CQ14; Gate 3 point 15; analysis plan §14 item 23)
+#
+# Parameters  ?W        a lulcw:Piezometer
+#             ?window   "train", "f25" or "f50" (the training window of the regime)
+# Reads       SHACL-AF rule outputs (lulcw:HydrogeologicalSetting, lulcw:ConfinementAssessment)
+#             and asserted facts (lulcw:PressureStateSummary, stacks, attributions); no reasoning
+# Returns     one row per monitoring attribution of ?W, in rank order: the candidate unit's code (or
+#             none), its cover status (outcropping, covered, cover unknown), its position in the BD
+#             LISA stack under the point and the covering units' codes (space-separated), the
+#             polygon; for ?window the confinement state (confined only on pressure evidence at the
+#             point, probable; else unknown), the pressure summary (days with a depth, days with the
+#             water above the measurement reference, the share in percent: unbound when there is no
+#             depth, i.e. unknown, never 0), and both reasons in words. Mapped cover is not
+#             confinement; the measurement reference is not surveyed ground.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+SELECT ?W ?window ?rank ?unitCode ?coverStatus ?stackPosition ?coveringUnits ?polygonCode
+       ?confinementState ?confidence ?daysObserved ?daysAbove ?sharePct ?coverReason ?confinementReason
+WHERE {
+    ?s lulcw:settingOf ?W ; lulcw:settingAttribution ?a ; lulcw:coverStatus ?coverStatus ;
+       lulcw:assessmentReason ?coverReason .
+    ?a lulcw:rank ?rank .
+    ?c lulcw:assessedSetting ?s ; lulcw:assessmentWindow ?window ; lulcw:confinementState ?confinementState ;
+       lulcw:assessmentReason ?confinementReason ; prov:wasDerivedFrom ?ps .
+    ?ps sosa:hasFeatureOfInterest ?W ; lulcw:daysObserved ?daysObserved ; lulcw:daysAboveReference ?daysAbove .
+    OPTIONAL { ?ps sosa:hasSimpleResult ?sharePct . }
+    OPTIONAL { ?c lulcw:confidence ?confidence . }
+    OPTIONAL { ?s lulcw:settingUnit ?u . ?u lulcw:bdlisaCode ?unitCode . }
+    OPTIONAL { ?s lulcw:stackPosition ?stackPosition . }
+    OPTIONAL { ?s lulcw:settingPolygon ?p . ?p lulcw:polygonCode ?polygonCode . }
+    OPTIONAL {
+        { SELECT ?s (GROUP_CONCAT(?cc; separator=" ") AS ?coveringUnits) WHERE {
+              #bind-parameters
+              ?s lulcw:settingOf ?W ; lulcw:coveringUnit ?cu . ?cu lulcw:bdlisaCode ?cc . } GROUP BY ?s }
+    }
+}
+ORDER BY ?rank

@@ -1,0 +1,115 @@
+
+# ----------------------------------------------------------------------------- CQ14 (0.8.0, 2026-11-21)
+# Cover, confinement and pressure state at a monitoring point, kept separate (docs/competency_questions.md,
+# CQ14; Gate 3 point 15, analysis plan §14 item 23). Mapped cover is geological; confinement is hydraulic
+# and needs hydraulic evidence at the point; pressure is an observation with its denominator and datum.
+
+lulcw:HydrogeologicalSetting a owl:Class ;
+    rdfs:label "hydrogeological setting"@en , "contexte hydrogéologique"@fr ;
+    skos:definition "The mapped situation of a monitored unit at a monitoring point: its position in the BD LISA stack of the elementary polygon under the point and the units mapped above it there. Mapped cover is a geological fact, not a hydraulic one: it does not establish confinement (BRGM documents covered yet unconfined settings)."@en .
+lulcw:PressureStateSummary a owl:Class ; rdfs:subClassOf sosa:Observation ;
+    rdfs:label "pressure-state summary"@en , "bilan de l'état de pression"@fr ;
+    skos:definition "The share of the measurement days of a window on which the water at a monitoring point stood above the point's measurement reference (a depth to water below zero), with the number of days it rests on. The reference is the station's measurement reference (usually the ground or the top of the casing), not surveyed ground. A window without any depth value has no result: unknown, never zero."@en .
+lulcw:ConfinementAssessment a owl:Class ;
+    rdfs:label "confinement assessment"@en , "évaluation de la captivité"@fr ;
+    skos:definition "An assessment, for one window, of the hydraulic confinement of the monitored unit at a monitoring point, with its evidence and its reason. In this release it is confined only on pressure evidence at the point (a free water table cannot stand above the ground) and unknown otherwise: neither mapped cover nor an outcrop establishes a confinement state, and an outcropping multilayer unit may hold confined horizons."@en .
+
+lulcw:CoverStatus a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "cover status"@en , "état de couverture"@fr ;
+    skos:definition "Whether the monitored unit is mapped at the surface, under other units, or not found in the stack under the point."@en .
+lulcw:CoverStatusScheme a skos:ConceptScheme ;
+    rdfs:label "cover statuses"@en , "états de couverture"@fr ;
+    skos:definition "Values of lulcw:CoverStatus."@en .
+lulcw:Outcropping a lulcw:CoverStatus ; skos:inScheme lulcw:CoverStatusScheme ; skos:topConceptOf lulcw:CoverStatusScheme ;
+    skos:prefLabel "outcropping"@en , "affleurant"@fr ;
+    rdfs:label "outcropping"@en , "affleurant"@fr ;
+    skos:definition "The unit is the first layer of the stack under the point (BD LISA order 1)."@en .
+lulcw:Covered a lulcw:CoverStatus ; skos:inScheme lulcw:CoverStatusScheme ; skos:topConceptOf lulcw:CoverStatusScheme ;
+    skos:prefLabel "covered"@en , "sous couverture"@fr ;
+    rdfs:label "covered"@en , "sous couverture"@fr ;
+    skos:definition "Other units are mapped above the unit in the stack under the point. Not a confinement state."@en .
+lulcw:CoverUnknown a lulcw:CoverStatus ; skos:inScheme lulcw:CoverStatusScheme ; skos:topConceptOf lulcw:CoverStatusScheme ;
+    skos:prefLabel "cover unknown"@en , "couverture inconnue"@fr ;
+    rdfs:label "cover unknown"@en , "couverture inconnue"@fr ;
+    skos:definition "The monitored unit is unknown, or it is not in the stack of the polygon under the point."@en .
+
+lulcw:ConfinementState a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "confinement state"@en , "état de captivité"@fr ;
+    skos:definition "The hydraulic confinement of a unit at a point, as an assessment states it."@en .
+lulcw:ConfinementStateScheme a skos:ConceptScheme ;
+    rdfs:label "confinement states"@en , "états de captivité"@fr ;
+    skos:definition "Values of lulcw:ConfinementState."@en .
+lulcw:ConfinedState a lulcw:ConfinementState ; skos:inScheme lulcw:ConfinementStateScheme ; skos:topConceptOf lulcw:ConfinementStateScheme ;
+    skos:prefLabel "confined"@en , "captif"@fr ;
+    rdfs:label "confined"@en , "captif"@fr ;
+    skos:definition "The unit is under pressure at the point: its head rises above the top of the unit, here shown by water standing above the point's measurement reference."@en .
+lulcw:UnconfinedState a lulcw:ConfinementState ; skos:inScheme lulcw:ConfinementStateScheme ; skos:topConceptOf lulcw:ConfinementStateScheme ;
+    skos:prefLabel "unconfined"@en , "libre"@fr ;
+    rdfs:label "unconfined"@en , "libre"@fr ;
+    skos:definition "The unit has a free water table at the point. No evidence type of this release supports it, so no rule derives it."@en .
+lulcw:SemiConfinedState a lulcw:ConfinementState ; skos:inScheme lulcw:ConfinementStateScheme ; skos:topConceptOf lulcw:ConfinementStateScheme ;
+    skos:prefLabel "semi-confined"@en , "semi-captif"@fr ;
+    rdfs:label "semi-confined"@en , "semi-captif"@fr ;
+    skos:definition "The unit is under a leaky cover at the point. No evidence type of this release supports it, so no rule derives it."@en .
+lulcw:ConfinementUnknown a lulcw:ConfinementState ; skos:inScheme lulcw:ConfinementStateScheme ; skos:topConceptOf lulcw:ConfinementStateScheme ;
+    skos:prefLabel "confinement unknown"@en , "captivité inconnue"@fr ;
+    rdfs:label "confinement unknown"@en , "captivité inconnue"@fr ;
+    skos:definition "No hydraulic evidence at the point decides the state in the window."@en .
+
+lulcw:HeadAboveReferenceShare a sosa:ObservableProperty ;
+    rdfs:label "share of days with the water above the measurement reference"@en , "part des jours où l'eau est au-dessus du repère"@fr ;
+    skos:definition "Percentage of the days with a depth to water in a window on which that depth is below zero (the water above the station's measurement reference)."@en .
+lulcw:HeadAboveReferenceCount a sosa:Procedure ;
+    rdfs:label "count of days above the measurement reference"@en , "décompte des jours au-dessus du repère"@fr ;
+    skos:definition "Hub'Eau daily depths to water of the station, the dataset's quality filter (values qualified 'Incorrecte' or 'Qualification non définissable' dropped), the days of the window with a value; share = 100 x days with a depth below zero / days, rounded to 0.1 (src/kg/pressure.py, equal to the dataset's artesian share)."@en .
+
+lulcw:settingOf a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:HydrogeologicalSetting ; rdfs:range lulcw:Piezometer ;
+    rdfs:label "setting of"@en , "contexte de"@fr ;
+    skos:definition "The monitoring point a hydrogeological setting describes."@en .
+lulcw:settingAttribution a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:HydrogeologicalSetting ; rdfs:range lulcw:UnitAttribution ;
+    rdfs:label "setting of the attribution"@en , "contexte de l'attribution"@fr ;
+    skos:definition "The monitoring attribution (one candidate unit of the point) the setting describes: a point with several candidate units has one setting per candidate."@en .
+lulcw:settingUnit a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:HydrogeologicalSetting ; rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "setting unit"@en , "entité du contexte"@fr ;
+    skos:definition "The candidate monitored unit whose situation the setting gives; absent when the attribution has no target."@en .
+lulcw:settingPolygon a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:HydrogeologicalSetting ; rdfs:range lulcw:ElementaryPolygon ;
+    rdfs:label "setting polygon"@en , "polygone du contexte"@fr ;
+    skos:definition "The BD LISA elementary polygon under the point, whose stack the setting reads."@en .
+lulcw:stackPosition a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:HydrogeologicalSetting ; rdfs:range xsd:integer ;
+    rdfs:label "stack position"@en , "position dans la pile"@fr ;
+    skos:definition "The order of the unit's layer in the stack under the point (1 = mapped at the surface); absent when the unit is not in that stack."@en .
+lulcw:coveringUnit a owl:ObjectProperty ;
+    rdfs:domain lulcw:HydrogeologicalSetting ; rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "covering unit"@en , "entité de couverture"@fr ;
+    skos:definition "A unit mapped above the setting's unit in the stack under the point."@en .
+lulcw:coverStatus a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:HydrogeologicalSetting ; rdfs:range lulcw:CoverStatus ;
+    rdfs:label "has cover status"@en , "a pour état de couverture"@fr ;
+    skos:definition "Whether the unit is outcropping, covered or of unknown cover at the point."@en .
+lulcw:assessmentReason a owl:DatatypeProperty ; rdfs:range xsd:string ;
+    rdfs:label "reason"@en , "raison"@fr ;
+    skos:definition "Why a setting or a confinement assessment says what it says, in words, with the evidence it rests on and what it does not show."@en .
+lulcw:daysObserved a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:PressureStateSummary ; rdfs:range xsd:integer ;
+    rdfs:label "days observed"@en , "jours observés"@fr ;
+    skos:definition "The days of the window with a depth to water: the denominator of the share."@en .
+lulcw:daysAboveReference a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:PressureStateSummary ; rdfs:range xsd:integer ;
+    rdfs:label "days above the reference"@en , "jours au-dessus du repère"@fr ;
+    skos:definition "The days of the window with a depth to water below zero."@en .
+lulcw:assessmentWindow a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:string ;
+    rdfs:label "window"@en , "fenêtre"@fr ;
+    skos:definition "The training window a pressure summary or a confinement assessment belongs to: train (the model window to the end of training), f25 or f50 (the shorter windows of regime R3)."@en .
+lulcw:assessedSetting a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ConfinementAssessment ; rdfs:range lulcw:HydrogeologicalSetting ;
+    rdfs:label "assessed setting"@en , "contexte évalué"@fr ;
+    skos:definition "The setting whose unit's confinement the assessment gives."@en .
+lulcw:confinementState a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ConfinementAssessment ; rdfs:range lulcw:ConfinementState ;
+    rdfs:label "has confinement state"@en , "a pour état de captivité"@fr ;
+    skos:definition "The state the assessment gives: confined only on pressure evidence at the point, else unknown."@en .

@@ -1,0 +1,113 @@
+
+#################################################################
+# CQ14: cover, confinement and pressure state at a monitoring point
+#################################################################
+
+lulcwr:SettingShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/hydrogeological-setting> ;
+    sh:order 65 ;
+    sh:rule lulcwr:hydrogeologicalSetting , lulcwr:coveringUnits .
+
+# One setting per monitoring attribution of a piezometer: the position of its candidate unit in the
+# stack of the polygon under the point (outcropping at order 1, covered below), cover unknown when
+# the attribution has no target or its unit is not in that stack. Mapped cover only: no confinement.
+# The stack lookup uses its own variable (?lu): an OPTIONAL whose unit were ?u itself would bind any
+# layer's unit when the attribution has none.
+lulcwr:hydrogeologicalSetting a sh:SPARQLRule ;
+    sh:order 1 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?s a lulcw:HydrogeologicalSetting ;
+        lulcw:settingOf ?w ; lulcw:settingAttribution ?a ; lulcw:settingUnit ?u ;
+        lulcw:settingPolygon ?p ; lulcw:stackPosition ?o ; lulcw:coverStatus ?status ;
+        lulcw:assessmentReason ?why ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasDerivedFrom ?a , ?l ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    ?a lulcw:attributedEntity ?w ; lulcw:role ?role ; lulcw:rank ?rank .
+    FILTER (?role = lulcw:MonitoringRole)
+    ?w lulcw:bssCode ?bss .
+    OPTIONAL { ?a lulcw:candidateUnit ?u . }
+    OPTIONAL { ?w lulcw:locatedInPolygon ?p . }
+    OPTIONAL {
+        ?p lulcw:hasStackLayer ?l .
+        ?l lulcw:layerUnit ?lu ; lulcw:layerOrder ?o .
+        FILTER (BOUND(?u) && ?lu = ?u)
+    }
+    BIND (IF(!BOUND(?u) || !BOUND(?o), lulcw:CoverUnknown,
+             IF(?o = 1, lulcw:Outcropping, lulcw:Covered)) AS ?status)
+    BIND (IF(!BOUND(?u), "The monitored unit of this attribution is unknown, so its place in the stack under the point is unknown.",
+          IF(!BOUND(?p), "The point lies in no BD LISA polygon of the graph: the stack under it is unknown.",
+          IF(!BOUND(?o), "The candidate unit is not in the stack of the BD LISA polygon under the point (for example a unit missing from the regional extract): its cover is unknown.",
+          IF(?o = 1, "The candidate unit is the first layer of the BD LISA stack under the point: mapped at the surface. An outcropping multilayer unit may still hold confined horizons; cover says nothing about confinement.",
+             "Other units are mapped above the candidate unit in the BD LISA stack under the point. Mapped cover is not confinement: BRGM documents covered yet unconfined settings.")))) AS ?why)
+    BIND (IRI(CONCAT("https://w3id.org/lulcw/data/setting/", ENCODE_FOR_URI(?bss), "/", STR(?rank))) AS ?s)
+}
+""" .
+
+# The units mapped above a covered unit in the stack under the point.
+lulcwr:coveringUnits a sh:SPARQLRule ;
+    sh:order 2 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+CONSTRUCT { ?s lulcw:coveringUnit ?uc . }
+WHERE {
+    ?s lulcw:derivationRule $this ; lulcw:settingPolygon ?p ; lulcw:stackPosition ?o .
+    ?p lulcw:hasStackLayer ?lc .
+    ?lc lulcw:layerOrder ?oc ; lulcw:layerUnit ?uc .
+    FILTER (?oc < ?o)
+}
+""" .
+
+lulcwr:ConfinementShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/confinement-assessment> ;
+    sh:order 66 ;
+    sh:rule lulcwr:confinementAssessment .
+
+# Per setting and training window: confined (probable) when the water stood above the point's
+# measurement reference on some day of the window (a free water table cannot rise above the ground),
+# else unknown; never from the stack alone, and never unconfined or semi-confined (no evidence type
+# of this release supports them). A window without a depth value leaves the state unknown, with the
+# pressure itself unknown, not zero.
+lulcwr:confinementAssessment a sh:SPARQLRule ;
+    sh:order 1 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?c a lulcw:ConfinementAssessment ;
+        lulcw:assessedSetting ?s ; lulcw:assessmentWindow ?win ; lulcw:confinementState ?state ;
+        lulcw:confidence ?conf ; lulcw:assessmentReason ?why ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasDerivedFrom ?s , ?ps ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    ?s lulcw:settingOf ?w ; lulcw:settingAttribution ?a ; lulcw:coverStatus ?cover .
+    ?a lulcw:rank ?rank .
+    ?w lulcw:bssCode ?bss .
+    ?ps sosa:hasFeatureOfInterest ?w ; lulcw:assessmentWindow ?win ; lulcw:daysObserved ?days ;
+        lulcw:daysAboveReference ?above .
+    OPTIONAL { ?ps sosa:hasSimpleResult ?share . }
+    BIND (BOUND(?share) && ?above > 0 AS ?pressure)
+    BIND (IF(?pressure, lulcw:ConfinedState, lulcw:ConfinementUnknown) AS ?state)
+    BIND (IF(?pressure, lulcw:Probable, ?unset) AS ?conf)
+    BIND (IF(?pressure,
+             CONCAT("The water stood above the station's measurement reference on ", STR(?above), " of ",
+                    STR(?days), " days of the window: a free water table cannot rise above the ground, so the monitored layer was confined at the point on those days. Probable, not confident: the reference is the station's measurement reference, usually the ground or the top of the casing, not surveyed ground."),
+          IF(?days = 0,
+             "No depth to water in the window: its pressure state is unknown (not zero), and so is the confinement.",
+             CONCAT("The water never stood above the measurement reference in the window (", STR(?days),
+                    " days), which does not show a free water table. ",
+                    IF(?cover = lulcw:Covered, "The unit is covered at the point, but mapped cover does not establish confinement: unknown.",
+                    IF(?cover = lulcw:Outcropping, "The unit is mapped at the surface at the point, but an outcropping multilayer unit may hold confined horizons: unknown.",
+                       "The unit's place in the stack is unknown too: unknown."))))) AS ?why)
+    BIND (IRI(CONCAT("https://w3id.org/lulcw/data/confinement/", ENCODE_FOR_URI(?bss), "/", STR(?rank), "/", ?win)) AS ?c)
+}
+""" .

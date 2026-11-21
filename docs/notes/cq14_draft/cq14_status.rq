@@ -1,0 +1,39 @@
+# CQ14 · Answer status for cover, confinement and pressure at a well (common answer contract,
+# docs/competency_questions.md §2)
+#
+# Parameters  ?W        any IRI
+#             ?window   "train", "f25" or "f50"
+# Reads       SHACL-AF rule outputs and asserted facts
+# Returns     one row: ?status, one of
+#               not_applicable  ?W is not a piezometer of the graph
+#               unknown         no setting (no monitoring attribution) or no pressure summary for the
+#                               window: nothing can be said
+#               partial         a setting's cover is unknown, or the window has no depth value (the
+#                               pressure, and with it the confinement, unknown)
+#               supported       every monitoring attribution has its cover from the stack and an
+#                               assessment for the window resting on a pressure summary with days;
+#                               the state may be "confinement unknown": that IS the answer
+#             and ?reason in words. Supported by the cited records; the reference is not surveyed
+#             ground, and mapped cover is not confinement.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+SELECT ?W ?window (SAMPLE(?st) AS ?status) (SAMPLE(?why) AS ?reason)
+WHERE {
+    BIND (EXISTS { ?W a lulcw:Piezometer } AS ?isWell)
+    BIND (EXISTS { ?s lulcw:settingOf ?W . } AS ?hasSetting)
+    BIND (EXISTS { ?ps sosa:hasFeatureOfInterest ?W ; lulcw:assessmentWindow ?window . } AS ?hasSummary)
+    BIND (EXISTS { ?s2 lulcw:settingOf ?W ; lulcw:coverStatus lulcw:CoverUnknown . } AS ?coverUnknown)
+    BIND (EXISTS { ?ps2 sosa:hasFeatureOfInterest ?W ; lulcw:assessmentWindow ?window ;
+                        lulcw:daysObserved 0 . } AS ?noDays)
+    BIND (IF(!?isWell, "not_applicable",
+          IF(!?hasSetting || !?hasSummary, "unknown",
+          IF(?coverUnknown || ?noDays, "partial", "supported"))) AS ?st)
+    BIND (IF(!?isWell, "not a piezometer of the graph",
+          IF(!?hasSetting, "no monitoring attribution, so no setting",
+          IF(!?hasSummary, "no pressure summary for this window",
+          IF(?coverUnknown && ?noDays, "a cover unknown, and no depth value in the window",
+          IF(?coverUnknown, "the cover of a candidate unit is unknown (no unit, or not in the stack under the point)",
+          IF(?noDays, "no depth value in the window: pressure and confinement unknown",
+             "cover from the stack and an assessment resting on the window's pressure summary")))))) AS ?why)
+}
+GROUP BY ?W ?window

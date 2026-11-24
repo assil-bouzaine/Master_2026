@@ -10,8 +10,8 @@ Median simulation scores over the core wells. Skill is measured against climatol
 
 | Run | Model | Status | Validation NSE | Drought NSE | Drought skill | Drought RMSE |
 | --- | --- | --- | --- | --- | --- | --- |
-| `taccari_D` | Tuned Taccari-style ST-GNN on arm D's knowledge-graph edges (L4, five seeds) | pending | — | — | — | — |
-| `taccari_tuned_ctl` | Same tuned ST-GNN on its usual distance edges (same L4 session, five seeds) | pending | — | — | — | — |
+| `taccari_D` | Tuned Taccari-style ST-GNN on arm D's knowledge-graph edges (L4, five seeds) | scored | 0.57 | -0.01 | 0.55 | 0.59 |
+| `taccari_tuned_ctl` | Same tuned ST-GNN on its usual distance edges (same L4 session, five seeds) | scored | 0.55 | 0.04 | 0.49 | 0.56 |
 | `taccari_tuned` | Tuned Taccari-style ST-GNN on distance edges (October T4 baseline of record) | scored | 0.61 | -0.05 | 0.49 | 0.59 |
 | `stgnn_tuned` | Tuned distance-graph ST-GNN baseline | scored | 0.62 | 0.06 | 0.55 | 0.55 |
 | `lstm_tuned` | Tuned LSTM baseline | scored | 0.65 | 0.12 | 0.57 | 0.75 |
@@ -25,9 +25,9 @@ The effect is the median drought log(RMSE a / RMSE b) across paired core wells. 
 
 | Run a | Run b | Reading | Comparison | Status | Median log(RMSE a / RMSE b) | 95% cluster-bootstrap interval | Share of wells a better | Cluster sign-flip p | Support mismatch (wells) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `taccari_D` | `taccari_tuned_ctl` | pre-specified | Edge choice in the same L4 session | pending | — | — | — | — | — |
-| `taccari_tuned_ctl` | `taccari_tuned` | diagnostic | Machine effect (L4 vs October T4) | pending | — | — | — | — | — |
+| `taccari_D` | `taccari_tuned_ctl` | pre-specified | Edge choice in the same L4 session | scored | 0.0113 | [-0.0292, 0.0545] | 0.4545 | 0.8086 | 0 |
+| `taccari_tuned_ctl` | `taccari_tuned` | diagnostic | Machine effect (L4 vs October T4) | scored | -0.0116 | [-0.0675, 0.0032] | 0.5758 | 0.2227 | 0 |
 | `taccari_D` | `p4_B2_D_r1` | descriptive | Black box vs hybrid on arm D's edges | pending | — | — | — | — | — |
 | `taccari_tuned_ctl` | `p4_B2_C_r1` | descriptive | Black box vs hybrid on distance edges | pending | — | — | — | — | — |
 
-Exact support for `taccari_D` vs `taccari_tuned_ctl` is pending.
+Exact support for `taccari_D` vs `taccari_tuned_ctl` passed. Both runs scored the same well-weeks at 33 paired core wells.

@@ -348,7 +348,7 @@ def status(name, stage):
     print(redact(output_text(ssh(name, command)).rstrip(), secret_values(job.get("env", {}))))
 
 
-def pull(name, stage):
+def pull(name, stage, exclude=()):
     job = job_for(stage, required=True)
     kind = job["kind"]
     # A snapshot qualifies for a normal stop only if both clients were done
@@ -359,7 +359,13 @@ def pull(name, stage):
     archive = stage / f"pull_{stamp}.tgz"
     extracted = stage / archive.stem
     with archive.open("xb") as destination:
-        ssh(name, f"tar czf - -C {root} {folder}", stdout=destination, timeout=1800)
+        # A Phase 4 shard is about 4 GB (mostly per-start contributions), about 30 min at 2.4 MB/s:
+        # 1800 s was too short (2026-11-24). Allow 4 hours.
+        # --exclude leaves out files that can be rebuilt, e.g. the leave-wells-out folds'
+        # per-start contributions (fold_*/contrib_seed_*.parquet, half of a Phase 4 shard): the
+        # replay (src/models/response.py: replay) recomputes them exactly from the checkpoints.
+        skip = "".join(f" --exclude={shlex.quote(pattern)}" for pattern in exclude)
+        ssh(name, f"tar czf -{skip} -C {root} {folder}", stdout=destination, timeout=4 * 3600)
     try:
         with tarfile.open(archive, "r:gz") as source:
             members = source.getmembers()
@@ -435,6 +441,9 @@ def main(argv=None):
             commands.add_argument("-n", type=int, default=20)
         elif action == "stop":
             commands.add_argument("--force", action="store_true")
+        elif action == "pull":
+            commands.add_argument("--exclude", action="append", default=[], metavar="PATTERN",
+                                  help="tar pattern of files to leave on Colab (repeatable)")
     args = parser.parse_args(argv)
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", args.name):
         parser.error("NAME must start with a letter or digit and use only letters, digits, dots, underscores or hyphens")
@@ -457,7 +466,7 @@ def main(argv=None):
         elif args.action == "push-gpu":
             push_gpu(args.name, stage, args.steps, args.dataset)
         elif args.action == "pull":
-            pull(args.name, stage)
+            pull(args.name, stage, exclude=args.exclude)
         else:
             stop(args.name, stage, args.force)
 

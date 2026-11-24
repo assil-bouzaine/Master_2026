@@ -117,9 +117,11 @@ contrib_seed_<k>.parquet (m), params_seed_<k>.csv, predictions.parquet (mean ove
 config.json, schema.json, manifest.json; scored by src.models.evaluate.
 """
 import argparse
+import hashlib
 import json
 import math
 import os
+from pathlib import Path
 import time
 
 import numpy as np
@@ -128,11 +130,12 @@ import torch
 import torch.nn.functional as Fn
 from torch import nn
 
+from src.config import DATASET
 from src.models.evaluate import RESULTS, evaluate_run
 from src.models.features import build_panel
-from src.models.lstm import (cached_seed, median_nse, refit_epochs, regime_masks, save_seed,
-                             save_seed_model, seed_mean_predictions, write_config)
-from src.models.manifest import write_manifest, write_schema
+from src.models.lstm import (cached_seed, median_nse, refit_epochs, regime_masks, run_fingerprint,
+                             save_seed, save_seed_model, seed_mean_predictions, write_config)
+from src.models.manifest import load_checkpoint, write_manifest, write_schema
 
 STRESSES = ("recharge", "pumping", "canal")
 STRESS_SETS = {"sum": STRESSES,
@@ -143,6 +146,20 @@ STRESS_SETS = {"sum": STRESSES,
                "arm_gate3": ("recharge", "pumping", "pumping_unattributed", "river_c", "river", "canal")}
 STRESS_INPUT = {"pumping": "pump_gw", "pumping_permanent": "pump_pp", "pumping_seasonal": "pump_sp",
                 "pumping_unattributed": "pump_un", "river": "river", "river_c": "river_c", "canal": "canal"}
+RECHARGE_INPUTS = {"linear": ("rain", "ETP"), "pe": ("PE",), "drainc": ("DRAINC",)}
+
+
+def stress_inputs(stress, recharge="linear"):
+    """Tuple of input-dict keys in X that feed `stress` under `recharge` mode."""
+    if stress == "recharge":
+        if recharge not in RECHARGE_INPUTS:
+            raise ValueError(f"Unknown recharge mode: {recharge!r}")
+        return RECHARGE_INPUTS[recharge]
+    if stress == "residual":
+        return ()
+    if stress in STRESS_INPUT:
+        return (STRESS_INPUT[stress],)
+    raise ValueError(f"Unknown stress: {stress!r}")
 SIGN = {"recharge": 1.0, "pumping": -1.0, "pumping_permanent": -1.0, "pumping_seasonal": -1.0,
         "pumping_unattributed": -1.0, "river": 1.0, "river_c": 1.0, "canal": 1.0}
 # --signs approved: the signs an export policy has approved as constraints (configs/
@@ -634,7 +651,8 @@ def seed_statics(Z0, control, seed):
     return Z0
 
 
-def main():
+def build_parser():
+    """CLI argument parser of the response model (shared with replay)."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", choices=["free", "pooled", "shared"], required=True)
     ap.add_argument("--lam", type=float, default=0.0, help="pooled: weight of mean(delta^2)")
@@ -696,45 +714,68 @@ def main():
     ap.add_argument("--residual", choices=["none", "seasonal"], default="none",
                     help="Gate 3 point 20: bounded fixed seasonal residual per well "
                          "(2 day-of-year harmonics, |r| < 0.25 sd; default none)")
-    args = ap.parse_args()
+    return ap
+
+
+def _parser_defaults():
+    ap = build_parser()
+    return {a.dest: (list(a.default) if isinstance(a.default, list) else a.default)
+            for a in ap._actions if a.dest != "help"}
+
+
+def args_from_config(cfg):
+    """Rebuild an argparse.Namespace from a saved config.json, re-applying parser defaults first."""
+    defaults = _parser_defaults()
+    values = {k: (cfg[k] if k in cfg else v) for k, v in defaults.items()}
+    return argparse.Namespace(**values)
+
+
+def _canonicalize_args(args, error=None):
+    """Validate option combinations and strip default-valued attributes from `args` in place so
+    run fingerprints match earlier runs. Returns a dict of the resolved settings."""
+    def fail(msg):
+        if error is not None:
+            error(msg)
+        raise ValueError(msg)
+
     if args.mode == "pooled" and args.lam <= 0:
-        ap.error("--mode pooled needs --lam > 0")
+        fail("--mode pooled needs --lam > 0")
     sign_ref = args.sign_ref or ("gate3" if args.signs == "gate3" else "structure")
     if args.signs == "gate3" and sign_ref != "gate3":
-        ap.error("--signs gate3 refers to the gate3 signs (--sign-ref gate3)")
+        fail("--signs gate3 refers to the gate3 signs (--sign-ref gate3)")
     if sign_ref == "gate3" and args.arm is None:
-        ap.error("the gate3 signs read arm D's export: they need --arm")
+        fail("the gate3 signs read arm D's export: they need --arm")
     soft_stresses = args.soft_stresses
     if soft_stresses is not None:
         if args.soft is None:
-            ap.error("--soft-stresses needs --soft")
+            fail("--soft-stresses needs --soft")
         stress_names = STRESS_SETS[GATE3_STRESSES if sign_ref == "gate3" else "arm"]
         unknown = sorted(set(soft_stresses) - set(stress_names))
         if unknown:
-            ap.error(f"--soft-stresses: unknown stresses {unknown}")
+            fail(f"--soft-stresses: unknown stresses {unknown}")
         built_in = [s for s in soft_stresses if SIGN_SETS[args.signs][s] != 0]
         if built_in:
-            ap.error(f"--soft-stresses {built_in} have a built-in sign under --signs {args.signs}")
+            fail(f"--soft-stresses {built_in} have a built-in sign under --signs {args.signs}")
     elif args.soft is not None and args.signs != "none":
-        ap.error("--soft needs --signs none (a built-in sign cannot be violated), or --soft-stresses")
+        fail("--soft needs --signs none (a built-in sign cannot be violated), or --soft-stresses")
     if args.sign_ref is None:     # the defaults leave the fingerprints of earlier runs unchanged
         del args.sign_ref
     if soft_stresses is None:
         del args.soft_stresses
     if args.statics is None and (args.static_control or args.static_l2 is not None
                                  or args.static_net != "linear"):
-        ap.error("--static-control, --static-net and --static-l2 need --statics")
+        fail("--static-control, --static-net and --static-l2 need --statics")
     if args.statics is not None and args.mode == "free":
-        ap.error("--statics needs --mode pooled or shared (free deviations absorb the facts)")
+        fail("--statics needs --mode pooled or shared (free deviations absorb the facts)")
     recharge_relation = args.recharge_relation
     if recharge_relation is not None and args.arm is None:
-        ap.error("--recharge-relation needs --arm")
+        fail("--recharge-relation needs --arm")
     relation_override = recharge_relation not in (None, "recharge")
     if not relation_override:   # equivalent options use the same run fingerprint
         del args.recharge_relation
     reconstruction = args.pumping_reconstruction
     if reconstruction != 1 and args.arm is None:
-        ap.error("--pumping-reconstruction needs --arm; the panel path is unchanged")
+        fail("--pumping-reconstruction needs --arm; the panel path is unchanged")
     if reconstruction == 1:      # the default leaves the fingerprints of earlier runs unchanged
         del args.pumping_reconstruction
     statics, static_control, static_net = args.statics, args.static_control, args.static_net
@@ -746,9 +787,9 @@ def main():
         args.static_l2 = static_l2
     message = args.message
     if message < 0:
-        ap.error("--message must be 0 (rung 3) or a number of hops")
+        fail("--message must be 0 (rung 3) or a number of hops")
     if message and (statics is None or args.arm is None):
-        ap.error("--message needs --statics (the facts it passes) and --arm (the links it passes them over)")
+        fail("--message needs --statics (the facts it passes) and --arm (the links it passes them over)")
     if not message:
         del args.message
     soft, conv, residual = args.soft, args.conv, args.residual
@@ -778,31 +819,57 @@ def main():
         del args.signs
     if only is None:
         del args.wells
-    P = build_panel(train_start=args.train_start)
+    return {"run": run, "pumping": pumping, "names": names, "signs": signs, "sign_ref": sign_ref,
+            "soft": soft, "soft_stresses": soft_stresses, "conv": conv, "residual": residual,
+            "gain_units": gain_units, "fixed_steps": fixed_steps, "arm": arm, "policy": policy,
+            "only": only, "recharge_relation": recharge_relation,
+            "relation_override": relation_override, "reconstruction": reconstruction,
+            "statics": statics, "static_control": static_control, "static_net": static_net,
+            "static_l2": static_l2, "message": message}
+
+
+def prepare(args, *, error=None, verbose=True):
+    """Build every input tensor, static table, fingerprint, schema and network constructor argument
+    from parsed or reconstructed `args`, writing no file."""
+    def fail(msg):
+        if error is not None:
+            error(msg)
+        raise ValueError(msg)
+
+    config_args = args_from_config(vars(args))
+    opt = _canonicalize_args(config_args, error=error)
+    arm, policy, only = opt["arm"], opt["policy"], opt["only"]
+    sign_ref, signs, soft_stresses = opt["sign_ref"], opt["signs"], opt["soft_stresses"]
+    statics, static_control, static_net, static_l2 = (
+        opt["statics"], opt["static_control"], opt["static_net"], opt["static_l2"])
+    message, residual, names = opt["message"], opt["residual"], opt["names"]
+
+    P = build_panel(train_start=config_args.train_start)
     P = P[P["mu"].notna()]
     if only is not None:
         missing = sorted(set(only) - set(P["code_bss"]))
         if missing:
-            ap.error(f"unknown wells: {missing}")
+            fail(f"unknown wells: {missing}")
         P = P[P["code_bss"].isin(only)]
     routed, extra = None, None
     if arm is not None:
         from src.models.routing import coverage, routed_inputs
-        route_options = {"reconstruction": reconstruction}
-        if relation_override:
-            route_options["recharge"] = recharge_relation
-        if args.recharge == "drainc":
+        route_options = {"reconstruction": opt["reconstruction"]}
+        if opt["relation_override"]:
+            route_options["recharge"] = opt["recharge_relation"]
+        if config_args.recharge == "drainc":
             route_options["include_drainc"] = True
         routed = routed_inputs(arm, policy, **route_options)
         core_of = P.drop_duplicates("code_bss").set_index("code_bss")["core"]
         keep = [c in core_of.index for c in routed["codes"]]
         cov = {k: {"wells": int(routed[f"has_{k}"][keep].sum())} for k in coverage(routed, [True] * len(keep))}
         extra = {"arm": arm, "export": routed["export"], "wells_with_relation": cov}
-        if relation_override:
-            extra["recharge_relation"] = recharge_relation
-        print(f"arm {arm} ({policy}): wells with each relation {{{', '.join(f'{k} {v['wells']}' for k, v in cov.items())}}} "
-              f"of {sum(keep)}", flush=True)
-    data = panel_arrays(P, args.kernel_weeks, routed, recharge=args.recharge)
+        if opt["relation_override"]:
+            extra["recharge_relation"] = opt["recharge_relation"]
+        if verbose:
+            print(f"arm {arm} ({policy}): wells with each relation {{{', '.join(f'{k} {v['wells']}' for k, v in cov.items())}}} "
+                  f"of {sum(keep)}", flush=True)
+    data = panel_arrays(P, config_args.kernel_weeks, routed, recharge=config_args.recharge)
     river_c = None
     if sign_ref == "gate3":
         river_c = gate3_river_wells(policy)
@@ -810,55 +877,136 @@ def main():
         n_c = int(data["river_c_mask"].sum())
         extra = (extra or {}) | {"gate3": {"river_constrained_wells": sorted(set(data["codes"]) & river_c),
                                            "soft_stresses": soft_stresses}}
-        print(f"gate3 signs: river sign built in at {n_c} wells", flush=True)
+        if verbose:
+            print(f"gate3 signs: river sign built in at {n_c} wells", flush=True)
     Z0 = None
     if statics is not None:
         from src.models.statics import standardise, static_table
-        tab = static_table(statics, train_start=args.train_start, policy=policy if arm else "main")
+        tab = static_table(statics, train_start=config_args.train_start, policy=policy if arm else "main")
         missing = sorted(set(data["codes"]) - set(tab.index))
         if missing:
-            ap.error(f"no static facts for wells {missing}")
+            fail(f"no static facts for wells {missing}")
         Z0, znames, zstats = standardise(tab.loc[data["codes"]])   # over the wells of this run
         if message:               # rung 5: the neighbours' facts over the regime's well links
             from src.models.message import feature_names, propagate, regime_links, well_adjacency
-            links, link_rec = regime_links(arm, policy, args.fold, args.train_start)
+            links, link_rec = regime_links(arm, policy, config_args.fold, config_args.train_start)
             A, has = well_adjacency(links, data["codes"])
             Z0, znames = propagate(Z0, A, has, hops=message), feature_names(znames, message)
             extra = (extra or {}) | {"message": {"hops": message, "links": link_rec,
                                                  "wells_linked": int(has.sum())}}
-            print(f"rung 5: {int(has.sum())} of {len(has)} wells linked ({link_rec['edges']} directed links)",
-                  flush=True)
+            if verbose:
+                print(f"rung 5: {int(has.sum())} of {len(has)} wells linked ({link_rec['edges']} directed links)",
+                      flush=True)
         extra = (extra or {}) | {"statics": {"set": statics, "features": list(znames),
                                              "control": static_control, "net": static_net,
                                              "l2": static_l2, "standardisation": zstats}}
-    out = RESULTS / run / (f"fold_{args.fold}" if args.fold is not None else "")
-    out.mkdir(parents=True, exist_ok=True)
-    inputs = [f"{c}/{SCALE[c]:g}" for c in _input_columns(ROUTED if arm else RAW_INPUTS, args.recharge)]
+    inputs = [f"{c}/{SCALE[c]:g}" for c in _input_columns(ROUTED if arm else RAW_INPUTS, config_args.recharge)]
     fp_extra = {}
     if extra and "export" in extra:
         fp_extra["export_release"] = extra["export"]["release"]
         if "export_sha256" in extra["export"]:      # a control graph: bound to the export it came from
             fp_extra["export_sha256"] = extra["export"]["export_sha256"]
     if Z0 is not None:            # the facts themselves, so a changed table never reuses a seed
-        import hashlib
         fp_extra["statics_sha256"] = hashlib.sha256(np.ascontiguousarray(Z0, dtype=np.float32).tobytes()).hexdigest()
     if river_c is not None:       # which wells carry the river sign is part of the experiment
         fp_extra["river_constrained_wells"] = extra["gate3"]["river_constrained_wells"]
-    fp = write_config(out, args, inputs, fp_extra or None)
-    write_schema(out, {"nodes": data["codes"], "weeks": [str(data["weeks"][0])[:10], str(data["weeks"][-1])[:10]],
-                       "inputs": inputs, "stresses": list(names),
-                       "signs": {s: SIGN_SETS[signs][s] for s in names},
-                       # only off the default: earlier run folders keep their schema (write_schema
-                       # stops a run whose schema differs)
-                       **({"sign_ref": {s: SIGN_SETS[sign_ref][s] for s in names}}
-                          if sign_ref != "structure" else {}),
-                       **({"residual": {"kind": residual, "harmonics": RESIDUAL_HARMONICS,
-                                        "bound_sd": RESIDUAL_BOUND_SD}}
-                          if residual != "none" else {}),
-                       **(extra or {}),
-                       "groups": data["groups"], "group_of": data["group_of"].tolist(),
-                       "kernel_weeks": args.kernel_weeks, "a_bounds_wk": [A_MIN, args.amax],
-                       "n_bounds": [N_MIN, N_MAX], "f_max": F_MAX, "mode": args.mode})
+    fingerprint = run_fingerprint(config_args, inputs, fp_extra or None)
+    schema = {"nodes": data["codes"], "weeks": [str(data["weeks"][0])[:10], str(data["weeks"][-1])[:10]],
+              "inputs": inputs, "stresses": list(names),
+              "signs": {s: SIGN_SETS[signs][s] for s in names},
+              # only off the default: earlier run folders keep their schema (write_schema
+              # stops a run whose schema differs)
+              **({"sign_ref": {s: SIGN_SETS[sign_ref][s] for s in names}}
+                 if sign_ref != "structure" else {}),
+              **({"residual": {"kind": residual, "harmonics": RESIDUAL_HARMONICS,
+                               "bound_sd": RESIDUAL_BOUND_SD}}
+                 if residual != "none" else {}),
+              **(extra or {}),
+              "groups": data["groups"], "group_of": data["group_of"].tolist(),
+              "kernel_weeks": config_args.kernel_weeks, "a_bounds_wk": [A_MIN, config_args.amax],
+              "n_bounds": [N_MIN, N_MAX], "f_max": F_MAX, "mode": config_args.mode}
+    sd_safe = np.maximum(data["sd"], SD_FLOOR)
+    res_basis = seasonal_basis(data["weeks"]) if residual == "seasonal" else None
+    res_bound = RESIDUAL_BOUND_SD * sd_safe[:, 0] if residual == "seasonal" else None
+    model_kwargs = {"group_of": data["group_of"], "n_groups": len(data["groups"]),
+                    "mode": config_args.mode, "kernel_weeks": config_args.kernel_weeks,
+                    "amax": config_args.amax, "recharge": config_args.recharge,
+                    "pumping": opt["pumping"],
+                    "gain_scale": sd_safe[:, 0] if opt["gain_units"] == "sd" else None,
+                    "signs": signs, "conv": opt["conv"], "static_net": static_net,
+                    "sign_ref": sign_ref, "soft_stresses": soft_stresses,
+                    "residual": residual, "residual_basis": res_basis,
+                    "residual_bound": res_bound}
+    return opt | {"P": P, "routed": routed, "data": data, "Z0": Z0, "extra": extra, "river_c": river_c,
+                  "inputs": inputs, "fp_extra": fp_extra, "fingerprint": fingerprint, "schema": schema,
+                  "config_args": config_args, "model_kwargs": model_kwargs}
+
+
+def _resolve_run_dir(run_dir):
+    path = Path(run_dir)
+    if (path / "config.json").is_file() or path.is_absolute():
+        return path
+    return RESULTS / run_dir
+
+
+def replay(run_dir, seed, *, prep=None):
+    """Rebuild a saved response-model start from its run folder (or leave-wells-out fold folder)
+    and return ``(net, data)`` ready for forward passes (scoring, interventions, post-freeze checks).
+
+    Re-applies ``build_parser()`` defaults before overlaying ``config.json`` so omitted default
+    options match the original run, calls ``prepare(args)`` (or reuses an already-prepared dict),
+    builds ``ResponseModel`` identically to ``train_seed``, and loads ``seed_<seed>.pt``.
+    """
+    folder = _resolve_run_dir(run_dir)
+    cfg_path = folder / "config.json"
+    if not cfg_path.is_file():
+        raise FileNotFoundError(f"Missing config.json in {folder}")
+    cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+    if cfg.get("dataset") is not None and cfg["dataset"] != DATASET:
+        raise ValueError(
+            f"{folder}: saved for dataset {cfg['dataset']!r}, active PFE_DATASET is {DATASET!r}"
+        )
+    if prep is None:
+        prep = prepare(args_from_config(cfg), verbose=False)
+    Z = None if prep["Z0"] is None else seed_statics(prep["Z0"], prep["static_control"], seed)
+    net = ResponseModel(**prep["model_kwargs"], statics=Z)
+    ckpt_path = folder / f"seed_{seed}.pt"
+    if not ckpt_path.is_file():
+        raise FileNotFoundError(f"Missing checkpoint {ckpt_path}")
+    ckpt = load_checkpoint(ckpt_path)
+    state = ckpt["state_dict"]
+    incompatible = net.load_state_dict(state, strict=False)
+    # Earlier ladder checkpoints predate the deterministic `sign` and `gain_scale` buffers, which
+    # ResponseModel.__init__ already sets from config.json when signs=="structure" and gain_units=="m".
+    allowed_missing = set()
+    if prep["signs"] == "structure":
+        allowed_missing.add("sign")
+    if prep["gain_units"] == "m":
+        allowed_missing.add("gain_scale")
+    bad_missing = [k for k in incompatible.missing_keys if k not in allowed_missing]
+    if bad_missing or incompatible.unexpected_keys:
+        raise RuntimeError(
+            f"{ckpt_path}: checkpoint state_dict mismatch "
+            f"(missing={bad_missing}, unexpected={incompatible.unexpected_keys})"
+        )
+    net.eval()
+    return net, prep["data"]
+
+
+def main():
+    ap = build_parser()
+    args = ap.parse_args()
+    _canonicalize_args(args, error=ap.error)
+    prep = prepare(args, error=ap.error, verbose=True)
+    P, data, Z0 = prep["P"], prep["data"], prep["Z0"]
+    run, pumping, signs, sign_ref = prep["run"], prep["pumping"], prep["signs"], prep["sign_ref"]
+    soft, soft_stresses, conv, residual = prep["soft"], prep["soft_stresses"], prep["conv"], prep["residual"]
+    gain_units, fixed_steps = prep["gain_units"], prep["fixed_steps"]
+    static_control, static_net, static_l2 = prep["static_control"], prep["static_net"], prep["static_l2"]
+    out = RESULTS / run / (f"fold_{args.fold}" if args.fold is not None else "")
+    out.mkdir(parents=True, exist_ok=True)
+    fp = write_config(out, args, prep["inputs"], prep["fp_extra"] or None)
+    write_schema(out, prep["schema"])
     train_mask, keep = regime_masks(data["split"], data["weeks"], data["codes"], args.fold,
                                     args.train_start, refit=args.refit_from is not None)
     for s in args.seeds:

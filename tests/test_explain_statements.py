@@ -19,13 +19,13 @@ from src.explain import statements as S
 WELL = "TEST-1"
 TARGET = "2024-06-01:2024-09-30"
 PUMPING = "pumping_attributed"
-LABELS = pd.DataFrame([
-    (PUMPING, "groundwater pumping on the well's knowledge-graph links",
-     "prélèvements d'eau souterraine reliés au piézomètre par le graphe de connaissances"),
-    ("pumping_unattributed", "nearby groundwater pumping", "prélèvements d'eau souterraine voisins"),
-    ("recharge", "recharge proxy", "indicateur de recharge"),
-    ("residual", "fixed seasonal residual (no driver)", "résidu saisonnier fixe (sans forçage)"),
-], columns=["report_group", "label_en", "label_fr"])
+ATTRIBUTIONS = pd.DataFrame([
+    (PUMPING, "to the groundwater pumping on the well's knowledge-graph links",
+     "aux prélèvements d'eau souterraine reliés au piézomètre par le graphe de connaissances"),
+    ("pumping_unattributed", "to the nearby groundwater pumping", "aux prélèvements d'eau souterraine voisins"),
+    ("recharge", "to the recharge proxy", "à l'indicateur de recharge"),
+    ("residual", "to the fixed seasonal residual (no driver)", "au résidu saisonnier fixe (sans forçage)"),
+], columns=["report_group", "to_en", "to_fr"])
 
 
 def decomposition(*, group=PUMPING, mean=0.25, agreement=1.0, strict=75, observed=100,
@@ -46,7 +46,7 @@ def decomposition(*, group=PUMPING, mean=0.25, agreement=1.0, strict=75, observe
 
 
 def only_statement(result, **kwargs):
-    with patch.object(S, "load_groups", return_value=LABELS):
+    with patch.object(S, "load_groups", return_value=ATTRIBUTIONS):
         record, = S.statements(result, WELL, **kwargs)
     return record
 
@@ -108,15 +108,34 @@ def test_combined_rules_and_residual():
 
     qualified = only_statement(decomposition(strict=30, imputed=0.023), probable_only=True)
     assert_status(qualified, "qualified", ["low_validated_observation_share", "imputed_pumping", "probable_only"])
-    assert qualified["text_en"].endswith(
+    assert qualified["text_en"] == (
+        "Compared with an average year at the same time (2005–2019 forcing), the model attributes "
+        "a rise of 0.25 m of the simulated head at TEST-1 over the period from 1 June to 30 September 2024 "
+        "to the groundwater pumping on the well's knowledge-graph links. "
         "Caveat: only 30 % of the observed weeks are validated. "
         "Caveat: 2.3 % of the routed pumping volume is imputed. "
         "Caveat: the knowledge-graph path rests only on probable links."
     )
-    assert qualified["text_fr"].endswith(
+    assert qualified["text_fr"] == (
+        "Par rapport à une année moyenne à la même époque (forçages 2005–2019), le modèle attribue "
+        "une hausse de 0,25 m du niveau simulé à TEST-1 sur la période du 1er juin au 30 septembre 2024 "
+        "aux prélèvements d'eau souterraine reliés au piézomètre par le graphe de connaissances. "
         "Réserve : seules 30 % des semaines observées sont validées. "
         "Réserve : 2,3 % du volume de prélèvement acheminé est imputé. "
         "Réserve : le chemin dans le graphe de connaissances repose uniquement sur des liens probables."
+    )
+
+    zero_validated = only_statement(decomposition(group="recharge", mean=-2.127, strict=0))
+    assert_status(zero_validated, "qualified", ["low_validated_observation_share"])
+    assert zero_validated["text_en"] == (
+        "Compared with an average year at the same time (2005–2019 forcing), the model attributes "
+        "a lowering of 2.13 m of the simulated head at TEST-1 over the period from 1 June to 30 September 2024 "
+        "to the recharge proxy. Caveat: none of the observed weeks is validated."
+    )
+    assert zero_validated["text_fr"] == (
+        "Par rapport à une année moyenne à la même époque (forçages 2005–2019), le modèle attribue "
+        "une baisse de 2,13 m du niveau simulé à TEST-1 sur la période du 1er juin au 30 septembre 2024 "
+        "à l'indicateur de recharge. Réserve : aucune des semaines observées n'est validée."
     )
 
     residual = only_statement(decomposition(group="residual", mean=-0.01, agreement=0.20, strict=0,
@@ -134,28 +153,47 @@ def test_templates_and_reference():
         "status": "accepted", "reasons": [],
         "text_en": (
             "Compared with an average year at the same time (2005–2019 forcing), the model attributes "
-            "a rise of 0.25 m of the simulated head at TEST-1 over the period from 2024-06-01 to 2024-09-30 "
-            "to groundwater pumping on the well's knowledge-graph links."
+            "a rise of 0.25 m of the simulated head at TEST-1 over the period from 1 June to 30 September 2024 "
+            "to the groundwater pumping on the well's knowledge-graph links."
         ),
         "text_fr": (
             "Par rapport à une année moyenne à la même époque (forçages 2005–2019), le modèle attribue "
-            "une hausse de 0.25 m du niveau simulé à TEST-1 sur la période du 2024-06-01 au 2024-09-30 à "
-            "prélèvements d'eau souterraine reliés au piézomètre par le graphe de connaissances."
+            "une hausse de 0,25 m du niveau simulé à TEST-1 sur la période du 1er juin au 30 septembre 2024 "
+            "aux prélèvements d'eau souterraine reliés au piézomètre par le graphe de connaissances."
         ),
     }
 
     result = decomposition(mean=-0.61)
-    result["reference"] = {"kind": "window", "window": ("2023-06-01", "2023-09-30")}
+    result["target"] = ("2024-12-21", "2025-02-01")
+    result["reference"] = {"kind": "window", "window": ("2023-12-21", "2024-02-01")}
     negative = only_statement(result)
-    assert negative["text_en"].startswith("Compared with the same weeks of 2023-06-01 to 2023-09-30, "
-                                          "the model attributes a lowering of 0.61 m")
-    assert negative["text_fr"].startswith("Par rapport à la même période de 2023-06-01 à 2023-09-30, "
-                                          "le modèle attribue une baisse de 0.61 m")
+    assert negative["text_en"] == (
+        "Compared with the same weeks from 21 December 2023 to 1 February 2024, "
+        "the model attributes a lowering of 0.61 m of the simulated head at TEST-1 "
+        "over the period from 21 December 2024 to 1 February 2025 "
+        "to the groundwater pumping on the well's knowledge-graph links."
+    )
+    assert negative["text_fr"] == (
+        "Par rapport à la même période du 21 décembre 2023 au 1er février 2024, "
+        "le modèle attribue une baisse de 0,61 m du niveau simulé à TEST-1 "
+        "sur la période du 21 décembre 2024 au 1er février 2025 "
+        "aux prélèvements d'eau souterraine reliés au piézomètre par le graphe de connaissances."
+    )
     french = only_statement(result, lang=("fr",))
     assert french["text_en"] is None and french["text_fr"] == negative["text_fr"]
     result["reference"] = {"kind": "training_seasonal", "window": ("2015-01-01", "2019-12-31")}
-    assert only_statement(result)["text_en"].startswith(
-        "Compared with the seasonal mean of the model's contributions (2015–2019 training period),"
+    seasonal = only_statement(result)
+    assert seasonal["text_en"] == (
+        "Compared with the seasonal mean of the model's contributions (2015–2019 training period), "
+        "the model attributes a lowering of 0.61 m of the simulated head at TEST-1 "
+        "over the period from 21 December 2024 to 1 February 2025 "
+        "to the groundwater pumping on the well's knowledge-graph links."
+    )
+    assert seasonal["text_fr"] == (
+        "Par rapport à la moyenne saisonnière des contributions du modèle (entraînement 2015–2019), "
+        "le modèle attribue une baisse de 0,61 m du niveau simulé à TEST-1 "
+        "sur la période du 21 décembre 2024 au 1er février 2025 "
+        "aux prélèvements d'eau souterraine reliés au piézomètre par le graphe de connaissances."
     )
     print("  Exact bilingual templates, both directions, references and language selection passed.")
 
@@ -163,7 +201,7 @@ def test_templates_and_reference():
 def test_cli_siblings():
     runs = [decomposition(), decomposition(reconstruction=2), decomposition(mean=-0.1, reconstruction=3)]
     output = StringIO()
-    with (patch.object(S, "load_groups", return_value=LABELS),
+    with (patch.object(S, "load_groups", return_value=ATTRIBUTIONS),
           patch.object(S, "decompose", side_effect=runs) as load, redirect_stdout(output)):
         assert S.main(["run1", "--target", TARGET, "--well", WELL, "--sibling", "run2", "run3"]) == 0
     assert [call.args for call in load.call_args_list] == [("run1",), ("run2",), ("run3",)]

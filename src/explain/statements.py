@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Iterable, Mapping
+from datetime import date
 
 import numpy as np
 
@@ -22,15 +23,26 @@ PUMPING_GROUPS = {"pumping_attributed", "pumping_unattributed"}
 
 TEMPLATES = {
     "en": (
-        "Compared with {reference}, the model attributes {direction} of {magnitude:.2f} m of the "
-        "simulated head at {well} over {period} to {label}."
+        "Compared with {reference}, the model attributes {direction} of {magnitude} m of the "
+        "simulated head at {well} over the period {period} {attribution}."
     ),
     "fr": (
-        "Par rapport à {reference}, le modèle attribue {direction} de {magnitude:.2f} m du niveau "
-        "simulé à {well} sur {period} à {label}."
+        "Par rapport à {reference}, le modèle attribue {direction} de {magnitude} m du niveau "
+        "simulé à {well} sur la période {period} {attribution}."
     ),
 }
 DIRECTIONS = {"en": ("a lowering", "a rise"), "fr": ("une baisse", "une hausse")}
+# Use fixed month names so both languages render under any system locale.
+MONTHS = {
+    "en": (
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December",
+    ),
+    "fr": (
+        "janvier", "février", "mars", "avril", "mai", "juin",
+        "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+    ),
+}
 RESIDUAL = {
     "en": "The residual is a fixed seasonal term with no driver.",
     "fr": "Le résidu est un terme saisonnier fixe sans forçage.",
@@ -53,6 +65,24 @@ CAVEATS = {
         "fr": "Réserve : le chemin dans le graphe de connaissances repose uniquement sur des liens probables.",
     },
 }
+ZERO_VALIDATED_CAVEAT = {
+    "en": "Caveat: none of the observed weeks is validated.",
+    "fr": "Réserve : aucune des semaines observées n'est validée.",
+}
+
+
+def _date_text(day: date, language: str, include_year: bool) -> str:
+    number = "1er" if language == "fr" and day.day == 1 else str(day.day)
+    text = f"{number} {MONTHS[language][day.month - 1]}"
+    return f"{text} {day.year}" if include_year else text
+
+
+def _date_range(start: str, end: str) -> dict[str, str]:
+    first, last = date.fromisoformat(start), date.fromisoformat(end)
+    cross_year = first.year != last.year
+    first_en, last_en = _date_text(first, "en", cross_year), _date_text(last, "en", True)
+    first_fr, last_fr = _date_text(first, "fr", cross_year), _date_text(last, "fr", True)
+    return {"en": f"from {first_en} to {last_en}", "fr": f"du {first_fr} au {last_fr}"}
 
 
 def _reference_text(reference: dict) -> dict[str, str]:
@@ -69,7 +99,8 @@ def _reference_text(reference: dict) -> dict[str, str]:
             "fr": f"la moyenne saisonnière des contributions du modèle (entraînement {years})",
         }
     if reference["kind"] == "window":
-        return {"en": f"the same weeks of {start} to {end}", "fr": f"la même période de {start} à {end}"}
+        period = _date_range(start, end)
+        return {"en": f"the same weeks {period['en']}", "fr": f"la même période {period['fr']}"}
     raise ValueError(f"Unknown reference condition {reference['kind']!r}")
 
 
@@ -108,13 +139,12 @@ def statements(
     n_observed = int(flags["n_observed"])
     validated = float(flags["n_strict"]) / n_observed if n_observed else 0.0
     imputed = float(flags["share_pumping_imputed"])
-    labels = (
-        load_groups()[["report_group", "label_en", "label_fr"]]
+    attributions = (
+        load_groups()[["report_group", "to_en", "to_fr"]]
         .drop_duplicates().set_index("report_group", verify_integrity=True)
     )
     reference = _reference_text(decomposition["reference"])
-    start, end = decomposition["target"]
-    periods = {"en": f"the period from {start} to {end}", "fr": f"la période du {start} au {end}"}
+    periods = _date_range(*decomposition["target"])
     sibling_means = []
     if siblings and PUMPING_GROUPS.intersection(groups.index):
         sibling_means = [_well_groups(sibling, well)["mean_m"] for sibling in siblings.values()]
@@ -165,16 +195,20 @@ def statements(
             continue
         if caveats:
             record["status"] = "qualified"
+        magnitude = f"{abs(mean_m):.2f}"
         for language in languages:
             text = TEMPLATES[language].format(
                 reference=reference[language], direction=DIRECTIONS[language][mean_m > 0],
-                magnitude=abs(mean_m), well=well, period=periods[language],
-                label=labels.loc[group, f"label_{language}"],
+                magnitude=magnitude.replace(".", ",") if language == "fr" else magnitude,
+                well=well, period=periods[language], attribution=attributions.loc[group, f"to_{language}"],
             )
             shares = {"validated": _percent(validated, language), "imputed": _percent(imputed, language)}
-            caveat_texts = [
-                CAVEATS[reason][language].format(**shares) for reason in caveats
-            ]
+            caveat_texts = []
+            for reason in caveats:
+                phrases = CAVEATS[reason]
+                if reason == "low_validated_observation_share" and validated == 0:
+                    phrases = ZERO_VALIDATED_CAVEAT
+                caveat_texts.append(phrases[language].format(**shares))
             record[f"text_{language}"] = " ".join([text, *caveat_texts])
     return records
 

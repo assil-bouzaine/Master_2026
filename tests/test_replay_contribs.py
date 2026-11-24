@@ -1,4 +1,4 @@
-"""Check that the Phase 5 replay CLI restores the ladder's saved contributions (analysis plan §12).
+"""Check the Phase 5 replay tolerance and restore the ladder's contributions (analysis plan §12).
 
     PYTHONIOENCODING=utf-8 PFE_DATASET=v4 .venv/bin/python -m tests.test_replay_contribs
 
@@ -15,8 +15,10 @@ import subprocess
 import sys
 from tempfile import TemporaryDirectory
 
+import numpy as np
 import pandas as pd
 
+from scripts.replay_contribs import HEAD_TOL_M, compare_predictions
 from src.models.evaluate import RESULTS
 
 
@@ -28,6 +30,26 @@ def run_cli(folder):
 def snapshot(paths):
     return {path.name: (path.stat().st_ino, path.stat().st_mtime_ns,
                         hashlib.sha256(path.read_bytes()).hexdigest()) for path in paths}
+
+
+def test_head_tolerance():
+    rebuilt = pd.DataFrame({"code_bss": ["ordinary", "floored"],
+                            "week": pd.Timestamp("2024-01-07"), "z": 0.0})
+    sd = np.array([[1.0], [1e-8]])
+    saved = rebuilt.iloc[::-1].copy()
+    saved.loc[saved["code_bss"] == "floored", "z"] = 1e-4
+    delta_head, delta_z = compare_predictions(rebuilt, saved, sd, "predictions")
+    np.testing.assert_allclose((delta_head, delta_z), (1e-7, 1e-4), rtol=1e-12, atol=0)
+
+    saved.loc[saved["code_bss"] == "ordinary", "z"] = 1e-4
+    try:
+        compare_predictions(rebuilt, saved, sd, "predictions")
+    except ValueError as error:
+        assert "head at ('ordinary'," in str(error), error
+        assert "differs by 0.0001 m" in str(error), error
+    else:
+        raise AssertionError("A head difference of 1e-4 m must fail")
+    print("  The same 1e-4 z difference passes for a floored SD and fails for an SD of 1 m.")
 
 
 def test_replay_contribs():
@@ -53,7 +75,8 @@ def test_replay_contribs():
         assert record["starts"] == sorted(int(path.stem.rsplit("_", 1)[1]) for path in originals)
         assert re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", record["commit"])
         assert datetime.fromisoformat(record["utc_time"]).utcoffset() == timedelta(0)
-        assert 0 <= record["max_abs_delta_z"] <= 1e-5
+        assert 0 <= record["max_abs_delta_head_m"] <= HEAD_TOL_M
+        assert record["max_abs_delta_z"] >= 0
         assert record["max_abs_delta_param"] >= 0
         before = snapshot([*paths, provenance])
         print(built.stdout.strip())
@@ -73,7 +96,7 @@ def test_replay_contribs():
         prediction.to_parquet(late_prediction, index=False)
         rejected = run_cli(copy)
         assert rejected.returncode == 1, rejected.stderr
-        assert f"{late_prediction.name}: z at " in rejected.stderr, rejected.stderr
+        assert f"{late_prediction.name}: head at " in rejected.stderr, rejected.stderr
         assert not paths[0].exists()
         assert snapshot([*paths[1:], provenance]) == {key: value for key, value in before.items()
                                                      if key != paths[0].name}
@@ -81,5 +104,6 @@ def test_replay_contribs():
 
 
 if __name__ == "__main__":
+    test_head_tolerance()
     test_replay_contribs()
     print("test_replay_contribs: all checks passed")

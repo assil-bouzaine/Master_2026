@@ -344,7 +344,7 @@ for s in $STEPS; do
       else
         $PY -m scripts.p4_queue run \
           --steps "${P4_QUEUE_STEPS:-p4_B1 p4_B1c p4_B2 p4_B2conv p4_B3 p4_B4 p4_B5 p4_B6 p4_B7 p4_B8}" \
-          --jobs "${P4_PARALLEL:-4}" ${P4_SHARD:+--shard "$P4_SHARD"}
+          --jobs "${P4_PARALLEL:-4}" ${P4_SHARD:+--shard "$P4_SHARD"} ${P4_SUBSHARD:+--subshard "$P4_SUBSHARD"}
       fi ;;
     final:*)      $PY -m src.models.tune --model "${s#final:}" --final-only ;;   # v3 choice
     regimes:*)    $PY -m src.models.regimes --model "${s#regimes:}" ;;

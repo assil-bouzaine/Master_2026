@@ -31,6 +31,8 @@ RUNTIMES = {
     "l4": ["--gpu", "L4"], "a100": ["--gpu", "A100"], "t4": ["--gpu", "T4"],
 }
 CPU, GPU = "/content/work", "/content/pfe/results_gpu"
+PULLED_FLAG = "/content/.pulled"     # written by a final pull; ends the launcher's keep-alive
+KEEPALIVE_S = 3 * 3600               # the most a finished job keeps its runtime busy
 GPU_RUNNER = Path("scripts/colab_run.py")
 LOGS = {"cpu": f"{CPU}/{LOG_NAME}", "gpu": f"{GPU}/run_colab.log"}
 PULL = {"cpu": ("/content", "work"), "gpu": ("/content/persist", "results_gpu")}
@@ -223,6 +225,7 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
+Path({PULLED_FLAG!r}).unlink(missing_ok=True)   # a new job waits for its own final pull
 {setup}code = Path("/content/pfe")
 subprocess.run(["unzip", "-oq", {bundle!r}, "-d", str(code)], check=True)
 env = {{**os.environ, **{dict(env, STEPS=steps)!r}}}
@@ -245,6 +248,14 @@ with log.open("w") as out, log.open("rb") as reader:
                 last = re.sub("|".join(map(re.escape, secrets)), "<redacted>", last)
             print(datetime.now(timezone.utc).isoformat(timespec="seconds"), last, flush=True)
 print({runner.name!r}, "exit", exit_code, flush=True)
+# Keep the kernel busy until a final pull has the results (colab_cli pull touches PULLED_FLAG):
+# an idle runtime is reclaimed with its files (2026-11-24: shard 1 of Phase 4 was lost that way).
+import time
+flag, deadline = Path({PULLED_FLAG!r}), time.time() + {KEEPALIVE_S}
+while not flag.exists() and time.time() < deadline:
+    print(datetime.now(timezone.utc).isoformat(timespec="seconds"), "KEEPALIVE job ended, waiting for the final pull", flush=True)
+    time.sleep(30)
+print("keepalive done", flush=True)
 """
 
 
@@ -353,7 +364,9 @@ def pull(name, stage, exclude=()):
     kind = job["kind"]
     # A snapshot qualifies for a normal stop only if both clients were done
     # before the download. Colab can show IDLE while the dispatcher is still running.
-    final = not exec_alive(job) and not remote_running(name, kind)
+    # Final = the dispatcher has ended on Colab. The launcher cell stays alive afterwards on purpose
+    # (keep-alive until this pull), so the local exec process is no longer part of the test.
+    final = not remote_running(name, kind)
     root, folder = PULL[kind]
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     archive = stage / f"pull_{stamp}.tgz"
@@ -399,6 +412,8 @@ def pull(name, stage, exclude=()):
         colab_pull.main(["--dir", str(result)])
     job["pull_utc"] = now()
     job["pull_after_exit"] = final
+    if final:
+        ssh(name, f"touch {PULLED_FLAG}")   # ends the launcher's keep-alive
     write_json(stage / "job.json", job)
     print(f"Pulled {archive}")
     if failure:
@@ -408,7 +423,7 @@ def pull(name, stage, exclude=()):
 def stop(name, stage, force):
     if not force:
         job = job_for(stage)
-        if exec_alive(job):
+        if exec_alive(job) and not job.get("pull_after_exit"):
             sys.exit("The local exec process is still alive. Wait for it to end or use --force.")
         if not job.get("pull_after_exit"):
             sys.exit("Pull after the job ends before stopping, or use --force.")

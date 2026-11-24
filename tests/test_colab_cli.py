@@ -75,6 +75,9 @@ class FakeColab:
             return None
         if command.startswith("pgrep"):
             return self.remote_pids
+        if command == f"touch {cli.PULLED_FLAG}":
+            self.pulled = True
+            return b""
         if command.startswith("uptime"):
             return b"up 2 hours\nRemote runner PIDs\n" + self.remote_pids + b'{"exit": 0}\n'
         if command.startswith("if [ -f ") and "tail -n" in command:
@@ -161,11 +164,22 @@ def check_heartbeat(launcher, vm, runner, log, env):
         expected = {key: value.replace("/content", str(vm)) for key, value in env.items()}
         popen.side_effect = spawn
         source = launcher.read_text().replace("/content", str(vm))
-        exec(compile(source, str(launcher), "exec"), {})
+        (vm / ".pulled").touch()       # a flag left by an earlier job: the launcher must remove it
+        sleeps = []
+
+        def sleep(seconds):            # the keep-alive waits for the final pull's flag
+            sleeps.append(seconds)
+            assert not (vm / ".pulled").exists() or len(sleeps) > 1
+            (vm / ".pulled").touch()
+
+        with patch("time.sleep", side_effect=sleep):
+            exec(compile(source, str(launcher), "exec"), {})
+        assert sleeps == [30], sleeps
         unzip.assert_called_once()
         assert unzip.call_args.args[0][:2] == ["unzip", "-oq"]
         popen.assert_called_once()
-    heartbeat, exit_line = stdout.getvalue().splitlines()
+    heartbeat, exit_line, keepalive, done = stdout.getvalue().splitlines()
+    assert keepalive.endswith("KEEPALIVE job ended, waiting for the final pull") and done == "keepalive done"
     timestamp, last = heartbeat.split(" ", 1)
     assert datetime.fromisoformat(timestamp).utcoffset() == timedelta()
     assert last == ("still working <redacted>" if "HF_TOKEN" in env else last_line)
@@ -268,11 +282,13 @@ def test_pull_stop():
           patch.object(cli.kaggle_cpu, "pull", side_effect=cpu_import) as shared_pull):
         refuses("stop", "cpu-job", contains="Pull after the job ends")
         with patch.object(cli, "process_start", return_value=100):
+            # The launcher cell lives on after the job (keep-alive until the final pull).
             refuses("stop", "cpu-job", contains="still alive")
-            run("pull", "cpu-job")
+        fake.remote_pids = b"555\n"         # the dispatcher still runs: a snapshot, not final
+        run("pull", "cpu-job")
+        assert fake.calls[-1][4].startswith("tar czf - ")   # no flag before the final pull
         refuses("stop", "cpu-job", contains="Pull after the job ends")
 
-        fake.remote_pids = b"555\n"
         status = run("status", "cpu-job")
         assert "Status: IDLE" in status
         assert "Local exec process ended" in status and "555" in status and '{"exit": 0}' in status
@@ -283,7 +299,8 @@ def test_pull_stop():
 
         fake.remote_pids = b""
         run("pull", "cpu-job")
-        assert fake.calls[-1][4] == "tar czf - -C /content work"
+        assert fake.calls[-2][4] == "tar czf - -C /content work"
+        assert fake.calls[-1][4] == f"touch {cli.PULLED_FLAG}"     # a final pull ends the keep-alive
         assert shared_pull.call_count == 3
         assert all(path.read_bytes() == fake.archive for path in cpu_stage.glob("pull_*.tgz"))
         job = json.loads((cpu_stage / "job.json").read_text())
@@ -299,7 +316,8 @@ def test_pull_stop():
             gpu_import.assert_not_called()
             fake.archive = make_tgz("results_gpu/v4/chronos2/predictions.parquet")
             run("pull", "gpu-job")
-            assert fake.calls[-1][4] == "tar czf - -C /content/persist results_gpu"
+            assert fake.calls[-2][4] == "tar czf - -C /content/persist results_gpu"
+            assert fake.calls[-1][4] == f"touch {cli.PULLED_FLAG}"
             arguments, = gpu_import.call_args.args
             assert arguments[0] == "--dir"
             folder = Path(arguments[1])
@@ -308,7 +326,7 @@ def test_pull_stop():
 
         run("stop", "unrecorded", "--force")
         assert fake.calls[-2:] == [["stop", "-s", "unrecorded"], ["usage"]]
-    print("  4. Tar snapshots reach both importers. Stop requires a pull after local and remote exit.")
+    print("  4. Tar snapshots reach both importers. Stop requires a final pull (after the remote exit); a final pull ends the keep-alive.")
 
 
 def test_wrapper(root):

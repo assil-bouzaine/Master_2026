@@ -620,6 +620,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Space-separated Phase 4 steps for scripts/run_v4_cpu.sh.")
     p_plan.add_argument("--shard", type=parse_shard, default=None,
                         help="Optional 1-based shard I/K to inspect.")
+    p_plan.add_argument("--subshard", type=parse_shard, default=None,
+                        help="Optional 1-based J/M inside --shard (the same balancing, applied again).")
     p_plan.add_argument("--json", dest="json_path", type=Path, default=None,
                         help="Write the full plan to this JSON file.")
 
@@ -630,6 +632,9 @@ def build_parser() -> argparse.ArgumentParser:
                        help="Max concurrent commands (positive integer or 'auto').")
     p_run.add_argument("--shard", type=parse_shard, default=None,
                        help="Optional 1-based shard I/K (keeps connected components whole).")
+    p_run.add_argument("--subshard", type=parse_shard, default=None,
+                       help="Optional 1-based J/M inside --shard: the subshards J = 1..M of shard I/K "
+                            "together are exactly shard I/K (used to rerun a lost shard on M machines).")
     p_run.add_argument("--log-dir", type=Path, default=None,
                        help="Override log directory (default: results/$PFE_DATASET/_p4_logs).")
     p_run.add_argument("--heartbeat", type=float, default=DEFAULT_HEARTBEAT_S,
@@ -640,8 +645,12 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     plan = build_plan(args.steps)
+    if args.subshard is not None and args.shard is None:
+        raise SystemExit("--subshard needs --shard")
     if args.shard is not None:
         plan = select_shard(plan, args.shard[0], args.shard[1])
+    if args.subshard is not None:
+        plan = select_shard(plan, args.subshard[0], args.subshard[1])
 
     if args.command == "plan":
         _print_plan_summary(plan, shard=args.shard)

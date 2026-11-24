@@ -1407,3 +1407,35 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
       (a refit after its R1 fit, an assembly after its five folds), possibly split over two sessions of
       that runtime type (each dependency chain whole on one session); the order of execution changes, the commands, seeds and settings do not. The
       black box (Gate 3 point 21) runs on an L4 GPU runtime.
+24. **After the tag: execution notes and two decisions (2026-11-24, before any Phase 4 result was read).**
+    - *TPU runtime fix (no change to any number).* The first Phase 4 push failed before fitting: the TPU
+      v5e1 image ships the `torch_tpu` plugin, `torch.manual_seed` then seeds the TPU too, and only one
+      process may hold it, so 181 of 189 fits of shard 1 stopped at their first line. `scripts/run_v4_cpu.sh`
+      now exports `TORCH_DEVICE_BACKEND_AUTOLOAD=0` (commit 727f84b); checked on the runtime: three
+      processes at once draw the same CPU numbers (`torch.manual_seed(1); randn(3)`) and load no TPU
+      module. The failed attempt's outputs were deleted on both sessions; every fit ran from scratch.
+    - *Black box, same-machine control.* The black box on arm D's edges (`taccari_D`, Gate 3 point 21)
+      is fitted in the same L4 session as the same tuned model on its distance edges
+      (`taccari_tuned_ctl`, GPU step `taccari_ctl`, commit 7f99f5f). D vs distance inside the black box
+      is read between these two runs (item 18: one machine type per contrast); `taccari_tuned` (T4,
+      October) stays the baseline of record, and its difference from the control is the machine effect.
+    - *Shortcut test 2 after slice F (decided by Assil).* Slice F gave arm D wrong reasons in 2 of 20
+      worlds (early stopping) and 0 of 20 (converged pooling), and test 2 flagged neither of D's two
+      (`docs/results_twin_v4.md`, "Slice F"): its detection power is not demonstrated. Test 2 stays a
+      reported diagnostic (on real data the stability statistic of item 23), explicitly **uncalibrated**:
+      a quiet test 2 is not evidence against a shortcut. RQ3's evidence rests on test 1 (recovery on the
+      twin), test 3 (the rewiring and density controls, read as controls) and test 4 (counterfactual
+      sign accuracy). No stronger slice is run.
+    - *Explanation module (decided by Assil).* CQ10 (MUST) gets a small ontology module (version 0.9.0,
+      a second exception to the 0.7.x freeze after CQ14): a model run (PROV-O activity), its simulated
+      head, a driver contribution with its reference condition, an explanation statement and the
+      knowledge-graph path it cites; SHACL shapes check each statement (the entity exists, the path is
+      allowed by the run's export policy, the stated direction agrees with the contribution's sign).
+    - *Explanations: the numbers (Phase 5, fixed before any explanation is read).* Explanations use the
+      exact per-stress contributions of the hybrid (`contrib_seed_<k>.parquet`), grouped by
+      `configs/explain_groups.csv` (stress → report group → the knowledge graph's driver group). The
+      default reference condition is the run's own training-period mean of each contribution at the
+      same week of the year (ISO week, 53 merged into 52), so an explanation describes between-year
+      variation, the only scale at which §8 allows pumping claims; case studies may add an explicit
+      reference window (e.g. summer 2024 against summer 2023) and say so. The explained runs are the
+      converged-pooling runs (Gate 3 point 1: `p4_B2conv_D_*`), the three reconstructions side by side.

@@ -107,3 +107,14 @@ Shapes (each a negative-control test, CQ10's acceptance cases):
   two data-quality numbers of a ladder run only, before any explained run (`p4_B2conv_D_*`) existed:
   a data-quality threshold, not a choice made on model results. Years 2005–2011 (back-filled) and
   the current partial year stay fully imputed, so their pumping statements are withheld.
+- **2026-11-24, T49 done** (Neon; commit e1cd413): the replay rebuilds any saved run exactly
+  (2e-6 m), and the faithfulness test found that the output-space reference ("the run's own
+  training-period mean of each contribution") differs from an intervention for long-memory stresses:
+  the 2005–2019 output mean contains the response to the wetter 2000–2004 warm-up years (NYLS-1
+  recharge, summer 2024: −2.288 m stated, −2.127 m by intervention, 6 % of the anomaly; short-memory
+  terms agree within 0.002 m). **Decision (Claude, same day, before any explained run existed):** the
+  default reference becomes **average-year forcing** (input space: every input at its 2005–2019
+  seasonal mean, one forward pass per start); the output-space mean stays as a sensitivity and its
+  gap is reported. For the linear hybrid the explanation then equals the intervention by
+  construction; the faithfulness test remains a check of the code and stays informative for the
+  black box. Task T50 (Neon) implements it.

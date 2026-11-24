@@ -1434,8 +1434,12 @@ reporting. No result of Phase 4 exists; baseline results are exploratory (§11).
     - *Explanations: the numbers (Phase 5, fixed before any explanation is read).* Explanations use the
       exact per-stress contributions of the hybrid (`contrib_seed_<k>.parquet`), grouped by
       `configs/explain_groups.csv` (stress → report group → the knowledge graph's driver group). The
-      default reference condition is the run's own training-period mean of each contribution at the
-      same week of the year (ISO week, 53 merged into 52), so an explanation describes between-year
-      variation, the only scale at which §8 allows pumping claims; case studies may add an explicit
+      default reference condition is **average-year forcing**: what the model simulates when every
+      input is at its 2005–2019 mean for the same week of the year (ISO week, 53 merged into 52), so
+      an explanation describes between-year variation, the only scale at which §8 allows pumping
+      claims. *(Amended the same day, before any explained run existed: the first wording, the run's
+      own training-period mean of each contribution, i.e. in output space, was found to include the
+      response to the wetter 2000–2004 warm-up years for long-memory recharge, 6 % of the anomaly at
+      NYLS-1 on a ladder run (`docs/notes/step15_explanations.md`, log); it stays as a sensitivity.)* case studies may add an explicit
       reference window (e.g. summer 2024 against summer 2023) and say so. The explained runs are the
       converged-pooling runs (Gate 3 point 1: `p4_B2conv_D_*`), the three reconstructions side by side.

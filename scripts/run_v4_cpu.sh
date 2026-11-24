@@ -9,6 +9,11 @@
 set -u
 cd "$(dirname "$0")/.."
 export PFE_DATASET=v4 PYTHONIOENCODING=utf-8
+# CPU fits only. A Colab TPU runtime ships the torch_tpu plugin; torch loads it on import and
+# torch.manual_seed then seeds the TPU too, which one process at a time may hold: with parallel
+# fits every other process failed (2026-11-24, first Phase 4 push). Without the plugin the CPU
+# generator gets the same seed, so the numbers do not change.
+export TORCH_DEVICE_BACKEND_AUTOLOAD=0
 PY=${PY:-.venv/bin/python}
 JOBS=${JOBS:-2}
 mkdir -p results/v4

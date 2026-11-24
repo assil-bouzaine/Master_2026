@@ -16,8 +16,8 @@ Median simulation scores over the core wells. Skill is measured against climatol
 | `stgnn_tuned` | Tuned distance-graph ST-GNN baseline | scored | 0.62 | 0.06 | 0.55 | 0.55 |
 | `lstm_tuned` | Tuned LSTM baseline | scored | 0.65 | 0.12 | 0.57 | 0.75 |
 | `pastas_seasonal_canal_trainobs_beststart` | Pastas hydrology reference (best start by the frozen rule) | scored | 0.54 | -0.75 | 0.22 | 0.74 |
-| `p4_B2_D_r1` | Phase 4 hybrid on arm D's knowledge-graph edges (early stopping, reconstruction 1) | pending | — | — | — | — |
-| `p4_B2_C_r1` | Phase 4 hybrid on arm C's distance edges (early stopping, reconstruction 1) | pending | — | — | — | — |
+| `p4_B2_D_r1` | Phase 4 hybrid on arm D's knowledge-graph edges (early stopping, reconstruction 1) | scored | 0.62 | 0.01 | 0.33 | 0.76 |
+| `p4_B2_C_r1` | Phase 4 hybrid on arm C's distance edges (early stopping, reconstruction 1) | scored | 0.58 | -0.19 | 0.53 | 0.64 |
 
 ## Contrasts
 
@@ -27,7 +27,7 @@ The effect is the median drought log(RMSE a / RMSE b) across paired core wells. 
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `taccari_D` | `taccari_tuned_ctl` | pre-specified | Edge choice in the same L4 session | scored | 0.0113 | [-0.0292, 0.0545] | 0.4545 | 0.8086 | 0 |
 | `taccari_tuned_ctl` | `taccari_tuned` | diagnostic | Machine effect (L4 vs October T4) | scored | -0.0116 | [-0.0675, 0.0032] | 0.5758 | 0.2227 | 0 |
-| `taccari_D` | `p4_B2_D_r1` | descriptive | Black box vs hybrid on arm D's edges | pending | — | — | — | — | — |
-| `taccari_tuned_ctl` | `p4_B2_C_r1` | descriptive | Black box vs hybrid on distance edges | pending | — | — | — | — | — |
+| `taccari_D` | `p4_B2_D_r1` | descriptive | Black box vs hybrid on arm D's edges | scored | 0.0441 | [-0.1050, 0.1602] | 0.4242 | 0.7070 | 0 |
+| `taccari_tuned_ctl` | `p4_B2_C_r1` | descriptive | Black box vs hybrid on distance edges | scored | 0.0075 | [-0.3032, 0.0751] | 0.4848 | 1.0000 | 0 |
 
 Exact support for `taccari_D` vs `taccari_tuned_ctl` passed. Both runs scored the same well-weeks at 33 paired core wells.

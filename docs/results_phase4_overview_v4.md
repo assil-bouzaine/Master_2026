@@ -25,225 +25,225 @@ Exploratory scores on the development benchmark.
 
 | Run | Arm | Pumping reconstruction | Regime | Core wells scored | NSE validation | NSE drought | Skill drought | RMSE drought (m) | KGE″ drought | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `p4_B1_A_r1` | A | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B1_B_r1` | B | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B1_A_r2` | A | 2 | R1 | — | — | — | — | — | — | pending |
-| `p4_B1_B_r2` | B | 2 | R1 | — | — | — | — | — | — | pending |
-| `p4_B1_A_r3` | A | 3 | R1 | — | — | — | — | — | — | pending |
-| `p4_B1_B_r3` | B | 3 | R1 | — | — | — | — | — | — | pending |
-| `p4_B1_A_r1_lwo` | A | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B1_A_r1_f25` | A | 1 | _f25 | — | — | — | — | — | — | pending |
-| `p4_B1_A_r1_f50` | A | 1 | _f50 | — | — | — | — | — | — | pending |
-| `p4_B1_A_r1_refit` | A | 1 | _refit | — | — | — | — | — | — | pending |
-| `p4_B1_B_r1_lwo` | B | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B1_B_r1_f25` | B | 1 | _f25 | — | — | — | — | — | — | pending |
-| `p4_B1_B_r1_f50` | B | 1 | _f50 | — | — | — | — | — | — | pending |
-| `p4_B1_B_r1_refit` | B | 1 | _refit | — | — | — | — | — | — | pending |
-| `p4_B1_A_r2_lwo` | A | 2 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B1_A_r2_f25` | A | 2 | _f25 | — | — | — | — | — | — | pending |
-| `p4_B1_A_r2_f50` | A | 2 | _f50 | — | — | — | — | — | — | pending |
-| `p4_B1_A_r2_refit` | A | 2 | _refit | — | — | — | — | — | — | pending |
-| `p4_B1_B_r2_lwo` | B | 2 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B1_B_r2_f25` | B | 2 | _f25 | — | — | — | — | — | — | pending |
-| `p4_B1_B_r2_f50` | B | 2 | _f50 | — | — | — | — | — | — | pending |
-| `p4_B1_B_r2_refit` | B | 2 | _refit | — | — | — | — | — | — | pending |
-| `p4_B1_A_r3_lwo` | A | 3 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B1_A_r3_f25` | A | 3 | _f25 | — | — | — | — | — | — | pending |
-| `p4_B1_A_r3_f50` | A | 3 | _f50 | — | — | — | — | — | — | pending |
-| `p4_B1_A_r3_refit` | A | 3 | _refit | — | — | — | — | — | — | pending |
-| `p4_B1_B_r3_lwo` | B | 3 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B1_B_r3_f25` | B | 3 | _f25 | — | — | — | — | — | — | pending |
-| `p4_B1_B_r3_f50` | B | 3 | _f50 | — | — | — | — | — | — | pending |
-| `p4_B1_B_r3_refit` | B | 3 | _refit | — | — | — | — | — | — | pending |
+| `p4_B1_A_r1` | A | 1 | R1 | 33 | 0.541 | -0.094 | 0.345 | 0.642 | 0.209 | scored |
+| `p4_B1_B_r1` | B | 1 | R1 | 33 | 0.556 | -0.200 | 0.373 | 0.648 | 0.053 | scored |
+| `p4_B1_A_r2` | A | 2 | R1 | 33 | 0.543 | -0.074 | 0.342 | 0.659 | 0.152 | scored |
+| `p4_B1_B_r2` | B | 2 | R1 | 33 | 0.584 | -0.240 | 0.344 | 0.668 | 0.038 | scored |
+| `p4_B1_A_r3` | A | 3 | R1 | 33 | 0.554 | -0.229 | 0.308 | 0.605 | 0.077 | scored |
+| `p4_B1_B_r3` | B | 3 | R1 | 33 | 0.576 | -0.197 | 0.353 | 0.616 | 0.039 | scored |
+| `p4_B1_A_r1_lwo` | A | 1 | _lwo | 33 | -0.279 | -1.656 | -0.199 | 0.983 | -0.782 | scored |
+| `p4_B1_A_r1_f25` | A | 1 | _f25 | 33 | 0.666 | -0.051 | 0.455 | 0.615 | 0.143 | scored |
+| `p4_B1_A_r1_f50` | A | 1 | _f50 | 33 | 0.596 | -0.099 | 0.262 | 0.557 | 0.201 | scored |
+| `p4_B1_A_r1_refit` | A | 1 | _refit | 33 | 0.662 | -0.233 | 0.432 | 0.526 | 0.090 | scored |
+| `p4_B1_B_r1_lwo` | B | 1 | _lwo | 33 | -0.551 | -1.635 | -0.081 | 0.982 | -0.606 | scored |
+| `p4_B1_B_r1_f25` | B | 1 | _f25 | 33 | 0.652 | -0.193 | 0.464 | 0.622 | 0.150 | scored |
+| `p4_B1_B_r1_f50` | B | 1 | _f50 | 33 | 0.579 | 0.057 | 0.226 | 0.638 | 0.152 | scored |
+| `p4_B1_B_r1_refit` | B | 1 | _refit | 33 | 0.647 | -0.243 | 0.415 | 0.550 | 0.096 | scored |
+| `p4_B1_A_r2_lwo` | A | 2 | _lwo | 33 | -0.343 | -1.705 | -0.062 | 0.935 | -0.646 | scored |
+| `p4_B1_A_r2_f25` | A | 2 | _f25 | 33 | 0.676 | -0.042 | 0.466 | 0.552 | 0.130 | scored |
+| `p4_B1_A_r2_f50` | A | 2 | _f50 | 33 | 0.589 | -0.066 | 0.240 | 0.556 | 0.177 | scored |
+| `p4_B1_A_r2_refit` | A | 2 | _refit | 33 | 0.661 | -0.386 | 0.399 | 0.565 | -0.001 | scored |
+| `p4_B1_B_r2_lwo` | B | 2 | _lwo | 33 | -0.773 | -1.671 | -0.071 | 0.946 | -0.618 | scored |
+| `p4_B1_B_r2_f25` | B | 2 | _f25 | 33 | 0.657 | -0.113 | 0.456 | 0.639 | 0.125 | scored |
+| `p4_B1_B_r2_f50` | B | 2 | _f50 | 33 | 0.580 | 0.143 | 0.252 | 0.643 | 0.219 | scored |
+| `p4_B1_B_r2_refit` | B | 2 | _refit | 33 | 0.658 | -0.253 | 0.387 | 0.558 | 0.039 | scored |
+| `p4_B1_A_r3_lwo` | A | 3 | _lwo | 33 | -0.284 | -1.587 | -0.063 | 0.910 | -0.592 | scored |
+| `p4_B1_A_r3_f25` | A | 3 | _f25 | 33 | 0.679 | -0.070 | 0.445 | 0.600 | 0.138 | scored |
+| `p4_B1_A_r3_f50` | A | 3 | _f50 | 33 | 0.566 | -0.110 | 0.212 | 0.612 | 0.114 | scored |
+| `p4_B1_A_r3_refit` | A | 3 | _refit | 33 | 0.656 | -0.270 | 0.393 | 0.567 | -0.014 | scored |
+| `p4_B1_B_r3_lwo` | B | 3 | _lwo | 33 | -0.261 | -1.830 | -0.080 | 1.013 | -0.611 | scored |
+| `p4_B1_B_r3_f25` | B | 3 | _f25 | 33 | 0.671 | -0.051 | 0.454 | 0.601 | 0.194 | scored |
+| `p4_B1_B_r3_f50` | B | 3 | _f50 | 33 | 0.585 | -0.091 | 0.273 | 0.603 | 0.139 | scored |
+| `p4_B1_B_r3_refit` | B | 3 | _refit | 33 | 0.655 | -0.201 | 0.372 | 0.570 | 0.085 | scored |
 
 ## B1c
 
 | Run | Arm | Pumping reconstruction | Regime | Core wells scored | NSE validation | NSE drought | Skill drought | RMSE drought (m) | KGE″ drought | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `p4_B1c_B_nametags_r1` | B | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B1c_B_shuffled_r1` | B | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B1c_B_nametags_r1_lwo` | B | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B1c_B_nametags_r1_f25` | B | 1 | _f25 | — | — | — | — | — | — | pending |
-| `p4_B1c_B_nametags_r1_f50` | B | 1 | _f50 | — | — | — | — | — | — | pending |
-| `p4_B1c_B_nametags_r1_refit` | B | 1 | _refit | — | — | — | — | — | — | pending |
-| `p4_B1c_B_shuffled_r1_lwo` | B | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B1c_B_shuffled_r1_f25` | B | 1 | _f25 | — | — | — | — | — | — | pending |
-| `p4_B1c_B_shuffled_r1_f50` | B | 1 | _f50 | — | — | — | — | — | — | pending |
-| `p4_B1c_B_shuffled_r1_refit` | B | 1 | _refit | — | — | — | — | — | — | pending |
+| `p4_B1c_B_nametags_r1` | B | 1 | R1 | 33 | 0.571 | -0.301 | 0.271 | 0.594 | 0.024 | scored |
+| `p4_B1c_B_shuffled_r1` | B | 1 | R1 | 33 | 0.617 | -0.294 | 0.215 | 0.685 | 0.058 | scored |
+| `p4_B1c_B_nametags_r1_lwo` | B | 1 | _lwo | 33 | -0.217 | -1.654 | -0.081 | 1.007 | -0.548 | scored |
+| `p4_B1c_B_nametags_r1_f25` | B | 1 | _f25 | 33 | 0.675 | -0.161 | 0.464 | 0.631 | 0.156 | scored |
+| `p4_B1c_B_nametags_r1_f50` | B | 1 | _f50 | 33 | 0.583 | -0.124 | 0.258 | 0.609 | 0.075 | scored |
+| `p4_B1c_B_nametags_r1_refit` | B | 1 | _refit | 33 | 0.662 | -0.178 | 0.309 | 0.599 | 0.066 | scored |
+| `p4_B1c_B_shuffled_r1_lwo` | B | 1 | _lwo | 33 | -0.765 | -2.291 | -0.160 | 1.120 | -0.781 | scored |
+| `p4_B1c_B_shuffled_r1_f25` | B | 1 | _f25 | 33 | 0.673 | -0.268 | 0.392 | 0.624 | 0.004 | scored |
+| `p4_B1c_B_shuffled_r1_f50` | B | 1 | _f50 | 33 | 0.584 | -0.232 | 0.265 | 0.603 | 0.198 | scored |
+| `p4_B1c_B_shuffled_r1_refit` | B | 1 | _refit | 33 | 0.658 | -0.295 | 0.323 | 0.599 | 0.106 | scored |
 
 ## B2
 
 | Run | Arm | Pumping reconstruction | Regime | Core wells scored | NSE validation | NSE drought | Skill drought | RMSE drought (m) | KGE″ drought | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `p4_B2_C_r1` | C | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B2_D_r1` | D | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B2_C_r2` | C | 2 | R1 | — | — | — | — | — | — | pending |
-| `p4_B2_D_r2` | D | 2 | R1 | — | — | — | — | — | — | pending |
-| `p4_B2_C_r3` | C | 3 | R1 | — | — | — | — | — | — | pending |
-| `p4_B2_D_r3` | D | 3 | R1 | — | — | — | — | — | — | pending |
-| `p4_B2_C_r1_lwo` | C | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B2_C_r1_f25` | C | 1 | _f25 | — | — | — | — | — | — | pending |
-| `p4_B2_C_r1_f50` | C | 1 | _f50 | — | — | — | — | — | — | pending |
-| `p4_B2_C_r1_refit` | C | 1 | _refit | — | — | — | — | — | — | pending |
-| `p4_B2_D_r1_lwo` | D | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B2_D_r1_f25` | D | 1 | _f25 | — | — | — | — | — | — | pending |
-| `p4_B2_D_r1_f50` | D | 1 | _f50 | — | — | — | — | — | — | pending |
-| `p4_B2_D_r1_refit` | D | 1 | _refit | — | — | — | — | — | — | pending |
-| `p4_B2_C_r2_lwo` | C | 2 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B2_C_r2_f25` | C | 2 | _f25 | — | — | — | — | — | — | pending |
-| `p4_B2_C_r2_f50` | C | 2 | _f50 | — | — | — | — | — | — | pending |
-| `p4_B2_C_r2_refit` | C | 2 | _refit | — | — | — | — | — | — | pending |
-| `p4_B2_D_r2_lwo` | D | 2 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B2_D_r2_f25` | D | 2 | _f25 | — | — | — | — | — | — | pending |
-| `p4_B2_D_r2_f50` | D | 2 | _f50 | — | — | — | — | — | — | pending |
-| `p4_B2_D_r2_refit` | D | 2 | _refit | — | — | — | — | — | — | pending |
-| `p4_B2_C_r3_lwo` | C | 3 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B2_C_r3_f25` | C | 3 | _f25 | — | — | — | — | — | — | pending |
-| `p4_B2_C_r3_f50` | C | 3 | _f50 | — | — | — | — | — | — | pending |
-| `p4_B2_C_r3_refit` | C | 3 | _refit | — | — | — | — | — | — | pending |
-| `p4_B2_D_r3_lwo` | D | 3 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B2_D_r3_f25` | D | 3 | _f25 | — | — | — | — | — | — | pending |
-| `p4_B2_D_r3_f50` | D | 3 | _f50 | — | — | — | — | — | — | pending |
-| `p4_B2_D_r3_refit` | D | 3 | _refit | — | — | — | — | — | — | pending |
+| `p4_B2_C_r1` | C | 1 | R1 | 33 | 0.583 | -0.188 | 0.531 | 0.638 | 0.008 | scored |
+| `p4_B2_D_r1` | D | 1 | R1 | 33 | 0.620 | 0.014 | 0.334 | 0.758 | 0.162 | scored |
+| `p4_B2_C_r2` | C | 2 | R1 | 33 | 0.625 | -0.114 | 0.522 | 0.658 | 0.053 | scored |
+| `p4_B2_D_r2` | D | 2 | R1 | 33 | 0.631 | -0.019 | 0.387 | 0.750 | 0.182 | scored |
+| `p4_B2_C_r3` | C | 3 | R1 | 33 | 0.586 | -0.190 | 0.524 | 0.639 | 0.017 | scored |
+| `p4_B2_D_r3` | D | 3 | R1 | 33 | 0.602 | 0.001 | 0.328 | 0.759 | 0.139 | scored |
+| `p4_B2_C_r1_lwo` | C | 1 | _lwo | 33 | 0.005 | -1.210 | 0.004 | 0.974 | -0.454 | scored |
+| `p4_B2_C_r1_f25` | C | 1 | _f25 | 33 | 0.708 | 0.040 | 0.516 | 0.528 | 0.235 | scored |
+| `p4_B2_C_r1_f50` | C | 1 | _f50 | 33 | 0.618 | -0.085 | 0.505 | 0.572 | 0.102 | scored |
+| `p4_B2_C_r1_refit` | C | 1 | _refit | 33 | 0.706 | -0.247 | 0.533 | 0.638 | 0.023 | scored |
+| `p4_B2_D_r1_lwo` | D | 1 | _lwo | 33 | -0.316 | -1.875 | -0.184 | 1.025 | -0.624 | scored |
+| `p4_B2_D_r1_f25` | D | 1 | _f25 | 33 | 0.687 | -0.069 | 0.512 | 0.540 | 0.187 | scored |
+| `p4_B2_D_r1_f50` | D | 1 | _f50 | 33 | 0.623 | 0.226 | 0.402 | 0.616 | 0.295 | scored |
+| `p4_B2_D_r1_refit` | D | 1 | _refit | 33 | 0.683 | 0.063 | 0.379 | 0.717 | 0.271 | scored |
+| `p4_B2_C_r2_lwo` | C | 2 | _lwo | 33 | -0.012 | -1.181 | 0.023 | 0.951 | -0.625 | scored |
+| `p4_B2_C_r2_f25` | C | 2 | _f25 | 33 | 0.718 | 0.036 | 0.575 | 0.599 | 0.176 | scored |
+| `p4_B2_C_r2_f50` | C | 2 | _f50 | 33 | 0.647 | -0.056 | 0.491 | 0.532 | 0.187 | scored |
+| `p4_B2_C_r2_refit` | C | 2 | _refit | 33 | 0.715 | -0.037 | 0.485 | 0.624 | 0.142 | scored |
+| `p4_B2_D_r2_lwo` | D | 2 | _lwo | 33 | -0.190 | -2.042 | -0.287 | 1.025 | -0.748 | scored |
+| `p4_B2_D_r2_f25` | D | 2 | _f25 | 33 | 0.681 | -0.014 | 0.518 | 0.569 | 0.197 | scored |
+| `p4_B2_D_r2_f50` | D | 2 | _f50 | 33 | 0.630 | 0.174 | 0.430 | 0.650 | 0.299 | scored |
+| `p4_B2_D_r2_refit` | D | 2 | _refit | 33 | 0.697 | 0.045 | 0.426 | 0.717 | 0.275 | scored |
+| `p4_B2_C_r3_lwo` | C | 3 | _lwo | 33 | 0.008 | -1.209 | -0.014 | 0.951 | -0.434 | scored |
+| `p4_B2_C_r3_f25` | C | 3 | _f25 | 33 | 0.714 | 0.048 | 0.515 | 0.534 | 0.206 | scored |
+| `p4_B2_C_r3_f50` | C | 3 | _f50 | 33 | 0.641 | -0.138 | 0.476 | 0.582 | 0.017 | scored |
+| `p4_B2_C_r3_refit` | C | 3 | _refit | 33 | 0.701 | -0.218 | 0.517 | 0.643 | 0.035 | scored |
+| `p4_B2_D_r3_lwo` | D | 3 | _lwo | 33 | -0.031 | -1.852 | -0.083 | 0.945 | -0.509 | scored |
+| `p4_B2_D_r3_f25` | D | 3 | _f25 | 33 | 0.692 | -0.040 | 0.518 | 0.549 | 0.195 | scored |
+| `p4_B2_D_r3_f50` | D | 3 | _f50 | 33 | 0.613 | 0.080 | 0.495 | 0.518 | 0.262 | scored |
+| `p4_B2_D_r3_refit` | D | 3 | _refit | 33 | 0.695 | -0.013 | 0.376 | 0.713 | 0.253 | scored |
 
 ## B2conv
 
 | Run | Arm | Pumping reconstruction | Regime | Core wells scored | NSE validation | NSE drought | Skill drought | RMSE drought (m) | KGE″ drought | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `p4_B2conv_C_r1` | C | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B2conv_D_r1` | D | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B2conv_C_r2` | C | 2 | R1 | — | — | — | — | — | — | pending |
-| `p4_B2conv_D_r2` | D | 2 | R1 | — | — | — | — | — | — | pending |
-| `p4_B2conv_C_r3` | C | 3 | R1 | — | — | — | — | — | — | pending |
-| `p4_B2conv_D_r3` | D | 3 | R1 | — | — | — | — | — | — | pending |
+| `p4_B2conv_C_r1` | C | 1 | R1 | 33 | 0.593 | -0.321 | 0.444 | 0.655 | 0.113 | scored |
+| `p4_B2conv_D_r1` | D | 1 | R1 | 33 | 0.607 | -0.248 | 0.275 | 0.748 | 0.126 | scored |
+| `p4_B2conv_C_r2` | C | 2 | R1 | 33 | 0.603 | -0.310 | 0.429 | 0.729 | 0.062 | scored |
+| `p4_B2conv_D_r2` | D | 2 | R1 | 33 | 0.587 | -0.221 | 0.274 | 0.782 | 0.036 | scored |
+| `p4_B2conv_C_r3` | C | 3 | R1 | 33 | 0.602 | -0.305 | 0.427 | 0.674 | 0.122 | scored |
+| `p4_B2conv_D_r3` | D | 3 | R1 | 33 | 0.599 | -0.257 | 0.277 | 0.751 | 0.138 | scored |
 
 ## B3
 
 | Run | Arm | Pumping reconstruction | Regime | Core wells scored | NSE validation | NSE drought | Skill drought | RMSE drought (m) | KGE″ drought | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `p4_B3_Edeg0_r1` | E_degree:0 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B3_Edist0_r1` | E_distance:0 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B3_Frand0_r1` | F_random:0 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B3_Edeg1_r1` | E_degree:1 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B3_Edist1_r1` | E_distance:1 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B3_Frand1_r1` | F_random:1 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B3_Edeg2_r1` | E_degree:2 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B3_Edist2_r1` | E_distance:2 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B3_Frand2_r1` | F_random:2 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B3_Edeg3_r1` | E_degree:3 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B3_Edist3_r1` | E_distance:3 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B3_Frand3_r1` | F_random:3 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B3_Edeg4_r1` | E_degree:4 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B3_Edist4_r1` | E_distance:4 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B3_Frand4_r1` | F_random:4 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B3_Fcomp_r1` | F_complete | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B3_Edeg0_r1_lwo` | E_degree:0 | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B3_Edist0_r1_lwo` | E_distance:0 | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B3_Frand0_r1_lwo` | F_random:0 | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B3_Edeg1_r1_lwo` | E_degree:1 | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B3_Edist1_r1_lwo` | E_distance:1 | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B3_Frand1_r1_lwo` | F_random:1 | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B3_Edeg2_r1_lwo` | E_degree:2 | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B3_Edist2_r1_lwo` | E_distance:2 | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B3_Frand2_r1_lwo` | F_random:2 | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B3_Edeg3_r1_lwo` | E_degree:3 | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B3_Edist3_r1_lwo` | E_distance:3 | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B3_Frand3_r1_lwo` | F_random:3 | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B3_Edeg4_r1_lwo` | E_degree:4 | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B3_Edist4_r1_lwo` | E_distance:4 | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B3_Frand4_r1_lwo` | F_random:4 | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B3_Fcomp_r1_lwo` | F_complete | 1 | _lwo | — | — | — | — | — | — | pending |
+| `p4_B3_Edeg0_r1` | E_degree:0 | 1 | R1 | 33 | 0.489 | -0.063 | 0.336 | 0.753 | 0.081 | scored |
+| `p4_B3_Edist0_r1` | E_distance:0 | 1 | R1 | 33 | 0.613 | -0.197 | 0.345 | 0.710 | 0.123 | scored |
+| `p4_B3_Frand0_r1` | F_random:0 | 1 | R1 | 33 | 0.400 | -0.133 | 0.284 | 0.738 | 0.057 | scored |
+| `p4_B3_Edeg1_r1` | E_degree:1 | 1 | R1 | 33 | 0.504 | -0.196 | 0.354 | 0.822 | 0.067 | scored |
+| `p4_B3_Edist1_r1` | E_distance:1 | 1 | R1 | 33 | 0.583 | -0.125 | 0.370 | 0.658 | 0.075 | scored |
+| `p4_B3_Frand1_r1` | F_random:1 | 1 | R1 | 33 | 0.419 | -0.156 | 0.221 | 0.627 | 0.231 | scored |
+| `p4_B3_Edeg2_r1` | E_degree:2 | 1 | R1 | 33 | 0.546 | -0.334 | 0.343 | 0.703 | 0.104 | scored |
+| `p4_B3_Edist2_r1` | E_distance:2 | 1 | R1 | 33 | 0.577 | -0.191 | 0.355 | 0.734 | 0.010 | scored |
+| `p4_B3_Frand2_r1` | F_random:2 | 1 | R1 | 33 | 0.397 | -0.533 | 0.258 | 0.792 | -0.195 | scored |
+| `p4_B3_Edeg3_r1` | E_degree:3 | 1 | R1 | 33 | 0.575 | -0.121 | 0.386 | 0.738 | 0.132 | scored |
+| `p4_B3_Edist3_r1` | E_distance:3 | 1 | R1 | 33 | 0.580 | -0.106 | 0.384 | 0.771 | 0.173 | scored |
+| `p4_B3_Frand3_r1` | F_random:3 | 1 | R1 | 33 | 0.457 | -0.337 | 0.322 | 0.740 | -0.011 | scored |
+| `p4_B3_Edeg4_r1` | E_degree:4 | 1 | R1 | 33 | 0.508 | -0.009 | 0.247 | 0.761 | 0.091 | scored |
+| `p4_B3_Edist4_r1` | E_distance:4 | 1 | R1 | 33 | 0.578 | -0.190 | 0.332 | 0.730 | 0.186 | scored |
+| `p4_B3_Frand4_r1` | F_random:4 | 1 | R1 | 33 | 0.387 | -0.398 | 0.285 | 0.701 | -0.091 | scored |
+| `p4_B3_Fcomp_r1` | F_complete | 1 | R1 | 33 | 0.487 | -0.270 | 0.446 | 0.731 | -0.075 | scored |
+| `p4_B3_Edeg0_r1_lwo` | E_degree:0 | 1 | _lwo | 33 | -0.079 | -1.812 | -0.046 | 0.947 | -0.761 | scored |
+| `p4_B3_Edist0_r1_lwo` | E_distance:0 | 1 | _lwo | 33 | -0.052 | -1.581 | -0.239 | 0.954 | -0.535 | scored |
+| `p4_B3_Frand0_r1_lwo` | F_random:0 | 1 | _lwo | 33 | -0.212 | -1.547 | -0.136 | 0.913 | -0.261 | scored |
+| `p4_B3_Edeg1_r1_lwo` | E_degree:1 | 1 | _lwo | 33 | -0.044 | -1.700 | -0.045 | 0.974 | -0.714 | scored |
+| `p4_B3_Edist1_r1_lwo` | E_distance:1 | 1 | _lwo | 33 | -0.086 | -1.590 | -0.358 | 1.025 | -0.620 | scored |
+| `p4_B3_Frand1_r1_lwo` | F_random:1 | 1 | _lwo | 33 | 0.000 | -0.976 | 0.001 | 0.862 | -0.536 | scored |
+| `p4_B3_Edeg2_r1_lwo` | E_degree:2 | 1 | _lwo | 33 | -0.200 | -2.461 | -0.257 | 0.949 | -0.733 | scored |
+| `p4_B3_Edist2_r1_lwo` | E_distance:2 | 1 | _lwo | 33 | -0.135 | -1.964 | -0.267 | 0.893 | -0.772 | scored |
+| `p4_B3_Frand2_r1_lwo` | F_random:2 | 1 | _lwo | 33 | -0.050 | -1.148 | -0.028 | 0.834 | -0.411 | scored |
+| `p4_B3_Edeg3_r1_lwo` | E_degree:3 | 1 | _lwo | 33 | -0.194 | -2.038 | -0.178 | 1.019 | -0.702 | scored |
+| `p4_B3_Edist3_r1_lwo` | E_distance:3 | 1 | _lwo | 33 | -0.184 | -1.979 | -0.316 | 0.967 | -0.605 | scored |
+| `p4_B3_Frand3_r1_lwo` | F_random:3 | 1 | _lwo | 33 | -0.078 | -1.235 | -0.020 | 0.956 | -0.589 | scored |
+| `p4_B3_Edeg4_r1_lwo` | E_degree:4 | 1 | _lwo | 33 | -0.247 | -2.098 | -0.310 | 1.048 | -0.788 | scored |
+| `p4_B3_Edist4_r1_lwo` | E_distance:4 | 1 | _lwo | 33 | -0.111 | -1.751 | -0.346 | 0.982 | -0.577 | scored |
+| `p4_B3_Frand4_r1_lwo` | F_random:4 | 1 | _lwo | 33 | -0.084 | -0.809 | -0.048 | 0.951 | -0.276 | scored |
+| `p4_B3_Fcomp_r1_lwo` | F_complete | 1 | _lwo | 33 | 0.008 | -1.369 | -0.045 | 1.015 | -0.527 | scored |
 
 ## B4
 
 | Run | Arm | Pumping reconstruction | Regime | Core wells scored | NSE validation | NSE drought | Skill drought | RMSE drought (m) | KGE″ drought | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `p4_B4_D_hard_r1` | D | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B4_D_none_r1` | D | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B4_D_soft1_r1` | D | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B4_D_soft10_r1` | D | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B4_D_soft100_r1` | D | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B4_D_hard_r2` | D | 2 | R1 | — | — | — | — | — | — | pending |
-| `p4_B4_D_none_r2` | D | 2 | R1 | — | — | — | — | — | — | pending |
-| `p4_B4_D_soft1_r2` | D | 2 | R1 | — | — | — | — | — | — | pending |
-| `p4_B4_D_soft10_r2` | D | 2 | R1 | — | — | — | — | — | — | pending |
-| `p4_B4_D_soft100_r2` | D | 2 | R1 | — | — | — | — | — | — | pending |
-| `p4_B4_D_hard_r3` | D | 3 | R1 | — | — | — | — | — | — | pending |
-| `p4_B4_D_none_r3` | D | 3 | R1 | — | — | — | — | — | — | pending |
-| `p4_B4_D_soft1_r3` | D | 3 | R1 | — | — | — | — | — | — | pending |
-| `p4_B4_D_soft10_r3` | D | 3 | R1 | — | — | — | — | — | — | pending |
-| `p4_B4_D_soft100_r3` | D | 3 | R1 | — | — | — | — | — | — | pending |
-| `p4_B4_D_hard_r1_lwo` | D | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B4_D_none_r1_lwo` | D | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B4_D_soft1_r1_lwo` | D | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B4_D_soft10_r1_lwo` | D | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B4_D_soft100_r1_lwo` | D | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B4_D_hard_r2_lwo` | D | 2 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B4_D_none_r2_lwo` | D | 2 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B4_D_soft1_r2_lwo` | D | 2 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B4_D_soft10_r2_lwo` | D | 2 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B4_D_soft100_r2_lwo` | D | 2 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B4_D_hard_r3_lwo` | D | 3 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B4_D_none_r3_lwo` | D | 3 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B4_D_soft1_r3_lwo` | D | 3 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B4_D_soft10_r3_lwo` | D | 3 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B4_D_soft100_r3_lwo` | D | 3 | _lwo | — | — | — | — | — | — | pending |
+| `p4_B4_D_hard_r1` | D | 1 | R1 | 33 | 0.620 | 0.014 | 0.334 | 0.758 | 0.162 | scored |
+| `p4_B4_D_none_r1` | D | 1 | R1 | 33 | 0.611 | 0.056 | 0.451 | 0.726 | 0.229 | scored |
+| `p4_B4_D_soft1_r1` | D | 1 | R1 | 33 | 0.620 | 0.019 | 0.447 | 0.767 | 0.196 | scored |
+| `p4_B4_D_soft10_r1` | D | 1 | R1 | 33 | 0.626 | 0.029 | 0.393 | 0.764 | 0.222 | scored |
+| `p4_B4_D_soft100_r1` | D | 1 | R1 | 33 | 0.641 | -0.157 | 0.379 | 0.752 | 0.134 | scored |
+| `p4_B4_D_hard_r2` | D | 2 | R1 | 33 | 0.631 | -0.019 | 0.387 | 0.750 | 0.182 | scored |
+| `p4_B4_D_none_r2` | D | 2 | R1 | 33 | 0.619 | -0.098 | 0.456 | 0.740 | 0.105 | scored |
+| `p4_B4_D_soft1_r2` | D | 2 | R1 | 33 | 0.606 | 0.024 | 0.453 | 0.748 | 0.247 | scored |
+| `p4_B4_D_soft10_r2` | D | 2 | R1 | 33 | 0.638 | 0.028 | 0.459 | 0.784 | 0.221 | scored |
+| `p4_B4_D_soft100_r2` | D | 2 | R1 | 33 | 0.632 | 0.005 | 0.441 | 0.786 | 0.177 | scored |
+| `p4_B4_D_hard_r3` | D | 3 | R1 | 33 | 0.602 | 0.001 | 0.328 | 0.759 | 0.139 | scored |
+| `p4_B4_D_none_r3` | D | 3 | R1 | 33 | 0.614 | -0.020 | 0.423 | 0.708 | 0.132 | scored |
+| `p4_B4_D_soft1_r3` | D | 3 | R1 | 33 | 0.627 | 0.020 | 0.453 | 0.747 | 0.232 | scored |
+| `p4_B4_D_soft10_r3` | D | 3 | R1 | 33 | 0.616 | 0.020 | 0.453 | 0.761 | 0.169 | scored |
+| `p4_B4_D_soft100_r3` | D | 3 | R1 | 33 | 0.621 | -0.177 | 0.413 | 0.758 | 0.094 | scored |
+| `p4_B4_D_hard_r1_lwo` | D | 1 | _lwo | 33 | -0.316 | -1.875 | -0.184 | 1.025 | -0.624 | scored |
+| `p4_B4_D_none_r1_lwo` | D | 1 | _lwo | 33 | -0.069 | -1.292 | -0.104 | 0.957 | -0.415 | scored |
+| `p4_B4_D_soft1_r1_lwo` | D | 1 | _lwo | 33 | -0.200 | -1.201 | -0.060 | 0.954 | -0.457 | scored |
+| `p4_B4_D_soft10_r1_lwo` | D | 1 | _lwo | 33 | -0.173 | -1.444 | -0.046 | 0.987 | -0.537 | scored |
+| `p4_B4_D_soft100_r1_lwo` | D | 1 | _lwo | 33 | -0.220 | -1.719 | -0.061 | 0.891 | -0.567 | scored |
+| `p4_B4_D_hard_r2_lwo` | D | 2 | _lwo | 33 | -0.190 | -2.042 | -0.287 | 1.025 | -0.748 | scored |
+| `p4_B4_D_none_r2_lwo` | D | 2 | _lwo | 33 | -0.138 | -1.367 | -0.070 | 0.977 | -0.796 | scored |
+| `p4_B4_D_soft1_r2_lwo` | D | 2 | _lwo | 33 | -0.100 | -1.419 | -0.126 | 0.955 | -0.581 | scored |
+| `p4_B4_D_soft10_r2_lwo` | D | 2 | _lwo | 33 | -0.142 | -1.339 | -0.070 | 0.997 | -0.549 | scored |
+| `p4_B4_D_soft100_r2_lwo` | D | 2 | _lwo | 33 | -0.275 | -1.702 | -0.050 | 0.827 | -0.721 | scored |
+| `p4_B4_D_hard_r3_lwo` | D | 3 | _lwo | 33 | -0.031 | -1.852 | -0.083 | 0.945 | -0.509 | scored |
+| `p4_B4_D_none_r3_lwo` | D | 3 | _lwo | 33 | -0.113 | -1.975 | -0.063 | 0.932 | -0.533 | scored |
+| `p4_B4_D_soft1_r3_lwo` | D | 3 | _lwo | 33 | -0.091 | -1.257 | -0.052 | 0.932 | -0.391 | scored |
+| `p4_B4_D_soft10_r3_lwo` | D | 3 | _lwo | 33 | -0.132 | -1.205 | -0.062 | 0.966 | -0.463 | scored |
+| `p4_B4_D_soft100_r3_lwo` | D | 3 | _lwo | 33 | -0.190 | -1.341 | -0.054 | 0.892 | -0.502 | scored |
 
 ## B5
 
 | Run | Arm | Pumping reconstruction | Regime | Core wells scored | NSE validation | NSE drought | Skill drought | RMSE drought (m) | KGE″ drought | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `p4_B5_C_r1` | C | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B5_D_r1` | D | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B5_Edeg0_r1` | E_degree:0 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B5_Edist0_r1` | E_distance:0 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B5_Frand0_r1` | F_random:0 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B5_Edeg1_r1` | E_degree:1 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B5_Edist1_r1` | E_distance:1 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B5_Frand1_r1` | F_random:1 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B5_Edeg2_r1` | E_degree:2 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B5_Edist2_r1` | E_distance:2 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B5_Frand2_r1` | F_random:2 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B5_Edeg3_r1` | E_degree:3 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B5_Edist3_r1` | E_distance:3 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B5_Frand3_r1` | F_random:3 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B5_Edeg4_r1` | E_degree:4 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B5_Edist4_r1` | E_distance:4 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B5_Frand4_r1` | F_random:4 | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B5_Fcomp_r1` | F_complete | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B5_C_r1_lwo` | C | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B5_D_r1_lwo` | D | 1 | _lwo | — | — | — | — | — | — | pending |
+| `p4_B5_C_r1` | C | 1 | R1 | 33 | 0.615 | -0.237 | 0.404 | 0.687 | -0.020 | scored |
+| `p4_B5_D_r1` | D | 1 | R1 | 33 | 0.625 | 0.029 | 0.378 | 0.715 | 0.204 | scored |
+| `p4_B5_Edeg0_r1` | E_degree:0 | 1 | R1 | 33 | 0.482 | -0.087 | 0.395 | 0.738 | 0.101 | scored |
+| `p4_B5_Edist0_r1` | E_distance:0 | 1 | R1 | 33 | 0.602 | -0.134 | 0.316 | 0.754 | 0.114 | scored |
+| `p4_B5_Frand0_r1` | F_random:0 | 1 | R1 | 33 | 0.403 | -0.274 | 0.355 | 0.760 | 0.039 | scored |
+| `p4_B5_Edeg1_r1` | E_degree:1 | 1 | R1 | 33 | 0.486 | -0.158 | 0.376 | 0.800 | 0.101 | scored |
+| `p4_B5_Edist1_r1` | E_distance:1 | 1 | R1 | 33 | 0.597 | -0.078 | 0.420 | 0.661 | 0.134 | scored |
+| `p4_B5_Frand1_r1` | F_random:1 | 1 | R1 | 33 | 0.416 | -0.103 | 0.258 | 0.649 | 0.147 | scored |
+| `p4_B5_Edeg2_r1` | E_degree:2 | 1 | R1 | 33 | 0.570 | -0.285 | 0.376 | 0.725 | 0.055 | scored |
+| `p4_B5_Edist2_r1` | E_distance:2 | 1 | R1 | 33 | 0.580 | -0.259 | 0.344 | 0.739 | 0.019 | scored |
+| `p4_B5_Frand2_r1` | F_random:2 | 1 | R1 | 33 | 0.355 | -0.615 | 0.243 | 0.788 | -0.162 | scored |
+| `p4_B5_Edeg3_r1` | E_degree:3 | 1 | R1 | 33 | 0.604 | -0.289 | 0.372 | 0.739 | 0.089 | scored |
+| `p4_B5_Edist3_r1` | E_distance:3 | 1 | R1 | 33 | 0.572 | -0.080 | 0.386 | 0.766 | 0.196 | scored |
+| `p4_B5_Frand3_r1` | F_random:3 | 1 | R1 | 33 | 0.452 | -0.252 | 0.379 | 0.718 | -0.009 | scored |
+| `p4_B5_Edeg4_r1` | E_degree:4 | 1 | R1 | 33 | 0.565 | -0.043 | 0.286 | 0.756 | 0.129 | scored |
+| `p4_B5_Edist4_r1` | E_distance:4 | 1 | R1 | 33 | 0.568 | -0.159 | 0.474 | 0.699 | 0.166 | scored |
+| `p4_B5_Frand4_r1` | F_random:4 | 1 | R1 | 33 | 0.352 | -0.732 | 0.270 | 0.731 | -0.123 | scored |
+| `p4_B5_Fcomp_r1` | F_complete | 1 | R1 | 33 | 0.469 | -0.390 | 0.398 | 0.722 | -0.084 | scored |
+| `p4_B5_C_r1_lwo` | C | 1 | _lwo | 33 | -0.140 | -1.046 | -0.040 | 0.783 | -0.546 | scored |
+| `p4_B5_D_r1_lwo` | D | 1 | _lwo | 33 | -0.994 | -3.096 | -0.165 | 1.208 | -1.010 | scored |
 
 ## B6
 
 | Run | Arm | Pumping reconstruction | Regime | Core wells scored | NSE validation | NSE drought | Skill drought | RMSE drought (m) | KGE″ drought | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `p4_B6_C_confident-only_r1` | C | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B6_D_confident-only_r1` | D | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B6_C_all-links_r1` | C | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B6_D_all-links_r1` | D | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B6_C_confident-only_r1_lwo` | C | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B6_D_confident-only_r1_lwo` | D | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B6_C_all-links_r1_lwo` | C | 1 | _lwo | — | — | — | — | — | — | pending |
-| `p4_B6_D_all-links_r1_lwo` | D | 1 | _lwo | — | — | — | — | — | — | pending |
+| `p4_B6_C_confident-only_r1` | C | 1 | R1 | 33 | 0.583 | -0.188 | 0.531 | 0.638 | 0.008 | scored |
+| `p4_B6_D_confident-only_r1` | D | 1 | R1 | 33 | 0.589 | -0.004 | 0.315 | 0.753 | 0.127 | scored |
+| `p4_B6_C_all-links_r1` | C | 1 | R1 | 33 | 0.583 | -0.188 | 0.531 | 0.638 | 0.008 | scored |
+| `p4_B6_D_all-links_r1` | D | 1 | R1 | 33 | 0.631 | 0.030 | 0.394 | 0.753 | 0.234 | scored |
+| `p4_B6_C_confident-only_r1_lwo` | C | 1 | _lwo | 33 | 0.005 | -1.210 | 0.004 | 0.974 | -0.454 | scored |
+| `p4_B6_D_confident-only_r1_lwo` | D | 1 | _lwo | 33 | -0.113 | -1.736 | -0.094 | 0.972 | -0.625 | scored |
+| `p4_B6_C_all-links_r1_lwo` | C | 1 | _lwo | 33 | 0.005 | -1.210 | 0.004 | 0.974 | -0.454 | scored |
+| `p4_B6_D_all-links_r1_lwo` | D | 1 | _lwo | 33 | -0.116 | -2.112 | -0.153 | 1.146 | -0.728 | scored |
 
 ## B7
 
 | Run | Arm | Pumping reconstruction | Regime | Core wells scored | NSE validation | NSE drought | Skill drought | RMSE drought (m) | KGE″ drought | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `p4_B7_D_unitwide_r1` | D | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B7_D_drainage_r1` | D | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B7_D_pe_r1` | D | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B7_D_canalsoft_r1` | D | 1 | R1 | — | — | — | — | — | — | pending |
+| `p4_B7_D_unitwide_r1` | D | 1 | R1 | 33 | 0.583 | -0.010 | 0.304 | 0.604 | 0.171 | scored |
+| `p4_B7_D_drainage_r1` | D | 1 | R1 | 33 | 0.498 | 0.019 | 0.357 | 0.683 | 0.110 | scored |
+| `p4_B7_D_pe_r1` | D | 1 | R1 | 33 | 0.596 | -0.088 | 0.351 | 0.799 | 0.108 | scored |
+| `p4_B7_D_canalsoft_r1` | D | 1 | R1 | 33 | 0.620 | 0.014 | 0.377 | 0.760 | 0.162 | scored |
 
 ## B8
 
 | Run | Arm | Pumping reconstruction | Regime | Core wells scored | NSE validation | NSE drought | Skill drought | RMSE drought (m) | KGE″ drought | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `p4_B8_B_r1` | B | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B8_C_r1` | C | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B8_D_r1` | D | 1 | R1 | — | — | — | — | — | — | pending |
-| `p4_B8_D5_r1` | D | 1 | R1 | — | — | — | — | — | — | pending |
+| `p4_B8_B_r1` | B | 1 | R1 | 33 | 0.562 | -0.167 | 0.378 | 0.607 | 0.056 | scored |
+| `p4_B8_C_r1` | C | 1 | R1 | 33 | 0.562 | -0.266 | 0.463 | 0.608 | -0.094 | scored |
+| `p4_B8_D_r1` | D | 1 | R1 | 33 | 0.621 | 0.033 | 0.391 | 0.745 | 0.235 | scored |
+| `p4_B8_D5_r1` | D | 1 | R1 | 33 | 0.606 | -0.042 | 0.403 | 0.762 | 0.174 | scored |
 
 ## Best R1 drought NSE per block
 
@@ -251,13 +251,13 @@ Picking the best run among many on the test period is descriptive only, so use t
 
 | Block | Run | Median drought NSE |
 | --- | --- | --- |
-| B1 | pending | — |
-| B1c | pending | — |
-| B2 | pending | — |
-| B2conv | pending | — |
-| B3 | pending | — |
-| B4 | pending | — |
-| B5 | pending | — |
-| B6 | pending | — |
-| B7 | pending | — |
-| B8 | pending | — |
+| B1 | `p4_B1_A_r2` | -0.074 |
+| B1c | `p4_B1c_B_shuffled_r1` | -0.294 |
+| B2 | `p4_B2_D_r1` | 0.014 |
+| B2conv | `p4_B2conv_D_r2` | -0.221 |
+| B3 | `p4_B3_Edeg4_r1` | -0.009 |
+| B4 | `p4_B4_D_none_r1` | 0.056 |
+| B5 | `p4_B5_D_r1` | 0.029 |
+| B6 | `p4_B6_D_all-links_r1` | 0.030 |
+| B7 | `p4_B7_D_drainage_r1` | 0.019 |
+| B8 | `p4_B8_D_r1` | 0.033 |

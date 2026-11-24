@@ -33,6 +33,36 @@ edges on the black box. The machine effect (same model and edges, L4 today vs T4
 −0.012 [−0.068, +0.003]: as large as the edge effect. Drought NSE −0.01 (D edges) and 0.04
 (distance), skill 0.55 and 0.49.
 
+### First look (informal, 2026-11-24 ≈ 21:15 UTC; the pre-specified report `arms_report` comes next)
+
+Computed with `ladder_report.contrast` on the core wells, drought log RMSE ratio, negative = a better. Not
+the arms report: no Holm adjustment, no same-arm bands, no classification. Recorded so the reading starts
+from what was seen.
+
+| Contrast | Median | 95 % interval | Share of wells a better | Cluster p |
+|---|---:|---:|---:|---:|
+| D vs C, R1, reconstruction 1 | +0.010 | [−0.127, +0.112] | 0.48 | 0.875 |
+| D vs C, R1, reconstruction 2 | +0.074 | [−0.072, +0.133] | 0.36 | 0.295 |
+| black box vs hybrid, both on arm D's edges (`taccari_D` vs `p4_B2_D_r1`, descriptive) | +0.044 | [−0.105, +0.160] | 0.42 | 0.707 |
+| black box vs hybrid, distance edges (`taccari_tuned_ctl` vs `p4_B2_C_r1`, descriptive) | +0.008 | [−0.303, +0.075] | 0.48 | 1.000 |
+
+Medians over core wells: `p4_B2_D_r1` validation NSE 0.62, drought NSE 0.014, drought skill 0.33, drought RMSE
+0.76 m; `p4_B2_C_r1` 0.58, −0.188, 0.53, 0.64 m. D and C help different wells: on the per-well ratio they tie.
+The twin predicted this (D/C within ±0.03 in every cell, `docs/results_twin_v4.md`). The interpretable hybrid
+is as accurate as the black-box graph network on the same edges. The ladder's rung-2 runs (panel inputs) had a
+drought NSE of −0.29; the routed Phase 4 arms reach −0.19 (C) to 0.01 (D).
+
+## State at the stop (2026-11-24 ≈ 21:20 UTC)
+
+- All 174 Phase 4 run folders are in `results/v4` (shard 2 from p4b; shard 1 rerun on p4c and p4d after the
+  first shard-1 runtime was reclaimed unpulled). Every Colab session is stopped; balance 165.3 units (192.8 at
+  the start of the day: about 27.5 units used, about 10 of them for the lost shard and the download trouble).
+- Contribution files: fetched for the B2, B2conv, B4 and B8 runs of shard 1 (`scripts/fetch_contribs.sh`), rebuilt
+  by replay for those of shard 2 (`scripts/replay_contribs.py`, checked against the saved predictions to 8.5e-6 m).
+- `docs/results_phase4_overview_v4.md`, `docs/results_blackbox_v4.md`, `docs/results_seed_disagreement_v4.md`:
+  regenerated with every run. **`arms_report` not yet run** (stopped after 10 min at Assil's end of session; it
+  takes longer): first command of the next session.
+
 ## Reading
 
 (to write after the arms report)

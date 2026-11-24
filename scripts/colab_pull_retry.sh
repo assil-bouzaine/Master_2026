@@ -21,8 +21,12 @@ for attempt in $(seq 1 "$TRIES"); do
     sleep 15
     f=$(ls "$stage"/pull_*.tgz 2>/dev/null | tail -1)
     size=$([ -n "$f" ] && stat -c %s "$f" || echo 0)
-    if [ "$size" = "$last" ]; then still=$((still + 15)); else still=0; last=$size; fi
     ssh_pids=$(pgrep -f "colab ssh -s $session --|proxy-mode -s $session" || true)
+    # Count a stall only while the download runs: once the archive is extracted (its folder exists)
+    # the pull rescores locally and ends with a short ssh (the keep-alive flag); without an ssh client
+    # nothing is downloading. (2026-11-24: the counter grew during rescoring and killed that last ssh.)
+    if [ -n "$f" ] && [ -d "${f%.tgz}" ] || [ -z "$ssh_pids" ]; then still=0; last=$size; continue; fi
+    if [ "$size" = "$last" ]; then still=$((still + 15)); else still=0; last=$size; fi
     if [ "$still" -ge "$STALL_S" ] && [ -n "$ssh_pids" ]; then
       echo "== attempt $attempt: no data for ${still}s at $((size / 1048576)) MB, restarting the transfer"
       kill $ssh_pids 2>/dev/null

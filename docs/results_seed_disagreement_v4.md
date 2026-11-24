@@ -14,19 +14,19 @@ For each pair, take the RMSE over all drought weeks (2022-05-01 to 2025-11-30), 
 
 | Run | Protocol | Starts 0–1 | All-pairs mean | Core wells |
 |---|---|---:|---:|---:|
-| `p4_B2_C_r1` | — | pending | — | — |
-| `p4_B2_D_r1` | — | pending | — | — |
-| `p4_B2conv_C_r1` | — | pending | — | — |
-| `p4_B2conv_C_r2` | — | pending | — | — |
-| `p4_B2conv_C_r3` | — | pending | — | — |
-| `p4_B2conv_D_r1` | — | pending | — | — |
-| `p4_B2conv_D_r2` | — | pending | — | — |
-| `p4_B2conv_D_r3` | — | pending | — | — |
-| `p4_B4_D_hard_r1` | — | pending | — | — |
-| `p4_B4_D_none_r1` | — | pending | — | — |
-| `p4_B4_D_soft1_r1` | — | pending | — | — |
-| `p4_B4_D_soft10_r1` | — | pending | — | — |
-| `p4_B4_D_soft100_r1` | — | pending | — | — |
+| `p4_B2_C_r1` | pooled λ = 0.01, early stopping | 0.038 | 0.055 | 33 |
+| `p4_B2_D_r1` | pooled λ = 0.01, early stopping | 0.047 | 0.041 | 33 |
+| `p4_B2conv_C_r1` | pooled λ = 0.1, 3,000 fixed steps | 0.081 | 0.124 | 33 |
+| `p4_B2conv_C_r2` | pooled λ = 0.1, 3,000 fixed steps | 0.040 | 0.055 | 33 |
+| `p4_B2conv_C_r3` | pooled λ = 0.1, 3,000 fixed steps | 0.052 | 0.131 | 33 |
+| `p4_B2conv_D_r1` | pooled λ = 0.1, 3,000 fixed steps | 0.015 | 0.023 | 33 |
+| `p4_B2conv_D_r2` | pooled λ = 0.1, 3,000 fixed steps | 0.014 | 0.020 | 33 |
+| `p4_B2conv_D_r3` | pooled λ = 0.1, 3,000 fixed steps | 0.019 | 0.016 | 33 |
+| `p4_B4_D_hard_r1` | pooled λ = 0.01, early stopping | 0.047 | 0.041 | 33 |
+| `p4_B4_D_none_r1` | pooled λ = 0.01, early stopping | 0.069 | 0.134 | 33 |
+| `p4_B4_D_soft1_r1` | pooled λ = 0.01, early stopping | 0.109 | 0.105 | 33 |
+| `p4_B4_D_soft10_r1` | pooled λ = 0.01, early stopping | 0.023 | 0.068 | 33 |
+| `p4_B4_D_soft100_r1` | pooled λ = 0.01, early stopping | 0.022 | 0.082 | 33 |
 | `resp_free` | free, early stopping | 0.032 | 0.059 | 33 |
 | `resp_pooled_l001` | pooled λ = 0.01, early stopping | 0.065 | 0.046 | 33 |
 | `resp_pooled_l01` | pooled λ = 0.1, early stopping | 0.007 | 0.059 | 33 |

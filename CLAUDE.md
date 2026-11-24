@@ -528,31 +528,37 @@ notebooks/       exploration only; anything that matters moves into src/
 
 ### ▶ Where we are (read this first in a new session)
 
-**2026-11-24 (Tuesday) evening session — IN PROGRESS (update when it ends). START HERE.**
-- **Pushed** (Assil): the 28 commits and the tag `analysis-plan-v2` (8c55eb3c…) before any Phase 4 fit.
-- **Phase 4 state (≈ 19:45 UTC):** shard 2 (p4b, 215 commands, 0 failed) **pulled** into `results/v4` and its
-  session stopped. **Shard 1 was lost**: its runtime (p4a) was reclaimed by Colab while idle after the run
-  (18:37–19:15 UTC), before its pull. It **reruns now** on two TPU v5e1 sessions `p4c` (P4_SHARD=1/2,
-  P4_SUBSHARD=1/2) and `p4d` (subshard 2/2), pushed 19:39 UTC, ≈ 40 min. When each ends:
-  `bash scripts/fetch_contribs.sh p4c` (and p4d: the contributions of B2/B2conv/B4 R1 runs), then
-  `bash scripts/colab_pull_retry.sh p4c --exclude 'contrib_seed_*.parquet'` (same for p4d), then
-  `.venv/bin/python -m scripts.colab_cli stop p4c` (p4d). The launcher now keeps a finished runtime busy until a
-  final pull (commit 489e4d7), so it is not reclaimed. Then `PFE_DATASET=v4 .venv/bin/python -m
-  src.analysis.arms_report`, `phase4_overview`, `blackbox_report`, `seed_disagreement`; reading in
-  `docs/notes/step14_phase4.md`.
-- **Colab CLI lessons:** never run two `colab` commands at once (they rewrite `~/.config/colab-cli/sessions.json`
-  and lost a session's name; its runtime kept billing as "[?]" until released by endpoint through the CLI's own
-  client); a stalled download hangs silently (use `colab_pull_retry.sh`); a shard is 4.4 GB with the
-  contribution files, 1.35 GB without.
-- **Black box done** (pre-specified): `taccari_D` vs same-session control +0.011 [−0.029, +0.055], p 0.81: no
-  detectable effect (`docs/results_blackbox_v4.md`).
+**2026-11-24 (Tuesday), stopped ≈ 21:20 UTC at Assil's request ("that's enough for tonight commit and push"). START HERE.**
+Everything is committed and pushed. No Colab session, no worker and no laptop job is running.
+- **Phase 4 is complete and local:** all 378 fits (174 run folders) in `results/v4`; shard 1 was rerun on two
+  runtimes after the first one was reclaimed unpulled (`docs/notes/step14_phase4.md`). The black box is done
+  (pre-specified: no detectable effect of the graph's edges, +0.011 [−0.029, +0.055], p 0.81).
+- **First look (informal):** D vs C, R1, reconstruction 1: +0.010 [−0.127, +0.112], p 0.875 (no detectable
+  difference, as the twin predicted); the hybrid ties the black box on the same edges (+0.044, p 0.71). Step 14 note.
+- **Assil's worry and the answer given** (chat): a null on accuracy is a finding; the contributions are explanations
+  in ontology terms (built today), the twin's "right reasons" result (D recovers pumping better than C in 82 % of
+  worlds under converged pooling), sign rules (RQ2, to read), traceability, the reusable ontology, the method.
+  Still open in the report: leave-wells-out (R2), less data (R3), knowledge as facts (B vs A), RQ2 on real data.
+
+**Next, in order:**
+1. `PYTHONIOENCODING=utf-8 PFE_DATASET=v4 .venv/bin/python -m src.analysis.arms_report` (≈ 15–30 min on the laptop:
+   scoring only) → `docs/results_arms_v4.md`; then brief Sol on T58 (`.agents/briefs/T58_phase4_figures.md`, ready).
+2. Read: RQ1 (B vs A, D vs C) and RQ2 (soft/hard vs none) in R1 and the regimes (R2 transfer, R3 less data, refit),
+   "holds under all reconstructions", the B3 controls, B5–B8; the seed disagreement (test 2, uncalibrated). Write the
+   reading in `docs/notes/step14_phase4.md`, then tell Assil in plain words whether the direction is right.
+3. Phase 5: the CQ10 module (ontology 0.9.0, draft in `docs/notes/cq10_draft/`; then the release rebuild, exports,
+   controls, tests), the explanation runs (`p4_B2conv_D_r1..r3` with `src/explain/report.py`), the case studies and the
+   fixed sample rule (step 15 note).
+4. Update the explainer (`docs/explainer/`) with today's results.
+- **Colab rules learned today** (memory `no-training-on-laptop`): one `colab` command at a time; pull each job as
+  soon as it ends (the launcher keeps it alive until a final pull); `colab_pull_retry.sh ... --exclude
+  'contrib_seed_*.parquet'` and `fetch_contribs.sh` for the runs whose contributions are needed.
+- **Workers:** Neon ≈ 44 %, Sol ≈ 36 % of their 5-hour windows at the stop; both closed. Assil's rule: one Sol + Neon,
+  stop at 60 %.
 - **Decided by Assil today** (analysis plan §14 item 24; `docs/gate3_decisions.md`): test 2 stays, flagged
-  uncalibrated; the CQ10 explanation module (ontology 0.9.0) is approved (draft terms in
-  `docs/notes/cq10_draft/`, outside the catalog until no reader of the release runs). **Priority (Assil): results and
-  "are we going in the right direction" first, the paper later.** Workers: one Sol + Neon, stop at **60 %**.
-- **Phase 5 built today** (`docs/notes/step15_explanations.md`): contributions (T46), replay + faithfulness (T49),
-  average-forcing reference (T50), statements + FR/EN templates (T53, T54). Running: Neon T52 (graph chains),
-  Sol T55 (rebuild shard 2's contribution files by replay, with a real-run replay check).
+  uncalibrated; the CQ10 explanation module is approved. Priority: results and direction first, the paper later.
+- **Assil (unchanged):** the professor's e-mail, the two data e-mails, the AGROVOC gold set, Earth Engine, the
+  paywalled papers, the defence date.
 
 **2026-11-22 (Sunday) ≈ 00:40, stopped at Assil's request after the running work finished. START HERE.**
 Everything below is committed; the tag `analysis-plan-v2` exists **locally only (ask Assil before pushing it or

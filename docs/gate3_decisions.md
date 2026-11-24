@@ -290,3 +290,12 @@ test 2's false alarms on the slices 0–25 %, detection "no positive case" every
 
 Also decided the same day (not Gate 3 points): training moves from Kaggle to Assil's Colab compute
 units (Google AI Pro, 200 units), files travel between the laptop and Drive with rclone.
+
+**2026-11-24, after slice F was read and before any Phase 4 result** (analysis plan §14 item 24):
+
+| # | Decision |
+|---|---|
+| 5 (follow-up) | **Test 2 stays, flagged uncalibrated.** Slice F gave arm D wrong reasons in 2 of 20 worlds (early stopping) and 0 of 20 (converged pooling); test 2 caught neither. It is still reported on real data as a stability statistic, but a quiet test 2 is not evidence against a shortcut; RQ3 rests on tests 1, 3 and 4. No stronger slice. |
+| 15 (follow-up) | **CQ10 explanation module, ontology 0.9.0** (second exception to the 0.7.x freeze): model run, simulated head, driver contribution with its reference condition, explanation statement and cited graph path, with SHACL checks per statement. |
+
+Also the same day: the 28 local commits and the tag `analysis-plan-v2` were pushed before Phase 4 started (Assil).

@@ -530,21 +530,29 @@ notebooks/       exploration only; anything that matters moves into src/
 
 **2026-11-24 (Tuesday) evening session — IN PROGRESS (update when it ends). START HERE.**
 - **Pushed** (Assil): the 28 commits and the tag `analysis-plan-v2` (8c55eb3c…) before any Phase 4 fit.
-- **Running on Colab (bills until `stop`):** Phase 4 shards `p4a` (1/2) and `p4b` (2/2) on TPU v5e1 (from 17:16 UTC,
-  ≈ 1.5 h expected), the black box `bb` on an L4 (`taccari_D` then the same-session control `taccari_ctl`).
-  When each has ended: `.venv/bin/python -m scripts.colab_cli pull <name>`, then `stop <name>` (refuses before
-  a final pull). Then `PFE_DATASET=v4 .venv/bin/python -m src.analysis.arms_report` (→ `docs/results_arms_v4.md`)
-  and the black-box report (T47). The first push failed (torch_tpu seeding; fixed by
-  `TORCH_DEVICE_BACKEND_AUTOLOAD=0`, analysis plan item 24); its outputs were deleted.
-- **Decided by Assil today** (analysis plan §14 item 24; `docs/gate3_decisions.md`, last section): test 2 stays,
-  flagged uncalibrated; the CQ10 explanation module (ontology 0.9.0) is approved. **Priority (Assil): results and
-  "are we going in the right direction" first, the paper later.** Codex hold lifted: one Sol worker + Neon,
-  stop assigning at **60 %** of a 5-hour window.
-- **Workers:** Neon T46 `src/explain/contributions.py` (Phase 5 numbers); Sol T45 done (paper macros, 16f3f7e),
-  T47 `src/analysis/blackbox_report.py` running, T48 (real-data seed disagreement) briefed.
-- **Phase 5 design:** `docs/notes/step15_explanations.md` (statement rules fixed before any explanation).
-  Ontology 0.9.0 waits until the workers and the Phase 4 reading are done (an ontology change makes the
-  exports refuse to load until the release is rebuilt).
+- **Phase 4 state (≈ 19:45 UTC):** shard 2 (p4b, 215 commands, 0 failed) **pulled** into `results/v4` and its
+  session stopped. **Shard 1 was lost**: its runtime (p4a) was reclaimed by Colab while idle after the run
+  (18:37–19:15 UTC), before its pull. It **reruns now** on two TPU v5e1 sessions `p4c` (P4_SHARD=1/2,
+  P4_SUBSHARD=1/2) and `p4d` (subshard 2/2), pushed 19:39 UTC, ≈ 40 min. When each ends:
+  `bash scripts/fetch_contribs.sh p4c` (and p4d: the contributions of B2/B2conv/B4 R1 runs), then
+  `bash scripts/colab_pull_retry.sh p4c --exclude 'contrib_seed_*.parquet'` (same for p4d), then
+  `.venv/bin/python -m scripts.colab_cli stop p4c` (p4d). The launcher now keeps a finished runtime busy until a
+  final pull (commit 489e4d7), so it is not reclaimed. Then `PFE_DATASET=v4 .venv/bin/python -m
+  src.analysis.arms_report`, `phase4_overview`, `blackbox_report`, `seed_disagreement`; reading in
+  `docs/notes/step14_phase4.md`.
+- **Colab CLI lessons:** never run two `colab` commands at once (they rewrite `~/.config/colab-cli/sessions.json`
+  and lost a session's name; its runtime kept billing as "[?]" until released by endpoint through the CLI's own
+  client); a stalled download hangs silently (use `colab_pull_retry.sh`); a shard is 4.4 GB with the
+  contribution files, 1.35 GB without.
+- **Black box done** (pre-specified): `taccari_D` vs same-session control +0.011 [−0.029, +0.055], p 0.81: no
+  detectable effect (`docs/results_blackbox_v4.md`).
+- **Decided by Assil today** (analysis plan §14 item 24; `docs/gate3_decisions.md`): test 2 stays, flagged
+  uncalibrated; the CQ10 explanation module (ontology 0.9.0) is approved (draft terms in
+  `docs/notes/cq10_draft/`, outside the catalog until no reader of the release runs). **Priority (Assil): results and
+  "are we going in the right direction" first, the paper later.** Workers: one Sol + Neon, stop at **60 %**.
+- **Phase 5 built today** (`docs/notes/step15_explanations.md`): contributions (T46), replay + faithfulness (T49),
+  average-forcing reference (T50), statements + FR/EN templates (T53, T54). Running: Neon T52 (graph chains),
+  Sol T55 (rebuild shard 2's contribution files by replay, with a real-run replay check).
 
 **2026-11-22 (Sunday) ≈ 00:40, stopped at Assil's request after the running work finished. START HERE.**
 Everything below is committed; the tag `analysis-plan-v2` exists **locally only (ask Assil before pushing it or

@@ -5,20 +5,24 @@
 
 Why this module exists (docs/analysis_plan.md §12; docs/notes/step15_explanations.md)
 ------------------------------------------------------------------------------------
-T46 (``src/explain/contributions.py``) states driver contributions in **output space**: each
-stress's saved contribution minus its own training-period seasonal mean. Faithfulness asks
-whether a plausible intervention in **input space** gives the same answer: replace the inputs
-of a driver group over the full kernel memory ``[target_start - kernel_weeks + 1, target_end]``
-with their training-period seasonal level (never zeroed inputs), run the saved model forward,
-and measure how much the mean simulated head over the target window moves.
+Faithfulness asks whether a plausible intervention in **input space** agrees with the stated
+explanation: replace the inputs of a driver group over the full kernel memory
+``[target_start - kernel_weeks + 1, target_end]`` with their training-period seasonal level
+(never zeroed inputs), run the saved model forward, and measure how much the mean simulated head
+over the target window moves.
 
 For this linear, time-invariant response model:
 - **Superposition** is exact up to float precision (``<= 1e-6 m``): the sum of single-group
   removal effects equals the effect of replacing all input groups with their reference at once.
-- **Stated vs intervened** agree closely but not identically, because output-space averaging
+- **Under the default ``"average_forcing"`` reference** (input space, T50): every input is set
+  to its training seasonal mean over the whole record, so ``stated_m - intervened_m == 0`` up to
+  float precision (``<= 1e-6 m``) by construction. Testing it still guards against code bugs and
+  gives the exact baseline against which the black-box faithfulness tests are compared.
+- **Under the ``"training_seasonal"`` sensitivity** (output space, T46): output-space averaging
   averages lagged inputs over shifted windows ``[train_start - j, train_end - j]`` (picking up
-  pre-training years 2000-2004, pre-2000 padding, 53-week ISO years, and trends across
-  2000-2019), whereas input-space intervention feeds the training seasonal mean at every lag.
+  pre-training years 2000-2004, pre-2000 padding, and 53-week ISO years), creating a documented
+  gap for long-memory stresses (e.g. NYLS-1 recharge). ``fidelity()`` reports this sensitivity as
+  a second table alongside the default ``average_forcing`` check.
 - **Fidelity+ and Fidelity-** adapt Azzolin et al. (arXiv:2406.15156) to regression with
   plausible interventions:
   - ``fidelity+`` = ``|Delta head when the largest-|stated| group is removed|`` (necessity);
@@ -31,8 +35,9 @@ Sign conventions
   ``mean(h_intervened) - mean(h_orig)`` over the target window (metres): e.g., restoring dry
   rainfall back to its seasonal reference raises the simulated head (positive shift).
 - In ``fidelity()``, the **intervention effect** attributed to a group is ``-Delta_remove``
-  = ``mean(h_orig) - mean(h_removed)`` (metres), which shares the exact sign convention of T46's
-  stated contribution (e.g., drought lowers the head -> negative stated and negative effect).
+  = ``mean(h_orig) - mean(h_removed)`` (metres), which shares the exact sign convention of
+  ``contributions.decompose()`` (e.g., drought lowers the head -> negative stated and negative
+  effect). The comparison column is ``diff_m = stated_m - intervened_m``.
 - The seasonal ``residual`` has no inputs and is never intervened on.
 """
 from __future__ import annotations
@@ -51,77 +56,24 @@ from src.config import DATASET
 from src.explain.contributions import (
     GROUPS_PATH,
     _filter_wells,
-    _iso_week_of_year,
+    _padded_weeks,
     _parse_window,
     _run_dir,
     decompose,
     load_groups,
+    reference_inputs,
     training_window,
 )
 from src.models import response as R
 
 SUPERPOSITION_TOL_M = 1e-6
+FAITHFULNESS_TOL_M = 1e-6
 _CKPT_RE = re.compile(r"^seed_(\d+)\.pt$")
 
 
 def _logical_stress(model_stress: str) -> str:
     """Map internal model stress slots (e.g. ``river_c`` under gate3) to saved stress names."""
     return "river" if model_stress == "river_c" else model_stress
-
-
-def _padded_weeks(weeks: pd.DatetimeIndex, kernel_weeks: int) -> pd.DatetimeIndex:
-    """Extend a weekly DatetimeIndex backward by ``kernel_weeks - 1`` 7-day steps."""
-    wks = pd.DatetimeIndex(weeks)
-    if kernel_weeks <= 1:
-        return wks
-    pad = pd.date_range(end=wks[0] - pd.Timedelta(days=7), periods=kernel_weeks - 1, freq="7D")
-    return pad.append(wks)
-
-
-def reference_inputs(
-    X: dict[str, np.ndarray],
-    weeks: pd.DatetimeIndex | np.ndarray,
-    kernel_weeks: int,
-    train_window: tuple[str | pd.Timestamp, str | pd.Timestamp],
-) -> dict[str, np.ndarray]:
-    """Compute per-well, per-input seasonal reference arrays over the full padded timeline.
-
-    For each well and input column, each ISO week of the year (1..52, with week 53 merged into
-    week 52) gets the mean of the unpadded input over the run's training weeks at that ISO week.
-    """
-    wks = pd.DatetimeIndex(weeks)
-    tr_start, tr_end = pd.Timestamp(train_window[0]), pd.Timestamp(train_window[1])
-    train_mask = (wks >= tr_start) & (wks <= tr_end)
-    if not train_mask.any():
-        raise ValueError(f"No weeks fall inside training window {tr_start.date()}..{tr_end.date()}")
-
-    padded = _padded_weeks(wks, kernel_weeks)
-    woy_padded = _iso_week_of_year(padded)  # 1..52, length T + K - 1
-    woy_unpadded = woy_padded[kernel_weeks - 1 :]  # length T
-    woy_train = woy_unpadded[train_mask]
-
-    needed_woys = set(int(w) for w in np.unique(woy_padded))
-    present_woys = set(int(w) for w in np.unique(woy_train))
-    missing_woys = sorted(needed_woys - present_woys)
-    if missing_woys:
-        raise ValueError(
-            f"Training window {tr_start.date()}..{tr_end.date()} lacks ISO week(s) {missing_woys}"
-        )
-
-    # Precompute index masks for each ISO week present in training.
-    woy_masks = {w: (woy_train == w) for w in present_woys}
-    woy_idx = woy_padded - 1  # 0..51
-
-    X_ref: dict[str, np.ndarray] = {}
-    for col, arr in X.items():
-        unpadded = np.asarray(arr[:, kernel_weeks - 1 :], dtype=np.float64)
-        n_wells = unpadded.shape[0]
-        means = np.zeros((n_wells, 52), dtype=np.float64)
-        tr_vals = unpadded[:, train_mask]
-        for w, mask in woy_masks.items():
-            means[:, w - 1] = tr_vals[:, mask].mean(axis=1)
-        X_ref[col] = means[:, woy_idx].astype(arr.dtype, copy=False)
-    return X_ref
 
 
 def resolve_group_stresses(
@@ -333,48 +285,145 @@ def _available_ckpt_seeds(run_dir: Path) -> list[int]:
     return sorted(seeds)
 
 
+def _stated_report_group_stats(
+    decomp: dict,
+    selected_seeds: list[int],
+    selected_wells: list[str],
+) -> tuple[pd.DataFrame, pd.Series]:
+    """Summarise per-seed stated report-group and total contributions over ``selected_seeds``."""
+    ps_rg = decomp["per_seed"]["by_report_group"]
+    ps_rg = ps_rg[ps_rg["seed"].isin(selected_seeds)]
+    ps_tot = decomp["per_seed"]["total"]
+    ps_tot = ps_tot[ps_tot["seed"].isin(selected_seeds)]
+    stated_stats = (
+        ps_rg.groupby(["code_bss", "report_group"], sort=True)["value_m"]
+        .agg(
+            stated_m="mean",
+            stated_sd_m=lambda s: float(np.std(s.to_numpy(dtype=np.float64), ddof=1))
+            if len(s) > 1
+            else float("nan"),
+        )
+        .reset_index()
+    )
+    tot_stated = (
+        ps_tot.groupby("code_bss", sort=True)["value_m"]
+        .mean()
+        .reindex(selected_wells)
+    )
+    return stated_stats, tot_stated
+
+
+def _build_comparison_table(
+    stated_stats: pd.DataFrame,
+    tot_stated: pd.Series,
+    interv_stats: pd.DataFrame,
+    all_report_groups: list[str],
+    n_seeds: int,
+) -> pd.DataFrame:
+    """Pair stated contributions with input-space intervention effects (``diff_m = stated_m - intervened_m``)."""
+    by_rg = stated_stats.merge(interv_stats, on=["code_bss", "report_group"], how="left")
+    by_rg["diff_m"] = by_rg["stated_m"] - by_rg["intervened_m"]
+    by_rg["abs_diff_m"] = by_rg["diff_m"].abs()
+    tot_abs = by_rg["code_bss"].map(tot_stated.abs())
+    by_rg["rel_to_total"] = np.where(tot_abs > 0.0, by_rg["diff_m"] / tot_abs, np.nan)
+    by_rg["abs_rel_to_total"] = by_rg["rel_to_total"].abs()
+    by_rg["n_seeds"] = n_seeds
+
+    rg_order = {rg: i for i, rg in enumerate(all_report_groups)}
+    by_rg["_rg_ord"] = by_rg["report_group"].map(lambda g: rg_order.get(g, 999))
+    return (
+        by_rg.sort_values(["code_bss", "_rg_ord"], kind="mergesort")
+        .drop(columns="_rg_ord")
+        .reset_index(drop=True)[
+            [
+                "code_bss",
+                "report_group",
+                "stated_m",
+                "intervened_m",
+                "diff_m",
+                "abs_diff_m",
+                "rel_to_total",
+                "abs_rel_to_total",
+                "stated_sd_m",
+                "intervened_sd_m",
+                "n_seeds",
+            ]
+        ]
+    )
+
+
 def fidelity(
     run: str | Path,
     target: str | tuple[str, str],
     wells: Iterable[str] | None = None,
     seeds: Iterable[int] | str | None = "all",
     *,
+    reference: str = "average_forcing",
     dataset: str = DATASET,
     dataset_dir: str | Path | None = None,
     groups_path: str | Path = GROUPS_PATH,
     train_window: tuple[str, str] | None = None,
 ) -> dict:
-    """Compare T46 stated contributions against input-space interventions and compute fidelity+/−.
+    """Compare stated contributions against input-space interventions and compute fidelity+/−.
+
+    Parameters
+    ----------
+    reference : ``"average_forcing"`` (default) or ``"training_seasonal"``
+        Primary stated reference to compare with input-space interventions. For the default
+        ``"average_forcing"`` reference, ``diff_m = stated_m - intervened_m`` is ``<= 1e-6 m``
+        for every intervenable report group on this linear model, and the output-space
+        ``"training_seasonal"`` comparison is returned alongside it as a second table under
+        ``result["sensitivity_training_seasonal"]``.
 
     Returns a dict with:
     - ``by_report_group``: per ``(code_bss, report_group)`` table with ``stated_m``,
-      ``intervened_m`` (``h_orig - h_removed``), ``diff_m`` (``intervened_m - stated_m``),
+      ``intervened_m`` (``h_orig - h_removed``), ``diff_m`` (``stated_m - intervened_m``),
       ``abs_diff_m``, ``rel_to_total`` (``diff_m / |total_stated_m|``), ``abs_rel_to_total``,
       ``stated_sd_m``, ``intervened_sd_m``, ``n_seeds``;
+    - ``sensitivity_training_seasonal``: when ``reference == "average_forcing"``, a dict with
+      ``reference`` and ``by_report_group`` comparing output-space ``training_seasonal`` stated
+      contributions against the same input-space interventions (``None`` when
+      ``reference == "training_seasonal"``);
     - ``by_well``: per-well ``top_group`` (largest ``|stated_m|`` among intervenable report
       groups), ``top_stated_m``, ``top_intervened_m``, ``total_stated_m``,
-      ``total_intervened_m``, ``total_diff_m``, ``fidelity_plus_m``, ``fidelity_minus_m``,
-      and ``superposition_max_err_m``;
+      ``total_intervened_m``, ``total_diff_m`` (``total_stated_m - total_intervened_m``),
+      ``fidelity_plus_m``, ``fidelity_minus_m``, and ``superposition_max_err_m``;
     - ``superposition``: ``{"max_abs_err_m", "tol_m", "passed"}``;
     - ``per_seed``: per-seed intervention and superposition tables;
     - run metadata (``run``, ``dataset``, ``target``, ``n_target_weeks``, ``reference``,
       ``seeds``, ``n_seeds``, ``groups``, ``metadata``).
     """
+    if reference not in ("average_forcing", "training_seasonal"):
+        raise ValueError(
+            f"fidelity() reference must be 'average_forcing' or 'training_seasonal', got {reference!r}"
+        )
+
     run_dir = _run_dir(run, dataset=dataset)
     cfg = json.loads((run_dir / "config.json").read_text(encoding="utf-8"))
     ckpt_seeds = _available_ckpt_seeds(run_dir)
     if not ckpt_seeds:
         raise FileNotFoundError(f"No seed_<k>.pt checkpoints found in {run_dir}")
 
+    # Build inputs and seasonal reference once for the run (shared with decompose() when average_forcing).
+    prep = R.prepare(R.args_from_config(cfg), verbose=False)
+    data = prep["data"]
+    selected_wells = _filter_wells(data["codes"], wells)
+    groups_df = load_groups(groups_path)
+    tr_win = _parse_window(train_window) if train_window is not None else training_window(
+        cfg, dataset=dataset, dataset_dir=dataset_dir
+    )
+    X_ref = reference_inputs(data["X"], data["weeks"], prep["model_kwargs"]["kernel_weeks"], tr_win)
+
     decomp = decompose(
         run_dir,
         target=target,
-        reference="training_seasonal",
-        wells=wells,
+        reference=reference,
+        wells=selected_wells,
         dataset=dataset,
         dataset_dir=dataset_dir,
         groups_path=groups_path,
         train_window=train_window,
+        prep=prep,
     )
     contrib_seeds = decomp["seeds"]
     common_seeds = sorted(set(ckpt_seeds) & set(contrib_seeds))
@@ -390,22 +439,6 @@ def fidelity(
         if missing:
             raise ValueError(f"{run_dir.name}: requested seed(s) missing checkpoints/contribs: {missing}")
 
-    # Filter T46 per-seed tables to selected_seeds so stated and intervened average over the same starts.
-    ps_rg = decomp["per_seed"]["by_report_group"]
-    ps_rg = ps_rg[ps_rg["seed"].isin(selected_seeds)].copy()
-    ps_tot = decomp["per_seed"]["total"]
-    ps_tot = ps_tot[ps_tot["seed"].isin(selected_seeds)].copy()
-
-    # Build inputs and seasonal reference once for the run.
-    prep = R.prepare(R.args_from_config(cfg), verbose=False)
-    data = prep["data"]
-    selected_wells = _filter_wells(data["codes"], wells)
-    groups_df = load_groups(groups_path)
-    tr_win = _parse_window(train_window) if train_window is not None else training_window(
-        cfg, dataset=dataset, dataset_dir=dataset_dir
-    )
-    X_ref = reference_inputs(data["X"], data["weeks"], prep["model_kwargs"]["kernel_weeks"], tr_win)
-
     weeks = pd.DatetimeIndex(data["weeks"])
     t_start, t_end = _parse_window(target)
     t_idx = np.where((weeks >= t_start) & (weeks <= t_end))[0]
@@ -414,23 +447,11 @@ def fidelity(
     # Intervenable report groups in explain_groups.csv order (never includes residual).
     interv_groups = active_report_groups(prep["names"], groups_df=groups_df)
     all_report_groups = list(interv_groups)
-    if "residual" in set(ps_rg["report_group"]):
+    if "residual" in set(decomp["per_seed"]["by_report_group"]["report_group"]):
         all_report_groups.append("residual")
 
     # Compute per-seed stated summaries first to identify each well's top report group.
-    stated_stats = (
-        ps_rg.groupby(["code_bss", "report_group"], sort=True)["value_m"]
-        .agg(
-            stated_m="mean",
-            stated_sd_m=lambda s: float(np.std(s.to_numpy(dtype=np.float64), ddof=1)) if len(s) > 1 else float("nan"),
-        )
-        .reset_index()
-    )
-    tot_stated = (
-        ps_tot.groupby("code_bss", sort=True)["value_m"]
-        .mean()
-        .reindex(selected_wells)
-    )
+    stated_stats, tot_stated = _stated_report_group_stats(decomp, selected_seeds, selected_wells)
 
     stated_interv = stated_stats[stated_stats["report_group"].isin(interv_groups)].copy()
     top_group_of: dict[str, str] = {}
@@ -531,41 +552,37 @@ def fidelity(
         ps_interv.groupby(["code_bss", "report_group"], sort=True)["intervened_m"]
         .agg(
             intervened_m="mean",
-            intervened_sd_m=lambda s: float(np.std(s.to_numpy(dtype=np.float64), ddof=1)) if len(s) > 1 else float("nan"),
+            intervened_sd_m=lambda s: float(np.std(s.to_numpy(dtype=np.float64), ddof=1))
+            if len(s) > 1
+            else float("nan"),
         )
         .reset_index()
     )
 
-    by_rg = stated_stats.merge(interv_stats, on=["code_bss", "report_group"], how="left")
-    by_rg["diff_m"] = by_rg["intervened_m"] - by_rg["stated_m"]
-    by_rg["abs_diff_m"] = by_rg["diff_m"].abs()
-    tot_abs = by_rg["code_bss"].map(tot_stated.abs())
-    by_rg["rel_to_total"] = np.where(tot_abs > 0.0, by_rg["diff_m"] / tot_abs, np.nan)
-    by_rg["abs_rel_to_total"] = by_rg["rel_to_total"].abs()
-    by_rg["n_seeds"] = len(selected_seeds)
-
-    # Order cleanly by well and explain_groups.csv order.
-    rg_order = {rg: i for i, rg in enumerate(all_report_groups)}
-    by_rg["_rg_ord"] = by_rg["report_group"].map(lambda g: rg_order.get(g, 999))
-    by_rg = (
-        by_rg.sort_values(["code_bss", "_rg_ord"], kind="mergesort")
-        .drop(columns="_rg_ord")
-        .reset_index(drop=True)[
-            [
-                "code_bss",
-                "report_group",
-                "stated_m",
-                "intervened_m",
-                "diff_m",
-                "abs_diff_m",
-                "rel_to_total",
-                "abs_rel_to_total",
-                "stated_sd_m",
-                "intervened_sd_m",
-                "n_seeds",
-            ]
-        ]
+    by_rg = _build_comparison_table(
+        stated_stats, tot_stated, interv_stats, all_report_groups, len(selected_seeds)
     )
+
+    sensitivity_ts: dict | None = None
+    if reference == "average_forcing":
+        decomp_ts = decompose(
+            run_dir,
+            target=target,
+            reference="training_seasonal",
+            wells=selected_wells,
+            dataset=dataset,
+            dataset_dir=dataset_dir,
+            groups_path=groups_path,
+            train_window=train_window,
+        )
+        stated_ts, tot_ts = _stated_report_group_stats(decomp_ts, selected_seeds, selected_wells)
+        by_rg_ts = _build_comparison_table(
+            stated_ts, tot_ts, interv_stats, all_report_groups, len(selected_seeds)
+        )
+        sensitivity_ts = {
+            "reference": decomp_ts["reference"],
+            "by_report_group": by_rg_ts,
+        }
 
     # Per-well fidelity+ and fidelity- (Azzolin et al., arXiv:2406.15156, adapted to regression).
     by_rg_idx = by_rg.set_index(["code_bss", "report_group"])
@@ -595,7 +612,7 @@ def fidelity(
                 "top_intervened_m": float(top_row["intervened_m"]),
                 "total_stated_m": ts,
                 "total_intervened_m": ti,
-                "total_diff_m": ti - ts,
+                "total_diff_m": ts - ti,
                 "fidelity_plus_m": fid_plus,
                 "fidelity_minus_m": fid_minus,
                 "superposition_max_err_m": float(sup_max_by_well.loc[code]),
@@ -616,6 +633,7 @@ def fidelity(
         "groups": all_report_groups,
         "intervenable_groups": interv_groups,
         "by_report_group": by_rg,
+        "sensitivity_training_seasonal": sensitivity_ts,
         "by_well": by_well,
         "superposition": {
             "max_abs_err_m": max_sup_err,
@@ -630,33 +648,58 @@ def fidelity(
     }
 
 
+def _format_comparison_table(df: pd.DataFrame) -> str:
+    rg_view = df[
+        ["code_bss", "report_group", "stated_m", "intervened_m", "diff_m", "rel_to_total"]
+    ].copy()
+    for col in ("stated_m", "intervened_m"):
+        rg_view[col] = rg_view[col].map(lambda x: f"{x:+.4f}" if pd.notna(x) else "n/a")
+    rg_view["diff_m"] = rg_view["diff_m"].map(
+        lambda x: f"{x:+.2e}" if pd.notna(x) and abs(x) < 1e-4 else (f"{x:+.4f}" if pd.notna(x) else "n/a")
+    )
+    rg_view["rel_to_total"] = rg_view["rel_to_total"].map(
+        lambda x: f"{100.0 * x:+.1f}%" if pd.notna(x) else "n/a"
+    )
+    return rg_view.to_string(index=False)
+
+
 def format_report(result: dict) -> str:
     """Format a ``fidelity()`` result as plain-text tables for the CLI."""
     ref = result["reference"]
     sup = result["superposition"]
+    ref_space = f", {ref['space']} space" if "space" in ref else ""
     lines = [
         f"Run: {result['run']} (dataset={result['dataset']}, seeds={result['n_seeds']})",
         (
             f"Target: {result['target'][0]} .. {result['target'][1]} "
             f"({result['n_target_weeks']} weeks) | "
-            f"Reference: {ref['kind']} ({ref['window'][0]} .. {ref['window'][1]})"
+            f"Reference: {ref['kind']} ({ref['window'][0]} .. {ref['window'][1]}{ref_space})"
         ),
         (
             f"Superposition check: max |sum(single) - all| = {sup['max_abs_err_m']:.2e} m "
             f"(tol {sup['tol_m']:.1e} m -> {'PASS' if sup['passed'] else 'FAIL'})"
         ),
         "",
-        "Stated (output space, T46) vs Intervened (input space) by report group (metres):",
+        (
+            f"Stated ({ref['kind']}{ref_space}) vs Intervened (input space) by report group "
+            "(metres; diff = stated - intervened):"
+        ),
+        _format_comparison_table(result["by_report_group"]),
     ]
-    rg_view = result["by_report_group"][
-        ["code_bss", "report_group", "stated_m", "intervened_m", "diff_m", "rel_to_total"]
-    ].copy()
-    for col in ("stated_m", "intervened_m", "diff_m"):
-        rg_view[col] = rg_view[col].map(lambda x: f"{x:+.4f}" if pd.notna(x) else "n/a")
-    rg_view["rel_to_total"] = rg_view["rel_to_total"].map(
-        lambda x: f"{100.0 * x:+.1f}%" if pd.notna(x) else "n/a"
-    )
-    lines.append(rg_view.to_string(index=False))
+
+    sens = result.get("sensitivity_training_seasonal")
+    if sens is not None:
+        sref = sens["reference"]
+        lines.extend(
+            [
+                "",
+                (
+                    f"Sensitivity — Stated ({sref['kind']}, output space) vs Intervened (input space) "
+                    "by report group (metres; diff = stated - intervened):"
+                ),
+                _format_comparison_table(sens["by_report_group"]),
+            ]
+        )
 
     lines.append("")
     lines.append("Per-well fidelity summary (metres; Azzolin et al., arXiv:2406.15156):")
@@ -672,8 +715,11 @@ def format_report(result: dict) -> str:
             "superposition_max_err_m",
         ]
     ].copy()
-    for col in ("total_stated_m", "total_intervened_m", "total_diff_m"):
+    for col in ("total_stated_m", "total_intervened_m"):
         w_view[col] = w_view[col].map(lambda x: f"{x:+.4f}")
+    w_view["total_diff_m"] = w_view["total_diff_m"].map(
+        lambda x: f"{x:+.2e}" if abs(x) < 1e-4 else f"{x:+.4f}"
+    )
     for col in ("fidelity_plus_m", "fidelity_minus_m"):
         w_view[col] = w_view[col].map(lambda x: f"{x:.4f}")
     w_view["superposition_max_err_m"] = w_view["superposition_max_err_m"].map(lambda x: f"{x:.2e}")
@@ -690,6 +736,12 @@ def main(argv: list[str] | None = None) -> int:
         "--target",
         required=True,
         help="Inclusive target window 'YYYY-MM-DD:YYYY-MM-DD'.",
+    )
+    parser.add_argument(
+        "--reference",
+        choices=("average_forcing", "training_seasonal"),
+        default="average_forcing",
+        help="Primary stated reference (default: average_forcing).",
     )
     parser.add_argument(
         "--well",
@@ -716,6 +768,7 @@ def main(argv: list[str] | None = None) -> int:
         target=args.target,
         wells=args.well,
         seeds="all" if args.seeds is None else args.seeds,
+        reference=args.reference,
         dataset=args.dataset,
     )
     print(format_report(result))

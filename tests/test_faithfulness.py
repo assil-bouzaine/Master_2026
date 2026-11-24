@@ -2,8 +2,8 @@
 
     PYTHONIOENCODING=utf-8 PFE_DATASET=v4 .venv/bin/python -m tests.test_faithfulness
 
-Why this test exists (docs/analysis_plan.md §12; docs/notes/step15_explanations.md; task T49)
---------------------------------------------------------------------------------------------
+Why this test exists (docs/analysis_plan.md §12; docs/notes/step15_explanations.md; tasks T49, T50)
+--------------------------------------------------------------------------------------------------
 1. Synthetic ResponseModel with known parameters (no training):
    - closed-form hand-computed intervention effects for sustained anomalies (kernel sums to 1)
      and for a single-week impulse at a known lag (exact kernel weight);
@@ -12,13 +12,16 @@ Why this test exists (docs/analysis_plan.md §12; docs/notes/step15_explanations
    - residual refuses direct intervention and does not alter any driver intervention;
    - gate3 river_c/river split and pe/drainc recharge modes intervene on the exact inputs from
      response.stress_inputs;
-   - end-to-end fidelity() on a disk-backed synthetic run folder verifies stated-vs-intervened
-     agreement and the exact gap mechanism.
+   - end-to-end fidelity() on a disk-backed synthetic run folder (with seasonal residual) verifies
+     default average_forcing has |stated - intervened| <= 1e-6 m for every intervenable group and
+     that the training_seasonal sensitivity table matches explicit reference="training_seasonal".
 2. Real run results/v4/resp_pooled_l001 on summer 2024 (2024-06-01..2024-09-30) for two core
    wells (10964X0119/NYLS-1, 10906X0039/C2-1):
    - verifies superposition <= 1e-6 m across all 10 seeds;
+   - verifies under default average_forcing that |stated - intervened| <= 1e-6 m for every group;
+   - verifies the second table (training_seasonal sensitivity) preserves the documented warm-up gap;
    - verifies linear identities for fidelity+ and fidelity-;
-   - runs the CLI and prints the fidelity table and stated-vs-intervened gap.
+   - runs the CLI and prints both tables.
 """
 from __future__ import annotations
 
@@ -263,8 +266,10 @@ def test_synthetic_end_to_end_fidelity():
             "groups": ["g0", "g1"],
             "group_of": np.array([0, 1]),
         }
-        net = _build_known_network(N=N, T=T, K=K, weeks=weeks)
-        args = R.build_parser().parse_args(["--mode", "free", "--kernel-weeks", str(K), "--amax", "20.0", "--seeds", "0"])
+        net = _build_known_network(N=N, T=T, K=K, residual="seasonal", weeks=weeks)
+        args = R.build_parser().parse_args(
+            ["--mode", "free", "--kernel-weeks", str(K), "--amax", "20.0", "--residual", "seasonal", "--seeds", "0"]
+        )
         R._canonicalize_args(args)
         fp = write_config(run_dir, args, ["rain/10", "ETP/10", "PE/10", "pump_gw/100", "canal/10"])
         pz, contrib, params = R.seed_outputs(net, data)
@@ -294,9 +299,9 @@ def test_synthetic_end_to_end_fidelity():
                 "static_net": "linear",
                 "sign_ref": "structure",
                 "soft_stresses": None,
-                "residual": "none",
-                "residual_basis": None,
-                "residual_bound": None,
+                "residual": "seasonal",
+                "residual_basis": net.res_basis.numpy(),
+                "residual_bound": net.res_bound.numpy(),
             },
         }
         with patch.object(R, "prepare", return_value=fake_prep), patch(
@@ -309,7 +314,15 @@ def test_synthetic_end_to_end_fidelity():
                 dataset_dir=ds_dir,
                 train_window=("2020-01-01", "2021-12-31"),
             )
+            res_ts = F.fidelity(
+                run_dir,
+                target=target,
+                reference="training_seasonal",
+                dataset_dir=ds_dir,
+                train_window=("2020-01-01", "2021-12-31"),
+            )
 
+        assert res["reference"]["kind"] == "average_forcing"
         assert res["superposition"]["passed"] and res["superposition"]["max_abs_err_m"] <= F.SUPERPOSITION_TOL_M
         bw = res["by_well"].set_index("code_bss")
         for code in codes:
@@ -320,25 +333,55 @@ def test_synthetic_end_to_end_fidelity():
                 abs(row["total_intervened_m"] - row["top_intervened_m"]),
                 atol=1e-6,
             )
-        # Because inputs are strictly periodic in 2020-2021 (only a tiny week-53 phase shift at the
-        # 2020/2021 boundary), stated and intervened agree closely.
-        max_gap = float(res["by_report_group"]["abs_diff_m"].max())
-        assert max_gap < 0.02, max_gap
+
+        # Under default average_forcing, stated - intervened <= 1e-6 m for every intervenable report group,
+        # while residual stays untouched (intervened_m is NaN).
+        rg = res["by_report_group"]
+        rg_interv = rg[rg["report_group"] != "residual"]
+        max_gap_af = float(rg_interv["abs_diff_m"].max())
+        assert max_gap_af <= F.FAITHFULNESS_TOL_M, max_gap_af
+        rg_res = rg[rg["report_group"] == "residual"]
+        assert len(rg_res) == len(codes) and rg_res["intervened_m"].isna().all()
+
+        # Second table (training_seasonal sensitivity) matches explicit reference="training_seasonal".
+        assert res["sensitivity_training_seasonal"] is not None
+        assert res_ts["sensitivity_training_seasonal"] is None
+        np.testing.assert_allclose(
+            res["sensitivity_training_seasonal"]["by_report_group"]["diff_m"].dropna().to_numpy(),
+            res_ts["by_report_group"]["diff_m"].dropna().to_numpy(),
+            atol=1e-12,
+        )
         print(
-            f"  2. end-to-end synthetic fidelity(): superposition max err = "
-            f"{res['superposition']['max_abs_err_m']:.2e} m, max |stated - intervened| = {max_gap:.4e} m"
+            f"  2. end-to-end synthetic fidelity() (default average_forcing + seasonal residual): "
+            f"superposition max err = {res['superposition']['max_abs_err_m']:.2e} m, "
+            f"max |stated - intervened| = {max_gap_af:.2e} m (<= {F.FAITHFULNESS_TOL_M:.1e} m)"
         )
 
 
 def test_real_run_resp_pooled_l001():
-    """Fidelity table for summer 2024 on resp_pooled_l001 for two core wells (all 10 seeds)."""
+    """Fidelity tables for summer 2024 on resp_pooled_l001 for two core wells (all 10 seeds)."""
     run = "resp_pooled_l001"
     target = "2024-06-01:2024-09-30"
     res = F.fidelity(run, target=target, wells=CORE_SAMPLE, seeds="all", dataset="v4")
 
+    assert res["reference"]["kind"] == "average_forcing"
     assert res["n_seeds"] == 10
     assert res["superposition"]["passed"], res["superposition"]
     assert res["superposition"]["max_abs_err_m"] <= F.SUPERPOSITION_TOL_M
+
+    # Under default average_forcing, stated - intervened <= 1e-6 m for every group on this linear model.
+    max_gap_af = float(res["by_report_group"]["abs_diff_m"].max())
+    assert max_gap_af <= F.FAITHFULNESS_TOL_M, (
+        f"Expected |stated - intervened| <= {F.FAITHFULNESS_TOL_M:.1e} m under average_forcing, "
+        f"got {max_gap_af:.3e} m\n{res['by_report_group']}"
+    )
+
+    # Sensitivity table (training_seasonal, output space) preserves the documented warm-up gap on NYLS-1 recharge.
+    sens = res["sensitivity_training_seasonal"]
+    assert sens is not None and sens["reference"]["kind"] == "training_seasonal"
+    ts_idx = sens["by_report_group"].set_index(["code_bss", "report_group"])
+    nyls_rch_diff = float(ts_idx.loc[("10964X0119/NYLS-1", "recharge"), "diff_m"])
+    assert nyls_rch_diff < -0.15, nyls_rch_diff  # stated (-2.288) - intervened (-2.127) ≈ -0.161 m
 
     bw = res["by_well"].set_index("code_bss")
     for code in CORE_SAMPLE:
@@ -349,25 +392,28 @@ def test_real_run_resp_pooled_l001():
             abs(row["total_intervened_m"] - row["top_intervened_m"]),
             atol=1e-6,
         )
-        # Top group's stated and intervened effects must share sign.
+        assert np.isclose(row["total_diff_m"], 0.0, atol=F.FAITHFULNESS_TOL_M)
         assert np.sign(row["top_stated_m"]) == np.sign(row["top_intervened_m"])
 
-    # Also test CLI entry point.
+    # Also test CLI entry point (prints default average_forcing + training_seasonal sensitivity tables).
     buf = StringIO()
     with redirect_stdout(buf):
         rc = F.main([run, "--target", target, "--well", *CORE_SAMPLE, "--dataset", "v4"])
     assert rc == 0
     cli_out = buf.getvalue()
+    assert "Reference: average_forcing" in cli_out
+    assert "Sensitivity — Stated (training_seasonal" in cli_out
     for code in CORE_SAMPLE:
         assert code in cli_out
 
-    max_gap = float(res["by_report_group"]["abs_diff_m"].max())
+    max_gap_ts = float(sens["by_report_group"]["abs_diff_m"].max())
     print(
         f"  3. real run {run} (summer 2024, 2 core wells, 10 seeds): "
         f"superposition max err = {res['superposition']['max_abs_err_m']:.2e} m, "
-        f"max |stated - intervened| = {max_gap:.4f} m"
+        f"average_forcing max |stated - intervened| = {max_gap_af:.2e} m (<= 1e-6 m), "
+        f"training_seasonal max |stated - intervened| = {max_gap_ts:.4f} m"
     )
-    print("\n--- Summer 2024 faithfulness table (resp_pooled_l001, 2 core wells) ---")
+    print("\n--- Summer 2024 faithfulness tables (resp_pooled_l001, 2 core wells) ---")
     print(cli_out.rstrip())
 
 

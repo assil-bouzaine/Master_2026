@@ -2,20 +2,30 @@
 
     PYTHONIOENCODING=utf-8 PFE_DATASET=v4 .venv/bin/python -m tests.test_explain_contributions
 
-1. Synthetic 3-seed, 2-well, 3-year run in a temporary directory: verifies hand-calculated
+1. Synthetic average_forcing (default, input space) hand-checkable runs with real ResponseModel
+   checkpoints (no training):
+   - constant inputs equal to their reference -> every anomaly is exact 0;
+   - one-week input shift on pumping -> moves only pumping by exact gain * delta * kernel[lag]
+     (single-week and multi-week targets), all other stresses stay exact 0;
+   - replayed reference contributions are cached in memory (second call triggers zero replays);
+   - routed Phase 4 run with gate3 (river_c/river merged) and bounded seasonal residual: verifies
+     residual anomaly equals residual minus its own training ISO-week seasonal mean.
+2. Synthetic 3-seed, 2-well, 3-year run in a temporary directory: verifies hand-calculated
    training-seasonal anomalies (including ISO week 53 merged into week 52), explicit reference
    window changes, sample sds, sign agreements (including 2/3 and zero-as-own-sign cases),
    report-group and driver-group sums, exact additivity, reconstruction check (pass and fail),
    data-quality flags (observed, strict, placeholder, volume-weighted pumping imputation), and
    loud failures on seed mismatches and unmapped stresses.
-2. Synthetic routed run with all Phase 4 stress names (recharge, pumping, pumping_unattributed,
+3. Synthetic routed run with all Phase 4 stress names (recharge, pumping, pumping_unattributed,
    canal, river, residual): verifies SummerDemand aggregation, ungrouped residual accounting,
    reconstruction, and echoed Phase 4 metadata/protocol.
-3. Real run results/v4/resp_pooled_l001: verifies reconstruction (<= 1e-4 m on all 63 non-constant
+4. Real run results/v4/resp_pooled_l001: verifies reconstruction (<= 1e-4 m on all 63 non-constant
    wells including all 33 core wells, and <= 1e-4 m across all 64 wells against SD_FLOOR-decoded
    seed files, while confirming the known pre-f2cd482 predictions.parquet discrepancy on the
-   constant-head non-core well 10984X0003/AIGUAN), verifies exact per-seed additivity across all
-   wells, checks data-quality flags, and prints the summer 2024 decomposition for two core wells.
+   constant-head non-core well 10984X0003/AIGUAN), times a full 64-well x 10-start default
+   average_forcing decomposition (cold and warm cache), checks exact per-seed additivity, checks
+   data-quality flags, and prints average_forcing vs training_seasonal side by side for two core
+   wells.
 """
 from contextlib import redirect_stdout
 from io import StringIO
@@ -23,13 +33,16 @@ import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import time
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
+import torch
 
-from src.config import DATASET_DIR
+from src.config import DATASET
 from src.explain import contributions as C
-from src.models.response import SD_FLOOR
+from src.models import response as R
+from src.models.lstm import save_seed, save_seed_model, write_config
 
 CONSTANT_WELL = "10984X0003/AIGUAN"
 CORE_SAMPLE = ("10964X0119/NYLS-1", "10906X0039/C2-1")
@@ -91,6 +104,269 @@ def _write_synthetic_dataset(ds_dir: Path, weeks: pd.DatetimeIndex) -> tuple[dic
         ]
     )
     return {"W1": 10.0, "W2": 20.0}, edges
+
+
+def _save_synthetic_model_run(
+    run_dir: Path,
+    net: R.ResponseModel,
+    data: dict,
+    cli_args: list[str],
+    inputs_schema: list[str],
+    *,
+    seeds: tuple[int, ...] = (0,),
+    extra_cfg: dict | None = None,
+) -> dict:
+    """Write config.json, seed_<k>.pt, contrib_seed_<k>.parquet, params_seed_<k>.csv for a synthetic net."""
+    run_dir.mkdir(parents=True, exist_ok=True)
+    args = R.build_parser().parse_args(cli_args)
+    R._canonicalize_args(args)
+    fp = write_config(run_dir, args, inputs_schema, extra=extra_cfg)
+    pz, contrib, params = R.seed_outputs(net, data)
+    for s in seeds:
+        contrib.to_parquet(run_dir / f"contrib_seed_{s}.parquet", index=False)
+        params.to_csv(run_dir / f"params_seed_{s}.csv", index=False)
+        save_seed_model(run_dir, s, net.state_dict(), 0.0, 0, fp)
+        save_seed(run_dir / f"seed_{s}.parquet", pz, data["codes"], data["weeks"], 0.0, 0, fp)
+    return {
+        "data": data,
+        "Z0": None,
+        "static_control": None,
+        "names": net.names,
+        "signs": "gate3" if "--signs" in cli_args and "gate3" in cli_args else "structure",
+        "gain_units": "m",
+        "model_kwargs": {
+            "group_of": data["group_of"],
+            "n_groups": len(data["groups"]),
+            "mode": net.mode,
+            "kernel_weeks": net.K,
+            "amax": net.amax,
+            "recharge": net.recharge,
+            "pumping": R.GATE3_STRESSES if "river_c" in net.names else "sum",
+            "gain_scale": None,
+            "signs": "gate3" if "river_c" in net.names else "structure",
+            "conv": net.conv,
+            "static_net": "linear",
+            "sign_ref": "gate3" if "river_c" in net.names else "structure",
+            "soft_stresses": None,
+            "residual": net.residual_kind,
+            "residual_basis": None if net.res_coef is None else net.res_basis.numpy(),
+            "residual_bound": None if net.res_coef is None else net.res_bound.numpy(),
+        },
+    }
+
+
+def test_synthetic_average_forcing():
+    """Test 0: default average_forcing reference — exact 0 on constant inputs, exact gain*kernel on 1-week shift,
+    cache reuse, and gate3 + seasonal residual handling."""
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        ds_dir = root / "dataset_af"
+        weeks = pd.date_range("2020-01-05", "2022-12-31", freq="W-SUN")
+        T, N, K = len(weeks), 2, 12
+        codes = ["W1", "W2"]
+        _, edges = _write_synthetic_dataset(ds_dir, weeks)
+        train_win = ("2020-01-01", "2020-12-31")
+        target_win = ("2022-06-01", "2022-09-30")
+        t_idx = np.where((weeks >= target_win[0]) & (weeks <= target_win[1]))[0]
+
+        gen = torch.Generator().manual_seed(11)
+        net = R.ResponseModel(
+            group_of=np.array([0, 1]),
+            n_groups=2,
+            mode="free",
+            kernel_weeks=K,
+            amax=20.0,
+            recharge="linear",
+            init_sd=0.6,
+            generator=gen,
+        )
+        with torch.no_grad():
+            net.d.copy_(torch.tensor([0.2, -0.3]))
+            gain, a, n, _ = (t.numpy().astype(np.float64) for t in net.parameters_physical())
+            kernels = net.kernels(
+                torch.from_numpy(a.astype(np.float32)), torch.from_numpy(n.astype(np.float32))
+            ).numpy().astype(np.float64)
+        net.eval()
+
+        # 0a. Constant inputs equal to their reference over the whole record -> anomalies are EXACTLY 0.
+        L = T + K - 1
+        X_const = {
+            "rain": np.full((N, L), 1.5, dtype=np.float32),
+            "ETP": np.full((N, L), 0.8, dtype=np.float32),
+            "PE": np.full((N, L), 0.7, dtype=np.float32),
+            "pump_gw": np.full((N, L), 2.0, dtype=np.float32),
+            "canal": np.full((N, L), 0.4, dtype=np.float32),
+        }
+        data_const = {
+            "codes": codes,
+            "weeks": weeks.to_numpy(),
+            "X": X_const,
+            "head": np.full((N, T), 10.0),
+            "mu": np.full((N, T), 10.0),
+            "sd": np.ones((N, T)),
+            "split": np.where(weeks <= "2020-12-31", "train", "test")[None, :].repeat(N, 0),
+            "core": np.ones((N, T), dtype=bool),
+            "groups": ["g0", "g1"],
+            "group_of": np.array([0, 1]),
+        }
+        run_const = root / "run_const"
+        prep_const = _save_synthetic_model_run(
+            run_const,
+            net,
+            data_const,
+            ["--mode", "free", "--kernel-weeks", str(K), "--amax", "20.0", "--seeds", "0"],
+            ["rain/10", "ETP/10", "PE/10", "pump_gw/100", "canal/10"],
+        )
+        C.clear_reference_cache()
+        with patch.object(R, "prepare", return_value=prep_const):
+            res_const = C.decompose(
+                run_const,
+                target=target_win,
+                dataset_dir=ds_dir,
+                train_window=train_win,
+                edges=edges,
+            )
+        assert res_const["reference"]["kind"] == "average_forcing"
+        assert res_const["reference"]["space"] == "input"
+        assert np.allclose(res_const["by_stress"]["mean_m"].to_numpy(), 0.0, atol=1e-7)
+        assert np.allclose(res_const["by_report_group"]["mean_m"].to_numpy(), 0.0, atol=1e-7)
+        assert np.allclose(res_const["total"]["mean_m"].to_numpy(), 0.0, atol=1e-7)
+
+        # 0b. One-week input shift on pump_gw at week t_imp -> moves ONLY pumping by exact gain * delta * kernel[lag].
+        X_shift = {k: v.copy() for k, v in X_const.items()}
+        t_imp = int(t_idx[0]) + 1
+        delta_u = 3.0
+        X_shift["pump_gw"][:, t_imp + K - 1] += np.float32(delta_u)
+        data_shift = dict(data_const, X=X_shift)
+        run_shift = root / "run_shift"
+        prep_shift = _save_synthetic_model_run(
+            run_shift,
+            net,
+            data_shift,
+            ["--mode", "free", "--kernel-weeks", str(K), "--amax", "20.0", "--seeds", "0"],
+            ["rain/10", "ETP/10", "PE/10", "pump_gw/100", "canal/10"],
+        )
+        # Single-week target at lag j = 3 after the impulse -> exact gain * delta_u * kernel[3].
+        lag_j = 3
+        single_wk = str(weeks[t_imp + lag_j].date())
+        with patch.object(R, "prepare", return_value=prep_shift), patch.object(
+            R, "replay", wraps=R.replay
+        ) as spy_replay:
+            res_single = C.decompose(
+                run_shift,
+                target=(single_wk, single_wk),
+                dataset_dir=ds_dir,
+                train_window=train_win,
+                edges=edges,
+            )
+            assert spy_replay.call_count == 1
+            # Second call on the same run (different target window) must reuse cached reference contributions!
+            res_multi = C.decompose(
+                run_shift,
+                target=target_win,
+                dataset_dir=ds_dir,
+                train_window=train_win,
+                edges=edges,
+            )
+            assert spy_replay.call_count == 1
+
+        s_single = res_single["by_stress"].set_index(["code_bss", "stress"])["mean_m"]
+        for wi, code in enumerate(codes):
+            expected_single = gain[wi, 1] * delta_u * kernels[wi, 1, lag_j]
+            assert np.isclose(s_single.loc[(code, "pumping")], expected_single, atol=1e-6)
+            assert np.isclose(s_single.loc[(code, "recharge")], 0.0, atol=1e-7)
+            assert np.isclose(s_single.loc[(code, "canal")], 0.0, atol=1e-7)
+
+        max_lag = min(K - 1, int(t_idx[-1]) - t_imp)
+        s_multi = res_multi["by_stress"].set_index(["code_bss", "stress"])["mean_m"]
+        for wi, code in enumerate(codes):
+            expected_multi = gain[wi, 1] * delta_u * kernels[wi, 1, : max_lag + 1].sum() / len(t_idx)
+            assert np.isclose(s_multi.loc[(code, "pumping")], expected_multi, atol=1e-6)
+            assert np.isclose(s_multi.loc[(code, "recharge")], 0.0, atol=1e-7)
+            assert np.isclose(s_multi.loc[(code, "canal")], 0.0, atol=1e-7)
+
+        # 0c. Gate3 (river_c + river merged) + seasonal residual under default average_forcing:
+        #     driver stresses use input-space reference; residual uses its own training seasonal mean.
+        res_basis = R.seasonal_basis(weeks)
+        res_bound = np.full(N, 0.25, dtype=np.float32)
+        g_net = R.ResponseModel(
+            group_of=np.array([0, 1]),
+            n_groups=2,
+            mode="free",
+            kernel_weeks=K,
+            amax=20.0,
+            recharge="linear",
+            init_sd=0.5,
+            generator=torch.Generator().manual_seed(19),
+            pumping=R.GATE3_STRESSES,
+            signs="gate3",
+            residual="seasonal",
+            residual_basis=res_basis,
+            residual_bound=res_bound,
+        )
+        with torch.no_grad():
+            g_net.res_coef.copy_(torch.tensor([[0.4, -0.2, 0.1, 0.3], [-0.3, 0.5, -0.2, 0.1]]))
+            g_gain, g_a, g_n, _ = (t.numpy().astype(np.float64) for t in g_net.parameters_physical())
+            g_kernels = g_net.kernels(
+                torch.from_numpy(g_a.astype(np.float32)), torch.from_numpy(g_n.astype(np.float32))
+            ).numpy().astype(np.float64)
+        g_net.eval()
+
+        X_g = {
+            "rain": np.full((N, L), 1.0, dtype=np.float32),
+            "ETP": np.full((N, L), 0.5, dtype=np.float32),
+            "PE": np.full((N, L), 0.5, dtype=np.float32),
+            "pump_gw": np.full((N, L), 1.0, dtype=np.float32),
+            "pump_un": np.full((N, L), 0.4, dtype=np.float32),
+            "canal": np.full((N, L), 0.2, dtype=np.float32),
+            "river": np.full((N, L), 2.0, dtype=np.float32),
+        }
+        # One-week shift on river at t_imp: moves W1 via river_c (slot 3) and W2 via river (slot 4).
+        X_g["river"][:, t_imp + K - 1] += np.float32(1.5)
+        g_data = R.split_river(dict(data_const, X=X_g), {"W1"})
+        run_g3 = root / "run_g3_res"
+        prep_g3 = _save_synthetic_model_run(
+            run_g3,
+            g_net,
+            g_data,
+            [
+                "--mode", "free", "--kernel-weeks", str(K), "--amax", "20.0",
+                "--arm", "D", "--signs", "gate3", "--residual", "seasonal", "--seeds", "0",
+            ],
+            ["rain/10", "ETP/10", "PE/10", "pump_gw/100", "pump_un/100", "canal/10", "river/10"],
+        )
+        with patch.object(R, "prepare", return_value=prep_g3):
+            res_g3 = C.decompose(
+                run_g3,
+                target=(single_wk, single_wk),
+                dataset_dir=ds_dir,
+                train_window=train_win,
+                edges=edges,
+            )
+            res_g3_ts = C.decompose(
+                run_g3,
+                target=(single_wk, single_wk),
+                reference="training_seasonal",
+                dataset_dir=ds_dir,
+                train_window=train_win,
+                edges=edges,
+            )
+        sg = res_g3["by_stress"].set_index(["code_bss", "stress"])["mean_m"]
+        sg_ts = res_g3_ts["by_stress"].set_index(["code_bss", "stress"])["mean_m"]
+        # W1 uses river_c (slot 3), W2 uses river (slot 4).
+        assert np.isclose(sg.loc[("W1", "river")], g_gain[0, 3] * 1.5 * g_kernels[0, 3, lag_j], atol=1e-6)
+        assert np.isclose(sg.loc[("W2", "river")], g_gain[1, 4] * 1.5 * g_kernels[1, 4, lag_j], atol=1e-6)
+        for s in ("recharge", "pumping", "pumping_unattributed", "canal"):
+            assert np.isclose(sg.loc[("W1", s)], 0.0, atol=1e-7)
+            assert np.isclose(sg.loc[("W2", s)], 0.0, atol=1e-7)
+        # Residual anomaly under average_forcing equals residual anomaly under training_seasonal identically.
+        assert np.isclose(sg.loc[("W1", "residual")], sg_ts.loc[("W1", "residual")], atol=1e-12)
+        assert np.isclose(sg.loc[("W2", "residual")], sg_ts.loc[("W2", "residual")], atol=1e-12)
+
+    print(
+        "  0. synthetic average_forcing (default): constant inputs -> exact 0, 1-week shift -> exact "
+        "gain*kernel on shifted stress only, replay cache hit verified, gate3 river_c/river & residual pass"
+    )
 
 
 def test_synthetic_ladder():
@@ -377,6 +653,7 @@ def test_synthetic_routed_phase4():
         res = C.decompose(
             run_dir,
             target=("2022-06-01", "2022-09-30"),
+            reference="training_seasonal",
             dataset_dir=ds_dir,
             train_window=("2020-01-01", "2020-12-31"),
             edges=edges,
@@ -425,43 +702,112 @@ def test_real_run():
     except ValueError as err:
         assert CONSTANT_WELL in str(err) and "1 well(s)" in str(err), str(err)
 
-    # Full decomposition across all 64 wells for summer 2024 (asserts per-seed additivity within 1e-9 m).
-    res_all = C.decompose(run, target="2024-06-01:2024-09-30", reference="training_seasonal", dataset="v4")
-    assert res_all["n_seeds"] == 10
-    assert len(res_all["total"]) == len(all_wells)
-    assert set(res_all["stresses"]) == {"recharge", "pumping", "canal"}
+    # Full decomposition across all 64 wells x 10 starts under the new default average_forcing (cold + warm cache).
+    C.clear_reference_cache()
+    t_cold = time.perf_counter()
+    res_af = C.decompose(run, target="2024-06-01:2024-09-30", dataset="v4")
+    cold_s = time.perf_counter() - t_cold
+    t_warm = time.perf_counter()
+    res_af_warm = C.decompose(run, target="2024-06-01:2024-09-30", dataset="v4")
+    warm_s = time.perf_counter() - t_warm
 
-    # Check explicit window reference (summer 2024 vs summer 2023) and CORNEILLA PD5 placeholder flag in 2023.
+    assert res_af["reference"]["kind"] == "average_forcing"
+    assert res_af["n_seeds"] == 10
+    assert len(res_af["total"]) == len(all_wells)
+    assert set(res_af["stresses"]) == {"recharge", "pumping", "canal"}
+    np.testing.assert_allclose(
+        res_af["by_report_group"]["mean_m"].to_numpy(),
+        res_af_warm["by_report_group"]["mean_m"].to_numpy(),
+        atol=1e-12,
+    )
+
+    # Output-space training_seasonal sensitivity across all 64 wells.
+    res_ts = C.decompose(run, target="2024-06-01:2024-09-30", reference="training_seasonal", dataset="v4")
+    assert res_ts["reference"]["kind"] == "training_seasonal"
+
+    # Check CORNEILLA PD5 placeholder flag in summer 2023.
     res_23 = C.decompose(
         run,
         target="2023-06-01:2023-09-30",
-        reference="training_seasonal",
         wells=["10971X0155/PD5"],
         dataset="v4",
     )
     pd5_flags = res_23["flags"].set_index("code_bss").loc["10971X0155/PD5"]
     assert pd5_flags["share_placeholder"] == 1.0 and pd5_flags["share_strict"] == 0.0
 
-    # Check CLI formatting on the two anchor core wells.
-    buf = StringIO()
-    with redirect_stdout(buf):
+    # Check CLI default (average_forcing) and explicit training_seasonal headers on the two anchor core wells.
+    buf_af = StringIO()
+    with redirect_stdout(buf_af):
         rc = C.main([run, "--target", "2024-06-01:2024-09-30", "--well", *CORE_SAMPLE, "--dataset", "v4"])
     assert rc == 0
-    cli_out = buf.getvalue()
+    cli_af = buf_af.getvalue()
+    assert "Reference: average_forcing" in cli_af
     for code in CORE_SAMPLE:
-        assert code in cli_out
+        assert code in cli_af
+
+    buf_ts = StringIO()
+    with redirect_stdout(buf_ts):
+        rc = C.main(
+            [
+                run,
+                "--target",
+                "2024-06-01:2024-09-30",
+                "--reference",
+                "training_seasonal",
+                "--well",
+                *CORE_SAMPLE,
+                "--dataset",
+                "v4",
+            ]
+        )
+    assert rc == 0
+    assert "Reference: training_seasonal" in buf_ts.getvalue()
+
+    # Side-by-side comparison table for NYLS-1 and C2-1 (average_forcing vs training_seasonal).
+    af_rg = res_af["by_report_group"].set_index(["code_bss", "report_group"])
+    ts_rg = res_ts["by_report_group"].set_index(["code_bss", "report_group"])
+    af_tot = res_af["total"].set_index("code_bss")
+    ts_tot = res_ts["total"].set_index("code_bss")
+    side_rows = []
+    for code in CORE_SAMPLE:
+        for grp in ("recharge", "pumping_attributed", "canal"):
+            a = af_rg.loc[(code, grp)]
+            t = ts_rg.loc[(code, grp)]
+            side_rows.append(
+                {
+                    "code_bss": code,
+                    "group": grp,
+                    "average_forcing": f"{a['mean_m']:+.4f} ± {a['sd_m']:.4f} ({a['sign_agreement']:.2f})",
+                    "training_seasonal": f"{t['mean_m']:+.4f} ± {t['sd_m']:.4f} ({t['sign_agreement']:.2f})",
+                    "af_minus_ts_m": f"{a['mean_m'] - t['mean_m']:+.4f}",
+                }
+            )
+        at, tt = af_tot.loc[code], ts_tot.loc[code]
+        side_rows.append(
+            {
+                "code_bss": code,
+                "group": "TOTAL",
+                "average_forcing": f"{at['mean_m']:+.4f} ± {at['sd_m']:.4f} ({at['sign_agreement']:.2f})",
+                "training_seasonal": f"{tt['mean_m']:+.4f} ± {tt['sd_m']:.4f} ({tt['sign_agreement']:.2f})",
+                "af_minus_ts_m": f"{at['mean_m'] - tt['mean_m']:+.4f}",
+            }
+        )
 
     print(
         f"  3. real run {run}: reconstruction max_diff = {max_diff_63:.2e} m on 63/64 wells (all 33 core; "
         f"{max_diff_seeds_64:.2e} m on all 64 wells vs SD_FLOOR-decoded seeds; pre-f2cd482 AIGUAN caught "
-        f"honestly); exact additivity across {len(all_wells)} wells x {res_all['n_seeds']} seeds"
+        f"honestly); full average_forcing ({len(all_wells)} wells x {res_af['n_seeds']} starts): "
+        f"cold {cold_s:.2f}s, warm {warm_s:.2f}s"
     )
-    print("\n--- Summer 2024 decomposition for two core wells (resp_pooled_l001) ---")
-    print(cli_out.rstrip())
+    print("\n--- Summer 2024: average_forcing vs training_seasonal side by side (resp_pooled_l001) ---")
+    print(pd.DataFrame(side_rows).to_string(index=False))
+    print("\n--- CLI default (average_forcing) output ---")
+    print(cli_af.rstrip())
 
 
 def main():
     started = time.perf_counter()
+    test_synthetic_average_forcing()
     test_synthetic_ladder()
     test_synthetic_routed_phase4()
     test_real_run()

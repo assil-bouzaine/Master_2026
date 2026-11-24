@@ -17,12 +17,21 @@ An exact additive decomposition explains the **model's computation**, not the ph
 contribution (analysis plan §12). Missing measurements, forcing assumptions, model structure,
 and groundwater memory remain competing physical explanations.
 
-Reference conditions (analysis plan §8 and §12)
------------------------------------------------
-- ``"training_seasonal"`` (default): for each seed, well, and stress, subtract the mean
-  contribution over the run's training weeks at the same ISO week of the year (week 53 merged
-  into week 52). Removing the mean seasonal cycle leaves between-year variation, the only scale
-  at which the analysis plan allows pumping claims (§8).
+Reference conditions (analysis plan §8 and §12; docs/notes/step15_explanations.md)
+----------------------------------------------------------------------------------
+- ``"average_forcing"`` (**default**, input space): set every model input column (all wells, all
+  weeks, including the ``kernel_weeks - 1`` pre-record padding slots) to its training-period
+  seasonal mean at each ISO week of the year (week 53 merged into week 52), replay each saved
+  start once, evaluate ``net.contributions`` on those average-year inputs, and subtract the
+  resulting reference contribution per stress. "Compared with an average year" therefore means
+  "compared with what the model simulates under average-year forcing", so for this linear model
+  the stated anomaly equals the input-space intervention by construction. The fixed seasonal
+  ``residual`` has no input and keeps its own value under average-year forcing: its anomaly is
+  the residual minus its own training-period ISO-week seasonal mean.
+- ``"training_seasonal"`` (output-space sensitivity): for each seed, well, and stress, subtract
+  the mean saved contribution over the run's training weeks at the same ISO week of the year
+  (week 53 merged into week 52). Kept as a sensitivity because, for long-memory stresses, the
+  2005–2019 output mean contains the model's response to the wetter 2000–2004 warm-up years.
 - Explicit window ``("YYYY-MM-DD", "YYYY-MM-DD")``: mean contribution over the target window
   minus mean contribution over the reference window (used for event contrasts such as summer
   2024 vs summer 2023).
@@ -42,14 +51,16 @@ from typing import NamedTuple
 
 import numpy as np
 import pandas as pd
+import torch
 
 from src.config import DATASET, INTERIM, PROCESSED, R3_STARTS, RESULTS_DIR, ROOT
 from src.dataset.build import MODEL_START, TRAIN_END
 from src.dataset.placeholders import load_mask
 from src.dataset.pumping import seasonal_drinking_water
-from src.models.response import SD_FLOOR
+from src.models import response as R
 from src.models.routing import RECONSTRUCTIONS, baseline_edges, load_arm, pumping_table
 
+SD_FLOOR = R.SD_FLOOR
 GROUPS_PATH = ROOT / "configs" / "explain_groups.csv"
 RECONSTRUCT_TOL_M = 1e-4
 SUM_TOL_M = 1e-9
@@ -57,6 +68,11 @@ SUM_TOL_M = 1e-9
 _CONTRIB_RE = re.compile(r"^contrib_seed_(\d+)\.parquet$")
 _PARAMS_RE = re.compile(r"^params_seed_(\d+)\.csv$")
 _SEED_RE = re.compile(r"^seed_(\d+)\.parquet$")
+
+# In-memory cache of replayed reference contributions for ``reference="average_forcing"``.
+# Keyed by (resolved_run_dir, train_start, train_end, seed, cfg_mtime_ns, cfg_size, ckpt_mtime_ns, ckpt_size)
+# -> (codes_tuple, weeks_index, {logical_stress: (N, T) float64 array}).
+_REF_CONTRIB_CACHE: dict[tuple, tuple[tuple[str, ...], pd.DatetimeIndex, dict[str, np.ndarray]]] = {}
 
 
 class RunData(NamedTuple):
@@ -105,6 +121,138 @@ def _iso_week_of_year(weeks: pd.Series | pd.DatetimeIndex) -> np.ndarray:
     """ISO week number (1..52) with week 53 merged into week 52."""
     idx = pd.DatetimeIndex(weeks)
     return idx.isocalendar().week.clip(upper=52).to_numpy(dtype=np.int64)
+
+
+def _padded_weeks(weeks: pd.DatetimeIndex | np.ndarray, kernel_weeks: int) -> pd.DatetimeIndex:
+    """Extend a weekly DatetimeIndex backward by ``kernel_weeks - 1`` 7-day steps."""
+    wks = pd.DatetimeIndex(weeks)
+    if kernel_weeks <= 1:
+        return wks
+    pad = pd.date_range(end=wks[0] - pd.Timedelta(days=7), periods=kernel_weeks - 1, freq="7D")
+    return pad.append(wks)
+
+
+def reference_inputs(
+    X: dict[str, np.ndarray],
+    weeks: pd.DatetimeIndex | np.ndarray,
+    kernel_weeks: int,
+    train_window: tuple[str | pd.Timestamp, str | pd.Timestamp],
+) -> dict[str, np.ndarray]:
+    """Compute per-well, per-input seasonal reference arrays over the full padded timeline.
+
+    For each well and input column, each ISO week of the year (1..52, with week 53 merged into
+    week 52) gets the mean of the unpadded input over the run's training weeks at that ISO week.
+    The ``kernel_weeks - 1`` pre-record padding slots receive the same seasonal values stepped
+    backward by 7 days so every convolution lag sees average-year forcing.
+    """
+    wks = pd.DatetimeIndex(weeks)
+    tr_start, tr_end = pd.Timestamp(train_window[0]), pd.Timestamp(train_window[1])
+    train_mask = (wks >= tr_start) & (wks <= tr_end)
+    if not train_mask.any():
+        raise ValueError(f"No weeks fall inside training window {tr_start.date()}..{tr_end.date()}")
+
+    padded = _padded_weeks(wks, kernel_weeks)
+    woy_padded = _iso_week_of_year(padded)  # 1..52, length T + K - 1
+    woy_unpadded = woy_padded[kernel_weeks - 1 :]  # length T
+    woy_train = woy_unpadded[train_mask]
+
+    needed_woys = set(int(w) for w in np.unique(woy_padded))
+    present_woys = set(int(w) for w in np.unique(woy_train))
+    missing_woys = sorted(needed_woys - present_woys)
+    if missing_woys:
+        raise ValueError(
+            f"Training window {tr_start.date()}..{tr_end.date()} lacks ISO week(s) {missing_woys}"
+        )
+
+    woy_masks = {w: (woy_train == w) for w in present_woys}
+    woy_idx = woy_padded - 1  # 0..51
+
+    X_ref: dict[str, np.ndarray] = {}
+    for col, arr in X.items():
+        unpadded = np.asarray(arr[:, kernel_weeks - 1 :], dtype=np.float64)
+        n_wells = unpadded.shape[0]
+        means = np.zeros((n_wells, 52), dtype=np.float64)
+        tr_vals = unpadded[:, train_mask]
+        for w, mask in woy_masks.items():
+            means[:, w - 1] = tr_vals[:, mask].mean(axis=1)
+        X_ref[col] = means[:, woy_idx].astype(arr.dtype, copy=False)
+    return X_ref
+
+
+def clear_reference_cache() -> None:
+    """Clear the in-memory cache of replayed average-forcing reference contributions."""
+    _REF_CONTRIB_CACHE.clear()
+
+
+def _ref_cache_key(
+    run_dir: Path,
+    tr_start: pd.Timestamp,
+    tr_end: pd.Timestamp,
+    seed: int,
+) -> tuple:
+    cfg_path = run_dir / "config.json"
+    ckpt_path = run_dir / f"seed_{seed}.pt"
+    if not ckpt_path.is_file():
+        raise FileNotFoundError(
+            f"Missing checkpoint {ckpt_path} required for reference='average_forcing'"
+        )
+    cfg_st = cfg_path.stat()
+    ckpt_st = ckpt_path.stat()
+    return (
+        str(run_dir.resolve()),
+        str(tr_start.date()),
+        str(tr_end.date()),
+        int(seed),
+        cfg_st.st_mtime_ns,
+        cfg_st.st_size,
+        ckpt_st.st_mtime_ns,
+        ckpt_st.st_size,
+    )
+
+
+def _replayed_reference_contributions(
+    run_dir: Path,
+    config: dict,
+    seeds: list[int],
+    tr_window: tuple[pd.Timestamp, pd.Timestamp],
+    *,
+    prep: dict | None = None,
+) -> dict[int, tuple[tuple[str, ...], pd.DatetimeIndex, dict[str, np.ndarray]]]:
+    """Replay each start on average-year forcing once and cache per-stress contributions in memory.
+
+    Builds the reference inputs once per run (all wells, all weeks, all input columns) on cache
+    miss, runs ``net.contributions(X_ref)`` for each uncached start, merges the ``gate3`` river
+    slots (``river_c`` + ``river`` -> ``river``) to match ``contrib_seed_<k>.parquet``, and stores
+    the full ``(N_wells, T_weeks)`` float64 arrays in ``_REF_CONTRIB_CACHE``.
+    """
+    tr_start, tr_end = tr_window
+    keys = {seed: _ref_cache_key(run_dir, tr_start, tr_end, seed) for seed in seeds}
+    missing_seeds = [seed for seed in seeds if keys[seed] not in _REF_CONTRIB_CACHE]
+
+    if missing_seeds:
+        if prep is None:
+            prep = R.prepare(R.args_from_config(config), verbose=False)
+        data_r = prep["data"]
+        ref_codes = tuple(str(c) for c in data_r["codes"])
+        ref_weeks = pd.DatetimeIndex(pd.to_datetime(data_r["weeks"]))
+        kernel_weeks = int(prep["model_kwargs"]["kernel_weeks"])
+        X_ref = reference_inputs(data_r["X"], ref_weeks, kernel_weeks, (tr_start, tr_end))
+        X_ref_t = {k: torch.from_numpy(v) for k, v in X_ref.items()}
+
+        for seed in missing_seeds:
+            net, _ = R.replay(run_dir, seed, prep=prep)
+            with torch.no_grad():
+                c_ref = net.contributions(X_ref_t).numpy().astype(np.float64)  # (N, R, T)
+            stress_arrays: dict[str, np.ndarray] = {}
+            for r, name in enumerate(net.names):
+                logical = "river" if name == "river_c" else name
+                if logical in stress_arrays:
+                    stress_arrays[logical] = stress_arrays[logical] + c_ref[:, r, :]
+                else:
+                    stress_arrays[logical] = c_ref[:, r, :].copy()
+            _REF_CONTRIB_CACHE[keys[seed]] = (ref_codes, ref_weeks, stress_arrays)
+
+    return {seed: _REF_CONTRIB_CACHE[keys[seed]] for seed in seeds}
 
 
 def load_groups(path: str | Path = GROUPS_PATH) -> pd.DataFrame:
@@ -731,10 +879,45 @@ def data_quality_flags(
     return pd.DataFrame(rows)
 
 
+def _seasonal_output_reference(
+    contrib: pd.DataFrame,
+    target_weeks: pd.DatetimeIndex,
+    tr_start: pd.Timestamp,
+    tr_end: pd.Timestamp,
+    run_name: str,
+) -> pd.DataFrame:
+    """For each (seed, code_bss, week, stress) in ``target_weeks``, attach the training-period
+    ISO-week seasonal mean (week 53 merged into 52) as ``ref_m``."""
+    train_df = contrib[contrib["week"].between(tr_start, tr_end)].copy()
+    if train_df.empty:
+        raise ValueError(
+            f"{run_name}: no run weeks fall in training window {tr_start.date()}..{tr_end.date()}"
+        )
+    train_df["woy"] = _iso_week_of_year(train_df["week"])
+    seasonal_ref = (
+        train_df.groupby(["seed", "code_bss", "stress", "woy"], sort=False)["value_m"]
+        .mean()
+        .rename("ref_m")
+        .reset_index()
+    )
+    tgt_df = contrib[contrib["week"].isin(target_weeks)].copy()
+    tgt_df["woy"] = _iso_week_of_year(tgt_df["week"])
+    tgt_df = tgt_df.merge(
+        seasonal_ref, on=["seed", "code_bss", "stress", "woy"], how="left", validate="many_to_one"
+    )
+    if tgt_df["ref_m"].isna().any():
+        missing_woys = sorted(tgt_df.loc[tgt_df["ref_m"].isna(), "woy"].unique().tolist())
+        raise ValueError(
+            f"{run_name}: training window {tr_start.date()}..{tr_end.date()} "
+            f"has no weeks for target ISO week(s) {missing_woys}"
+        )
+    return tgt_df.drop(columns="woy")
+
+
 def decompose(
     run: str | Path,
     target: str | tuple[str, str],
-    reference: str | tuple[str, str] = "training_seasonal",
+    reference: str | tuple[str, str] = "average_forcing",
     wells: Iterable[str] | None = None,
     *,
     dataset: str = DATASET,
@@ -742,6 +925,7 @@ def decompose(
     groups_path: str | Path = GROUPS_PATH,
     train_window: tuple[str, str] | None = None,
     edges: pd.DataFrame | None = None,
+    prep: dict | None = None,
 ) -> dict:
     """Decompose simulated head anomalies or changes over ``target`` for every well and seed.
 
@@ -751,13 +935,24 @@ def decompose(
         Run name under ``results/<dataset>/`` or path to a run directory.
     target : tuple[str, str] or str
         Inclusive target window ``("YYYY-MM-DD", "YYYY-MM-DD")`` or ``"YYYY-MM-DD:YYYY-MM-DD"``.
-    reference : ``"training_seasonal"`` or tuple[str, str] or str
-        Reference condition: ``"training_seasonal"`` (ISO week-of-year mean over the run's
-        training weeks, week 53 merged into 52) or an explicit window ``(start, end)``.
+    reference : ``"average_forcing"`` | ``"training_seasonal"`` | tuple[str, str] | str
+        Reference condition:
+        - ``"average_forcing"`` (default, input space): replay each start on average-year
+          forcing (every input column over all wells and all weeks set to its training-period
+          ISO-week mean, week 53 merged into 52) and subtract each stress's replayed reference
+          contribution. The fixed seasonal ``residual`` has no input and keeps its own value:
+          its anomaly is the residual minus its own training-period ISO-week seasonal mean.
+          Replayed reference contributions are cached in memory per run and start.
+        - ``"training_seasonal"`` (output-space sensitivity): subtract each stress's mean
+          saved contribution over the run's training weeks at the same ISO week of the year
+          (week 53 merged into 52).
+        - Explicit window ``(start, end)`` or ``"YYYY-MM-DD:YYYY-MM-DD"``: mean contribution
+          over ``target`` minus mean contribution over the reference window.
     wells : iterable of str, optional
         Subset of ``code_bss`` to include (default: all wells in the run, core and other).
-    dataset, dataset_dir, groups_path, train_window, edges : optional
-        Overrides primarily for sensitivity checks and isolated unit tests.
+    dataset, dataset_dir, groups_path, train_window, edges, prep : optional
+        Overrides primarily for sensitivity checks, reusing ``response.prepare()`` output, and
+        isolated unit tests.
 
     Returns
     -------
@@ -791,34 +986,103 @@ def decompose(
             f"{run_dir.name}: no run weeks fall in target window {t_start.date()}..{t_end.date()}"
         )
 
-    if reference == "training_seasonal":
+    seeds = sorted(int(s) for s in data.d_m["seed"].unique())
+
+    if reference == "average_forcing":
         if train_window is not None:
             tr_start, tr_end = _parse_window(train_window)
         else:
             tr_start, tr_end = training_window(data.config, dataset=dataset, dataset_dir=dataset_dir)
-        train_df = contrib[contrib["week"].between(tr_start, tr_end)].copy()
-        if train_df.empty:
-            raise ValueError(
-                f"{run_dir.name}: no run weeks fall in training window {tr_start.date()}..{tr_end.date()}"
+
+        non_res_stresses = [s for s in run_stresses if s != "residual"]
+        replayed = _replayed_reference_contributions(
+            run_dir, data.config, seeds, (tr_start, tr_end), prep=prep
+        )
+
+        tgt_parts: list[pd.DataFrame] = []
+        if non_res_stresses:
+            tgt_non_res = contrib[
+                contrib["week"].isin(target_weeks) & contrib["stress"].isin(non_res_stresses)
+            ].copy()
+            n_w = len(selected_wells)
+            n_t = len(target_weeks)
+            well_rep = np.repeat(selected_wells, n_t)
+            week_tile = np.tile(target_weeks.to_numpy(), n_w)
+            ref_frames: list[pd.DataFrame] = []
+            for seed in seeds:
+                ref_codes, ref_weeks, stress_arrays = replayed[seed]
+                missing_stresses = sorted(set(non_res_stresses) - set(stress_arrays))
+                if missing_stresses:
+                    raise ValueError(
+                        f"{run_dir.name}: replayed seed {seed} lacks stresses {missing_stresses}"
+                    )
+                code_to_idx = {c: i for i, c in enumerate(ref_codes)}
+                missing_wells = sorted(set(selected_wells) - set(code_to_idx))
+                if missing_wells:
+                    raise ValueError(
+                        f"{run_dir.name}: replayed seed {seed} lacks wells {missing_wells}"
+                    )
+                well_idx = np.array([code_to_idx[c] for c in selected_wells], dtype=np.int64)
+                week_idx = ref_weeks.get_indexer(target_weeks)
+                if (week_idx < 0).any():
+                    bad_wks = [str(w.date()) for w in target_weeks[week_idx < 0]]
+                    raise ValueError(
+                        f"{run_dir.name}: replayed seed {seed} lacks target week(s) {bad_wks}"
+                    )
+                for s in non_res_stresses:
+                    vals = stress_arrays[s][np.ix_(well_idx, week_idx)].ravel()
+                    ref_frames.append(
+                        pd.DataFrame(
+                            {
+                                "seed": seed,
+                                "code_bss": well_rep,
+                                "week": week_tile,
+                                "stress": s,
+                                "ref_m": vals,
+                            }
+                        )
+                    )
+            ref_df = pd.concat(ref_frames, ignore_index=True)
+            merged_non_res = tgt_non_res.merge(
+                ref_df,
+                on=["seed", "code_bss", "week", "stress"],
+                how="left",
+                validate="one_to_one",
             )
-        train_df["woy"] = _iso_week_of_year(train_df["week"])
-        seasonal_ref = (
-            train_df.groupby(["seed", "code_bss", "stress", "woy"], sort=False)["value_m"]
+            if merged_non_res["ref_m"].isna().any():
+                raise ValueError(
+                    f"{run_dir.name}: missing average_forcing reference values for some target rows"
+                )
+            tgt_parts.append(merged_non_res)
+
+        if "residual" in run_stresses:
+            # The fixed seasonal residual has no input: its anomaly is itself minus its own
+            # training-period ISO-week seasonal mean.
+            res_contrib = contrib[contrib["stress"] == "residual"]
+            tgt_parts.append(
+                _seasonal_output_reference(res_contrib, target_weeks, tr_start, tr_end, run_dir.name)
+            )
+
+        tgt_df = pd.concat(tgt_parts, ignore_index=True)
+        tgt_df["anom_m"] = tgt_df["value_m"] - tgt_df["ref_m"]
+        per_seed_stress = (
+            tgt_df.groupby(["seed", "code_bss", "stress"], sort=True)["anom_m"]
             .mean()
-            .rename("ref_m")
+            .rename("value_m")
             .reset_index()
         )
-        tgt_df = contrib[contrib["week"].isin(target_weeks)].copy()
-        tgt_df["woy"] = _iso_week_of_year(tgt_df["week"])
-        tgt_df = tgt_df.merge(
-            seasonal_ref, on=["seed", "code_bss", "stress", "woy"], how="left", validate="many_to_one"
-        )
-        if tgt_df["ref_m"].isna().any():
-            missing_woys = sorted(tgt_df.loc[tgt_df["ref_m"].isna(), "woy"].unique().tolist())
-            raise ValueError(
-                f"{run_dir.name}: training window {tr_start.date()}..{tr_end.date()} "
-                f"has no weeks for target ISO week(s) {missing_woys}"
-            )
+        ref_info = {
+            "kind": "average_forcing",
+            "space": "input",
+            "window": (str(tr_start.date()), str(tr_end.date())),
+            "woy_rule": "ISO week, 53 merged into 52",
+        }
+    elif reference == "training_seasonal":
+        if train_window is not None:
+            tr_start, tr_end = _parse_window(train_window)
+        else:
+            tr_start, tr_end = training_window(data.config, dataset=dataset, dataset_dir=dataset_dir)
+        tgt_df = _seasonal_output_reference(contrib, target_weeks, tr_start, tr_end, run_dir.name)
         tgt_df["anom_m"] = tgt_df["value_m"] - tgt_df["ref_m"]
         per_seed_stress = (
             tgt_df.groupby(["seed", "code_bss", "stress"], sort=True)["anom_m"]
@@ -828,6 +1092,7 @@ def decompose(
         )
         ref_info = {
             "kind": "training_seasonal",
+            "space": "output",
             "window": (str(tr_start.date()), str(tr_end.date())),
             "woy_rule": "ISO week, 53 merged into 52",
         }
@@ -926,7 +1191,6 @@ def decompose(
         dataset_dir=dataset_dir,
         edges=edges,
     )
-    seeds = sorted(int(s) for s in data.d_m["seed"].unique())
     return {
         "run": run_dir.name,
         "dataset": dataset,
@@ -960,6 +1224,7 @@ def format_report(result: dict) -> str:
     """Format a ``decompose()`` result as plain-text tables for the CLI."""
     meta = result["metadata"]
     ref = result["reference"]
+    ref_space = f", {ref['space']} space" if "space" in ref else ""
     lines = [
         f"Run: {result['run']} (dataset={result['dataset']}, seeds={result['n_seeds']})",
         (
@@ -971,7 +1236,7 @@ def format_report(result: dict) -> str:
         (
             f"Target: {result['target'][0]} .. {result['target'][1]} "
             f"({result['n_target_weeks']} weeks) | "
-            f"Reference: {ref['kind']} ({ref['window'][0]} .. {ref['window'][1]})"
+            f"Reference: {ref['kind']} ({ref['window'][0]} .. {ref['window'][1]}{ref_space})"
         ),
         "",
         "Report-group contributions (m; mean ± sd (sign agreement)):",
@@ -1051,8 +1316,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--reference",
-        default="training_seasonal",
-        help="Reference condition: 'training_seasonal' (default) or 'YYYY-MM-DD:YYYY-MM-DD'.",
+        default="average_forcing",
+        help=(
+            "Reference condition: 'average_forcing' (default, input space), "
+            "'training_seasonal' (output-space sensitivity), or 'YYYY-MM-DD:YYYY-MM-DD'."
+        ),
     )
     parser.add_argument(
         "--well",

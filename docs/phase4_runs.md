@@ -84,18 +84,22 @@ by fit count), or invoked via the `p4_queue` step in `scripts/run_v4_cpu.sh` (`P
 `P4_PARALLEL`, optional `P4_SHARD` and `P4_QUEUE_STEPS`). Re-running is safe because completed
 starts are cached on disk (`cached_seed`).
 
-## 3. Code still missing before the first Phase 4 run
+## 3. Execution (2026-11-24)
 
-| Piece | Status (2026-11-18) |
-|---|---|
-| Fact table of rung 3 (`src/models/statics.py`) | in progress (brief T03) |
-| Pumping reconstructions (2) and (3) in the routed path | in progress (brief T06); arms A/B route through `baseline` for this reason |
-| Arms report: contrasts, same-arm bands, coverage per relation, draw-vs-start variance of the controls | to write (extend `src/analysis/ladder_report.py`) |
-| Steps for B1–B8 and B2conv in `scripts/run_v4_cpu.sh` | done 2026-11-21 (declared defaults, guard, `tests/test_phase4_steps.py`) |
-| Exports for the policy sensitivities (`python -m src.kg.export --policy confident-only`, `all-links`) | to build (B6) |
-| Soil-drainage recharge input (B7) | to add to routing (DRAINC from SAFRAN) |
-| The bounded residual network ("each rung with and without it", item 18) | not designed: Gate 3 |
-| The black-box comparison (heterogeneous ST-GNN on the same graph, CLAUDE.md §3) | not built (GPU, Colab): Gate 3 to confirm its scope |
+Everything listed as missing on 2026-11-18 was built before the tag (`analysis-plan-v2`, pushed
+2026-11-24 before the first fit). The runs went through `scripts/colab_cli.py` on two Colab TPU v5e1
+runtimes (24 vCPUs, AMD EPYC 7B13, 3.26 compute units per hour each), one shard of the queue each
+(`P4_SHARD=1/2`, `2/2`: 189 fits per shard, 51 assemblies in all), 24 fits at a time:
+
+    .venv/bin/python -m scripts.colab_cli up p4a --runtime v5e1 --require-cpu-model "AMD EPYC 7B13"
+    .venv/bin/python -m scripts.colab_cli push-cpu p4a --steps p4_queue --env P4_CONFIRMED=1 \
+        --env 'P4_PARALLEL=$(nproc)' --env P4_SHARD=1/2 --budget 6      # p4b: P4_SHARD=2/2
+
+The first push (17:02 UTC) failed before any fit: the TPU image's `torch_tpu` plugin lets one process
+hold the TPU, and `torch.manual_seed` seeds it (fix: `TORCH_DEVICE_BACKEND_AUTOLOAD=0` in
+`scripts/run_v4_cpu.sh`, commit 727f84b; analysis plan §14 item 24). Its outputs were deleted and both
+shards restarted at 17:16 UTC. The black box (`taccari_D`) and its same-session control
+(`taccari_tuned_ctl`) ran on an L4 runtime at the same time (`push-gpu bb --steps "taccari_D taccari_ctl"`).
 
 ## 4. Reading order after the runs
 

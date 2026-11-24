@@ -5,7 +5,8 @@ Dataset: PFE_DATASET (default v3). For the dataset v4 re-runs (analysis plan v2 
 every neural baseline first, then their regimes, then Chronos-2; docs/gpu_howto.md). The
 bundle must have been made with PFE_DATASET=v4.
 Set STEPS=taccari_D to run the five-seed R1 black-box comparison on arm D's edges
-with the bundled Taccari tuning selection (Gate 3 point 21).
+with the bundled Taccari tuning selection (Gate 3 point 21); add taccari_ctl to fit the same
+model on its distance edges in the same session (run taccari_tuned_ctl, a same-machine control).
 
 Notebook cells (runtime type T4 GPU; docs/gpu_howto.md, Colab section):
     from google.colab import drive; drive.mount('/content/drive')       # Assil clicks Allow

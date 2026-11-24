@@ -26,21 +26,25 @@ def test_runner(tmp_path):
     stub.chmod(0o755)
     results = tmp_path / "results"
     env = dict(os.environ, PY=str(stub), SKIP_PIP="1", PIN_TARGET=str(tmp_path / "pins"),
-               PFE_DATASET=DATASET, PFE_RESULTS=str(results), STEPS="taccari_D")
+               PFE_DATASET=DATASET, PFE_RESULTS=str(results), STEPS="taccari_D taccari_ctl")
     params = json.loads((RESULTS / TUNING).read_text())["params"]
-    expected = ["-m", "src.models.taccari", "--edges", "D", "--run", "taccari_D"]
-    for name in ("lookback", "hidden", "dropout", "lr"):
-        expected.extend([f"--{name}", str(params[name])])
+    expected = []
+    for edges, run_name in (("D", "taccari_D"), ("distance", "taccari_tuned_ctl")):
+        command = ["-m", "src.models.taccari", "--edges", edges, "--run", run_name]
+        for name in ("lookback", "hidden", "dropout", "lr"):
+            command.extend([f"--{name}", str(params[name])])
+        expected.append(command)
 
     def run_step():
         run = subprocess.run(["bash", "scripts/run_gpu.sh"], cwd=ROOT, env=env,
                              capture_output=True, text=True, check=True, timeout=30)
         lines = [shlex.split(line)[1:] for line in run.stdout.splitlines() if line.startswith("model ")]
-        assert lines == [expected], (run.stdout, run.stderr)
+        assert lines == expected, (run.stdout, run.stderr)
         assert "failed, continuing" not in run.stdout, (run.stdout, run.stderr)
 
     run_step()
-    print(f"  taccari_D echoes the R1 command with all four bundled values: {params}")
+    print(f"  taccari_D and its same-session control taccari_ctl echo the R1 commands with all four "
+          f"bundled values: {params}")
     records = sorted(RESULTS.glob("*_tuned/seed_*.json"))
     assert records
     for source in [*records, *sorted(RESULTS.glob("*_tuned/best.json")), RESULTS / TUNING]:

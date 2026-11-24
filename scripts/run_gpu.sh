@@ -88,21 +88,26 @@ for s in $STEPS; do
     setup)       ;;                                           # venv and pins only
     stgnn)       $PY -m src.models.stgnn ;;                   # distance-graph ST-GNN, 5 seeds
     taccari)     $PY -m src.models.taccari ;;                 # Taccari-graph ST-GNN, 5 seeds
-    taccari_D)                                               # Gate 3 point 21, R1, 5 default seeds
-      # Use the same four tuning flags as src.models.regimes, from the bundled selection.
+    taccari_D|taccari_ctl)                                   # Gate 3 point 21, R1, 5 default seeds
+      # taccari_D: the black box on arm D's edges. taccari_ctl: the same tuned model on its own
+      # distance edges, fitted in the same session, so D vs distance is a same-machine contrast
+      # (analysis plan §14 item 18: one machine type per contrast; the taccari_tuned final ran on
+      # a T4 in October). Use the same four tuning flags as src.models.regimes, from the bundled
+      # selection.
+      if [[ $s == taccari_D ]]; then edges=D run=taccari_D; else edges=distance run=taccari_tuned_ctl; fi
       python3 -c '
 import json
 import os
 import sys
 from pathlib import Path
 
-python, best = sys.argv[1:]
+python, best, edges, run = sys.argv[1:]
 params = json.loads(Path(best).read_text())["params"]
-cmd = [python, "-m", "src.models.taccari", "--edges", "D", "--run", "taccari_D"]
+cmd = [python, "-m", "src.models.taccari", "--edges", edges, "--run", run]
 for name in ("lookback", "hidden", "dropout", "lr"):
     cmd.extend(["--" + name, str(params[name])])
 os.execvp(python, cmd)
-' "$PY" "results/$PFE_DATASET/taccari_tuning/best.json"
+' "$PY" "results/$PFE_DATASET/taccari_tuning/best.json" "$edges" "$run"
       ;;
     lstm)        $PY -m src.models.lstm ;;                    # default LSTM, 5 seeds
     ealstm)      $PY -m src.models.lstm --arch ealstm --run ealstm ;;

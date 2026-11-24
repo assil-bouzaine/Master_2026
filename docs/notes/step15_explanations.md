@@ -40,12 +40,13 @@ Three properties stay apart (analysis plan §12), each with its own evidence:
 ## Statement rules (fixed 2026-11-24, before any explanation was computed)
 
 A statement about a driver group is:
-- **withheld** when its weeks carry imputed pumping input (pumping groups only: any imputed share
-  > 0 in the window), when fewer than 8 of the 10 starts agree on its sign, when the three
+- **withheld** when more than 10 % of the routed pumping volume in the window comes from imputed
+  facility-weeks (pumping groups only), when fewer than 8 of the 10 starts agree on its sign, when the three
   reconstructions disagree on its direction (pumping groups), or when its size is below 0.05 m
   (smaller than the half-width of a typical same-arm band; not a claim worth making);
 - **qualified** (stated with its caveat) when the window has under 50 % strictly validated observed
-  weeks, or when the knowledge-graph path rests only on "probable" links;
+  weeks, when 0–10 % of its routed pumping volume is imputed (the share is stated), or when the
+  knowledge-graph path rests only on "probable" links;
 - **accepted** otherwise.
 The direction stated is the contribution's sign relative to the reference ("lowered the head by
 0.4 m compared with an average year at this time"), never the response polarity: less pumping than
@@ -95,3 +96,14 @@ Shapes (each a negative-control test, CQ10's acceptance cases):
    alluvium well (canal); plus a fixed sample of ordinary cases and failures chosen by a rule
    (per aquifer group, the well at the median and the well at the worst drought NSE of
    `p4_B2conv_D_r1`), fixed before any explanation is read.
+
+## Log
+
+- **2026-11-24, T46 done** (Neon; commit 23029fc). The imputed share is volume-weighted over the
+  well's routed facilities, and it is almost never zero: summer 2024 has 2.3 % (NYLS-1) and 1.8 %
+  (C2-1) on a ladder run, because a few facilities miss a declaration in any year. The first rule
+  ("withheld at any imputed share") would have withheld every pumping statement, so it became
+  "withheld above 10 %, qualified (share stated) between 0 and 10 %". Changed the same day, on these
+  two data-quality numbers of a ladder run only, before any explained run (`p4_B2conv_D_*`) existed:
+  a data-quality threshold, not a choice made on model results. Years 2005–2011 (back-filled) and
+  the current partial year stay fully imputed, so their pumping statements are withheld.

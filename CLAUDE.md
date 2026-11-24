@@ -528,6 +528,24 @@ notebooks/       exploration only; anything that matters moves into src/
 
 ### ▶ Where we are (read this first in a new session)
 
+**2026-11-24 (Tuesday) evening session — IN PROGRESS (update when it ends). START HERE.**
+- **Pushed** (Assil): the 28 commits and the tag `analysis-plan-v2` (8c55eb3c…) before any Phase 4 fit.
+- **Running on Colab (bills until `stop`):** Phase 4 shards `p4a` (1/2) and `p4b` (2/2) on TPU v5e1 (from 17:16 UTC,
+  ≈ 1.5 h expected), the black box `bb` on an L4 (`taccari_D` then the same-session control `taccari_ctl`).
+  When each has ended: `.venv/bin/python -m scripts.colab_cli pull <name>`, then `stop <name>` (refuses before
+  a final pull). Then `PFE_DATASET=v4 .venv/bin/python -m src.analysis.arms_report` (→ `docs/results_arms_v4.md`)
+  and the black-box report (T47). The first push failed (torch_tpu seeding; fixed by
+  `TORCH_DEVICE_BACKEND_AUTOLOAD=0`, analysis plan item 24); its outputs were deleted.
+- **Decided by Assil today** (analysis plan §14 item 24; `docs/gate3_decisions.md`, last section): test 2 stays,
+  flagged uncalibrated; the CQ10 explanation module (ontology 0.9.0) is approved. **Priority (Assil): results and
+  "are we going in the right direction" first, the paper later.** Codex hold lifted: one Sol worker + Neon,
+  stop assigning at **60 %** of a 5-hour window.
+- **Workers:** Neon T46 `src/explain/contributions.py` (Phase 5 numbers); Sol T45 done (paper macros, 16f3f7e),
+  T47 `src/analysis/blackbox_report.py` running, T48 (real-data seed disagreement) briefed.
+- **Phase 5 design:** `docs/notes/step15_explanations.md` (statement rules fixed before any explanation).
+  Ontology 0.9.0 waits until the workers and the Phase 4 reading are done (an ontology change makes the
+  exports refuse to load until the release is rebuilt).
+
 **2026-11-22 (Sunday) ≈ 00:40, stopped at Assil's request after the running work finished. START HERE.**
 Everything below is committed; the tag `analysis-plan-v2` exists **locally only (ask Assil before pushing it or
 any commit)**. No Colab session, no worker and no laptop job is left running.

@@ -1,0 +1,117 @@
+#################################################################
+# Explanations of model results (CQ10, version 0.9.0, decided by Assil on 2026-11-24)
+#################################################################
+# Draft: to be inserted into ontology/lulcw.ttl once no worker reads the graph release.
+
+lulcw:ModelRun a owl:Class ; rdfs:subClassOf prov:Activity ;
+    rdfs:label "model run"@en , "exécution de modèle"@fr ;
+    skos:definition "One fitted run of a groundwater-level model (a results/<dataset>/<run> folder) with its starts: its export policy, the graph release its inputs came from, its regime, pumping reconstruction and fitting protocol. A run computes simulated heads; it observes nothing."@en .
+lulcw:SimulatedHead a owl:Class ; rdfs:subClassOf prov:Entity ;
+    rdfs:label "simulated head"@en , "niveau simulé"@fr ;
+    skos:definition "The mean groundwater head that a model run simulates at one monitoring point over one window (metres above the NGF datum, averaged over the run's starts), with its SGI value and class against the point's frozen training reference. A model result, never an observation of the station."@en .
+lulcw:DriverContribution a owl:Class ; rdfs:subClassOf prov:Entity ;
+    rdfs:label "driver contribution"@en , "contribution d'un forçage"@fr ;
+    skos:definition "The part of a simulated head's departure from a reference condition that a model run attributes to one of its stresses, in metres, averaged over the run's starts, with its spread and the share of starts that agree on its sign. An exact decomposition of the model's computation (the hybrid is a sum of per-stress responses), not a measured physical effect (docs/analysis_plan.md §12)."@en .
+lulcw:ExplanationStatement a owl:Class ; rdfs:subClassOf prov:Entity ;
+    rdfs:label "explanation statement"@en , "énoncé d'explication"@fr ;
+    skos:definition "One sentence, in French and English from a fixed template, that reports one driver contribution of a simulated head together with the influences of the graph that let the driver reach the point, its status and, when it is qualified or withheld, the reason. It states what the model attributes, never what caused the head."@en .
+
+lulcw:ModelStress a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "model stress"@en , "sollicitation du modèle"@fr ;
+    skos:definition "An input series of the hybrid model whose response is one term of the simulated head (configs/explain_groups.csv)."@en .
+lulcw:ModelStressScheme a skos:ConceptScheme ;
+    rdfs:label "model stresses"@en , "sollicitations du modèle"@fr ;
+    skos:definition "Values of lulcw:ModelStress."@en .
+lulcw:RechargeStress a lulcw:ModelStress ; skos:inScheme lulcw:ModelStressScheme ; skos:topConceptOf lulcw:ModelStressScheme ;
+    skos:prefLabel "recharge proxy"@en , "indicateur de recharge"@fr ; rdfs:label "recharge proxy"@en , "indicateur de recharge"@fr ;
+    skos:notation "recharge" ;
+    skos:definition "Rainfall minus a fitted share of evapotranspiration, averaged over the weather cells of the point's recharge influences."@en .
+lulcw:AttributedPumpingStress a lulcw:ModelStress ; skos:inScheme lulcw:ModelStressScheme ; skos:topConceptOf lulcw:ModelStressScheme ;
+    skos:prefLabel "pumping on the graph's links"@en , "prélèvements reliés par le graphe"@fr ; rdfs:label "pumping on the graph's links"@en , "prélèvements reliés par le graphe"@fr ;
+    skos:notation "pumping" ;
+    skos:definition "The weekly volumes of the abstraction facilities whose pumping influences on the point the run's export policy selects."@en .
+lulcw:UnattributedPumpingStress a lulcw:ModelStress ; skos:inScheme lulcw:ModelStressScheme ; skos:topConceptOf lulcw:ModelStressScheme ;
+    skos:prefLabel "unattributed pumping nearby"@en , "prélèvements voisins non attribués"@fr ; rdfs:label "unattributed pumping nearby"@en , "prélèvements voisins non attribués"@fr ;
+    skos:notation "pumping_unattributed" ;
+    skos:definition "The weekly volumes of the nearby groundwater facilities whose link to the point's unit the run's export policy does not select (possible or unknown attributions): an explicit input, never zero by omission (docs/analysis_plan.md §8)."@en .
+lulcw:CanalStress a lulcw:ModelStress ; skos:inScheme lulcw:ModelStressScheme ; skos:topConceptOf lulcw:ModelStressScheme ;
+    skos:prefLabel "canal diversions"@en , "dérivations des canaux"@fr ; rdfs:label "canal diversions"@en , "dérivations des canaux"@fr ;
+    skos:notation "canal" ;
+    skos:definition "The plain's weekly canal diversion volume, a proxy for irrigation return flow, at points with a canal influence."@en .
+lulcw:RiverStress a lulcw:ModelStress ; skos:inScheme lulcw:ModelStressScheme ; skos:topConceptOf lulcw:ModelStressScheme ;
+    skos:prefLabel "river stage proxy"@en , "indicateur du niveau du cours d'eau"@fr ; rdfs:label "river stage proxy"@en , "indicateur du niveau du cours d'eau"@fr ;
+    skos:notation "river" ;
+    skos:definition "The logarithm of the weekly discharge at the pool gauge of the point's river influences."@en .
+lulcw:SeasonalResidual a lulcw:ModelStress ; skos:inScheme lulcw:ModelStressScheme ; skos:topConceptOf lulcw:ModelStressScheme ;
+    skos:prefLabel "fixed seasonal residual"@en , "résidu saisonnier fixe"@fr ; rdfs:label "fixed seasonal residual"@en , "résidu saisonnier fixe"@fr ;
+    skos:notation "residual" ;
+    skos:definition "A bounded seasonal term with no input (Gate 3 point 20): no driver and no influence stand behind it."@en .
+
+lulcw:ReferenceCondition a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "reference condition"@en , "condition de référence"@fr ;
+    skos:definition "What a driver contribution is measured against."@en .
+lulcw:ReferenceConditionScheme a skos:ConceptScheme ;
+    rdfs:label "reference conditions"@en , "conditions de référence"@fr ;
+    skos:definition "Values of lulcw:ReferenceCondition."@en .
+lulcw:TrainingSeasonalMean a lulcw:ReferenceCondition ; skos:inScheme lulcw:ReferenceConditionScheme ; skos:topConceptOf lulcw:ReferenceConditionScheme ;
+    skos:prefLabel "an average year at the same time"@en , "une année moyenne à la même époque"@fr ; rdfs:label "an average year at the same time"@en , "une année moyenne à la même époque"@fr ;
+    skos:definition "The run's own mean of the contribution over its training weeks at the same ISO week of the year (week 53 merged into 52), so that only between-year variation remains."@en .
+lulcw:ReferenceWindow a lulcw:ReferenceCondition ; skos:inScheme lulcw:ReferenceConditionScheme ; skos:topConceptOf lulcw:ReferenceConditionScheme ;
+    skos:prefLabel "another period"@en , "une autre période"@fr ; rdfs:label "another period"@en , "une autre période"@fr ;
+    skos:definition "The mean of the contribution over an explicit earlier window (lulcw:referenceStart to lulcw:referenceEnd), e.g. the same months of the previous year."@en .
+
+lulcw:ContributionDirection a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "contribution direction"@en , "sens de la contribution"@fr ;
+    skos:definition "Whether a contribution raised or lowered the simulated head relative to its reference condition. Not the response sign: less pumping than usual raises the head although pumping lowers heads."@en .
+lulcw:ContributionDirectionScheme a skos:ConceptScheme ;
+    rdfs:label "contribution directions"@en , "sens des contributions"@fr ;
+    skos:definition "Values of lulcw:ContributionDirection."@en .
+lulcw:RaisedHead a lulcw:ContributionDirection ; skos:inScheme lulcw:ContributionDirectionScheme ; skos:topConceptOf lulcw:ContributionDirectionScheme ;
+    skos:prefLabel "raised the head"@en , "a relevé le niveau"@fr ; rdfs:label "raised the head"@en , "a relevé le niveau"@fr ;
+    skos:definition "The contribution is above its reference (a positive value)."@en .
+lulcw:LoweredHead a lulcw:ContributionDirection ; skos:inScheme lulcw:ContributionDirectionScheme ; skos:topConceptOf lulcw:ContributionDirectionScheme ;
+    skos:prefLabel "lowered the head"@en , "a abaissé le niveau"@fr ; rdfs:label "lowered the head"@en , "a abaissé le niveau"@fr ;
+    skos:definition "The contribution is below its reference (a negative value)."@en .
+
+lulcw:StatementStatus a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "statement status"@en , "statut de l'énoncé"@fr ;
+    skos:definition "Whether an explanation statement is shown as is, shown with its caveat, or not shown (docs/notes/step15_explanations.md, statement rules)."@en .
+lulcw:StatementStatusScheme a skos:ConceptScheme ;
+    rdfs:label "statement statuses"@en , "statuts des énoncés"@fr ;
+    skos:definition "Values of lulcw:StatementStatus."@en .
+lulcw:AcceptedStatement a lulcw:StatementStatus ; skos:inScheme lulcw:StatementStatusScheme ; skos:topConceptOf lulcw:StatementStatusScheme ;
+    skos:prefLabel "accepted"@en , "retenu"@fr ; rdfs:label "accepted"@en , "retenu"@fr ;
+    skos:definition "Every check passed: the statement is shown as written."@en .
+lulcw:QualifiedStatement a lulcw:StatementStatus ; skos:inScheme lulcw:StatementStatusScheme ; skos:topConceptOf lulcw:StatementStatusScheme ;
+    skos:prefLabel "qualified"@en , "nuancé"@fr ; rdfs:label "qualified"@en , "nuancé"@fr ;
+    skos:definition "The statement is shown with its caveat (unvalidated observations, a small imputed share of pumping, probable links only)."@en .
+lulcw:WithheldStatement a lulcw:StatementStatus ; skos:inScheme lulcw:StatementStatusScheme ; skos:topConceptOf lulcw:StatementStatusScheme ;
+    skos:prefLabel "withheld"@en , "non retenu"@fr ; rdfs:label "withheld"@en , "non retenu"@fr ;
+    skos:definition "The statement is not shown, with the reason (imputed pumping, starts or pumping reconstructions that disagree on its sign, a size below 0.05 m)."@en .
+
+lulcw:SgiClass a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "groundwater level class"@en , "classe d'indicateur piézométrique"@fr ;
+    skos:definition "One of the seven classes of the BRGM IPS indicator, bounded by the 10, 20, 40, 60, 80 and 90 % quantiles of the standard normal SGI (src/dataset/build.py, IPS_CLASSES)."@en .
+lulcw:SgiClassScheme a skos:ConceptScheme ;
+    rdfs:label "groundwater level classes"@en , "classes d'indicateur piézométrique"@fr ;
+    skos:definition "Values of lulcw:SgiClass, from very low to very high."@en .
+# Seven members (VeryLowLevel ... VeryHighLevel) with skos:notation 1..7, their French IPS label as
+# skos:prefLabel@fr ("très bas", "bas", "modérément bas", "autour de la moyenne", "modérément haut",
+# "haut", "très haut"), English labels, and lulcw:sgiUpperBound (xsd:double, absent for very high).
+
+# Properties (domains and ranges as in the step 15 note):
+# ModelRun: lulcw:runIdentifier (string, functional), lulcw:usesExportPolicy (-> ExportPolicy,
+#   functional), prov:used (-> DataRelease), lulcw:regime (string), lulcw:pumpingReconstruction
+#   (integer), lulcw:fittingProtocol (string), lulcw:startCount (integer).
+# SimulatedHead: prov:wasGeneratedBy (-> ModelRun), lulcw:simulatedAt (-> Piezometer, functional),
+#   lulcw:periodStart / lulcw:periodEnd (existing, no domain), lulcw:simulatedHeadM (double),
+#   lulcw:sgiValue (double), lulcw:sgiClass (-> SgiClass), lulcw:sgiReferenceEnd (date).
+# DriverContribution: lulcw:contributionTo (-> SimulatedHead, functional), lulcw:contributionStress
+#   (-> ModelStress, functional), lulcw:referenceCondition (-> ReferenceCondition, functional),
+#   lulcw:referenceStart / lulcw:referenceEnd (date, for ReferenceWindow), lulcw:contributionM,
+#   lulcw:startSdM, lulcw:startSignAgreement, lulcw:imputedPumpingShare (doubles).
+# ExplanationStatement: lulcw:explains (-> SimulatedHead), lulcw:citesContribution
+#   (-> DriverContribution, functional), lulcw:citesInfluence (-> Influence, repeatable),
+#   lulcw:statedDirection (-> ContributionDirection), lulcw:statementStatus (-> StatementStatus),
+#   lulcw:statementReason (string), lulcw:statementText (rdf:langString, fr and en).
+# ModelStress: lulcw:stressDriverGroup (-> DriverGroup; none for SeasonalResidual).

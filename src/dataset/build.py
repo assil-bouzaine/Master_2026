@@ -99,8 +99,27 @@ VERSIONS = {
            "all_stations": True, "pump_scope": "dept", "backfill": True,
            "bnpe_snapshot": "2026-10-20", "bnpe_rules": "v3", "artesian_train_only": True,
            "drop_bad_quality": True, "fold_link_m": 2000, "artesian_windows": True},
+    # v5 (docs/v5_plan.md R1.5; branch master_2026_fixes, the Gemini Neon review adopted by Assil
+    # 2026-11-25): v4 + weather from 1990 (a 15-year warm-up before the 2005 model start instead
+    # of 5 years, longer than the 312-week kernels), the dated Hub'Eau snapshots of 2026-11-25
+    # (2024-25 weeks validated since v4; rivers to Nov 2026, still from 2005: obs_elab serves
+    # nothing older), and the canal volume split by river basin (src/dataset/canal_basins.py).
+    # Same wells as v4 (interim/piezo_stations.parquet is not recomputed), so v4 and v5 compare
+    # on identical wells. Pumping before the first BNPE year stays imputed (flag `imputed`).
+    "v5": {"forcing_start": "1990-01-01", "model_start": "2005-01-01",
+           "all_stations": True, "pump_scope": "dept", "backfill": True,
+           "bnpe_snapshot": "2026-10-20", "bnpe_rules": "v3", "artesian_train_only": True,
+           "drop_bad_quality": True, "fold_link_m": 2000, "artesian_windows": True,
+           "piezo_snapshot": "2026-11-25", "hydro_snapshot": "2026-11-25", "canal_basins": True},
 }
 CFG = VERSIONS[DATASET]
+# Raw Hub'Eau inputs: a dated snapshot when the version names one (v5), else the default caches,
+# which stay exactly as v1-v4 were built from them. Readers outside this module use B.CHRON.
+if CFG.get("piezo_snapshot"):
+    CHRON = RAW / "hubeau" / "snapshots" / CFG["piezo_snapshot"] / "chroniques"
+HYDRO = RAW / "hubeau_hydro"
+if CFG.get("hydro_snapshot"):
+    HYDRO = HYDRO / "snapshots" / CFG["hydro_snapshot"]
 FORCING_START = CFG["forcing_start"]
 MODEL_START = CFG["model_start"]
 TRAIN_END = "2019-12-31"
@@ -247,9 +266,9 @@ def nearest_cell(points_gdf):
 
 # ------------------------------------------------------------------- rivers
 def build_rivers():
-    gauges = pd.read_parquet(RAW / "hubeau_hydro" / "stations_66.parquet")
+    gauges = pd.read_parquet(HYDRO / "stations_66.parquet")
     parts = []
-    for f in sorted((RAW / "hubeau_hydro" / "qmnj").glob("*.parquet")):
+    for f in sorted((HYDRO / "qmnj").glob("*.parquet")):
         df = pd.read_parquet(f)
         if df.empty:
             continue
@@ -497,6 +516,15 @@ def main():
     rivers.to_parquet(OUT / "rivers_weekly.parquet", index=False)
     pts.to_parquet(OUT / "pumping_points.parquet", index=False)
     pumping.to_parquet(OUT / "pumping_weekly.parquet", index=False)
+    if CFG.get("canal_basins"):  # v5: each canal intake's river basin and the weekly volume per basin
+        from src.dataset import canal_basins as CB
+        intakes, weekly_rows = CB.select_intakes(pw=pumping, pts=pts)
+        intakes_basin = CB.assign_basins(intakes, CB.load_river_reaches())
+        by_basin = CB.canal_series_by_basin(intakes_basin, weekly_rows=weekly_rows)
+        intakes_basin.to_parquet(OUT / "canal_intakes_basin.parquet", index=False)
+        by_basin.rename_axis(columns=None).reset_index().melt(
+            id_vars="week", var_name="basin", value_name="volume_m3").to_parquet(
+            OUT / "canal_basins_weekly.parquet", index=False)
     restr = build_restrictions() if CFG.get("bnpe_rules") == "v3" else None
     if restr is not None:
         restr.to_parquet(OUT / "restrictions_weekly.parquet", index=False)

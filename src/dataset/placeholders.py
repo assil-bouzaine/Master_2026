@@ -60,7 +60,7 @@ def placeholder_weeks(codes):
     """(code_bss, week) of every week touched by a run of >= MIN_RUN_DAYS days."""
     # imported here: src.models.evaluate imports this module on machines without the raw
     # data or the download stack (Kaggle, Colab), and only needs load_mask()
-    from src.ingest.hubeau_piezo import CHRON, safe_name
+    from src.dataset.build import CHRON, safe_name  # version-aware: v5 reads a dated snapshot
     weeks, log = [], []
     for code in codes:
         f = CHRON / f"{safe_name(code)}.parquet"

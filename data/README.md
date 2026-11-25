@@ -548,3 +548,22 @@ Notes:
   2000–2022 identical; 2023+ total differences 0.01–0.17 % (rain 0.05 %, ETP 0.17 %, PE 0.13 %, DRAINC 0.01 %),
   largest single cell-week |Δrain| 7.6 mm (provisional data replaced by final). v4's processed tables stay the
   record; a cold rebuild of v4 would now differ trivially from 2023 and reach 2026-11-22 instead of 2026-10-11.
+
+### Model-ready dataset v5 (R1.5, built 2026-11-25)
+
+`PFE_DATASET=v5 python -m src.dataset.build` (entry `v5` of `src/dataset/build.py`; log
+`results/logs/build_v5_2026-11-25.log`) → `processed/dataset_v5/`. v4's rules and wells, plus weather from
+1990, the Hub'Eau snapshots of 2026-11-25, and the canal volume per basin (`canal_basins_weekly.parquet`,
+`canal_intakes_basin.parquet`).
+
+| | v4 | v5 |
+|---|---|---|
+| wells / core / folds | 65 / 33 / 5 | identical (same wells, core flags and folds) |
+| weekly heads | 55,141 (from 2000) | 59,884 (from 1990) |
+| forcing cell-weeks | 196,977 (from 2000) | 271,425 (from 1990) |
+| last week | 2026-10-04 | 2026-11-29 |
+| core test well-weeks | 7,414 | 7,677 |
+| core test weeks not validated | 41.5 % | **23.7 %** |
+| placeholder weeks masked | 60 (CORNEILLA PD5) | 60 (same) |
+| quality filter | — | 437 values dropped; model-window weeks changed 7, emptied 62 |
+| last BNPE year | 2024 | 2024 (2025–2026 imputed) |

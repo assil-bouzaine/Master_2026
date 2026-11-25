@@ -2,6 +2,7 @@
 
     python -m src.ingest.hubeau_hydro            # resume: skip cached stations
     python -m src.ingest.hubeau_hydro --refresh  # re-download every series
+    python -m src.ingest.hubeau_hydro --snapshot 2026-11-25   # full download into a dated folder
 
 API v2 (https://hubeau.eaufrance.fr/api/v2/hydrometrie):
     referentiel/stations?code_departement=66   station list
@@ -11,6 +12,12 @@ API v2 (https://hubeau.eaufrance.fr/api/v2/hydrometrie):
 Keeps the stations open at any time since START (rivers *and* gauged irrigation
 canals, which carry the canal-return recharge signal). Each station is cached
 separately and written atomically, so a crash never restarts the whole pull.
+
+--snapshot DAY (dataset v5, docs/v5_plan.md R1.1b) writes the station list and every series into
+data/raw/hubeau_hydro/snapshots/<DAY>/, resumable there, and leaves the default cache untouched
+(dataset v4 was built from it and must still rebuild from cold). Checked 2026-11-25: obs_elab
+serves QmnJ from 2005 only (the Têt at Perpignan's first value is 2005-01-01 even when asked from
+1950), so START stays 2005; the canal stations have no daily or monthly flow after 2004.
 
 Outputs (data/raw/hubeau_hydro/):
     stations_<dept>.parquet            one row per station
@@ -35,7 +42,7 @@ STATION_COLS = ["code_station", "libelle_station", "libelle_cours_eau", "code_co
                 "influence_locale_station", "commentaire_influence_locale_station"]
 
 
-def get_stations(session, dept):
+def get_stations(session, dept, out=OUT):
     records, count = fetch_all(session, f"{BASE}/referentiel/stations",
                                {"code_departement": dept, "size": 200, "format": "json"})
     assert len(records) == count, f"got {len(records)} stations, API says {count}"
@@ -45,7 +52,7 @@ def get_stations(session, dept):
     df.loc[swap, ["longitude_station", "latitude_station"]] = (
         df.loc[swap, ["latitude_station", "longitude_station"]].values)
     df["is_canal"] = df["libelle_station"].str.contains("canal", case=False)
-    df.to_parquet(OUT / f"stations_{dept}.parquet", index=False)
+    df.to_parquet(out / f"stations_{dept}.parquet", index=False)
     return df
 
 
@@ -64,17 +71,22 @@ def get_series(session, code):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--refresh", action="store_true")
+    ap.add_argument("--snapshot", metavar="DAY", help="full download into data/raw/hubeau_hydro/snapshots/DAY")
     args = ap.parse_args()
-    QDIR.mkdir(parents=True, exist_ok=True)
+    out, qdir = OUT, QDIR
+    if args.snapshot:
+        out = OUT / "snapshots" / args.snapshot
+        qdir = out / "qmnj"
+    qdir.mkdir(parents=True, exist_ok=True)
     s = make_session()
-    st = get_stations(s, DEPARTEMENT)
+    st = get_stations(s, DEPARTEMENT, out)
     closed = pd.to_datetime(st["date_fermeture_station"], utc=True).dt.tz_localize(None)
     keep = st[closed.isna() | (closed >= START)]
     print(f"{len(st)} stations in dept {DEPARTEMENT}; {len(keep)} open since {START} "
           f"({int(keep['is_canal'].sum())} canals)")
     done = cached = empty = failed = 0
     for code in keep["code_station"]:
-        path = QDIR / f"{code}.parquet"
+        path = qdir / f"{code}.parquet"
         if path.exists() and not args.refresh:
             cached += 1
             continue

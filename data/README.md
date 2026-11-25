@@ -517,3 +517,21 @@ Notes:
 - `https://hubeau.eaufrance.fr/api/v1/prelevements/chroniques?code_departement=66&annee=<y>&size=1`:
   count 1,823 (2023), 1,846 (2024), **0 (2025)**. BNPE 2025 is not published yet: 2025 pumping
   stays imputed in v5 (recheck before the v5 freeze).
+
+### Hub'Eau piezometers and river flows, dated snapshots (R1.1b, 2026-11-25)
+
+| Date | Source | Endpoint / URL | Parameters | Output | Rows | Size |
+|---|---|---|---|---|---|---|
+| 2026-11-25 | Hub'Eau niveaux_nappes (full re-download, not incremental) | `https://hubeau.eaufrance.fr/api/v1/niveaux_nappes` (`/stations`, `/chroniques`) | `python -m src.ingest.hubeau_piezo --snapshot 2026-11-25` (dept 66, size 5000) | `raw/hubeau/snapshots/2026-11-25/` (stations files, `chroniques/`) | 105 stations (2 empty, 0 failed) | — |
+| 2026-11-25 | Hub'Eau hydrometrie v2, daily mean flow QmnJ | `https://hubeau.eaufrance.fr/api/v2/hydrometrie` (`referentiel/stations`, `obs_elab`) | `python -m src.ingest.hubeau_hydro --snapshot 2026-11-25` (from 2005-01-01) | `raw/hubeau_hydro/snapshots/2026-11-25/` (`stations_66.parquet`, `qmnj/`) | 45 series (27 stations empty, 0 failed) | — |
+
+- The default caches (`raw/hubeau/chroniques/`, `raw/hubeau_hydro/qmnj/`) are untouched: dataset v4 was
+  built from them and must still rebuild from cold.
+- Piezometers, 33 core wells: last date 2026-09-29 → 2026-11-22 (median), 1,861 daily records added, and
+  **6,578 records since 2024 re-qualified** by the producer (6,574 now "Correcte"): the 2024–2025 case
+  studies lose most of their "not validated" caveat in v5.
+- River flows: obs_elab serves QmnJ from 2005 only (the Têt at Perpignan, Y046403001, returns its first
+  value on 2005-01-01 even when asked from 1950), so v5's rivers start in 2005 as v4's.
+- Canal stations re-checked (docs/v5_plan.md C1): no daily flow in our period, and the monthly QmM series
+  stop before 2005 (Y046821001 has 2000-04 … 2004-11; Y046881001, Y005561001, Y047882001, Y046901001,
+  Y063404001, Y024511001 none after 2000).

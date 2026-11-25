@@ -61,7 +61,7 @@ Owners: **C** = Claude (lead), **N** = neon (Gemini 4 Neon high), **S** = sol (G
 | 1.1c | (optional) nitrate (`qualite_nappes`, parameter 1340); Aude (dept 11) feasibility | C | ⬜ |
 | 1.2 | canal intakes by basin (T60); Hub'Eau monthly re-check of the canal stations | N, C | ✅ 2026-11-25: `src/dataset/canal_basins.py`, `docs/canal_basins.md` (Têt 72 % of the volume, −33 % 2022→2023; annual totals unrelated to the deficit); no canal flow series exists. Open: the 2 large unknown intakes (override needs a documented reason) |
 | 1.3 | BRGM InfoTerre WFS (BSS) borehole depths → pump attribution re-run | C (API), N | 🔄 2026-11-25: `src/ingest/brgm_bss.py` (water points with depth and BD LISA entities, boreholes with depth reached); T62 measures the precision before any use |
-| 1.4 | Earth Engine: Sentinel-2 NDVI/NDMI per RPG parcel (Roussillon); S2 + WorldCover + ERA5-Land (Manouba) | A (register), C | ⛔ Earth Engine account |
+| 1.4 | Earth Engine: Sentinel-2 NDVI/NDMI per RPG parcel (Roussillon); S2 + WorldCover + ERA5-Land (Manouba) | A (register), C | ⬜ unblocked 2026-11-25: Earth Engine works from the laptop (Assil's project; the three collections checked for both sites) |
 | 1.5 | build `dataset_v5` (`forcing_start` 1990, refreshed heads, basin canals, BSS attribution, S2 summaries); log pulls in `data/README.md`; Gate R1 | C | 🔄 2026-11-25: built without BSS and S2 (same wells, core and folds as v4; core test weeks not validated 41.5 % → 23.7 %); v5 graph building; Gate R1 checks (cold rebuild hashes, dataset tests) pending |
 
 ### R2 — ontology `lulcw` 1.0, alignments, text extraction (laptop + Colab GPU)

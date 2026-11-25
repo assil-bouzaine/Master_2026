@@ -38,10 +38,12 @@ date.
    oracles and tests; then a new v5 release. Gate R2: 0/33 core wells without a recharge path (or a named exception).
 3. Review T64 and T66; then T58 (Phase 4 figures, worker sol; brief `.agents/briefs/T58_phase4_figures.md`).
 4. R3: `src/models/hybrid_gnn.py` assembling bucket + kernels + encoder (Claude designs the core); twin v2.
-5. R2.1 / R2.3 (literature extraction, alignments) and R1.4 (Earth Engine) when Assil has authenticated.
+5. R1.4 Earth Engine is **ready** (project in `.agents/RESOURCES.md`; `ee.Initialize(project=...)` works; S2 SR
+   harmonized, WorldCover v200, ERA5-Land daily checked for both sites): write `src/ingest/gee_s2.py` (summer
+   NDVI/NDMI medians per RPG parcel 2017–2025 with `reduceRegions`, exported in batches; Manouba S2 + WorldCover +
+   ERA5-Land for a sourced aquifer box). Then R2.1 / R2.3 (literature extraction, alignments).
 
 **Waiting for Assil:**
-- `! .venv/bin/earthengine authenticate` (his sign-in) and the **Cloud project ID** of his Earth Engine account.
 - Say whether to push the branch `master_2026_fixes` and the tag `phase4-v1-frozen` (nothing pushed yet).
 - `! camber login` only if Camber jobs are to run from the terminal (web app logged in; account
   the account named in .agents/RESOURCES.md, Student plan, CPU + single L4 GPU).
@@ -95,3 +97,8 @@ date.
   core and folds as v4; core test weeks not validated 41.5 % → 23.7 %. v5 crop demand and reconstruction 3 built.
 - `docs/analysis_plan_v3.md` drafted (centring held fixed after estimation, so every driver stays monotone).
 - torch_geometric 2.8.1 and earthengine-api 1.7.53 installed and pinned.
+- Earth Engine: Assil signed in and gave the project; a first sign-in with a non-owner account was refused
+  (serviceusage permission); after `earthengine authenticate --force` with the owner account it works; the three
+  collections of the review are readable for Roussillon and Manouba.
+- T64 (sol) kernels and T66 (neon) HeteroData builder + encoder committed; Sol on T58 (figures); v5 graph release
+  validated (no violation), v5 graph test suites running.

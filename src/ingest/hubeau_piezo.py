@@ -2,6 +2,7 @@
 
     python -m src.ingest.hubeau_piezo            # resume: skip cached stations
     python -m src.ingest.hubeau_piezo --refresh  # re-download every series
+    python -m src.ingest.hubeau_piezo --snapshot 2026-11-25   # full download into a dated folder
 
 Outputs (data/raw/hubeau/):
     stations_<dept>.json                raw API response (all pages)
@@ -10,6 +11,12 @@ Outputs (data/raw/hubeau/):
 
 Each station is cached separately and written atomically, so a crash or
 power cut never forces the whole download to restart.
+
+--snapshot DAY (dataset v5, docs/v5_plan.md step R1.1b) downloads every series in full into
+data/raw/hubeau/snapshots/<DAY>/ (stations files and chroniques/), resumable within that folder,
+and leaves the default cache untouched: dataset v4 was built from that cache and must still
+rebuild from cold. A full download also picks up the qualifications that changed since the
+first pull (weeks validated later), which an incremental update would miss.
 """
 import argparse
 import json
@@ -46,12 +53,12 @@ def safe_name(code_bss: str) -> str:
     return code_bss.replace("/", "_")
 
 
-def get_stations(session, dept):
+def get_stations(session, dept, out=OUT):
     records, count = fetch_all(
         session, f"{BASE}/stations", {"code_departement": dept, "size": PAGE_SIZE}
     )
     assert len(records) == count, f"got {len(records)} stations, API says {count}"
-    (OUT / f"stations_{dept}.json").write_text(
+    (out / f"stations_{dept}.json").write_text(
         json.dumps(records, ensure_ascii=False, indent=1), encoding="utf-8"
     )
     df = pd.DataFrame(records).drop(columns=["geometry"])
@@ -60,7 +67,7 @@ def get_stations(session, dept):
     for col in df.columns:  # lists -> ';'-joined strings so parquet stays simple
         if df[col].map(lambda v: isinstance(v, list)).any():
             df[col] = df[col].map(lambda v: ";".join(v) if isinstance(v, list) else v)
-    df.to_parquet(OUT / f"stations_{dept}.parquet", index=False)
+    df.to_parquet(out / f"stations_{dept}.parquet", index=False)
     return df
 
 
@@ -81,18 +88,23 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--dept", default=DEPARTEMENT)
     ap.add_argument("--refresh", action="store_true", help="re-download cached series")
+    ap.add_argument("--snapshot", metavar="DAY", help="full download into data/raw/hubeau/snapshots/DAY")
     args = ap.parse_args()
 
-    CHRON.mkdir(parents=True, exist_ok=True)
+    out, chron = OUT, CHRON
+    if args.snapshot:
+        out = OUT / "snapshots" / args.snapshot
+        chron = out / "chroniques"
+    chron.mkdir(parents=True, exist_ok=True)
     session = make_session()
 
-    stations = get_stations(session, args.dept)
+    stations = get_stations(session, args.dept, out)
     print(f"{len(stations)} stations in département {args.dept}")
 
     done = skipped = empty = 0
     failed = []
     for i, st in enumerate(stations.itertuples(), 1):
-        path = CHRON / f"{safe_name(st.code_bss)}.parquet"
+        path = chron / f"{safe_name(st.code_bss)}.parquet"
         if path.exists() and path.stat().st_size > 0 and not args.refresh:
             skipped += 1
             continue

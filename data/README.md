@@ -493,3 +493,27 @@ Notes:
 - What is sent is public already (the repository is public). The service failed ("unexpected
   error") on the owl:imports of lulcw.ttl (w3id.org IRIs not yet redirected), hence their removal.
 - Report and verdicts: `docs/oops_report.md`, `configs/oops_verdicts.csv`.
+
+## Dataset v5 pulls (branch `master_2026_fixes`, `docs/v5_plan.md` R1; from 2026-11-25)
+
+### BRGM borehole database (BSS) points (R1.3, 2026-11-25)
+
+| Date | Source | Endpoint / URL | Parameters | Output | Rows | Size |
+|---|---|---|---|---|---|---|
+| 2026-11-25 | BRGM, Banque du Sous-Sol, open WFS of the geology geoservice (Etalab Open Licence 2.0); layers found with GetCapabilities, fields with DescribeFeatureType | `https://geoservices.brgm.fr/geologie` (MapServer WFS 2.0.0) | `python -m src.ingest.brgm_bss`; `TYPENAMES=ms:BSS_EAU_POINT` and `ms:BSS_TOTAL_SANS_LABEL`; BBOX = `DEPT_BBOX` (lon 1.65–3.25, lat 42.30–43.00); GeoJSON; pages of 1000 by STARTINDEX, 1 s apart | `raw/brgm_bss/2026-11-25/bss_eau_point.parquet`, `bss_total_sans_label.parquet`, `release.json` | 6,848 water points (6,049 in dept 66); 12,611 boreholes (11,481 in dept 66) | 0.8 MB + 2.7 MB |
+
+- Water points (dept 66): investigation depth `prof_invest` filled for 72.6 %, BD LISA entities
+  `liste_bdlisa` for 44.2 % (23.8 % read "NV3 absent, nom de l'entité NV2 : …"), aquifer condition
+  `mode_gisement` mostly "Inconnu" (4,493), "Libre" 549, "Captif" 136. Boreholes: depth reached
+  `prof_atteinte` filled for 76.3 %.
+- Join to the BNPE groundwater points of dataset v4: 2,137 points, 240 with a BSS code, 217 of them
+  found among the water points. The others can only be matched by location: a heuristic whose
+  precision must be measured on the boreholes with a recorded unit (12.3) before any use.
+- How BRGM fills `liste_bdlisa` (the point's recorded aquifer or its location) is not documented on
+  the service: measured before use, never assumed.
+
+### BNPE 2025 availability check (R1.1b, 2026-11-25)
+
+- `https://hubeau.eaufrance.fr/api/v1/prelevements/chroniques?code_departement=66&annee=<y>&size=1`:
+  count 1,823 (2023), 1,846 (2024), **0 (2025)**. BNPE 2025 is not published yet: 2025 pumping
+  stays imputed in v5 (recheck before the v5 freeze).

@@ -18,19 +18,24 @@ date.
 
 ## ▶ START HERE (state at the last update: 2026-11-25 ≈ 21:45 local time)
 
-**Running at the last update (≈ 22:25):**
-- `sol` on T68 (dataset v5 audit for Gate R1: hashes before/after a rebuild, v4 vs v5 comparison →
-  `docs/dataset_v5_audit.md`); its watcher was in the ended session, so check `results/_agents/reports/T68.md`.
-- `neon` idle (T65 done and committed). No Colab, Kaggle, Camber or laptop job.
+**Running at the last update (≈ 22:35):**
+- `sol` on **T69** (v5 `end_at_forcing`, rebuild v5, its graph, exports, controls, all graph suites; brief
+  `.agents/briefs/T69_v5_end_at_forcing.md`). Codex was at 52 % of its 5-hour window before T69 (resets 02:07):
+  no new Sol task until it resets.
+- `neon` on **T70** (first assembly of `src/models/hybrid_gnn.py` + tests, no fitting; brief
+  `.agents/briefs/T70_hybrid_gnn.md`). Gemini was at 53 % before T70: no new Neon task until its window resets.
+- Both reports land in `results/_agents/reports/T69.md` and `T70.md`: **review both first** next session (T70
+  against `docs/analysis_plan_v3.md` §3 point by point; T69's rebuilt release and every suite). Note: T69 and T70
+  both touch v5 data only through reading (T70) vs rebuilding (T69): if T70's tests failed while T69 rebuilt the
+  dataset, rerun them.
+- No Colab, Kaggle, Camber or laptop job of Claude's own.
 
 **Done today (details in the session log below):** R0 closed (arms report, reading, local tag
 `phase4-v1-frozen`); R1 data pulled and dataset v5 built; T59–T63 reviewed and committed; analysis-plan-v3 drafted.
 
 **Next, in order:**
-1. Open the two workers (memory `codex-worker-orchestration`). Review T68 (sol) if its report exists; commit.
-2. **T69** (brief ready: `.agents/briefs/T69_v5_end_at_forcing.md`): v5 heads end one week after the weather
-   (2026-11-29 vs 2026-11-22) → `end_at_forcing` for v5, rebuild v5, its graph, exports, controls, all graph suites
-   (incl. `tests.test_controls`, whose step 8 fails on that week). Give it to a worker; review; commit.
+1. Open the two workers (memory `codex-worker-orchestration`); review T69 and T70 (see above); commit.
+2. (T68 done: Gate R1 reproducibility passes; T69 running: v5's last week without weather.)
 3. **R3, Hybrid-GNN v2** (`docs/analysis_plan_v3.md` §3; pieces done: `bucket.py`, `kernels.py`, `hetero_graph.py`):
    Claude writes `src/models/hybrid_gnn.py` (assembly, centring held fixed, sd gains, three recharge channels +
    basin canals from the v5 export, pumping reliability mask, two-stage encoder, split regularisation, cosine LR),
@@ -109,3 +114,6 @@ date.
   no weather (T69 fixes it).
 - T67 (sol) committed: RQ2 sign-violation counts reproduced (`docs/rq2_signs_v4.md`).
 - Claude stopped briefing new work at ≈ 76 % of its 5-hour window to keep room for reviews and this file.
+- T68 (sol) committed: Gate R1 reproducibility (13/13 files identical after a rebuild); the producer revised 2,273
+  historical weekly heads (> 1 mm). Sol → T69, Neon → T70 (`hybrid_gnn.py` first assembly). Claude ended its active
+  work at ≈ 78 % of its 5-hour window.

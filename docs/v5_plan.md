@@ -49,9 +49,9 @@ Owners: **C** = Claude (lead), **N** = neon (Gemini 4 Neon high), **S** = sol (G
 ### R0 — close the v4 milestone (laptop)
 | Step | Task | Owner | Status |
 |---|---|---|---|
-| 0.1 | `arms_report` → `docs/results_arms_v4.md` | C | 🔄 2026-11-25 |
-| 0.2 | T58 Phase 4 figures; RQ1/RQ2 reading in `docs/notes/step14_phase4.md` | S (T58), C (reading) | ⬜ |
-| 0.3 | commit, tag `phase4-v1-frozen` (push: ask A) | C | ⬜ |
+| 0.1 | `arms_report` → `docs/results_arms_v4.md` | C | ✅ 2026-11-25: every family complete, 0 pending |
+| 0.2 | T58 Phase 4 figures; RQ1/RQ2 reading in `docs/notes/step14_phase4.md` | S (T58), C (reading) | 🔄 reading ✅ 2026-11-25 (facts: no effect of interest; structure: undecided; hard signs: no accuracy cost; D beats random graphs, ties distance rewires); T58 figures after T64 |
+| 0.3 | commit, tag `phase4-v1-frozen` (push: ask A) | C | ✅ local tag at 80eabfe (2026-11-25); not pushed |
 
 ### R1 — dataset v5 (laptop + Earth Engine)
 | Step | Task | Owner | Status |
@@ -76,7 +76,7 @@ Owners: **C** = Claude (lead), **N** = neon (Gemini 4 Neon high), **S** = sol (G
 | Step | Task | Owner | Status |
 |---|---|---|---|
 | 3.1 | `analysis-plan-v3` (ladder, architecture, pumping-reliability rule, black box, §2 above); tag | C | ⬜ |
-| 3.2 | `src/models/hybrid_gnn.py`: centred contributions, gains in sd units, monotone soil bucket (FlexModel), fast + slow kernels (amax 104 wk), two-channel recharge, basin canals, PyG HeteroConv/GATv2 parameter encoder (stage A δ = 0, stage B regularised δ), 2005–2011 pumping-gradient mask, split regularisation, cosine LR, bounded monotone residual row; black box `Hetero-STGNN` on the same HeteroData | C (design, core), N (pieces) | ⬜ |
+| 3.2 | `src/models/hybrid_gnn.py`: centred contributions, gains in sd units, monotone soil bucket (FlexModel), fast + slow kernels (amax 104 wk), two-channel recharge, basin canals, PyG HeteroConv/GATv2 parameter encoder (stage A δ = 0, stage B regularised δ), 2005–2011 pumping-gradient mask, split regularisation, cosine LR, bounded monotone residual row; black box `Hetero-STGNN` on the same HeteroData | C (design, core), N (pieces) | 🔄 design in `docs/analysis_plan_v3.md` §3 (draft); pieces: ✅ `bucket.py` (T63), 🔄 `kernels.py` (T64, sol), 🔄 `hetero_graph.py` (T66, neon) |
 | 3.3 | Twin v2 (nonlinear recharge, leakage, basin canals, imputed pumping); Gate R3 (finite-difference 0 % sign violations, replay < 1e-5 m, centred LWO, twin) | C, N | ⬜ |
 
 ### R4 — v5 real-data runs (Colab v5e1 + Kaggle CPU in parallel; Colab L4 / Camber L4 for GPU)

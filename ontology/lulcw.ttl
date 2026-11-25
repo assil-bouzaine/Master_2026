@@ -19,9 +19,9 @@
 # M2 = square metre, M3 = cubic metre) and are stated in each definition.
 
 <https://w3id.org/lulcw> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/0.8.0> ;
-    owl:versionInfo "0.8.0" ;
-    owl:priorVersion <https://w3id.org/lulcw/0.7.1> ;
+    owl:versionIRI <https://w3id.org/lulcw/0.9.0> ;
+    owl:versionInfo "0.9.0" ;
+    owl:priorVersion <https://w3id.org/lulcw/0.8.0> ;
     dcterms:title "LULC-Water bridging module"@en , "Module de liaison LULC-Water"@fr ;
     dcterms:description "Bridging module of the LULC-Water network of ontologies (SAVE Water, PRIMA): wells, abstraction facilities, hydrogeological units and the qualified, evidence-carrying assertions (unit attributions, stratigraphic relations, well links, influences, annual abstraction accounting) that structure, constrain and explain a groundwater-level model of the Roussillon multilayer aquifer."@en ,
         "Module de liaison du réseau d'ontologies LULC-Water (SAVE Water, PRIMA) : piézomètres, ouvrages de prélèvement, entités hydrogéologiques et assertions qualifiées, porteuses de preuves (attributions à une entité, relations stratigraphiques, liens entre piézomètres, influences, bilans annuels des prélèvements), qui structurent, contraignent et expliquent un modèle des niveaux piézométriques de l'aquifère multicouche du Roussillon."@fr ;
@@ -40,7 +40,8 @@
         "0.6.1 (2026-11-06, CQ5, CQ6 and CQ8 rules): the driver group RiverDischargeGroup (river stage proxies) for the river influences; measuredAt, the site of the measurement behind an exchange statement; SurfaceWaterIntake is a geo:Feature, no longer an AbstractionFacility, whose instances are the groundwater facilities that carry unit attributions (CQ2); SummerDemand includes the canal diversion volumes."@en ,
         "0.7.0 (2026-11-06, Codex review of that day): an exchange statement is about a unit itself (aboutUnit) or about an aggregate of units (aggregateMemberUnit, aboutGroundwaterBody), so membership of a groundwater body never stands for evidence about each member; localizedStatement, the separate inference that localises an aggregate statement to the unit on whose outcrop the river or canal runs; evidenceMethod (differential gauging, geochemical tracing, water balance, synthesis), separate from hedging; overlapsSection, so that only statements about the same stretch can contradict each other; ConstraintDecision, the decision of an export policy about the signs of one mechanism (proxy review and approval, with their basis), separate from the evidence layer of constraintEligibility; Piezometer covers the few monitoring points that are springs (the GWML2 alignment 0.2.0 makes it a close match of GW_Well, no longer a subclass)."@en ,
         "0.7.1 (2026-11-16, OOPS! scan, docs/oops_report.md): the ranges the definitions already stated, as axioms: xsd:date for coverageStart, coverageEnd, releaseDate and retrievalDate, Piezometer for targetEntity (every value in the graph conforms)."@en ,
-        "0.8.0 (2026-11-21, CQ14, Gate 3 point 15): cover, confinement and pressure state at a monitoring point, kept apart: HydrogeologicalSetting (the place of the monitored unit in the BD LISA stack under the point: outcropping, covered or of unknown cover), PressureStateSummary (a SOSA observation: the days of a training window with the water above the station's measurement reference) and ConfinementAssessment (confined only on that pressure evidence, probable; otherwise unknown; never from mapped cover), with their schemes and properties."@en ;
+        "0.8.0 (2026-11-21, CQ14, Gate 3 point 15): cover, confinement and pressure state at a monitoring point, kept apart: HydrogeologicalSetting (the place of the monitored unit in the BD LISA stack under the point: outcropping, covered or of unknown cover), PressureStateSummary (a SOSA observation: the days of a training window with the water above the station's measurement reference) and ConfinementAssessment (confined only on that pressure evidence, probable; otherwise unknown; never from mapped cover), with their schemes and properties."@en ,
+        "0.9.0 (2026-11-25, v5 plan R2.2): overlying-leakage recharge influences: viaUnit"@en ;
     owl:imports <https://w3id.org/lulcw/imports/sosa> , <https://w3id.org/lulcw/imports/prov> ,
         <https://w3id.org/lulcw/imports/time> , <https://w3id.org/lulcw/imports/skos> ,
         <https://w3id.org/lulcw/imports/geo> .
@@ -752,6 +753,11 @@ lulcw:omitsPathway a owl:ObjectProperty ;
     rdfs:domain lulcw:Influence ; rdfs:range lulcw:Mechanism ;
     rdfs:label "omits pathway"@en , "omet la voie"@fr ;
     skos:definition "A mechanism that can also change the head at the target but that the influence does not represent: named so that an explanation never presents the influence as the complete pathway. It does not assert that the mechanism is active at the target."@en .
+
+lulcw:viaUnit a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:Influence ; rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "via unit"@en , "via l'entité"@fr ;
+    skos:definition "The overlying hydrogeological unit in direct contact above the target well's monitored unit through whose outcrop an overlying-leakage recharge influence passes."@en .
 
 lulcw:allocatesRecord a owl:ObjectProperty , owl:FunctionalProperty ;
     rdfs:domain lulcw:VolumeAllocation ; rdfs:range lulcw:AnnualAbstractionRecord ;

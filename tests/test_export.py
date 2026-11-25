@@ -47,12 +47,12 @@ from src.kg.inventory import THRESHOLDS, dataset_wells, edges_of, summarise, tag
 
 POLICY = "main"
 MIN_CELL_SHARE = 0.001      # Gate 3 point 12, applied independently of src.kg.export
-RECHARGE_RELS = ("recharge", "recharge_unitwide")
+RECHARGE_RELS = ("recharge", "recharge_unitwide", "recharge_leakage")
 D_IRI = "https://w3id.org/lulcw/data/"
 PRE = ("PREFIX lulcw: <https://w3id.org/lulcw#> PREFIX prov: <http://www.w3.org/ns/prov#> "
        "BASE <https://w3id.org/lulcw/data/> ")
-MECH = {"PumpingDrawdown": "pumping", "DiffuseRecharge": "recharge", "RiverExchange": "river",
-        "CanalReturnFlow": "canal"}
+MECH = {"PumpingDrawdown": "pumping", "DiffuseRecharge": "recharge", "VerticalLeakage": "recharge_leakage",
+        "RiverExchange": "river", "CanalReturnFlow": "canal"}
 
 
 def load():
@@ -242,6 +242,66 @@ def test_pandas(store, ed, meta):
             "edges": dropped_edges, "wells": sorted(dropped_wells)}, (rel, "pandas oracle")
         dropped_counts[rel] = (dropped_edges, len(dropped_wells))
         n_rch += len(e)
+    # overlying-leakage recharge: stack directly above each well's attributed unit (cross-checking
+    # data/interim/bdlisa_station_stacks.csv for the 33 core wells, and reading BD LISA for all 65)
+    import geopandas as gpd
+    import pyogrio
+    from src.analysis.bdlisa_profile import GPKG
+    from src.config import CRS_L93, CRS_WGS84, INTERIM
+    pts = gpd.GeoSeries(gpd.points_from_xy(wells["x"], wells["y"]), crs=CRS_WGS84).to_crs(CRS_L93)
+    poly = pyogrio.read_dataframe(GPKG, layer="POLYG_ELEMENTAIRES", columns=["codepoly"]).to_crs(CRS_L93)
+    j = gpd.sjoin(gpd.GeoDataFrame(geometry=pts), poly, how="left", predicate="within")
+    w_cp = j[~j.index.duplicated()]["codepoly"].reindex(wells.index)
+    pile = pyogrio.read_dataframe(GPKG, layer="TABLE_PILE_ENTITES_NIV3", read_geometry=False)
+    pile = pile.assign(cp=pile["CodePoly"].astype(int)).sort_values(["cp", "OrdRelatif"])
+    stack_of = pile.groupby("cp")["CodeEH"].agg(list).to_dict()
+    stacks_csv = pd.read_csv(INTERIM / "bdlisa_station_stacks.csv").set_index("code_bss")
+    upper_of = {}
+    for idx_row, wrow in wells.iterrows():
+        b, u = wrow["code_bss"], wrow["code_bdlisa"]
+        cp = w_cp.loc[idx_row]
+        st = stack_of.get(int(cp), []) if pd.notna(cp) else []
+        if b in stacks_csv.index:
+            csv_st = stacks_csv.loc[b, "stack_str"].split(" > ")
+            assert st == csv_st, (b, st, csv_st)
+        if isinstance(u, str) and u in st:
+            pos = st.index(u)
+            if pos > 0:
+                upper_of[b] = st[pos - 1]
+    rel = "recharge_leakage"
+    e = ed[ed["relation"] == rel]
+    assert (e["weight"] >= MIN_CELL_SHARE).all(), (rel, float(e["weight"].min()))
+    got = {b: dict(zip(g["src"], g["weight"])) for b, g in e.groupby("dst")}
+    want_full, want_kept, sliver = {}, {}, set()
+    dropped_edges, dropped_wells = 0, set()
+    for b, v in upper_of.items():
+        if v not in described:
+            continue
+        o, c, by_cell = oracle.get((b, v), (0.0, 0.0, {}))
+        if o >= 50.0 and c > 0:
+            full = {cell: a_ / c for cell, a_ in by_cell.items() if a_ >= 1.0}
+            kept = {cell: w for cell, w in full.items() if w >= MIN_CELL_SHARE}
+            tiny = {cell: w for cell, w in full.items() if w < MIN_CELL_SHARE}
+            want_full[b] = full
+            want_kept[b] = kept
+            if full:
+                assert kept, f"{rel}: {b} lost every leakage edge after dropping < {MIN_CELL_SHARE}"
+            if tiny:
+                dropped_edges += len(tiny)
+                dropped_wells.add(b)
+        elif o > 0:
+            sliver.add(b)
+    assert set(got) - sliver == set(want_full), (rel, sorted((set(got) - sliver) ^ set(want_full))[:6])
+    assert set(got) - sliver == set(want_kept), (rel, sorted((set(got) - sliver) ^ set(want_kept))[:6])
+    for b, cells in want_kept.items():
+        assert set(got[b]) == set(cells), (rel, b, sorted(set(got[b]) ^ set(cells))[:6])
+        assert all(abs(got[b][c] - w) <= 1e-5 for c, w in cells.items()), (rel, b)
+        assert abs(sum(got[b].values()) - sum(cells.values())) <= 1e-5 * len(cells) + 1e-9, (rel, b)
+    assert (e["sign"] == "PositiveResponse").all() and e["eligible"].all() and e["constrained"].all()
+    assert _dropped(meta, rel) == {
+        "edges": dropped_edges, "wells": sorted(dropped_wells)}, (rel, "pandas oracle")
+    dropped_counts[rel] = (dropped_edges, len(dropped_wells))
+    n_rch += len(e)
     # the unattributed input
     t_wells, t_fac, _, _ = E.tables()
     d = E._dist(t_wells, t_fac)
@@ -254,10 +314,11 @@ def test_pandas(store, ed, meta):
         assert not (un & pu) and un == near - pu, b
         n_un += len(un)
     print(f"  4. arm D = pandas rules on the source tables: {n_pump} exact-unit pumping edges (attribution table, "
-          f"BNPE points, distances within 0.5 m), {n_rch} recharge edges with their weights >= {MIN_CELL_SHARE:g} "
+          f"BNPE points, distances within 0.5 m), {n_rch} recharge edges across 3 channels with their weights >= {MIN_CELL_SHARE:g} "
           f"(dropped: {dropped_counts['recharge'][0]} local across {dropped_counts['recharge'][1]} wells, "
-          f"{dropped_counts['recharge_unitwide'][0]} unit-wide across {dropped_counts['recharge_unitwide'][1]} "
-          f"wells; every well keeps >= 1 edge), {n_un} unattributed facility-well pairs = the other groundwater "
+          f"{dropped_counts['recharge_unitwide'][0]} unit-wide across {dropped_counts['recharge_unitwide'][1]} wells, "
+          f"{dropped_counts['recharge_leakage'][0]} leakage across {dropped_counts['recharge_leakage'][1]} wells; "
+          f"every well keeps >= 1 edge), {n_un} unattributed facility-well pairs = the other groundwater "
           f"facilities within 5 km")
 
 

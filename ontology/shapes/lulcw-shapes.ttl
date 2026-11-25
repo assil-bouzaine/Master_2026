@@ -371,6 +371,7 @@ lulcwsh:InfluenceShape a sh:NodeShape ;
         [ sh:path lulcw:driverGroup ; sh:minCount 1 ; sh:class lulcw:DriverGroup ] ,
         [ sh:path lulcw:proxyFor ; sh:maxCount 1 ] ,
         [ sh:path lulcw:withinExtent ; sh:maxCount 1 ; sh:class geo:Feature ] ,
+        [ sh:path lulcw:viaUnit ; sh:maxCount 1 ; sh:class lulcw:HydrogeologicalUnit ] ,
         [ sh:path lulcw:omitsPathway ; sh:class lulcw:Mechanism ] ,
         [ sh:path lulcw:derivationRule ; sh:minCount 1 ] ,
         [ sh:path prov:wasDerivedFrom ; sh:minCount 1 ;
@@ -383,13 +384,13 @@ lulcwsh:InfluenceShape a sh:NodeShape ;
 SELECT $this WHERE {
     $this lulcw:constraintEligibility lulcw:EligibleConstraint ; lulcw:responseSign lulcw:UnknownResponse .
 }""" ] , [
-        sh:message "an eligible pumping-drawdown or diffuse-recharge influence rests on exact-unit attributions only" ;
+        sh:message "an eligible pumping-drawdown, diffuse-recharge or vertical-leakage influence rests on exact-unit attributions only" ;
         sh:prefixes <https://w3id.org/lulcw/shapes> ;
         sh:select """
 SELECT $this ?value WHERE {
     $this lulcw:constraintEligibility lulcw:EligibleConstraint ; lulcw:mechanism ?m ;
           prov:wasDerivedFrom ?value .
-    FILTER (?m = lulcw:PumpingDrawdown || ?m = lulcw:DiffuseRecharge)
+    FILTER (?m = lulcw:PumpingDrawdown || ?m = lulcw:DiffuseRecharge || ?m = lulcw:VerticalLeakage)
     ?value a lulcw:UnitAttribution .
     FILTER NOT EXISTS { ?value lulcw:resolution lulcw:ExactUnitResolution }
 }""" ] , [
@@ -413,7 +414,8 @@ SELECT $this WHERE {
         sh:prefixes <https://w3id.org/lulcw/shapes> ;
         sh:select """
 SELECT $this WHERE {
-    $this lulcw:mechanism lulcw:DiffuseRecharge .
+    $this lulcw:mechanism ?m .
+    FILTER (?m = lulcw:DiffuseRecharge || ?m = lulcw:VerticalLeakage)
     FILTER (NOT EXISTS { $this lulcw:proxyFor ?q } || NOT EXISTS { $this lulcw:withinExtent ?s }
             || NOT EXISTS { $this lulcw:omitsPathway ?p })
 }""" ] , [
@@ -421,7 +423,8 @@ SELECT $this WHERE {
         sh:prefixes <https://w3id.org/lulcw/shapes> ;
         sh:select """
 SELECT $this ?value WHERE {
-    $this lulcw:mechanism lulcw:DiffuseRecharge ; lulcw:driverVariable ?value .
+    $this lulcw:mechanism ?m ; lulcw:driverVariable ?value .
+    FILTER (?m = lulcw:DiffuseRecharge || ?m = lulcw:VerticalLeakage)
     FILTER (?value != lulcw:EffectiveRainfall && ?value != lulcw:SoilDrainage)
 }""" ] , [
         sh:message "the evidence path does not join the weather cell to the target well (the well's unit attribution, that unit's outcrop coverage in the influence's extent, and the cell's weight in it)" ;
@@ -445,6 +448,38 @@ SELECT $this ?value WHERE {
     FILTER (NOT EXISTS { ?value lulcw:zoneOf ?w ; a lulcw:OutcropSearchZone . }
             && NOT EXISTS { $this lulcw:derivationRule ?r . ?r lulcw:appliesInExtent ?value . })
 }""" ] , [
+        sh:message "a diffuse-recharge influence must not carry viaUnit" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:mechanism lulcw:DiffuseRecharge ; lulcw:viaUnit ?value .
+}""" ] , [
+        sh:message "a vertical-leakage influence needs exactly one viaUnit, distinct from its attributed unit" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:mechanism lulcw:VerticalLeakage .
+    FILTER (NOT EXISTS { $this lulcw:viaUnit ?v . }
+            || EXISTS { $this lulcw:viaUnit ?v ; prov:wasDerivedFrom ?aw .
+                        ?aw lulcw:role lulcw:MonitoringRole ; lulcw:candidateUnit ?v . })
+}""" ] , [
+        sh:message "the evidence path of a vertical-leakage influence does not join the weather cell to the target well through the unit in direct contact above the well's unit at the well" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:mechanism lulcw:VerticalLeakage ; lulcw:targetEntity ?w ; lulcw:driverEntity ?c ;
+          lulcw:withinExtent ?s ; lulcw:viaUnit ?v .
+    FILTER NOT EXISTS {
+        $this prov:wasDerivedFrom ?aw , ?rel , ?cov , ?cw .
+        ?aw lulcw:attributedEntity ?w ; lulcw:role lulcw:MonitoringRole ; lulcw:candidateUnit ?u .
+        ?w lulcw:locatedInPolygon ?p .
+        ?rel lulcw:witnessedBy ?p ; lulcw:lowerUnit ?u ; lulcw:upperUnit ?v ;
+             lulcw:relationKind lulcw:DirectContact .
+        ?cov lulcw:coverageUnit ?v ; lulcw:withinExtent ?s ; lulcw:hasCellWeight ?cw .
+        ?cw lulcw:weightCell ?c .
+        ?s lulcw:zoneOf ?w ; a lulcw:OutcropSearchZone .
+    }
+}""" ] , [
         sh:message "the distance exceeds the search radius of the rule that derived the influence" ;
         sh:prefixes <https://w3id.org/lulcw/shapes> ;
         sh:select """
@@ -463,15 +498,16 @@ SELECT $this ?value WHERE {
 lulcwsh:RechargeInfluenceKeyShape a sh:NodeShape ;
     sh:targetNode <https://w3id.org/lulcw/data/rule/recharge-influence> ;
     sh:sparql [
-        sh:message "two recharge proxies share a cell, a well attribution and an extent (one water surplus counted twice)" ;
+        sh:message "two recharge proxies share a mechanism, a cell, a well attribution and an extent (one water surplus counted twice)" ;
         sh:prefixes <https://w3id.org/lulcw/shapes> ;
         sh:select """
 SELECT $this (SAMPLE(?i) AS ?value) WHERE {
-    ?i lulcw:derivationRule $this ; lulcw:driverEntity ?c ; lulcw:withinExtent ?s ; prov:wasDerivedFrom ?aw .
+    ?i lulcw:derivationRule $this ; lulcw:mechanism ?m ; lulcw:driverEntity ?c ;
+       lulcw:withinExtent ?s ; prov:wasDerivedFrom ?aw .
     ?aw lulcw:role ?role .
     FILTER (?role = lulcw:MonitoringRole)
 }
-GROUP BY $this ?c ?s ?aw
+GROUP BY $this ?m ?c ?s ?aw
 HAVING (COUNT(DISTINCT ?i) > 1)""" ] , [
         sh:message "a cell weight of the outcrop of a well's unit in the well's search zone has no recharge-proxy influence" ;
         sh:prefixes <https://w3id.org/lulcw/shapes> ;
@@ -481,7 +517,8 @@ SELECT $this ?value WHERE {
     ?aw lulcw:attributedEntity ?w ; lulcw:role ?role ; lulcw:candidateUnit ?u .
     FILTER (?role = lulcw:MonitoringRole)
     ?cov lulcw:withinExtent ?s ; lulcw:coverageUnit ?u ; lulcw:hasCellWeight ?value .
-    FILTER NOT EXISTS { ?i prov:wasDerivedFrom ?value , ?aw ; lulcw:withinExtent ?s . }
+    FILTER NOT EXISTS { ?i prov:wasDerivedFrom ?value , ?aw ; lulcw:withinExtent ?s ;
+                           lulcw:mechanism lulcw:DiffuseRecharge . }
 }""" ] , [
         sh:message "a cell weight of the outcrop of a well's unit in a fixed extent of the rule has no recharge-proxy influence" ;
         sh:prefixes <https://w3id.org/lulcw/shapes> ;
@@ -493,7 +530,22 @@ SELECT $this ?value WHERE {
     ?w lulcw:bssCode ?b .
     ?aw lulcw:role ?role .
     FILTER (?role = lulcw:MonitoringRole)
-    FILTER NOT EXISTS { ?i prov:wasDerivedFrom ?value , ?aw ; lulcw:withinExtent ?s . }
+    FILTER NOT EXISTS { ?i prov:wasDerivedFrom ?value , ?aw ; lulcw:withinExtent ?s ;
+                           lulcw:mechanism lulcw:DiffuseRecharge . }
+}""" ] , [
+        sh:message "a cell weight of the outcrop of the unit directly above a well's unit in the well's search zone has no vertical-leakage recharge influence" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    ?s lulcw:zoneOf ?w .
+    ?aw lulcw:attributedEntity ?w ; lulcw:role ?role ; lulcw:candidateUnit ?u .
+    FILTER (?role = lulcw:MonitoringRole)
+    ?w lulcw:locatedInPolygon ?p .
+    ?rel lulcw:witnessedBy ?p ; lulcw:lowerUnit ?u ; lulcw:upperUnit ?v ; lulcw:relationKind ?kind .
+    FILTER (?kind = lulcw:DirectContact)
+    ?cov lulcw:withinExtent ?s ; lulcw:coverageUnit ?v ; lulcw:hasCellWeight ?value .
+    FILTER NOT EXISTS { ?i prov:wasDerivedFrom ?value , ?aw ; lulcw:withinExtent ?s ;
+                           lulcw:mechanism lulcw:VerticalLeakage . }
 }""" ] .
 
 # A path is selected by a policy only if each of its segments is (CQ8: an unaccepted segment

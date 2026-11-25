@@ -65,11 +65,25 @@ def test_fixture():
             if nb in links.index:
                 assert k in links.loc[nb, "sources"].split(), (k, nb)
     for k in keys:
-        for rel in ("pumping", "recharge", "river", "canal"):
+        for rel in ("pumping", "recharge", "recharge_leakage", "river", "canal"):
             row = df.loc[(k, rel)]
             assert row["reach_k2_none"] >= row["n_sources"] and row["reach_k2_t10"] <= row["reach_k2_none"], (k, rel)
-    print("  2. fixture: pumping edges per facility under the policy (F4 not selected), recharge weights, river and "
-          "canal edges eligible but not constrained (pending), an off-map search unknown; links symmetric, reach monotone")
+    # leakage fixture: WL1 (2 cells via LA), WL2 (top of stack: 0), WL3 (2 cells via LB), WL4 (no polygon: 0)
+    from src.kg.apply_rules import RULES, rule_records, run_rules
+    from tests.test_cq import to_store
+    from tests.test_kg_rules import build_leakage_fixture
+    rules_g = rdflib.Graph().parse(RULES)
+    fx_l = build_leakage_fixture()
+    rec_l = rule_records(rules_g, "test", fx_l.g)
+    sl = to_store(fx_l.g + rec_l + run_rules(fx_l.g, rules_g, rec_l))
+    lkeys = ["WL1", "WL2", "WL3", "WL4"]
+    lwells = pd.DataFrame({"code_bss": lkeys, "iri": [D + f"piezometer/{k}" for k in lkeys], "core": True, "unit": None})
+    ldf = inv.inventory(sl, lwells, rdflib.URIRef(D + "policy/main")).set_index(["code_bss", "relation"])
+    assert tuple(ldf.loc[("WL1", "recharge_leakage"), ["n_sources", "weight_sum", "eligible", "constrained"]]) == (2, 1.0, 2, 0)
+    assert tuple(ldf.loc[("WL3", "recharge_leakage"), ["n_sources", "weight_sum", "eligible", "constrained"]]) == (2, 1.0, 2, 0)
+    assert ldf.loc[("WL2", "recharge_leakage"), "n_sources"] == 0 and ldf.loc[("WL4", "recharge_leakage"), "n_sources"] == 0
+    print("  2. fixture: pumping edges per facility under the policy (F4 not selected), recharge and leakage weights, "
+          "river and canal edges eligible but not constrained (pending), an off-map search unknown; links symmetric, reach monotone")
 
 
 def test_data():
@@ -94,6 +108,15 @@ def test_data():
     rech = df[df["relation"] == "recharge"]
     assert int(rech["constrained"].sum()) == int(rech["eligible"].sum()) and (
         rech.loc[rech["n_sources"] > 0, "weight_sum"] > 0.999).all()
+    leak = df[df["relation"] == "recharge_leakage"]
+    leak_wells_kg = int(q(f"""SELECT (COUNT(DISTINCT ?w) AS ?n) WHERE {{ ?i lulcw:mechanism lulcw:VerticalLeakage ;
+        lulcw:targetEntity ?w ; lulcw:selectedUnder {main} }}""")[0][0])
+    leak_edges_kg = int(q(f"""SELECT (COUNT(DISTINCT ?i) AS ?n) WHERE {{ ?i lulcw:mechanism lulcw:VerticalLeakage ;
+        lulcw:selectedUnder {main} }}""")[0][0])
+    assert int((leak["n_sources"] > 0).sum()) == leak_wells_kg and int(leak["n_sources"].sum()) == leak_edges_kg, (
+        leak_wells_kg, leak_edges_kg)
+    assert int(leak["eligible"].sum()) == leak_edges_kg and int(leak["constrained"].sum()) == leak_edges_kg
+    assert (leak.loc[leak["n_sources"] > 0, "weight_sum"] > 0.999).all()
     n_links = int(q(f"SELECT (COUNT(DISTINCT ?l) AS ?n) WHERE {{ ?l a lulcw:WellLink ; lulcw:selectedUnder {main} }}")[0][0])
     assert int(df.loc[df["relation"] == "well_link", "n_sources"].sum()) == 2 * n_links, n_links
     pairs = q(f"""SELECT (COUNT(*) AS ?n) WHERE {{ SELECT DISTINCT ?f ?w WHERE {{ ?i lulcw:mechanism lulcw:PumpingDrawdown ;

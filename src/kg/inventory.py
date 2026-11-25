@@ -11,9 +11,11 @@ competency-question queries (src.kg.cq), so that the inventory and the CQ answer
             paths of one facility (e.g. two candidate units) make one edge: its sign is eligible,
             or constrained, only if every selected path is (the path-aggregation rule proposed in
             analysis plan §14 item 17); the nearest distance
-  recharge  the weather cells over the outcrop of the well's unit in its 5 km zone (main), and in the
-            unit-wide extent (sensitivity, relation "recharge_unitwide"); the sum of the cell
-            weights per path (1 where the zone's outcrop lies inside the cells)
+  recharge  the weather cells over the outcrop of the well's unit in its 5 km zone (main), in the
+            unit-wide extent (sensitivity, relation "recharge_unitwide"), and over the outcrop of
+            the unit directly above the well's unit at the well (overlying leakage, relation
+            "recharge_leakage"); the sum of the cell weights per path (1 where the zone's outcrop
+            lies inside the cells)
   river     the pool gauges with a river influence, their association types, the eligible and the
             constrained edges; without one, CQ8's answer and reason (no_pool_gauge, none_found,
             unknown)
@@ -44,8 +46,9 @@ from src.kg.cq import KG, ask, iris, kg_store, local, one
 
 D = "https://w3id.org/lulcw/data/"
 THRESHOLDS = (10.0, 20.0, 50.0, None)          # candidate |Δ depth| thresholds of the well links (m)
-RELATIONS = ("pumping", "recharge", "recharge_unitwide", "river", "canal", "well_link")
-MECHANISM = {"PumpingDrawdown": "pumping", "DiffuseRecharge": "recharge", "RiverExchange": "river",
+RELATIONS = ("pumping", "recharge", "recharge_unitwide", "recharge_leakage", "river", "canal", "well_link")
+MECHANISM = {"PumpingDrawdown": "pumping", "DiffuseRecharge": "recharge",
+             "VerticalLeakage": "recharge_leakage", "RiverExchange": "river",
              "CanalReturnFlow": "canal"}
 
 

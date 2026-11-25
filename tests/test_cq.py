@@ -82,8 +82,8 @@ from src.kg.apply_rules import RULES, SHAPES, check, ontology_network, rule_reco
 from src.kg.build_kg import BNPE_SNAPSHOT, PLAIN_MARGIN_DEG
 from src.kg import release
 from src.kg.cq import ask, iris, local, one
-from tests.test_kg_rules import (GEO, KG, L, PROV, RADIUS, SOSA, TIME, build_fixture, d, l93,
-                                 oracle_coverage, oracle_mapped_outcrop, oracle_relations, oracle_rivers,
+from tests.test_kg_rules import (GEO, KG, L, PROV, RADIUS, SOSA, TIME, build_fixture, build_leakage_fixture,
+                                 d, l93, oracle_coverage, oracle_mapped_outcrop, oracle_relations, oracle_rivers,
                                  store_of, violations)
 
 MAIN, CONF_ONLY = d("policy/main"), d("policy/confident-only")
@@ -398,11 +398,34 @@ def test_cq8_fixture(s):
     facts_only = to_store(cq_fixture()[0].g)
     assert one(facts_only, "cq08_status", W=w7)["recharge"] == "unknown"
     assert one(facts_only, "cq08_status", W=w8)["recharge"] == "none_found"
+    # overlying-leakage recharge pathway under CQ8 (fixture from test_kg_rules)
+    net = ontology_network()
+    rules_g, shapes_g = rdflib.Graph().parse(RULES), rdflib.Graph().parse(SHAPES)
+    fx_l = build_leakage_fixture()
+    rec_l = rule_records(rules_g, "test", fx_l.g)
+    g_l = fx_l.g + rec_l + run_rules(fx_l.g, rules_g, rec_l)
+    conforms_l, _, res_l = check(g_l, shapes_g, net)
+    assert conforms_l and violations(res_l) == 0, res_l
+    sl = to_store(g_l)
+    r_wl1 = {r["driverCode"]: r for r in ask(sl, "cq08_influences", W=d("piezometer/WL1"), policy=CONF_ONLY)}
+    assert {k: (round(r["cellWeight"], 6), local(r["mechanism"]), local(r["responseSign"]),
+                local(r["eligibility"]), r["viaCode"], r["selected"]) for k, r in r_wl1.items()} == {
+        "c1": (0.7, "VerticalLeakage", "PositiveResponse", "EligibleConstraint", "LA", True),
+        "c2": (0.3, "VerticalLeakage", "PositiveResponse", "EligibleConstraint", "LA", True)}, r_wl1
+    assert all(set(r["omittedPathways"].split()) == {"LateralInflow", "RiverExchange", "CanalReturnFlow"}
+               for r in r_wl1.values())
+    assert "VerticalLeakage" in one(sl, "cq08_status", W=d("piezometer/WL1"))["drivers"].split()
+    r_wl3 = {r["driverCode"]: r for r in ask(sl, "cq08_influences", W=d("piezometer/WL3"), policy=MAIN)}
+    assert {k: (round(r["cellWeight"], 6), r["viaCode"], r["selected"]) for k, r in r_wl3.items()} == {
+        "c1": (0.25, "LB", True), "c2": (0.75, "LB", True)}, r_wl3
+    assert all(not r["selected"] for r in ask(sl, "cq08_influences", W=d("piezometer/WL3"), policy=CONF_ONLY))
+    assert not any(local(r["mechanism"]) == "VerticalLeakage"
+                   for k in ("WL2", "WL4") for r in ask(sl, "cq08_influences", W=d(f"piezometer/{k}"), policy=MAIN))
     print("  7. CQ8 fixtures: a supported pumping path gives a conditional non-increasing sign, a "
-          "group-level path no sign; an unaccepted segment blocks the path; recharge proxies: one per cell "
-          "over the outcrop of the well's unit, non-decreasing, with the pathways they omit; none for a unit "
-          "without outcrop in the zone (a completed search), unknown without a search or a derivation; "
-          "partial: lateral inflow and vertical leakage are never derived")
+          "group-level path no sign; an unaccepted segment blocks the path; recharge proxies (diffuse "
+          "and overlying vertical leakage): one per cell over the outcrop of the well's unit or the "
+          "unit directly above it, non-decreasing, with the pathways they omit; none for a unit "
+          "without outcrop in the zone (a completed search), unknown without a search or a derivation")
 
 
 def test_cq4_fixture(s, u):
@@ -1004,13 +1027,14 @@ def test_data_recharge(store):
         "PREFIX lulcw: <https://w3id.org/lulcw#> PREFIX prov: <http://www.w3.org/ns/prov#> "
         "SELECT ?c WHERE { ?u lulcw:bdlisaCode ?c ; prov:wasDerivedFrom ?r }")}
     forcing = ox.NamedNode(str(d("extent/forcing-cells")))
-    status, n_local, n_wide, none_found = {}, 0, 0, []
+    status, n_local, n_wide, n_leak, leak_wells, none_found = {}, 0, 0, 0, 0, []
     for b, code in zip(wells["code_bss"], wells["code_bdlisa"]):
         st = one(store, "cq08_status", W=pz[b])
-        rech = [r for r in ask(store, "cq08_influences", W=pz[b], policy=MAIN)
-                if local(r["mechanism"]) == "DiffuseRecharge"]
+        all_inf = ask(store, "cq08_influences", W=pz[b], policy=MAIN)
+        rech = [r for r in all_inf if local(r["mechanism"]) == "DiffuseRecharge"]
+        leak = [r for r in all_inf if local(r["mechanism"]) == "VerticalLeakage"]
         if not isinstance(code, str):
-            assert (st["status"], st["recharge"], rech) == ("unknown", "unknown", []), (b, st)
+            assert (st["status"], st["recharge"], rech, leak) == ("unknown", "unknown", [], []), (b, st)
             status["no unit"] = status.get("no unit", 0) + 1
             continue
         for S, kind in ((zone[b], "local"), (forcing, "unit-wide")):
@@ -1020,6 +1044,21 @@ def test_data_recharge(store):
             assert all(r["selected"] for r in rech), b          # the 60 recorded units: confident or probable
             n_local += len(got) if kind == "local" else 0
             n_wide += len(got) if kind == "unit-wide" else 0
+        # overlying-leakage pathway (VerticalLeakage): via the unit directly above `code` in the well's stack
+        stack = [r["unitCode"] for r in ask(store, "cq01_stack", W=pz[b])]
+        upper = stack[stack.index(code) - 1] if code in stack and stack.index(code) > 0 else None
+        want_leak = ({f"{x['gridXHm']}_{x['gridYHm']}": x["weight"]
+                      for x in ask(store, "cq04_cells", U=unit[upper], S=zone[b])}
+                     if upper and upper in unit else {})
+        got_leak = {r["driverCode"]: r["cellWeight"] for r in leak}
+        assert got_leak == want_leak, (b, upper, got_leak, want_leak)
+        assert all(r["viaCode"] == upper and r["selected"] and r["constrained"]
+                   and set(r["omittedPathways"].split()) == {"LateralInflow", "RiverExchange", "CanalReturnFlow"}
+                   for r in leak), (b, leak)
+        if leak:
+            assert "VerticalLeakage" in st["drivers"].split(), (b, st)
+            n_leak += len(leak)
+            leak_wells += 1
         c4 = one(store, "cq04_status", U=unit[code], S=zone[b])
         has_local = any(r["extent"] == zone[b].value for r in rech)
         expect = "derived" if has_local else ("none_found" if code in described else "unknown")
@@ -1029,8 +1068,8 @@ def test_data_recharge(store):
             none_found.append(b)
         status[expect] = status.get(expect, 0) + 1
     print(f"  16. data: CQ8 recharge proxies of every well = CQ4's cells and weights for its recorded unit "
-          f"({n_local} in the 5 km zones, {n_wide} unit-wide); statuses {status}; no outcrop of the unit "
-          f"within 5 km (a completed search): {', '.join(none_found)}")
+          f"({n_local} local diffuse, {n_wide} unit-wide, {n_leak} overlying leakage across {leak_wells} wells); "
+          f"diffuse statuses {status}; no local outcrop of the well's own unit within 5 km: {', '.join(none_found)}")
 
 
 EXCHANGE = {"AquiferToSurface", "SurfaceToAquifer", "ExchangeEquilibrium"}

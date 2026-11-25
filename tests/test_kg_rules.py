@@ -159,6 +159,7 @@ def test_vocabulary(net):
 # the export policies' constraint decisions (configs/constraint_decisions.csv in the real graph)
 FIXTURE_DECISIONS = {"PumpingDrawdown": (L.AcceptedStatus, L.AcceptedStatus),
                      "DiffuseRecharge": (L.CandidateStatus, L.CandidateStatus),
+                     "VerticalLeakage": (L.CandidateStatus, L.CandidateStatus),
                      "RiverExchange": (L.CandidateStatus, L.CandidateStatus),
                      "CanalReturnFlow": (L.CandidateStatus, L.CandidateStatus)}
 
@@ -984,6 +985,9 @@ def test_negative_controls(g, shapes, net):
         "a recharge proxy in another well's search zone": (
             [(r7, L.withinExtent, zone)], now(r7, L.withinExtent),
             "InfluenceShape", "neither the target well's search zone"),
+        "a diffuse-recharge influence carrying viaUnit": (
+            [(r7, L.viaUnit, d("unit/A"))], (),
+            "InfluenceShape", "must not carry viaUnit"),
     }
 
     # CQ5, CQ6: the river and canal fixture (wells R1-R6)
@@ -1075,6 +1079,152 @@ def test_negative_controls(g, shapes, net):
         res = bad(add, remove)
         assert violations(res, shape, text) > 0, f"{name}: not caught\n{res}"
     print(f"  3. negative controls: all {len(cases)} inserted errors are reported as violations")
+
+
+def build_leakage_fixture():
+    """Overlying-leakage recharge fixture (T65):
+      (a) WL1 in polygon P1 [A > U], attributed to U (Confident), A's outcrop in its zone over two
+          cells (0.7 / 0.3) -> 2 VerticalLeakage influences via A with weights 0.7 and 0.3;
+      (b) WL2 in polygon P1 [A > U], attributed to A (Probable, top of stack) -> 0 leakage influences
+          (only local DiffuseRecharge);
+      (c) WL3 in polygon P2 [A > B > U], attributed to U (Probable), both A and B at outcrop in its
+          zone -> 2 leakage influences via B only (direct contact), never via A;
+      (d) WL4 attributed to U (Confident), without locatedInPolygon, A at outcrop in its zone -> 0.
+    """
+    fx = Fixture()
+    a = fx.g.add
+    A, B, U = (fx.unit(c) for c in ("LA", "LB", "LU"))
+    for u, m2 in ((A, 1.0e6), (B, 1.0e6), (U, 0.0)):
+        a((u, PROV.wasDerivedFrom, fx.rel))
+        a((u, L.mappedOutcropAreaM2, Literal(m2, datatype=XSD.double)))
+    p1 = fx.polygon(101, [A, U])
+    p2 = fx.polygon(102, [A, B, U])
+    p3 = fx.polygon(103, [B])
+    p4 = fx.polygon(104, [A])
+    for k, (gx, gy) in {"c1": (100, 200), "c2": (180, 200)}.items():
+        c = d(f"weather-cell/{k}")
+        a((c, RDF.type, L.WeatherCell))
+        a((c, L.safranGridXHm, Literal(gx, datatype=XSD.integer)))
+        a((c, L.safranGridYHm, Literal(gy, datatype=XSD.integer)))
+        a((c, L.inRelease, fx.rel))
+        fx.geometry(c, "weather-cell", k, "POLYGON((0 0, 8000 0, 8000 8000, 0 8000, 0 0))")
+        se = d(f"series/forcing-leak/{k}/PE")
+        a((se, RDF.type, L.ObservationSeries))
+        a((se, L.seriesVariable, L.EffectiveRainfall))
+        a((se, L.storedIn, Literal(f"forcing_weekly.parquet [cell_id = {k}, column PE]")))
+        a((c, L.hasForcingSeries, se))
+    wl1 = fx.well("WL1", 0, 0, U, L.Confident, depth=50)
+    wl2 = fx.well("WL2", 20000, 0, A, L.Probable, depth=15)
+    wl3 = fx.well("WL3", 40000, 0, U, L.Probable, depth=80)
+    wl4 = fx.well("WL4", 60000, 0, U, L.Confident, depth=60)
+    a((d("extent/forcing-cells"), RDF.type, GEO.Feature))
+    a((wl1, L.locatedInPolygon, p1))
+    a((wl2, L.locatedInPolygon, p1))
+    a((wl3, L.locatedInPolygon, p2))
+    # WL4 deliberately has no locatedInPolygon
+    zones = {}
+    for key, w in (("WL1", wl1), ("WL2", wl2), ("WL3", wl3), ("WL4", wl4)):
+        z = zones[key] = d(f"outcrop-zone/{key}")
+        a((z, RDF.type, L.OutcropSearchZone))
+        a((z, L.zoneOf, w))
+        a((z, L.zoneRadiusM, Literal(RADIUS, datatype=XSD.double)))
+    pieces = (("WL1", 104, "c1", 7.0e5), ("WL1", 104, "c2", 3.0e5),
+              ("WL2", 104, "c1", 6.0e5), ("WL2", 104, "c2", 4.0e5),
+              ("WL3", 104, "c1", 6.0e5), ("WL3", 104, "c2", 4.0e5),
+              ("WL3", 103, "c1", 2.5e5), ("WL3", 103, "c2", 7.5e5),
+              ("WL4", 104, "c1", 5.0e5), ("WL4", 104, "c2", 5.0e5))
+    for key, poly, cell, m2 in pieces:
+        x = d(f"polygon-cell/{key}/{poly}/{cell}")
+        a((x, RDF.type, L.PolygonCellIntersection))
+        a((x, L.intersectedPolygon, d(f"polygon/{poly}")))
+        a((x, L.withinExtent, zones[key]))
+        a((x, L.intersectedCell, d(f"weather-cell/{cell}")))
+        a((x, L.intersectionAreaM2, Literal(m2, datatype=XSD.double)))
+        a((x, PROV.wasGeneratedBy, d("execution/polygon-cell-intersection")))
+    return fx
+
+
+def test_leakage_fixture(rules, shapes, net):
+    fx = build_leakage_fixture()
+    facts = fx.g
+    records = rule_records(rules, "test", facts)
+    added = run_rules(facts, rules, records)
+    g = facts + records + added
+
+    leak = {}
+    for c, w, v, wt, sign, elig, var, q, conf, grp, res, n_om, cond in select(g, """
+            SELECT ?c ?w ?v ?wt ?sign ?elig ?var ?q ?conf ?grp ?res (COUNT(DISTINCT ?om) AS ?n) ?cond WHERE {
+            ?i a lulcw:Influence ; lulcw:mechanism lulcw:VerticalLeakage ; lulcw:driverEntity ?c ;
+               lulcw:targetEntity ?w ; lulcw:viaUnit ?v ; lulcw:responseSign ?sign ;
+               lulcw:constraintEligibility ?elig ; lulcw:driverVariable ?var ; lulcw:proxyFor ?q ;
+               lulcw:confidence ?conf ; lulcw:driverGroup ?grp ; lulcw:resolution ?res ;
+               lulcw:omitsPathway ?om ; lulcw:conditions ?cond ; prov:wasDerivedFrom ?cw .
+            ?cw lulcw:cellWeight ?wt . }
+            GROUP BY ?c ?w ?v ?wt ?sign ?elig ?var ?q ?conf ?grp ?res ?cond"""):
+        leak[(c.rsplit("/", 1)[-1], w.rsplit("/", 1)[-1], v.rsplit("/", 1)[-1])] = (
+            round(wt, 6), *(x.split("#")[-1] for x in (sign, elig, var, q, conf, grp, res)), n_om, cond)
+    same = ("PositiveResponse", "EligibleConstraint", "EffectiveRainfall", "GroundwaterRecharge")
+    assert {k: v[:5] for k, v in leak.items()} == {
+        ("c1", "WL1", "LA"): (0.7, *same), ("c2", "WL1", "LA"): (0.3, *same),
+        ("c1", "WL3", "LB"): (0.25, *same), ("c2", "WL3", "LB"): (0.75, *same),
+    }, leak
+    assert all(v[5:9] == (("Confident" if k[1] == "WL1" else "Probable"), "RechargeProxies",
+                          "ExactUnitResolution", 3) for k, v in leak.items()), leak
+    # WL2 (top of stack) and WL4 (no locatedInPolygon) get no leakage; WL3 never via LA
+    assert not any(w in ("WL2", "WL4") or (w == "WL3" and v == "LA") for _, w, v in leak), leak
+    # Policy selection (order 90): WL1 confident (all 3), WL3 probable (main and all-links only)
+    lsel = {(w.rsplit("/", 1)[-1], p.rsplit("/", 1)[-1]) for w, p in select(g, """SELECT ?w ?p WHERE {
+        ?i lulcw:mechanism lulcw:VerticalLeakage ; lulcw:targetEntity ?w ; lulcw:selectedUnder ?p }""")}
+    assert lsel == {("WL1", "main"), ("WL1", "confident-only"), ("WL1", "all-links"),
+                    ("WL3", "main"), ("WL3", "all-links")}, lsel
+    conforms, _, results = check(g, shapes, net)
+    assert conforms and violations(results) == 0, results
+
+    # Negative controls for the new leakage / viaUnit shapes
+    def bad(triples, remove=()):
+        h = rdflib.Graph()
+        for t in g:
+            if t not in remove:
+                h.add(t)
+        for t in triples:
+            h.add(t)
+        return check(h, shapes, net)[2]
+
+    def now(s, p):
+        return list(g.triples((s, p, None)))
+
+    i1 = d("influence/recharge/leakage/c1/via/LA/to/WL1/1")
+    i3 = d("influence/recharge/leakage/c1/via/LB/to/WL3/1")
+    r2 = d("influence/recharge/local/c1/to/WL2/1")
+    twin = d("influence/recharge/leakage/c1/via/LA/to/WL1/1/drainage")
+    neg = {
+        "vertical leakage without viaUnit": (
+            [], now(i1, L.viaUnit), "InfluenceShape", "distinct from its attributed unit"),
+        "vertical leakage with viaUnit equal to its attributed unit": (
+            [(i1, L.viaUnit, d("unit/LU"))], now(i1, L.viaUnit),
+            "InfluenceShape", "distinct from its attributed unit"),
+        "vertical leakage with two viaUnits": (
+            [(i1, L.viaUnit, d("unit/LB"))], (), "InfluenceShape", None),
+        "diffuse recharge with viaUnit": (
+            [(r2, L.viaUnit, d("unit/LA"))], (), "InfluenceShape", "must not carry viaUnit"),
+        "vertical leakage via an indirect (non-direct-contact) upper unit": (
+            [(i3, L.viaUnit, d("unit/LA"))], now(i3, L.viaUnit), "InfluenceShape", "direct contact above"),
+        "vertical leakage without omitted pathways": (
+            [], now(i1, L.omitsPathway), "InfluenceShape", "the pathways it omits"),
+        "second vertical-leakage proxy of the same surplus on one path": (
+            [(twin, p, o) for _, p, o in g.triples((i1, None, None)) if p != L.driverVariable]
+            + [(twin, L.driverVariable, L.SoilDrainage)], (),
+            "RechargeInfluenceKeyShape", "one water surplus counted twice"),
+        "missing vertical-leakage influence": (
+            [], list(g.triples((i1, None, None))),
+            "RechargeInfluenceKeyShape", "has no vertical-leakage recharge influence"),
+    }
+    for name, (add, remove, shape, text) in neg.items():
+        res = bad(add, remove)
+        assert violations(res, shape, text) > 0, f"{name}: not caught\n{res}"
+    print(f"  3b. leakage fixture: cases (a)-(d) and policy selection hold, 0 violations; "
+          f"all {len(neg)} leakage/viaUnit negative controls caught")
+    return g
 
 
 # ---------------------------------------------------------------- 4. data-backed regression
@@ -1264,7 +1414,64 @@ def test_data_recharge(store, oracle):
     assert not bad, f"recharge proxies selected against their attribution's confidence: {bad[:3]}"
     local = {b for b, kind in got if kind == "local"}
     with_unit = {b for b, u in zip(wells["code_bss"], wells["code_bdlisa"]) if isinstance(u, str)}
-    return n, len(local), len({b for b, kind in got if kind == "unit-wide"}), sorted(with_unit - local)
+    # overlying-leakage recharge influences (VerticalLeakage)
+    leak_got, n_leak = {}, 0
+    for b, via, cell, w, sign, elig, var, q, res, grp, n_om in rows(store, """
+            SELECT ?b ?via ?cell ?w ?sign ?elig ?var ?q ?res ?grp (COUNT(DISTINCT ?om) AS ?n) WHERE {
+            ?i a lulcw:Influence ; lulcw:mechanism lulcw:VerticalLeakage ; lulcw:targetEntity/lulcw:bssCode ?b ;
+               lulcw:viaUnit/lulcw:bdlisaCode ?via ; lulcw:driverEntity ?c ; lulcw:responseSign ?sign ;
+               lulcw:constraintEligibility ?elig ; lulcw:driverVariable ?var ; lulcw:proxyFor ?q ;
+               lulcw:resolution ?res ; lulcw:driverGroup ?grp ; lulcw:omitsPathway ?om ; prov:wasDerivedFrom ?cw .
+            ?cw lulcw:cellWeight ?w .
+            ?c lulcw:safranGridXHm ?gx ; lulcw:safranGridYHm ?gy .
+            BIND (CONCAT(STR(?gx), "_", STR(?gy)) AS ?cell) }
+            GROUP BY ?b ?via ?cell ?w ?sign ?elig ?var ?q ?res ?grp"""):
+        assert (sign, elig, var, q, res, grp, n_om) == tuple(str(x) for x in (
+            L.PositiveResponse, L.EligibleConstraint, L.EffectiveRainfall, L.GroundwaterRecharge,
+            L.ExactUnitResolution, L.RechargeProxies)) + (3,), (b, via, cell, sign, elig, var, q, res, grp, n_om)
+        leak_got.setdefault((b, via), {})[cell] = w
+        n_leak += 1
+    bad_leak = rows(store, """SELECT ?i ?p WHERE { ?i a lulcw:Influence ; lulcw:mechanism lulcw:VerticalLeakage ;
+            prov:wasDerivedFrom ?a . ?a a lulcw:UnitAttribution ; lulcw:confidence ?c . ?p a lulcw:ExportPolicy .
+            BIND (EXISTS { ?p lulcw:admitsConfidence ?c } AS ?admits)
+            BIND (EXISTS { ?i lulcw:selectedUnder ?p } AS ?selected)
+            FILTER (?admits != ?selected) }""")
+    assert not bad_leak, f"leakage influences selected against their attribution's confidence: {bad_leak[:3]}"
+    # oracle from the well's polygon stack in BD LISA
+    pts = gpd.GeoSeries(gpd.points_from_xy(wells["x"], wells["y"]), crs=CRS_WGS84).to_crs(CRS_L93)
+    poly = pyogrio.read_dataframe(GPKG, layer="POLYG_ELEMENTAIRES", columns=["codepoly"]).to_crs(CRS_L93)
+    j = gpd.sjoin(gpd.GeoDataFrame(geometry=pts), poly, how="left", predicate="within")
+    w_cp = j[~j.index.duplicated()]["codepoly"].reindex(wells.index)
+    pile = pyogrio.read_dataframe(GPKG, layer="TABLE_PILE_ENTITES_NIV3", read_geometry=False)
+    pile = pile.assign(cp=pile["CodePoly"].astype(int)).sort_values(["cp", "OrdRelatif"])
+    stack_of = pile.groupby("cp")["CodeEH"].agg(list).to_dict()
+    leak_want, leak_sliver = {}, set()
+    for i, b in enumerate(wells["code_bss"]):
+        u = wells.iloc[i]["code_bdlisa"]
+        cp = w_cp.iloc[i]
+        if not isinstance(u, str) or pd.isna(cp):
+            continue
+        st = stack_of.get(int(cp), [])
+        if u not in st:
+            continue
+        idx = st.index(u)
+        if idx == 0:
+            continue
+        v = st[idx - 1]
+        if v not in described:
+            continue
+        o, c, by_cell = oracle.get((b, v), (0.0, 0.0, {}))
+        if o >= 50.0 and c > 0:
+            leak_want[(b, v)] = {cell: a / c for cell, a in by_cell.items() if a >= 1.0}
+        elif o > 0:
+            leak_sliver.add((b, v))
+    assert set(leak_got) - leak_sliver == set(leak_want), (
+        f"leakage wells differ: {sorted((set(leak_got) - leak_sliver) ^ set(leak_want))[:6]}")
+    for k, cells in leak_want.items():
+        big = {cell for cell, w in cells.items() if w > 1e-5}
+        assert big <= set(leak_got[k]) and all(abs(leak_got[k].get(cell, 0.0) - w) <= 1e-5 for cell, w in cells.items()), k
+    assert all(abs(sum(v.values()) - 1) <= 1e-9 for v in leak_got.values())
+    return n, len(local), len({b for b, kind in got if kind == "unit-wide"}), sorted(with_unit - local), n_leak, len(leak_got)
 
 
 def oracle_rivers(store):
@@ -1552,6 +1759,7 @@ def main():
     test_vocabulary(net)
     g = test_fixtures(rules, shapes, net)
     test_negative_controls(g, shapes, net)
+    test_leakage_fixture(rules, shapes, net)
     facts, derived = KG / f"lulcw_kg_{DATASET}.ttl", KG / f"lulcw_kg_{DATASET}_rules.ttl"
     if facts.exists() and derived.exists():
         m = release.check()        # the files must form a validated release (src.kg.release)
@@ -1562,9 +1770,10 @@ def main():
               f"GeoPandas oracle on BD LISA and the SAFRAN grid (areas, fractions, weights), mapped outcrop "
               f"of every unit = the whole extract; {len(partial)} search-zone outcrops partly outside the "
               f"cells; the forcing cells clip {', '.join(clipped) or 'no unit'}; release of {m['released']}")
-        n, n_local, n_wide, without = test_data_recharge(store, oracle)
-        print(f"  6. data: CQ8 {n} recharge proxies = the oracle's cells and weights for the recorded units: "
-              f"{n_local} wells in their 5 km zone, {n_wide} unit-wide; no local proxy for "
+        n, n_local, n_wide, without, n_leak, n_leak_w = test_data_recharge(store, oracle)
+        print(f"  6. data: CQ8 {n} diffuse-recharge proxies and {n_leak} overlying-leakage proxies ({n_leak_w} wells) "
+              f"= the oracle's cells and weights for the recorded units: "
+              f"{n_local} wells local, {n_wide} unit-wide; no local diffuse proxy for "
               f"{', '.join(without)}; signs, proxy, omitted pathways and policy selections as specified")
         n_assoc, n_canal, n_riv, n_st = test_data_rivers(store)
         print(f"  7. data: CQ5/CQ6 {n_assoc} on-outcrop and over-cover river associations and {n_canal} canal "

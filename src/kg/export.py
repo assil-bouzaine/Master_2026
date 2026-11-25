@@ -13,8 +13,9 @@ plan §10, §14 items 14-18):
   arm D  every edge comes from the knowledge graph, read through the competency-question queries
          (src.kg.cq) like the inventory: the influences the export policy selects (pumping from the
          facilities attributed to the well's unit within 5 km; recharge proxies from the weather
-         cells over the outcrop of its unit, in its 5 km zone, and unit-wide as a sensitivity
-         relation; river exchange from the pool gauge of an associated watercourse; canal return
+         cells over the outcrop of its unit, in its 5 km zone, unit-wide as a regional channel, and
+         over the outcrop of the overlying unit in direct contact at the well as a leakage channel;
+         river exchange from the pool gauge of an associated watercourse; canal return
          where a return is documented) and the same-unit well links. Where the graph holds no
          link, D has none: never a distance fallback.
 
@@ -25,10 +26,10 @@ constrained, only if every path is. "constrained" follows the policy's constrain
 arms differ in which edges exist, not in how an edge is weighted: pumping exp(-d / 5 km), well
 links exp(-d / sigma) with sigma the median distance of C's 3-nearest links; recharge edges carry
 the cell's share of the outcrop in D and 1 in C; river and canal edges 1 in D, C's river edges
-exp(-d / median well-gauge distance) as in the baseline. In arm D, recharge and recharge_unitwide
-edges whose aggregated cell share is below MIN_CELL_SHARE (0.001, Gate 3 point 12) are dropped
-from the export, while the knowledge graph keeps them. The routed models renormalise each well's
-remaining recharge weights to 1.
+exp(-d / median well-gauge distance) as in the baseline. In arm D, recharge, recharge_unitwide and
+recharge_leakage edges whose aggregated cell share is below MIN_CELL_SHARE (0.001, Gate 3 point 12)
+are dropped from the export, while the knowledge graph keeps them. The routed models renormalise
+each well's remaining recharge weights to 1.
 
 D also lists, per well, the groundwater facilities of the dataset within 5 km that no selected
 pumping edge connects to it (relation "pumping_unattributed"): the volume outside the policy enters
@@ -156,14 +157,14 @@ def aggregate(paths):
 
 
 SRC_TYPE = {"pumping": "facility", "recharge": "weather_cell", "recharge_unitwide": "weather_cell",
-            "river": "gauge", "canal": "canal"}
+            "recharge_leakage": "weather_cell", "river": "gauge", "canal": "canal"}
 
 
 def edges_d(store, kg_wells, wells, fac, policy):
     """Arm D: the selected influences and well links of the graph, one edge per driver and well."""
     rows, sigma = [], link_sigma(wells)
     dropped = {rel: {"edges": 0, "eligible": 0, "constrained": 0, "wells": set()}
-               for rel in ("recharge", "recharge_unitwide")}
+               for rel in ("recharge", "recharge_unitwide", "recharge_leakage")}
     dfac = _dist(wells, fac)
     fac_codes = fac["code_ouvrage"].to_numpy()
     row_of = {c: i for i, c in enumerate(wells["code_bss"])}

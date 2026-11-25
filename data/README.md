@@ -535,3 +535,16 @@ Notes:
 - Canal stations re-checked (docs/v5_plan.md C1): no daily flow in our period, and the monthly QmM series
   stop before 2005 (Y046821001 has 2000-04 … 2004-11; Y046881001, Y005561001, Y047882001, Y046901001,
   Y063404001, Y024511001 none after 2000).
+
+### SAFRAN-SIM2 1990–1999 and the republication of 2023+ (R1.1a, 2026-11-25)
+
+| Date | Source | Endpoint / URL | Parameters | Output | Rows | Size |
+|---|---|---|---|---|---|---|
+| 2026-11-25 | Météo-France SIM2 daily (data.gouv.fr "SIM quotidienne") | `https://meteofrance.s3.sbg.io.cloud.ovh.net/data/REF_CC/SIM/QUOT_SIM2_<year>.csv.gz` | `python -m src.ingest.safran --start 1990` (dept-66 cells of `DEPT_BBOX`; each national file deleted after filtering) | `raw/safran/sim2_66_1990.parquet` … `_1999.parquet` (new); 2023–2026 re-fetched | 37 years, 1,900,257 cell-days | 14.7 MB on disk (≈ 1.4 GB transferred for 1990–1999, ≈ 0.53 GB for 2023–2026) |
+
+- 1990–1999 national files: ≈ 137–140 MB each, Last-Modified 2026-07-31.
+- **2023, 2024, 2025, 2026 were republished** by Météo-France after v4's pull (server copies newer than the
+  sidecars), so the ingest replaced them. Measured against v4's saved weekly forcing (same cells and weeks):
+  2000–2022 identical; 2023+ total differences 0.01–0.17 % (rain 0.05 %, ETP 0.17 %, PE 0.13 %, DRAINC 0.01 %),
+  largest single cell-week |Δrain| 7.6 mm (provisional data replaced by final). v4's processed tables stay the
+  record; a cold rebuild of v4 would now differ trivially from 2023 and reach 2026-11-22 instead of 2026-10-11.

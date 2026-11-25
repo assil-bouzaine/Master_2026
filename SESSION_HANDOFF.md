@@ -16,40 +16,38 @@ date.
 
 ---
 
-## ▶ START HERE (state at the last update: 2026-11-25 ≈ 21:45 local time)
+## ▶ START HERE (state at the end of the session of 2026-11-25, ≈ 23:00 local time)
 
-**Running at the last update (≈ 22:35):**
-- `sol` on **T69** (v5 `end_at_forcing`, rebuild v5, its graph, exports, controls, all graph suites; brief
-  `.agents/briefs/T69_v5_end_at_forcing.md`). Codex was at 52 % of its 5-hour window before T69 (resets 02:07):
-  no new Sol task until it resets.
-- `neon`: **T70 done and committed** (`src/models/hybrid_gnn.py`, all 7 tests pass on the lead's rerun). Gemini was
-  at 53 % before T70: no new Neon task until its window resets.
-- Both reports land in `results/_agents/reports/T69.md` and `T70.md`: **review both first** next session (T70
-  against `docs/analysis_plan_v3.md` §3 point by point; T69's rebuilt release and every suite). Note: T69 and T70
-  both touch v5 data only through reading (T70) vs rebuilding (T69): if T70's tests failed while T69 rebuilt the
-  dataset, rerun them.
-- No Colab, Kaggle, Camber or laptop job of Claude's own.
+**Nothing is running.** No worker task open (Sol and Neon idle: Sol's Codex 5-hour window was at ≈ 61 %, Neon's
+Gemini window at ≈ 66 %; both reset within ≈ 1–3 h of the stop). No Colab, Kaggle, Camber or laptop job. All work is
+committed on branch `master_2026_fixes` (not pushed). Local tag `phase4-v1-frozen` (not pushed).
 
-**Done today (details in the session log below):** R0 closed (arms report, reading, local tag
-`phase4-v1-frozen`); R1 data pulled and dataset v5 built; T59–T63 reviewed and committed; analysis-plan-v3 drafted.
+**Where we are in `docs/v5_plan.md`:**
+- R0 ✅ (arms report, reading, figures, RQ2 sign counts, tag).
+- R1: data pulled; dataset v5 built, audited, reproducible, ends at the last weather week (2026-11-22). Left for
+  Gate R1: R1.4 Sentinel-2 (Earth Engine **ready**), and the dataset tests on v5 (`tests.test_pumping_conservation`,
+  `tests.test_regime_boundaries`, placeholder tests).
+- R2: leakage recharge done (ontology 0.9.0; release 2026-11-25T22:35:50Z; 32/33 core wells with a recharge path,
+  CARRIE the named exception); France/Tunisia profiles, unused-term review, alignments (R2.3), literature extraction
+  (R2.1), CQ15/CQ16 to do.
+- R3: `docs/analysis_plan_v3.md` drafted; `bucket.py`, `kernels.py`, `hetero_graph.py`, `hybrid_gnn.py` built and
+  tested (no fit yet).
 
 **Next, in order:**
-1. Open the two workers (memory `codex-worker-orchestration`); review T69 and T70 (see above); commit.
-2. (T68 done: Gate R1 reproducibility passes; T69 running: v5's last week without weather.)
-3. **R3, Hybrid-GNN v2** (`docs/analysis_plan_v3.md` §3; pieces done: `bucket.py`, `kernels.py`, `hetero_graph.py`):
-   Claude writes `src/models/hybrid_gnn.py` (assembly, centring held fixed, sd gains, three recharge channels +
-   basin canals from the v5 export, pumping reliability mask, two-stage encoder, split regularisation, cosine LR),
-   its finite-difference sign test and replay; then the twin v2 (`src/models/twin.py`). Settle plan v3 §8's open
-   points and tag `analysis-plan-v3` before any v5 real-data run.
-4. **R1.4 Earth Engine** (ready): `src/ingest/gee_s2.py` (summer NDVI/NDMI per RPG parcel 2017–2025; Manouba S2 +
-   WorldCover + ERA5-Land for a sourced aquifer box), then CQ15's `ProbablyIrrigatedParcel` rule.
-5. R2.1 (literature extraction: OpenAlex + a local open LLM on Colab), R2.3 (alignments: SAREF4WATR/AGRI, CORINE,
-   ENVO, GEMET, SWEET, EuroCrops HCAT; every term checked at its source), R2.2 rest (France/Tunisia profiles from
-   `docs/ontology_country_terms.md`'s 16 name matches; the 23 unused terms reviewed one by one).
+1. Open the two workers (memory `codex-worker-orchestration`; check their 5-hour windows first: stop at 70 %).
+2. **Plan v3 §8 decisions** (with Assil, AskUserQuestion, recommendation first): the canal sign where a return was
+   measured (C2-1: hard ≥ 0 needs a v5 constraint decision; `hybrid_gnn.py` already has a `canal_c` slot), the twin v2
+   criterion, tuning ranges, whether CQ15 enters v5.
+3. **Colab smoke run of `hybrid_gnn.py`** on v5 (`PFE_ALLOW_TRAIN=1`, a few epochs, arms C and D, one seed; TPU v5e1
+   or high-mem CPU through `scripts/colab_cli.py`; the CPU bundle must include the new modules, torch_geometric and
+   the v5 data/exports) to measure the epoch time; then the tuning on validation; then the twin v2 (`twin.py`).
+4. **R1.4:** `src/ingest/gee_s2.py` (summer NDVI/NDMI per RPG parcel 2017–2025 via `reduceRegions`, batched;
+   Manouba S2 + WorldCover + ERA5-Land for a sourced aquifer box) → CQ15 `ProbablyIrrigatedParcel`.
+5. R2.1 / R2.3 / R2.2-rest as listed in `docs/v5_plan.md`.
 
 **Waiting for Assil:**
-- Say whether to push the branch `master_2026_fixes` and the tag `phase4-v1-frozen` (nothing pushed yet).
-- `! camber login` only if Camber jobs are to run from the terminal (web app logged in; account
+- Push the branch `master_2026_fixes` and the tag `phase4-v1-frozen`? (nothing pushed yet)
+- `! camber login` only if Camber jobs should run from the terminal (web app logged in; account
   the account named in .agents/RESOURCES.md, Student plan, CPU + single L4 GPU).
 - (unchanged) the professor's e-mail, the two data e-mails, the AGROVOC gold set, the paywalled papers, the
   defence date.
@@ -121,3 +119,5 @@ date.
   (≥ 0) where a return into the well's own unit was measured (C2-1), but the v5 export marks every canal edge
   unconstrained (Gate 3's canal decision): decide in plan v3 §8 before the tag (the model already has a `canal_c` slot).
   Next for R3: Colab smoke run (`PFE_ALLOW_TRAIN=1`, a few epochs on v5), then tuning on validation, then twin v2.
+- T69 (sol) committed: v5 ends at the last weather week (2026-11-22); v5 graph rebuilt (release
+  2026-11-25T22:35:50Z); all 8 graph suites pass. Session ended at ≈ 83 % of Claude's 5-hour window.

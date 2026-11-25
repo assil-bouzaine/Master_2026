@@ -110,7 +110,8 @@ VERSIONS = {
            "all_stations": True, "pump_scope": "dept", "backfill": True,
            "bnpe_snapshot": "2026-10-20", "bnpe_rules": "v3", "artesian_train_only": True,
            "drop_bad_quality": True, "fold_link_m": 2000, "artesian_windows": True,
-           "piezo_snapshot": "2026-11-25", "hydro_snapshot": "2026-11-25", "canal_basins": True},
+           "piezo_snapshot": "2026-11-25", "hydro_snapshot": "2026-11-25", "canal_basins": True,
+           "end_at_forcing": True},
 }
 CFG = VERSIONS[DATASET]
 # Raw Hub'Eau inputs: a dated snapshot when the version names one (v5), else the default caches,
@@ -485,6 +486,11 @@ def main():
     wells["cell_dist_m"] = nc["cell_dist_m"].round(0).values
 
     forcing = build_forcing()
+    if CFG.get("end_at_forcing"):
+        # A model week needs weather, so stop heads at the last complete forcing week.
+        heads = heads[heads["week"] <= forcing["week"].max()]
+        in_window = heads[heads["week"] >= MODEL_START].groupby("code_bss").size()
+        wells["n_weeks_model"] = wells["code_bss"].map(in_window).fillna(0).astype(int)
     gauges, rivers = build_rivers()
     pts, pumping, last_bnpe = build_pumping(forcing)
 

@@ -563,9 +563,9 @@ Notes:
 | | v4 | v5 |
 |---|---|---|
 | wells / core / folds | 65 / 33 / 5 | identical (same wells, core flags and folds) |
-| weekly heads | 55,141 (from 2000) | 59,884 (from 1990) |
+| weekly heads | 55,141 (from 2000) | 59,868 (from 1990; 59,884 before T69 trimmed the week without weather) |
 | forcing cell-weeks | 196,977 (from 2000) | 271,425 (from 1990) |
-| last week | 2026-10-04 | 2026-11-29 |
+| last week | 2026-10-04 | 2026-11-22 (= the last weather week, `end_at_forcing`, T69) |
 | core test well-weeks | 7,414 | 7,677 |
 | core test weeks not validated | 41.5 % | **23.7 %** |
 | placeholder weeks masked | 60 (CORNEILLA PD5) | 60 (same) |

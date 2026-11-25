@@ -38,7 +38,7 @@ Fold maps in splits.json identical: True. Each map agrees with its wells table: 
 | canal_intakes_basin.parquet | 181 | — | — | v5 |
 | forcing_weekly.parquet | 271425 | 1990-01-07 | 2026-11-22 | v5 |
 | gauges.parquet | 45 | 2005-01-02 | 2026-11-29 | v5 |
-| heads_weekly.parquet | 59884 | 1990-01-07 | 2026-11-29 | v5 |
+| heads_weekly.parquet | 59868 | 1990-01-07 | 2026-11-22 | v5 |
 | placeholder_weeks.parquet | 60 | 2022-12-04 | 2024-01-21 | v5 |
 | pumping_points.parquet | 3055 | — | — | v5 |
 | pumping_weekly.parquet | 2321868 | 2003-01-05 | 2026-11-22 | v5 |
@@ -57,7 +57,7 @@ Static tables have no week bounds. Gauge bounds describe their associated river 
 | test | 2022-05-01 | 2026-10-04 | 7414 | 0.415101738 | v4 |
 | train | 2005-01-01 | 2019-12-31 | 22284 | 0.0159145789 | v5 |
 | validation | 2020-01-01 | 2022-04-30 | 3853 | 0.0861295465 | v5 |
-| test | 2022-05-01 | 2026-11-29 | 7677 | 0.236541432 | v5 |
+| test | 2022-05-01 | 2026-11-22 | 7670 | 0.235844664 | v5 |
 
 Counts include available heads before the placeholder scoring mask. The unvalidated share is the mean of share_not_validated over core well-weeks, not a count of wholly unvalidated weeks or a daily-weighted percentage. Each version uses its own split end dates.
 
@@ -93,7 +93,7 @@ Counts include available heads before the placeholder scoring mask. The unvalida
 | 2025 | 2633 | 484 | 0 |
 | 2026 | 1708 | 463 | 0 |
 
-Threshold: |Δhead| > 0.001 m (1 mm). Shared well-weeks: 55126; changed: 2273. Only in v4: 15; only in v5: 4758.
+Threshold: |Δhead| > 0.001 m (1 mm). Shared well-weeks: 55126; changed: 2273. Only in v4: 15; only in v5: 4742.
 
 ### Forcing on common cell-weeks
 
@@ -243,7 +243,7 @@ Volumes are Mm³, grouped by the Sunday week-label year. The imputed share is th
 
 ## Reproducibility
 
-Build status: completed; return code: 0; elapsed: 39.27 s. Fresh process, rebuilt from raw inputs.
+Build status: completed; return code: 0; elapsed: 39.25 s. Fresh process, rebuilt from raw inputs.
 
 | file | identical | diagnosis |
 | --- | --- | --- |

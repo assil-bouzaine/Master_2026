@@ -83,7 +83,9 @@ Head anomaly of well i at week t (metres above its training mean μ_i):
    The finite-difference test of v2 §10 is extended through the bucket. Reference for the design family:
    Pastas' FlexModel (Collenteur et al., to cite only after its DOI is checked).
 4. **Kernels:** for each stress a mixture of a fast and a slow scaled-Gamma kernel (weights on a simplex,
-   slow mean ≤ 104 weeks), causal FFT convolution (as `response.py --conv fft`), kernel length 416 weeks.
+   slow mean ≤ 104 weeks), causal FFT convolution (as `response.py --conv fft`), kernel length 416 weeks
+   (`src/models/kernels.py`, T64). The slow component's shape is bounded below at n ≥ 1: with n = 0.5 and a
+   104-week mean the 416-week truncation removes about 22 weeks of mean lag (T64's measurement).
 5. **Parameter encoder (the graph network):** raw parameters θ_i = θ_g(i) + f_GNN(Z, graph)_i + δ_i, where
    f_GNN is a 2-layer heterogeneous graph network (PyG `HeteroConv` with `GATv2Conv`, hidden 32, 2 heads,
    dropout 0.1) over the export's node and relation types (well, aquifer unit, facility, weather cell, gauge,

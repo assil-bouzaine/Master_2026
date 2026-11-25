@@ -18,31 +18,29 @@ date.
 
 ## ▶ START HERE (state at the last update: 2026-11-25 ≈ 21:45 local time)
 
-**Running at the last update (≈ 22:15):**
-- `neon` on T65 (overlying-leakage recharge rule, ontology 0.9.0, shapes, export relation `recharge_leakage`, v5
-  release, tests; brief `.agents/briefs/T65_leakage_recharge.md`). It edits `ontology/` and rebuilds the v5 release:
-  review its diff and every v5 graph suite before committing (the v5 suites passed before T65: test_kg,
-  test_kg_rules, test_cq, test_release).
-- `sol` on T67 (RQ2 sign-violation counts on the saved v4 parameters → `docs/rq2_signs_v4.md`).
-- No Colab session, no Kaggle kernel, no Camber node, no laptop job.
+**Running at the last update (≈ 22:25):**
+- `sol` on T68 (dataset v5 audit for Gate R1: hashes before/after a rebuild, v4 vs v5 comparison →
+  `docs/dataset_v5_audit.md`); its watcher was in the ended session, so check `results/_agents/reports/T68.md`.
+- `neon` idle (T65 done and committed). No Colab, Kaggle, Camber or laptop job.
 
 **Done today (details in the session log below):** R0 closed (arms report, reading, local tag
 `phase4-v1-frozen`); R1 data pulled and dataset v5 built; T59–T63 reviewed and committed; analysis-plan-v3 drafted.
 
 **Next, in order:**
-1. When `apply_rules` ends with `exit=0`: v5 graph tests with `PFE_DATASET=v5` (`tests.test_kg`,
-   `tests.test_kg_rules`, `tests.test_cq`, `tests.test_release`), then `src.kg.inventory` and the exports
-   (`src.kg.export` for the 3 policies) and controls for v5.
-2. R2.2, the overlying-leakage rule (`rechargeInfluenceLeakage`, order 61 sh:order 3; design in
-   `docs/analysis_plan_v3.md` §2 and the session log): Claude writes the rule; a worker does shapes, path
-   selection (order 90), export relations (`recharge_leakage`, `recharge_regional` as separate channels), inventory,
-   oracles and tests; then a new v5 release. Gate R2: 0/33 core wells without a recharge path (or a named exception).
-3. Review T65 (neon) and T67 (sol) when their reports appear in `results/_agents/reports/`.
-4. R3: `src/models/hybrid_gnn.py` assembling bucket + kernels + encoder (Claude designs the core); twin v2.
-5. R1.4 Earth Engine is **ready** (project in `.agents/RESOURCES.md`; `ee.Initialize(project=...)` works; S2 SR
-   harmonized, WorldCover v200, ERA5-Land daily checked for both sites): write `src/ingest/gee_s2.py` (summer
-   NDVI/NDMI medians per RPG parcel 2017–2025 with `reduceRegions`, exported in batches; Manouba S2 + WorldCover +
-   ERA5-Land for a sourced aquifer box). Then R2.1 / R2.3 (literature extraction, alignments).
+1. Open the two workers (memory `codex-worker-orchestration`). Review T68 (sol) if its report exists; commit.
+2. **T69** (brief ready: `.agents/briefs/T69_v5_end_at_forcing.md`): v5 heads end one week after the weather
+   (2026-11-29 vs 2026-11-22) → `end_at_forcing` for v5, rebuild v5, its graph, exports, controls, all graph suites
+   (incl. `tests.test_controls`, whose step 8 fails on that week). Give it to a worker; review; commit.
+3. **R3, Hybrid-GNN v2** (`docs/analysis_plan_v3.md` §3; pieces done: `bucket.py`, `kernels.py`, `hetero_graph.py`):
+   Claude writes `src/models/hybrid_gnn.py` (assembly, centring held fixed, sd gains, three recharge channels +
+   basin canals from the v5 export, pumping reliability mask, two-stage encoder, split regularisation, cosine LR),
+   its finite-difference sign test and replay; then the twin v2 (`src/models/twin.py`). Settle plan v3 §8's open
+   points and tag `analysis-plan-v3` before any v5 real-data run.
+4. **R1.4 Earth Engine** (ready): `src/ingest/gee_s2.py` (summer NDVI/NDMI per RPG parcel 2017–2025; Manouba S2 +
+   WorldCover + ERA5-Land for a sourced aquifer box), then CQ15's `ProbablyIrrigatedParcel` rule.
+5. R2.1 (literature extraction: OpenAlex + a local open LLM on Colab), R2.3 (alignments: SAREF4WATR/AGRI, CORINE,
+   ENVO, GEMET, SWEET, EuroCrops HCAT; every term checked at its source), R2.2 rest (France/Tunisia profiles from
+   `docs/ontology_country_terms.md`'s 16 name matches; the 23 unused terms reviewed one by one).
 
 **Waiting for Assil:**
 - Say whether to push the branch `master_2026_fixes` and the tag `phase4-v1-frozen` (nothing pushed yet).
@@ -105,3 +103,9 @@ date.
   validated (no violation), v5 graph test suites running.
 - T58 (sol) Phase 4 figures committed (`reports/figures/phase4_*_v4.png`); v5 graph suites pass with the current rules;
   Neon on T65, Sol on T67.
+- T65 (neon) committed: overlying-leakage recharge (rule by Claude), ontology 0.9.0, export `recharge_leakage`; v5
+  release 2026-11-25T21:44:39Z; the 5 weather-blind Pliocene core wells now get recharge; CARRIE (unit outside
+  BD LISA) is the only core well without a recharge path (Gate R2's named exception). Found: v5's last head week has
+  no weather (T69 fixes it).
+- T67 (sol) committed: RQ2 sign-violation counts reproduced (`docs/rq2_signs_v4.md`).
+- Claude stopped briefing new work at ≈ 76 % of its 5-hour window to keep room for reviews and this file.

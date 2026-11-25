@@ -63,6 +63,49 @@ drought NSE of −0.29; the routed Phase 4 arms reach −0.19 (C) to 0.01 (D).
   regenerated with every run. **`arms_report` not yet run** (stopped after 10 min at Assil's end of session; it
   takes longer): first command of the next session.
 
-## Reading
+## Reading (2026-11-25, after `arms_report`; `docs/results_arms_v4.md`, every family complete, 0 pending)
 
-(to write after the arms report)
+Measure: the per-well drought log(RMSE a / RMSE b) over the 33 core wells (negative favours a), cluster
+bootstrap, cluster sign-flip with Holm, same-arm bands; labels as analysis plan v2 §11 (the R1 / reconstruction 1
+rows are pre-specified on a previously examined benchmark, the rest robustness or exploratory).
+
+**RQ1, knowledge as facts (B vs A).** R1, all three reconstructions: **no effect of interest** (reconstruction 1:
++0.008, interval [0.002, 0.015], wholly inside ±0.05). The facts do not change accuracy. The controls agree:
+the facts replaced by random name tags give the same score (B1c, +0.000), shuffled facts slightly worse
+(+0.028, interval includes 0): the facts act like identifiers, as Heudorfer et al. (2024,
+doi:10.5194/hess-28-525-2024) found for global models. One robustness cell (R2, reconstruction 3) is worse with
+the facts (+0.029, Holm p 0.016) but stays "undecided" (inside the same-arm bands).
+
+**RQ1, knowledge as structure (D vs C).** **Undecided** in every regime and reconstruction: R1 reconstruction 1
++0.010 [−0.127, +0.112], Holm p 0.875. The intervals are wide (≈ ±0.12): the data cannot tell the two graphs
+apart in accuracy, as the twin predicted (no knowledge-value cell pays). The f50 regime leans towards D
+(−0.070, −0.010, −0.063) and the R2 regime towards C (+0.060, +0.049, +0.023), none detected.
+
+**RQ2, sign constraints.** Hard vs none, R1 reconstruction 1: **no effect of interest** (+0.009 [−0.010, +0.046]):
+the ontology's signs cost no accuracy, while the unconstrained model learns wrong-signed responses at many wells
+(the review's count on the saved parameters: 32–42 % of attributed-pumping gains, `gemini_neon_review.md` §2.3;
+to recompute in the v4 explanations). Soft (penalty 100, chosen on validation) vs none: undecided / no effect.
+Plausibility comes free: this is the clearest positive result of Phase 4.
+
+**Graph controls (exploratory).** R1: D beats the random graphs in all five draws (−0.089 to −0.154, most
+intervals exclude 0) and the complete graph (−0.050); it ties the distance-preserving rewires (E_distance,
+−0.020 to +0.012) and is a little better than the degree-preserving ones (−0.000 to −0.059). So the graph's
+edges carry information compared with random edges, but not more than spatial proximity. In R2 (held-out
+wells) the advantage disappears (D slightly worse than F_random, +0.020 to +0.067).
+
+**B5–B8 (exploratory).** Message passing adds nothing over routing (R1 +0.010). The pump-link policies change
+nothing (B6). Unit-wide recharge vs local (B7): −0.002 [−0.012, +0.006], i.e. no per-well median change: the
+gain is concentrated on the few weather-blind wells (the review's "0.758 → 0.604 m" compared medians across
+wells, not paired wells). Soil drainage (+0.005) and effective rain (+0.010) as the recharge proxy: no gain.
+The bounded seasonal residual (B8): small gains (−0.013 for D, −0.023 for B).
+
+**What this means (plain words, for Assil).** Under the plan we wrote before the runs, the knowledge graph does
+not make the v4 hybrid more accurate, as facts or as structure, and it does not make it worse; its sign rules
+make it physically plausible at no cost. This is a null on accuracy, reported as such. The review's large gains
+come from other statistics (medians across wells, single regimes) that our pre-specified measure does not
+confirm, which is why v5's design is tested by its own ladder (`docs/analysis_plan_v3.md` §4) and its drought
+results are labelled exploratory (§0 there). The independent evidence for "right reasons" stays the twin
+(D recovers pumping better than C in 82 % of worlds under converged pooling) and the explanations.
+
+Post-hoc (not part of the plan): the leave-wells-out intercept (`docs/lwo_centring_v4.md`, T61) explains little
+of the R2 failure (median offset ≈ 0.3 m; drought NSE does not improve with centring).

@@ -83,8 +83,9 @@ apart in accuracy, as the twin predicted (no knowledge-value cell pays). The f50
 
 **RQ2, sign constraints.** Hard vs none, R1 reconstruction 1: **no effect of interest** (+0.009 [−0.010, +0.046]):
 the ontology's signs cost no accuracy, while the unconstrained model learns wrong-signed responses at many wells
-(the review's count on the saved parameters: 32–42 % of attributed-pumping gains, `gemini_neon_review.md` §2.3;
-to recompute in the v4 explanations). Soft (penalty 100, chosen on validation) vs none: undecided / no effect.
+(`docs/rq2_signs_v4.md`, T67, on the saved parameters, core wells × starts, R1: attributed pumping 32.4 / 42.1 /
+35.2 % wrong for reconstructions 1 / 2 / 3, unattributed pumping 35–43 %, rain 11–15 %; soft penalty 100 still
+20.6–27.9 % but with wrong gains about 100 times smaller; hard 0 %). The review's counts are reproduced exactly. Soft (penalty 100, chosen on validation) vs none: undecided / no effect.
 Plausibility comes free: this is the clearest positive result of Phase 4.
 
 **Graph controls (exploratory).** R1: D beats the random graphs in all five draws (−0.089 to −0.154, most

@@ -14,6 +14,21 @@ date.
   (GPT Sol 6.1 high: easiest tasks) in herdr; stop briefing a worker at 70 % of its 5-hour window.
   Briefs `.agents/briefs/Tnn_*.md`, reports `results/_agents/reports/Tnn.md`.
 
+## Rules for every session (Assil, 2026-11-25)
+
+1. **Start:** read this file, then `docs/v5_plan.md` (phases R0–R7, owner and status per step, the claim checks
+   and the honest-reporting rule), then `docs/analysis_plan_v3.md`; open the two herdr workers (`neon` = Gemini 4
+   Neon high, moderate tasks; `sol` = GPT Sol 6.1 high, easiest tasks) after checking their 5-hour windows.
+2. **Follow the plan in order.** Each phase ends with a gate (`docs/v5_plan.md`, from the review's §6): never run a
+   later phase's real-data experiments before the earlier gate passes; code for later phases may be written
+   earlier (tests only, no fitting). Tag `analysis-plan-v3` before any v5 real-data result is scored. Record every
+   step's status in `docs/v5_plan.md` and every decision Assil takes (AskUserQuestion, recommendation first).
+3. **Git:** commit and push only as `assil-bouzaine`; **no `Co-Authored-By` line, no contributor attribution for
+   Claude**; push only when Assil says so.
+4. **Limits:** workers stop getting tasks at 70 % of their 5-hour window; Claude stops at ≈ 95 % of its own and
+   updates this file. No model training on the laptop (Colab, Kaggle, Camber; `.agents/RESOURCES.md`).
+5. Keep this file current after every finished task, not only at the end.
+
 ---
 
 ## ▶ START HERE (state at the end of the session of 2026-11-25, ≈ 23:00 local time)

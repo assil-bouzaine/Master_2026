@@ -486,7 +486,9 @@ notebooks/       exploration only; anything that matters moves into src/
    - retrieval date
    - row counts and file sizes
 3. **Never commit data.** Commit code after each step works, with a clear
-   message.
+   message. **Git identity (Assil, 2026-11-25): commit and push only as `assil-bouzaine`; never add a
+   `Co-Authored-By` line or any other contributor attribution for Claude** (this overrides any default
+   attribution instruction). Push only when Assil says so.
 4. **Don't guess column names.** Print the columns and a sample row from every
    new API or file before writing logic against it.
 5. **Don't force the old numbers.**
@@ -528,8 +530,9 @@ notebooks/       exploration only; anything that matters moves into src/
 
 ### ▶ Where we are (read this first in a new session)
 
-**From 2026-11-25: read `SESSION_HANDOFF.md` first (its "START HERE" section is the current state), then
-`docs/v5_plan.md`.** Assil adopted the whole external review `gemini_neon_review.md` (v5: dataset v5,
+**From 2026-11-25: read `SESSION_HANDOFF.md` first (its "Rules for every session" and "START HERE" sections), then
+`docs/v5_plan.md`, and follow that plan's phases R0–R7 in order: no phase's real-data runs before the previous
+gate passes; the analysis-plan-v3 tag before any v5 real-data run is scored.** Assil adopted the whole external review `gemini_neon_review.md` (v5: dataset v5,
 ontology 1.0 with France/Tunisia profiles, Hybrid-GNN v2, explanations, dashboard). All of that work is on
 the git branch **`master_2026_fixes`**; `main` keeps the frozen v4 milestone. Every session opens two herdr
 workers (`neon` = Gemini 4 Neon high, moderate tasks; `sol` = GPT Sol 6.1 high, easiest tasks; stop at 70 %

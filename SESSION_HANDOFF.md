@@ -16,12 +16,12 @@ date.
 
 ---
 
-## ▶ START HERE (state at the last update: 2026-11-25 ≈ 23:00 local time)
+## ▶ START HERE (state at the last update: 2026-11-25 ≈ 21:45 local time)
 
 **Running at the last update:**
 - laptop: v5 knowledge graph, `apply_rules` validating (log `results/logs/kg_v5_build_2026-11-25.log`; `apply_rules
   exit=0` when done → release `data/processed/kg/lulcw_kg_v5_*`).
-- `sol` on T64 (fast + slow kernels → `src/models/kernels.py`); `neon` on T66 (HeteroData builder + static-only
+- `sol` on T58 (Phase 4 figures, with a cache of the arms rows; T64 kernels done); `neon` on T66 (HeteroData builder + static-only
   graph encoder → `src/models/hetero_graph.py`).
 - No Colab session, no Kaggle kernel, no Camber node.
 

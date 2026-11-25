@@ -500,17 +500,21 @@ Notes:
 
 | Date | Source | Endpoint / URL | Parameters | Output | Rows | Size |
 |---|---|---|---|---|---|---|
-| 2026-11-25 | BRGM, Banque du Sous-Sol, open WFS of the geology geoservice (Etalab Open Licence 2.0); layers found with GetCapabilities, fields with DescribeFeatureType | `https://geoservices.brgm.fr/geologie` (MapServer WFS 2.0.0) | `python -m src.ingest.brgm_bss`; `TYPENAMES=ms:BSS_EAU_POINT` and `ms:BSS_TOTAL_SANS_LABEL`; BBOX = `DEPT_BBOX` (lon 1.65–3.25, lat 42.30–43.00); GeoJSON; pages of 1000 by STARTINDEX, 1 s apart | `raw/brgm_bss/2026-11-25/bss_eau_point.parquet`, `bss_total_sans_label.parquet`, `release.json` | 6,848 water points (6,049 in dept 66); 12,611 boreholes (11,481 in dept 66) | 0.8 MB + 2.7 MB |
+| 2026-11-25 | BRGM, Banque du Sous-Sol, open WFS of the geology geoservice (Etalab Open Licence 2.0); layers found with GetCapabilities, fields with DescribeFeatureType | `https://geoservices.brgm.fr/geologie` (MapServer WFS 2.0.0) | `python -m src.ingest.brgm_bss --folder 2026-11-25-tiled`; `TYPENAMES=ms:BSS_EAU_POINT` and `ms:BSS_TOTAL_SANS_LABEL`; `DEPT_BBOX` (lon 1.65–3.25, lat 42.30–43.00) cut in 0.2° tiles, a tile split in four while it returns the 1000-feature cap; GeoJSON; 1 s between requests; deduplicated on `gid` / `gis` | `raw/brgm_bss/2026-11-25-tiled/bss_eau_point.parquet`, `bss_total_sans_label.parquet`, `release.json` | 6,848 water points (5,557 in dept 66); 12,611 boreholes (9,893 in dept 66) | — |
 
-- Water points (dept 66): investigation depth `prof_invest` filled for 72.6 %, BD LISA entities
-  `liste_bdlisa` for 44.2 % (23.8 % read "NV3 absent, nom de l'entité NV2 : …"), aquifer condition
-  `mode_gisement` mostly "Inconnu" (4,493), "Libre" 549, "Captif" 136. Boreholes: depth reached
-  `prof_atteinte` filled for 76.3 %.
-- Join to the BNPE groundwater points of dataset v4: 2,137 points, 240 with a BSS code, 217 of them
-  found among the water points. The others can only be matched by location: a heuristic whose
-  precision must be measured on the boreholes with a recorded unit (12.3) before any use.
-- How BRGM fills `liste_bdlisa` (the point's recorded aquifer or its location) is not documented on
-  the service: measured before use, never assumed.
+- **Superseded first pull** (`raw/brgm_bss/2026-11-25/`, kept, not used): it paged with STARTINDEX and no sort
+  order; MapServer's order is not stable between requests, so pages overlapped. It held the same number of rows
+  but only 5,292 distinct water points and 9,953 distinct boreholes: **1,556 water points and 2,658 boreholes
+  (≈ 22 %) were skipped**. Found by worker neon in T62; the tiled pull contains every id of the paged one.
+- MapServer answers a tile without features with HTTP 200 and an **empty body** (not an empty collection).
+- Water points in dept 66: investigation depth `prof_invest` filled for 73.1 %, BD LISA entities `liste_bdlisa`
+  for 41.5 % (20.8 % read "NV3 absent, nom de l'entité NV2 : …"), aquifer condition `mode_gisement` mostly
+  "Inconnu" (4,292), "Libre" 470, "Captif" 96. Boreholes in dept 66: depth reached `prof_atteinte` filled for 78.1 %.
+- Join to the BNPE groundwater points of dataset v4: 2,137 points, 240 with a BSS code, 237 of them found among
+  the water points. `liste_bdlisa` copies ADES verbatim on the recorded boreholes (T62: 130/130), so it is not
+  independent evidence there; matching by location is weak because most BSS points with a known code sit at
+  their commune's centroid. Measured in `docs/bss_evidence.md` (T62): no irrigation borehole has a recorded
+  unit, so no irrigation link can be made "probable" by these data.
 
 ### BNPE 2025 availability check (R1.1b, 2026-11-25)
 

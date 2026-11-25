@@ -35,7 +35,7 @@ date.
 
 **Nothing is running.** No worker task open (Sol and Neon idle: Sol's Codex 5-hour window was at ≈ 61 %, Neon's
 Gemini window at ≈ 66 %; both reset within ≈ 1–3 h of the stop). No Colab, Kaggle, Camber or laptop job. All work is
-committed on branch `master_2026_fixes` (not pushed). Local tag `phase4-v1-frozen` (not pushed).
+committed and **pushed** (2026-11-25, as assil-bouzaine) on branch `master_2026_fixes`, with the tag `phase4-v1-frozen`.
 
 **Where we are in `docs/v5_plan.md`:**
 - R0 ✅ (arms report, reading, figures, RQ2 sign counts, tag).
@@ -61,7 +61,6 @@ committed on branch `master_2026_fixes` (not pushed). Local tag `phase4-v1-froze
 5. R2.1 / R2.3 / R2.2-rest as listed in `docs/v5_plan.md`.
 
 **Waiting for Assil:**
-- Push the branch `master_2026_fixes` and the tag `phase4-v1-frozen`? (nothing pushed yet)
 - `! camber login` only if Camber jobs should run from the terminal (web app logged in; account
   the account named in .agents/RESOURCES.md, Student plan, CPU + single L4 GPU).
 - (unchanged) the professor's e-mail, the two data e-mails, the AGROVOC gold set, the paywalled papers, the
@@ -105,7 +104,8 @@ committed on branch `master_2026_fixes` (not pushed). Local tag `phase4-v1-froze
 - R0 closed: `arms_report` (`docs/results_arms_v4.md`) and the reading in `docs/notes/step14_phase4.md`: facts no
   effect of interest (they act like name tags), structure undecided (intervals ±0.12), hard signs cost no accuracy,
   D beats random graphs but ties distance-preserving rewires; B7 (unit-wide recharge, drainage) no paired gain.
-  Local tag `phase4-v1-frozen` at 80eabfe.
+  Tag `phase4-v1-frozen` (pushed with the branch on 2026-11-25; commit IDs changed when the co-author lines and
+  an e-mail address were removed from the branch history before its first push).
 - T61 (sol): the LWO intercept is a minor part of the transfer failure (`docs/lwo_centring_v4.md`).
 - T62 (neon): BSS adds nothing usable for irrigation attribution (`docs/bss_evidence.md`); it found that the paged
   WFS pull skipped ≈ 22 % of features: the ingest now tiles (`raw/brgm_bss/2026-11-25-tiled/`).

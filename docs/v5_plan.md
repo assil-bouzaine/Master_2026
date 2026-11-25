@@ -51,7 +51,7 @@ Owners: **C** = Claude (lead), **N** = neon (Gemini 4 Neon high), **S** = sol (G
 |---|---|---|---|
 | 0.1 | `arms_report` → `docs/results_arms_v4.md` | C | ✅ 2026-11-25: every family complete, 0 pending |
 | 0.2 | T58 Phase 4 figures; RQ1/RQ2 reading in `docs/notes/step14_phase4.md` | S (T58), C (reading) | 🔄 reading ✅ 2026-11-25 (facts: no effect of interest; structure: undecided; hard signs: no accuracy cost; D beats random graphs, ties distance rewires); T58 figures after T64 |
-| 0.3 | commit, tag `phase4-v1-frozen` (push: ask A) | C | ✅ local tag at 80eabfe (2026-11-25); not pushed |
+| 0.3 | commit, tag `phase4-v1-frozen` (push: ask A) | C | ✅ tag `phase4-v1-frozen`, pushed 2026-11-25 |
 
 ### R1 — dataset v5 (laptop + Earth Engine)
 | Step | Task | Owner | Status |

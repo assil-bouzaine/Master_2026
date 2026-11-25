@@ -528,6 +528,14 @@ notebooks/       exploration only; anything that matters moves into src/
 
 ### ▶ Where we are (read this first in a new session)
 
+**From 2026-11-25: read `SESSION_HANDOFF.md` first (its "START HERE" section is the current state), then
+`docs/v5_plan.md`.** Assil adopted the whole external review `gemini_neon_review.md` (v5: dataset v5,
+ontology 1.0 with France/Tunisia profiles, Hybrid-GNN v2, explanations, dashboard). All of that work is on
+the git branch **`master_2026_fixes`**; `main` keeps the frozen v4 milestone. Every session opens two herdr
+workers (`neon` = Gemini 4 Neon high, moderate tasks; `sol` = GPT Sol 6.1 high, easiest tasks; stop at 70 %
+of a 5-hour window). Claude stops at ≈ 95 % of its own usage and updates `SESSION_HANDOFF.md`. Accounts and
+compute: `.agents/RESOURCES.md` (private, gitignored). The entries below are the history before v5.
+
 **2026-11-24 (Tuesday), stopped ≈ 21:20 UTC at Assil's request ("that's enough for tonight commit and push"). START HERE.**
 Everything is committed and pushed. No Colab session, no worker and no laptop job is running.
 - **Phase 4 is complete and local:** all 378 fits (174 run folders) in `results/v4`; shard 1 was rerun on two

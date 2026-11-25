@@ -18,12 +18,13 @@ date.
 
 ## ▶ START HERE (state at the last update: 2026-11-25 ≈ 21:45 local time)
 
-**Running at the last update:**
-- laptop: v5 knowledge graph, `apply_rules` validating (log `results/logs/kg_v5_build_2026-11-25.log`; `apply_rules
-  exit=0` when done → release `data/processed/kg/lulcw_kg_v5_*`).
-- `sol` on T58 (Phase 4 figures, with a cache of the arms rows; T64 kernels done); `neon` on T66 (HeteroData builder + static-only
-  graph encoder → `src/models/hetero_graph.py`).
-- No Colab session, no Kaggle kernel, no Camber node.
+**Running at the last update (≈ 22:15):**
+- `neon` on T65 (overlying-leakage recharge rule, ontology 0.9.0, shapes, export relation `recharge_leakage`, v5
+  release, tests; brief `.agents/briefs/T65_leakage_recharge.md`). It edits `ontology/` and rebuilds the v5 release:
+  review its diff and every v5 graph suite before committing (the v5 suites passed before T65: test_kg,
+  test_kg_rules, test_cq, test_release).
+- `sol` on T67 (RQ2 sign-violation counts on the saved v4 parameters → `docs/rq2_signs_v4.md`).
+- No Colab session, no Kaggle kernel, no Camber node, no laptop job.
 
 **Done today (details in the session log below):** R0 closed (arms report, reading, local tag
 `phase4-v1-frozen`); R1 data pulled and dataset v5 built; T59–T63 reviewed and committed; analysis-plan-v3 drafted.
@@ -36,7 +37,7 @@ date.
    `docs/analysis_plan_v3.md` §2 and the session log): Claude writes the rule; a worker does shapes, path
    selection (order 90), export relations (`recharge_leakage`, `recharge_regional` as separate channels), inventory,
    oracles and tests; then a new v5 release. Gate R2: 0/33 core wells without a recharge path (or a named exception).
-3. Review T64 and T66; then T58 (Phase 4 figures, worker sol; brief `.agents/briefs/T58_phase4_figures.md`).
+3. Review T65 (neon) and T67 (sol) when their reports appear in `results/_agents/reports/`.
 4. R3: `src/models/hybrid_gnn.py` assembling bucket + kernels + encoder (Claude designs the core); twin v2.
 5. R1.4 Earth Engine is **ready** (project in `.agents/RESOURCES.md`; `ee.Initialize(project=...)` works; S2 SR
    harmonized, WorldCover v200, ERA5-Land daily checked for both sites): write `src/ingest/gee_s2.py` (summer
@@ -102,3 +103,5 @@ date.
   collections of the review are readable for Roussillon and Manouba.
 - T64 (sol) kernels and T66 (neon) HeteroData builder + encoder committed; Sol on T58 (figures); v5 graph release
   validated (no violation), v5 graph test suites running.
+- T58 (sol) Phase 4 figures committed (`reports/figures/phase4_*_v4.png`); v5 graph suites pass with the current rules;
+  Neon on T65, Sol on T67.

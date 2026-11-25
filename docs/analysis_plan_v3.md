@@ -68,7 +68,9 @@ Head anomaly of well i at week t (metres above its training mean μ_i):
    the sign rule; with m fixed, ŷ is monotone in every driver at every week, and the finite-difference test
    perturbs the inputs with m fixed.) No free per-well intercept. A held-out well gets its m from its own
    observed training weeks, which the design already gives it (μ_i). Unit test: the mean of ŷ_i over those
-   weeks is 0 under the observed forcing.
+   weeks is 0 under the observed forcing. Expectation (T61, `docs/lwo_centring_v4.md`): centring alone is a
+   minor part of the leave-wells-out failure (median offset ≈ 0.3 m; drought NSE did not improve), so R2
+   transfer depends on the encoder (point 5) describing held-out wells' dynamics, not on the intercept.
 2. **Gains in sd units, hard signs:** G_ir = σ_r · softplus(g_ir) · sd_i with σ_r ∈ {+1, −1} from the
    ontology (recharge channels +, pumping and unattributed pumping −, river + where eligible, canal + only
    where measured, else free).

@@ -22,8 +22,8 @@ date.
 - `sol` on **T69** (v5 `end_at_forcing`, rebuild v5, its graph, exports, controls, all graph suites; brief
   `.agents/briefs/T69_v5_end_at_forcing.md`). Codex was at 52 % of its 5-hour window before T69 (resets 02:07):
   no new Sol task until it resets.
-- `neon` on **T70** (first assembly of `src/models/hybrid_gnn.py` + tests, no fitting; brief
-  `.agents/briefs/T70_hybrid_gnn.md`). Gemini was at 53 % before T70: no new Neon task until its window resets.
+- `neon`: **T70 done and committed** (`src/models/hybrid_gnn.py`, all 7 tests pass on the lead's rerun). Gemini was
+  at 53 % before T70: no new Neon task until its window resets.
 - Both reports land in `results/_agents/reports/T69.md` and `T70.md`: **review both first** next session (T70
   against `docs/analysis_plan_v3.md` §3 point by point; T69's rebuilt release and every suite). Note: T69 and T70
   both touch v5 data only through reading (T70) vs rebuilding (T69): if T70's tests failed while T69 rebuilt the
@@ -117,3 +117,7 @@ date.
 - T68 (sol) committed: Gate R1 reproducibility (13/13 files identical after a rebuild); the producer revised 2,273
   historical weekly heads (> 1 mm). Sol → T69, Neon → T70 (`hybrid_gnn.py` first assembly). Claude ended its active
   work at ≈ 78 % of its 5-hour window.
+- T70 (neon) committed: Hybrid-GNN v2 first assembly. Open design point it raised: plan v3 §2 wants a hard canal sign
+  (≥ 0) where a return into the well's own unit was measured (C2-1), but the v5 export marks every canal edge
+  unconstrained (Gate 3's canal decision): decide in plan v3 §8 before the tag (the model already has a `canal_c` slot).
+  Next for R3: Colab smoke run (`PFE_ALLOW_TRAIN=1`, a few epochs on v5), then tuning on validation, then twin v2.

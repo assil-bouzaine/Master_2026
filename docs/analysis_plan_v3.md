@@ -98,8 +98,23 @@ Head anomaly of well i at week t (metres above its training mean μ_i):
    f_GNN is a 2-layer heterogeneous graph network (PyG `HeteroConv` with `GATv2Conv`, hidden 32, 2 heads,
    dropout 0.1) over the export's node and relation types (well, aquifer unit, facility, weather cell, gauge,
    basin canal; monitors, overlies, same-unit-near, pumping, recharge channels, river, canal). Node features
-   are **static facts only** (depth, CQ14 confinement, stack position, pump-link shares, irrigated share,
-   river/canal type, unit type); f never sees a stress, so the signs hold on the whole path.
+   are **static facts only**, each computed inside the regime's training window and standardised
+   (`src/models/hetero_graph.py`, `src/models/statics.py`; list fixed 2026-11-26):
+   - wells, fact set B (14): log investigation depth and its missing flag, altitude, position in the BD LISA stack
+     and its missing flag, the training-window artesian share (CQ14), the share and log volume of the attributed
+     pumping and a no-pumping flag, the number of recharge cells, the river association (on outcrop, over cover,
+     documented lateral) and a canal flag; arm A uses only the first six (set A);
+   - facilities (6): log annual declared volume, the dominant use (drinking water, irrigation, industry, other),
+     groundwater source;
+   - weather cells (3): mean rain, ETP and effective rain;
+   - gauges (1): log mean discharge;
+   - basin canals (1): log mean canal volume;
+   - aquifer units (5): the unit class (alluvial aquifer, confining unit, karst aquifer, multilayer system, other);
+   - edge attributes: weight, log distance, sign, eligibility, constraint (with missing-value flags).
+
+   The CQ15 irrigated share enters only its with/without row (§5). f never sees a stress, so the signs hold on the
+   whole path. Arms A and B (§5) use a graph of wells only, so f reads each well's own facts (no message
+   passing).
    **Two stages:** A, δ = 0 (well differences must come from facts and neighbours); B, δ with a ridge
    penalty (refinement on training wells only; held-out wells keep δ = 0).
 6. **Pumping reliability** (revised 2026-11-26: the bug audit, `docs/v5_plan.md` §1b, and Assil's decision of the
@@ -173,4 +188,5 @@ Settled by the data: no BSS evidence in v5 (§1; T62).
 
 5. **Tuning** (after the Colab smoke run): each main arm its own budget, E and F reuse D's; six settings,
    ranges in §3 point 7.
-Still open: the exact node features list; the Manouba transfer (qualitative, outside these contrasts).
+6. **Node features:** the list in §3 point 5 (fixed from the code, 2026-11-26).
+Still open: the Manouba transfer (qualitative, outside these contrasts).

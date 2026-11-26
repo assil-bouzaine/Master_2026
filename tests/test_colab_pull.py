@@ -118,11 +118,56 @@ def test_drive_failures(root):
     print("  2. Three rclone failures stopped before copying or scoring and hid private diagnostics.")
 
 
+def test_extraction(root):
+    """Keep extraction artifacts together and never send them to the model evaluator."""
+    source, local = root / "source", root / "local"
+    expected = {"v5/extraction/qwen_dev/run.json": b"{}",
+                "v5/extraction/qwen_dev/predictions_dev.json": b"[]",
+                "v5/extraction/qwen_dev/raw/x.txt": b"raw answer",
+                "v5/extraction/metadata_only/run.json": b"{}",
+                "v5/extraction/predictions_only/predictions_eval.json": b"[]"}
+    skipped = {"v5/extraction/incomplete/raw/x.txt": b"unfinished",
+               "v5/extraction/directory_marker/run.json/nested.txt": b"not a file"}
+    for name, content in {**expected, **skipped}.items():
+        path = source / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    stdout = StringIO()
+    with (patch.object(pull, "ROOT", local), patch.object(subprocess, "run") as evaluate,
+          redirect_stdout(stdout)):
+        pull.process_folder(source, source)
+        pull.process_folder(source, source)       # imports can be repeated after a snapshot
+        evaluate.assert_not_called()
+        # A mixed download still scores ordinary model runs under their own version.
+        model = source / "v4" / "finished" / "predictions.parquet"
+        model.parent.mkdir(parents=True)
+        model.write_bytes(b"model predictions")
+        pull.process_folder(source, source)
+        evaluate.assert_called_once()
+        assert evaluate.call_args.args[0] == [sys.executable, "-m", "src.models.evaluate", "finished"]
+        assert evaluate.call_args.kwargs["cwd"] == local
+        assert evaluate.call_args.kwargs["env"]["PFE_DATASET"] == "v4"
+        assert evaluate.call_args.kwargs["check"] is True
+    copied = {file.relative_to(local / "results").as_posix(): file.read_bytes()
+              for file in (local / "results").rglob("*") if file.is_file()}
+    assert copied == {**expected, "v4/finished/predictions.parquet": b"model predictions"}
+    assert "[v5] extraction runs copied: metadata_only predictions_only qwen_dev" in stdout.getvalue()
+    # v5 is accepted as an explicit version for a flat extraction download too.
+    flat = root / "flat"
+    shutil.copytree(source / "v5", flat)
+    with patch.object(pull, "ROOT", root / "flat_local"), patch.object(subprocess, "run") as evaluate:
+        pull.main(["--dir", str(flat), "--version", "v5"])
+        evaluate.assert_not_called()
+    assert (root / "flat_local/results/v5/extraction/qwen_dev/raw/x.txt").read_bytes() == b"raw answer"
+    print("  3. v5 extraction runs merge with raw files; incomplete runs are skipped; only the v4 model is scored.")
+
+
 def main():
     with TemporaryDirectory() as name:
         root = Path(name)
         test_sources(root)
         test_drive_failures(root / "failure")
+        test_extraction(root / "extraction")
     print("test_colab_pull: all checks passed")
 
 

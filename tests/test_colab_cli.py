@@ -20,7 +20,6 @@ from unittest.mock import patch
 
 from scripts import colab_cli as cli
 
-SCRATCH = cli.ROOT / "results" / "_agents" / "tmp" / "T37"
 USAGE = b"Current balance: 200.00 compute units\nUsage rate: 3.09/hr\nActive assignments: 1\n"
 MODEL = "AMD EPYC 7B13"
 SECRET = "hf_fixture_secret"
@@ -286,6 +285,46 @@ def test_v5_cpu(root):
     print("  6. v5 CPU push records dataset and steps; pull selects v5 and both dispatchers are recognised.")
 
 
+def test_v5_gpu(root):
+    """Validate overrides locally and carry them into GPU job metadata and redacted logs."""
+    assignments = ["A=1", "B=2", f"HF_TOKEN={SECRET}"]
+    expected = dict(PFE_DATASET="v5", PFE_DRIVE="/content/persist", A="1", B="2", HF_TOKEN=SECRET)
+    assert cli.gpu_environment("v5", assignments) == expected
+    assert cli.gpu_environment("v4") == dict(PFE_DATASET="v4", PFE_DRIVE="/content/persist")
+    with patch.object(cli, "push_gpu") as push:
+        run("push-gpu", "v5-parser", "--dataset", "v5", "--steps", "extract",
+            "--env", "A=1", "--env", "B=2")
+        push.assert_called_once_with("v5-parser", cli.STAGE / "v5-parser", "extract", "v5", ["A=1", "B=2"])
+    with redirect_stdout(io.StringIO()), patch.object(cli, "push_gpu") as push:
+        assert refuses("push-gpu", "old-dataset", "--dataset", "v3", "--steps", "extract") == 2
+        push.assert_not_called()
+
+    fake = FakeColab()
+    root.mkdir(parents=True)
+    (root / "gpu_bundle.zip").write_bytes(b"GPU extraction bundle fixture")
+    with (patch.object(cli, "ROOT", root), patch.object(cli, "run_colab", fake),
+          patch.object(cli, "process_start", return_value=None)):
+        for assignment, message in (("PIP_ONLINE=0", "cannot override PIP_ONLINE"),
+                                    ("PFE_DATASET=v4", "cannot override PFE_DATASET"),
+                                    ("broken", "expects KEY=VALUE"),
+                                    ("lower=1", "expects KEY=VALUE")):
+            refuses("push-gpu", "v5-invalid", "--dataset", "v5", "--steps", "extract",
+                    "--env", assignment, contains=message)
+        assert not fake.calls
+        output = run("push-gpu", "v5-extract", "--dataset", "v5", "--steps", "extract",
+                     "--env", assignments[0], "--env", assignments[1], "--env", assignments[2])
+        stage = cli.STAGE / "v5-extract"
+        job = json.loads((stage / "job.json").read_text())
+        assert job["env"] == expected and job["steps"] == "extract" and job["kind"] == "gpu"
+        assert SECRET not in output
+        (stage / "exec.log").write_text(f"local extraction {SECRET}\n")
+        output = run("log", "v5-extract")
+        assert SECRET not in output and output.count("<redacted>") == 2
+    check_heartbeat(stage / "launch.py", root / "vm", cli.GPU_RUNNER.as_posix(), "launch.out",
+                    dict(expected, STEPS="extract"))
+    print("  7. v5 GPU parses repeated overrides, refuses invalid settings before Colab, and redacts both logs.")
+
+
 def make_tgz(member=None):
     stream = io.BytesIO()
     with tarfile.open(fileobj=stream, mode="w:gz") as archive:
@@ -375,8 +414,7 @@ def test_wrapper(root):
 
 
 def main():
-    SCRATCH.mkdir(parents=True, exist_ok=True)
-    with TemporaryDirectory(dir=SCRATCH) as folder, patch.object(cli, "STAGE", Path(folder) / "stage"):
+    with TemporaryDirectory(prefix="test_colab_cli_") as folder, patch.object(cli, "STAGE", Path(folder) / "stage"):
         root = Path(folder)
         test_up()
         test_push_cpu(root / "cpu_vm")
@@ -384,6 +422,7 @@ def main():
         test_pull_stop()
         test_wrapper(root)
         test_v5_cpu(root / "v5")
+        test_v5_gpu(root / "v5_gpu")
     print("test_colab_cli: all checks passed")
 
 

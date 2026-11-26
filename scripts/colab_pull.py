@@ -11,9 +11,11 @@ the Chronos-2 checkpoints)
 to copy from gdrive:pfe_colab/results_gpu by default. --dir reads a local folder.
 The layouts are results_gpu/<version>/<run>/... and <version>/<run>/.... Use
 --version for a source containing run folders directly without a version name.
-For each dataset version (v3, v4), copy finished runs (with predictions.parquet)
+For each dataset version (v3, v4, v5), copy finished runs (with predictions.parquet)
 and tuning folders (with study.db or best.json) to results/<version>/<run>.
 Rescore the finished runs with src.models.evaluate under their dataset version.
+Copy extraction runs with run.json or predictions_*.json under extraction/ without
+model scoring; these use the separate extraction scorer (v5 plan R2.1).
 """
 import argparse
 import os
@@ -26,7 +28,7 @@ from tempfile import TemporaryDirectory
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "results" / "_colab" / "output"    # results/ is gitignored
-VERSIONS = ("v3", "v4")
+VERSIONS = ("v3", "v4", "v5")
 REMOTE = "gdrive:pfe_colab/results_gpu"
 
 
@@ -71,8 +73,17 @@ def process_folder(folder, source, version=None):
     if not found:
         sys.exit(f"no results folder of {VERSIONS} in {source}")
     for v, vdir in found:
-        runs, studies = [], []
+        runs, studies, extractions = [], [], []
         for d in sorted(vdir.iterdir()):
+            if d.name == "extraction" and d.is_dir():
+                for extraction in sorted(d.iterdir()):
+                    if extraction.is_dir() and ((extraction / "run.json").is_file()
+                                                or any(p.is_file() for p in
+                                                       extraction.glob("predictions_*.json"))):
+                        shutil.copytree(extraction, ROOT / "results" / v / "extraction" / extraction.name,
+                                        dirs_exist_ok=True)
+                        extractions.append(extraction.name)
+                continue
             if (d / "predictions.parquet").exists():
                 runs.append(d.name)
             elif d.name.endswith("_tuning") and any((d / f).exists()
@@ -83,6 +94,7 @@ def process_folder(folder, source, version=None):
             shutil.copytree(d, ROOT / "results" / v / d.name, dirs_exist_ok=True)
         print(f"[{v}] finished runs copied:", " ".join(runs) or "none")
         print(f"[{v}] tuning folders copied:", " ".join(studies) or "none")
+        print(f"[{v}] extraction runs copied:", " ".join(extractions) or "none")
         if runs:
             subprocess.run([sys.executable, "-m", "src.models.evaluate", *runs], cwd=ROOT,
                            env={**os.environ, "PFE_DATASET": v}, check=True)

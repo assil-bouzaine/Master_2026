@@ -17,7 +17,8 @@ It:
 2. restores the results saved on Drive (DRIVE/results_gpu) to local disk, so that finished
    seeds, trials and folds are skipped;
 3. installs the pinned packages (scripts/run_gpu.sh with PIN_TARGET: Colab keeps its CUDA
-   torch) and runs tests/test_taccari.py as an import and equality check; when STEPS has
+   torch) and runs tests/test_taccari.py as an import and equality check for model steps
+   (setup and extraction alone need no model tests; v5 plan R2.1); when STEPS has
    EA-LSTM steps, also tests/test_ealstm.py (the fused cuDNN path against the explicit loop;
    the EA-LSTM steps are dropped if it fails); when STEPS has chronos2_ft, removes Colab's
    `datasets` package if it does not import with the pinned pyarrow (drop_broken_datasets);
@@ -157,6 +158,16 @@ def make_zip():
           f"from google.colab import files; files.download('{ZIP}')")
 
 
+def pre_step_tests(steps):
+    """Select model checks without loading model packages for extraction alone."""
+    selected = []
+    if any(step not in ("setup", "extract") for step in steps.split()):
+        selected.append("tests.test_taccari")
+    if "ealstm" in steps:
+        selected.append("tests.test_ealstm")
+    return selected
+
+
 def main():
     if not DRIVE.parent.exists():
         sys.exit("Google Drive is not mounted: run drive.mount('/content/drive') first")
@@ -175,12 +186,15 @@ def main():
         f"saved to {SAVED} every {SYNC_S} s")
     run(["bash", "scripts/run_gpu.sh"], dict(env, STEPS="setup"))         # pinned packages
     test_env = dict(env, PYTHONPATH=os.pathsep.join(filter(None, [PINS, env.get("PYTHONPATH")])))
-    if run(["python3", "-m", "tests.test_taccari"], test_env) != 0:
+    tests = pre_step_tests(STEPS)
+    if not tests:
+        log("No pre-step tests: setup and extraction steps do not need model checks")
+    if "tests.test_taccari" in tests and run(["python3", "-m", "tests.test_taccari"], test_env) != 0:
         sys.exit("tests/test_taccari.py failed in this session (output above): stopping")
     steps = STEPS
     if "chronos2_ft" in steps:
         drop_broken_datasets(test_env)
-    if "ealstm" in steps and run(["python3", "-m", "tests.test_ealstm"], test_env) != 0:
+    if "tests.test_ealstm" in tests and run(["python3", "-m", "tests.test_ealstm"], test_env) != 0:
         # "none", not "": an empty STEPS would make run_gpu.sh run its default sweep
         steps = " ".join(s for s in steps.split() if "ealstm" not in s) or "none"
         log("tests/test_ealstm.py failed in this session (output above): EA-LSTM steps dropped")

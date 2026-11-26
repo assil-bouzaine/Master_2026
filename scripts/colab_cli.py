@@ -3,6 +3,7 @@
 Keep the VM active with one blocking Colab cell per job. Save the machine profile
 for the Phase 4 contrasts and pull the results before releasing the runtime.
 CPU jobs can select v5 for the Hybrid-GNN smoke run (analysis plan v3 §3).
+GPU jobs can select v5 and extraction settings for v5 plan R2.1.
 """
 import argparse
 import fcntl
@@ -312,7 +313,16 @@ def push_cpu(name, stage, steps, budget, assignments, full, export_override=None
     start_job(name, stage, "cpu", steps, env, digest, export_metadata=export_metadata)
 
 
-def push_gpu(name, stage, steps, dataset):
+def gpu_environment(dataset, assignments=()):
+    """Validate GPU overrides before upload, including extraction settings (v5 plan R2.1)."""
+    overrides = kaggle_cpu.parse_env(assignments)
+    if "PIP_ONLINE" in overrides:
+        sys.exit("--env cannot override PIP_ONLINE: the runner controls it")
+    return {"PFE_DATASET": dataset, "PFE_DRIVE": "/content/persist", **overrides}
+
+
+def push_gpu(name, stage, steps, dataset, assignments=()):
+    env = gpu_environment(dataset, assignments)
     bundle = ROOT / "gpu_bundle.zip"
     rebuild = f"PFE_DATASET={dataset} .venv/bin/python scripts/make_gpu_bundle.py"
     if not bundle.is_file():
@@ -324,7 +334,7 @@ def push_gpu(name, stage, steps, dataset):
         sys.exit(f"gpu_bundle.zip is older than {newest.relative_to(ROOT)}. Rebuild it with {rebuild}")
     require_idle(name, stage)
     digest = upload(name, bundle, "/content/gpu_bundle.zip")
-    start_job(name, stage, "gpu", steps, dict(PFE_DATASET=dataset, PFE_DRIVE="/content/persist"), digest)
+    start_job(name, stage, "gpu", steps, env, digest)
 
 
 def log(name, stage, n):
@@ -453,15 +463,13 @@ def main(argv=None):
             commands.add_argument("--require-cpu-model")
         elif action in ("push-cpu", "push-gpu"):
             commands.add_argument("--steps", required=True)
+            commands.add_argument("--dataset", choices=("v4", "v5"), default="v4")
+            commands.add_argument("--env", metavar="KEY=VALUE", nargs="+", action="extend", default=[])
             if action == "push-cpu":
-                commands.add_argument("--dataset", choices=("v4", "v5"), default="v4")
-                commands.add_argument("--env", metavar="KEY=VALUE", nargs="+", action="extend", default=[])
                 commands.add_argument("--export-override", action="append", default=[], metavar="POLICY=PATH",
                                       help="bundle a chosen graph export folder (repeatable)")
                 commands.add_argument("--budget", type=float, default=23)
                 commands.add_argument("--full", action="store_true")
-            else:
-                commands.add_argument("--dataset", choices=colab_pull.VERSIONS, default="v4")
         elif action == "log":
             commands.add_argument("-n", type=int, default=20)
         elif action == "stop":
@@ -489,7 +497,7 @@ def main(argv=None):
             push_cpu(args.name, stage, args.steps, args.budget, args.env, args.full,
                      export_override=kaggle_cpu.parse_export_overrides(args.export_override), dataset=args.dataset)
         elif args.action == "push-gpu":
-            push_gpu(args.name, stage, args.steps, args.dataset)
+            push_gpu(args.name, stage, args.steps, args.dataset, args.env)
         elif args.action == "pull":
             pull(args.name, stage, exclude=args.exclude)
         else:

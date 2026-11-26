@@ -6,8 +6,9 @@
 # Returns     one row: ?status not_applicable (?W is not a piezometer), unknown (no unit is
 #             attributed to ?W, so no pathway through a unit can be stated), partial (the graph
 #             derives pumping-drawdown pathways, recharge proxies, river exchange from the gauges of
-#             arm C's pool and canal return flow where documented, but not lateral inflow or vertical
-#             leakage, so the influences are never the complete set);
+#             arm C's pool and canal return flow where documented, while lateral inflow is not derived
+#             and vertical leakage only as the overlying-leakage recharge proxy, so the influences are
+#             never the complete set);
 #             ?drivers lists the mechanisms present for ?W; ?recharge, the main runs' recharge proxies
 #             (the well's 5 km search zone): derived (at least one), none_found (a completed search:
 #             the zone holds BD LISA pieces, every unit attributed to ?W is described by BD LISA, and
@@ -68,7 +69,7 @@ SELECT ?W (COALESCE(?d, "") AS ?drivers)
          IF(?searched && ?allDescribed && !?outcropOfUnit, "none_found", "unknown")))) AS ?recharge)
        (IF(!?isWell, "not a piezometer of the graph",
          IF(!?hasUnit, "no unit is attributed to the well, so no pathway through a unit can be stated",
-            CONCAT("pumping-drawdown pathways, recharge proxies, river exchange (arm C's pool gauges) and documented canal return flow are derived; lateral inflow and vertical leakage are not, so the influences are never the complete set. Recharge proxies: ",
+            CONCAT("pumping-drawdown pathways, recharge proxies, river exchange (arm C's pool gauges) and documented canal return flow are derived; lateral inflow is not derived and vertical leakage only as the overlying-leakage recharge proxy, so the influences are never the complete set. Recharge proxies: ",
               IF(?localRecharge, "derived from the weather cells over the outcrop of the well's unit in its search zone (proxies of recharge: lateral inflow, vertical leakage, river exchange and canal return flow are not represented)",
               IF(?searched && ?allDescribed && !?outcropOfUnit, "none, the well's unit has no mapped outcrop in its search zone (a completed search; not zero recharge)",
                  "unknown: no search zone, a unit not described by BD LISA, or outcrop of the unit in the zone without a derived influence (rule outputs missing or stale)"))))) AS ?reason)

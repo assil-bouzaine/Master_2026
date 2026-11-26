@@ -198,18 +198,28 @@ def git_version(paths=("src/kg", "ontology", "configs")):
     return f"{head}+uncommitted-{h.hexdigest()[:12]}"
 
 
-INPUT_FILES = ("configs/exchange_evidence.csv", "configs/constraint_decisions.csv", "configs/snapshots.json",
-               "configs/lu_crop_classes.csv", "data/raw/documents/documents.json",
+def constraint_decisions_path(dataset=DATASET):
+    """Dataset-specific constraint decisions when present, else the shared file."""
+    specific = ROOT / "configs" / f"constraint_decisions_{dataset}.csv"
+    return specific if specific.exists() else ROOT / "configs" / "constraint_decisions.csv"
+
+
+INPUT_FILES = ("configs/exchange_evidence.csv", str(constraint_decisions_path().relative_to(ROOT)),
+               "configs/snapshots.json", "configs/lu_crop_classes.csv",
+               "data/raw/documents/documents.json",
                "data/raw/bdtopo_hydro/{bdtopo_hydro}/release.json",
                "data/raw/sandre_water_bodies/{sandre_water_bodies}/release.json")
 
 
-def input_hashes():
+def input_hashes(dataset=DATASET):
     """SHA-256 of the configuration and snapshot manifests the facts are built from (the pinned
     snapshot manifests carry their own file checksums)."""
     pins = json.loads((ROOT / "configs" / "snapshots.json").read_text())
+    decisions_rel = str(constraint_decisions_path(dataset).relative_to(ROOT))
     out = {}
     for f in INPUT_FILES:
+        if f.startswith("configs/constraint_decisions") and f.endswith(".csv"):
+            f = decisions_rel
         path = ROOT / f.format(**pins)
         out[str(path.relative_to(ROOT))] = hashlib.sha256(path.read_bytes()).hexdigest()
     return out
@@ -769,11 +779,14 @@ def policies(kg):
 STATUS = {"candidate": L.CandidateStatus, "accepted": L.AcceptedStatus, "rejected": L.RejectedStatus}
 
 
-def constraint_decisions(kg, path=ROOT / "configs" / "constraint_decisions.csv"):
+def constraint_decisions(kg, path=None):
     """The export policies' decisions about the response signs of each mechanism (Codex review of
     2026-11-06, R2): the pathway evidence is the influences' eligibility; whether the driver is an
     adequate proxy, and whether eligible signs constrain a model, are decided here, with their
-    basis. A candidate (pending) decision constrains nothing."""
+    basis. A candidate (pending) decision constrains nothing. Reads configs/constraint_decisions_{DATASET}.csv
+    when it exists, else the shared configs/constraint_decisions.csv."""
+    if path is None:
+        path = constraint_decisions_path()
     out = []
     with open(path, encoding="utf-8") as f:
         for r in csv.DictReader(f):

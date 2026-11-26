@@ -181,3 +181,19 @@ to them, and the "post-freeze weeks" of R7.1 are defined against this freeze.
   another day) will trigger the same refusal: rebuild the caches, don't silence the check.
 - **The AGROVOC labels are on the path to Gate R2**: the gate asks for the alignment P/R/F1 tables. Assil labels the
   40 dev codes first (the matchers are tuned on them), then the 158 eval codes.
+
+### R2.1: the model-selection rule, fixed before any model output (Claude, 2026-11-26 evening)
+
+- **Candidates** (checked on Hugging Face on 2026-11-26: Apache-2.0 licence, not gated, text-only causal LMs that
+  `transformers` loads with `AutoModelForCausalLM`, bf16 weights within an L4's 24 GB):
+  `Qwen/Qwen2.5-7B-Instruct` (7.6 B parameters; the review's proposal), `Qwen/Qwen3-8B` (8.2 B; run with
+  `{"enable_thinking": false}`), `allenai/Olmo-3-7B-Instruct` (7.3 B; open training data). Each run pins the
+  resolved commit (`run.json`).
+- **Not candidates:** `Qwen/Qwen3.5-9B` and `mistralai/Ministral-3-8B-Instruct-2512` (vision-language architectures,
+  `…ForConditionalGeneration`), `openai/gpt-oss-20b` and `ibm-granite/granite-4.0-h-small` (too large for an L4
+  in bf16), `google/gemma-3-12b-it` (Gemma licence, gated).
+- **Rule:** each candidate runs once on the **dev** pages (19 passages, 10 gold statements; greedy decoding, the
+  frozen prompt). The model with the highest statement F1 on dev is chosen; ties broken by strict F1, then by fewer
+  parse failures, then by the smaller model. Only the chosen model then runs on **eval**, once, and that score is
+  the Track 2 result. Dev scores are reported for every candidate.
+- **Cost:** three dev runs plus one eval run on a Colab L4 (≈ 2 units/h): about 1–1.5 units.

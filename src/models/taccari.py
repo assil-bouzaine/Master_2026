@@ -55,7 +55,9 @@ WEATHER = ["rain", "ETP", "EVAP", "PE", "DRAINC", "RUNC", "T", "SWI"]
 TYPES = ["piezometer", "weather", "river", "pumping", "canal"]
 EXPORT_PREFIX = {"recharge": "cell", "river": "gauge", "pumping": "facility"}
 EXPORT_RELATIONS = {*EXPORT_PREFIX, "pumping_unattributed", "canal", "well_link"}
-IGNORED_RELATIONS = {"recharge_unitwide"}
+# Relations of the v5 export this v4 baseline does not use: the regional and leakage recharge channels and
+# the unit structure (monitors: unit -> well, overlies: unit -> unit), which only Hybrid-GNN v2 reads.
+IGNORED_RELATIONS = {"recharge_unitwide", "recharge_leakage", "monitors", "overlies"}
 _GRAPH = {}   # node codes -> adjacency, filled by prepare()
 
 

@@ -901,36 +901,44 @@ def routed_v5_inputs(
 
     if wide_basin is not None and has_canal.any():
         basin_cols = set(wide_basin.columns)
-        # First check if edges explicitly name a basin on src (e.g. "canal:Tet" or "Tet").
-        explicit = {}
-        for src_val, dst_val in zip(canal_edges["src"], canal_edges["dst"]):
-            suffix = str(src_val).split(":", 1)[-1]
-            if str(src_val) in basin_cols:
-                explicit[dst_val] = str(src_val)
-            elif suffix in basin_cols:
-                explicit[dst_val] = suffix
+        # The basins each well's canal edges name on src (e.g. "canal:Tet" or "Tet"), with the edge weights.
+        # In arms C and D a well has one basin; a control (F_random, F_complete) may link it to several.
+        basins_of = {}
+        for src_val, dst_val, wgt in zip(canal_edges["src"], canal_edges["dst"], canal_edges["weight"]):
+            name = str(src_val)
+            suffix = name.split(":", 1)[-1]
+            basin = name if name in basin_cols else (suffix if suffix in basin_cols else None)
+            if basin is not None:
+                linked = basins_of.setdefault(dst_val, {})
+                linked[basin] = linked.get(basin, 0.0) + float(wgt)
 
-        need_snap = sorted(w for w in canal_well_set if w in codes and w not in explicit)
-        snapped_map = {}
+        need_snap = sorted(w for w in canal_well_set if w in codes and w not in basins_of)
         if need_snap:
             sub_edges = canal_edges[canal_edges["dst"].isin(need_snap)]
             wb_df = CB.canal_edge_well_basins(edges_d=sub_edges, wells=wells, reaches=reaches)
-            snapped_map = dict(zip(wb_df["code_bss"], wb_df["basin"]))
+            for code, basin in zip(wb_df["code_bss"], wb_df["basin"]):
+                basins_of[code] = {basin: 1.0}
 
         cb_start = wide_basin.index.min()
         in_record = weeks >= cb_start
         for i, code in enumerate(codes):
             if not has_canal[i]:
                 continue
-            basin = explicit.get(code) or snapped_map.get(code)
-            if basin is None or basin not in basin_cols:
-                raise KeyError(f"Could not resolve canal basin for well {code!r} (got {basin!r})")
-            well_basins[code] = basin
-            series = wide_basin[basin].reindex(weeks).to_numpy(dtype=float)
-            # Fill gaps inside the BNPE/canal record with 0.0; keep pre-record weeks (e.g. 1990-2002)
-            # as NaN so hybrid_arrays fills them with the well's training mean instead of a step from 0.
-            series = np.where(in_record & ~np.isfinite(series), 0.0, series)
-            canal_arr[i] = series
+            linked = basins_of.get(code)
+            if not linked or any(b not in basin_cols for b in linked):
+                raise KeyError(f"Could not resolve canal basin for well {code!r} (got {linked!r})")
+            total = sum(linked.values())
+            if not total > 0:
+                raise ValueError(f"canal edges of well {code!r} have no positive weight: {linked!r}")
+            well_basins[code] = "+".join(sorted(linked))
+            # The weighted mean of the linked basins' series, as rivers and recharge cells are routed. Gaps
+            # inside the canal record are 0.0; pre-record weeks (e.g. 1990-2002) stay NaN so hybrid_arrays
+            # fills them with the well's training mean instead of a step from 0.
+            parts = []
+            for basin, wgt in sorted(linked.items()):
+                series = wide_basin[basin].reindex(weeks).to_numpy(dtype=float)
+                parts.append(wgt / total * np.where(in_record & ~np.isfinite(series), 0.0, series))
+            canal_arr[i] = np.sum(parts, axis=0)
     elif has_canal.any():
         plain = canal_series(pw, pts).reindex(weeks).fillna(0.0).to_numpy(dtype=float) / 1e6
         canal_arr[has_canal] = plain[None, :]

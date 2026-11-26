@@ -80,3 +80,42 @@ five cleanups. Every claim was checked against the code and the data before anyt
   - **4c:** stage B's first phase is the stage-A fit, only δ changes after it, and held-out wells are unchanged.
   - **7:** on the real v5 export, pre-2003 pumping equals the training mean, and centring holds to < 4e-8.
 - `python -m tests.test_kernels`: passes with the new bound.
+
+## 2026-11-26 — workers' tasks, plan v3 decisions, the Colab smoke run
+
+### What was done
+
+- **T71 (neon)**, audit items 2 and 3:
+  - The v5 export now has 50 aquifer-unit nodes, 60 `monitors` edges (unit → well) and 38 `overlies` edges (upper →
+    lower unit, direct contacts), plus one canal node per river basin.
+  - The control graphs E and F rewire every relation of arm D, including the regional and leakage recharge
+    channels they used to miss.
+  - Two follow-ups by the lead: in the controls, a well linked to several basin canals now receives their mean
+    series (it used to get the last one), and the v4 Taccari baseline ignores the v5-only relations.
+- **T72 (sol):** the BSS report's note; Gate R1's dataset tests pass on v5. **T73 (sol):** a v5 path for the CPU runners
+  (`scripts/run_v5_cpu.sh`, `colab_cli push-cpu --dataset v5`); the v4 bundle is unchanged file for file.
+- **Plan v3 §8 decisions (Assil, recommendation first, all four accepted;** `docs/analysis_plan_v3.md` §8):
+  - Canal sign: ≥ 0 on the two measured canal wells. Implemented as a v5 constraint decision in the graph (T74,
+    neon).
+  - Pumping teaches the model only through declared facility-years: the dataset's `imputed` flag, not a date.
+    Implemented the same day: each pumping input has a declared twin.
+  - The twin's pass criterion: D beats C in a majority of worlds, by a sign test at 5 %.
+  - CQ15: built, and used in one with/without comparison row.
+- **The Colab smoke run** (TPU v5e1 runtime, 24 vCPU AMD EPYC 7B13, 0.12 compute units). Hybrid-GNN v2, stage B,
+  5 + 3 epochs, seed 0, arms C and D, then D on one thread. `PFE_NO_SCORE=1`: no test-period score was computed.
+  - Each run took 13–14 s in total; the fitting part took 3–4 s for 8 epochs, **≈ 0.4 s per epoch, the same on 1
+    thread as on 24**. The problem is small: 64 wells × 1,925 weeks, one batched FFT per epoch.
+  - A full fit (500 stage-A + 200 stage-B epochs) is therefore ≈ 5 min on one thread. A 24-vCPU runtime running
+    24 single-thread fits in parallel does ≈ 280 fits per hour, so the tuning and the whole R4 matrix fit in a
+    few runtime-hours.
+- **Replay across machines (Gate R3 criterion):** the checkpoints saved on Colab (Python 3.13) and replayed on the
+  laptop (Python 3.12, same torch 2.14.1) reproduce their saved predictions to 4.1e-6 m (arm D) and 6.3e-6 m
+  (arm C), under the 1e-5 m bound.
+
+### What to keep in mind
+
+- The validation numbers printed by the smoke run (after 8 epochs) mean nothing: they only show the run reached
+  the end. Its prediction files (`results/v5/_smoke/`) also hold test-period weeks. They are never scored, and the
+  `_smoke` folder is excluded from every report.
+- Fits are cheap. So the tuning can give every arm its own budget (24 trials, re-selection over 3 seeds) rather
+  than tuning only arm D, which would favour it. To decide with Assil, together with the ranges.

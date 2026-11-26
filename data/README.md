@@ -516,6 +516,19 @@ Notes:
   their commune's centroid. Measured in `docs/bss_evidence.md` (T62): no irrigation borehole has a recorded
   unit, so no irrigation link can be made "probable" by these data.
 
+### Sentinel-2 spring and summer indices per RPG parcel (R1.4, CQ15, 2026-11-26)
+
+| Date | Source | Endpoint / URL | Parameters | Output | Rows | Size |
+|---|---|---|---|---|---|---|
+| 2026-11-26 | Copernicus Sentinel-2 level-2A surface reflectance, harmonised (`COPERNICUS/S2_SR_HARMONIZED`), through Google Earth Engine under Assil's Cloud project (`.agents/RESOURCES.md`); parcels from the RPG editions already pulled (`interim/rpg_dept_<year>.parquet`) | Earth Engine API (`earthengine-api` 1.7.53, `ee.data.computeFeatures`) | `PFE_DATASET=v5 python -m src.ingest.gee_s2 --workers 4`; years 2017–2025; parcels intersecting the 65 wells' 3 km zones (`crop_demand.well_buffers`), whole, simplified to 2 m; seasons April–May and July–August; SCL classes 4, 5, 6 kept; per pixel the seasonal median of NDVI (B8, B4) and NDMI (B8, B11) and the count of valid acquisitions; per parcel the mean at 10 m and the valid-pixel count; batches of 800 parcels, 4 in parallel | `raw/gee_s2/2026-11-26/s2_parcels_<year>.parquet` (+ one file per batch, `release.json`); log `results/logs/gee_s2_2026-11-26.log` | 142,282 parcel-years (13,927 in 2017 … 17,989 in 2025); valid summer pixels for all but 1, spring for all but 128 | 23 MB |
+
+- About 8 minutes in all (≈ 3 s per batch). Medians 2017–2019 by RPG group look physical: vines (21)
+  NDVI 0.27 in spring, 0.35 in summer; orchards (20) 0.66 → 0.57; fallow (11) 0.52 → 0.31; mountain pastures
+  (17) 0.60 → 0.67 (green from altitude, not irrigation: hence the soil-wetness condition of CQ15's rule);
+  ≈ 9 valid summer acquisitions per pixel after the cloud mask.
+- Observations only: the CQ15 rule (thresholds frozen on training years), its validation against the Agreste
+  2020 census and the per-well irrigated share come after (`docs/analysis_plan_v3.md` §1).
+
 ### BNPE 2025 availability check (R1.1b, 2026-11-25)
 
 - `https://hubeau.eaufrance.fr/api/v1/prelevements/chroniques?code_departement=66&annee=<y>&size=1`:

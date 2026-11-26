@@ -116,7 +116,14 @@ Head anomaly of well i at week t (metres above its training mean μ_i):
    the group (λ_shape), a weak one on the gains (λ_gain < λ_shape); AdamW with cosine-annealed learning rate
    for a fixed number of epochs (no early stopping on test-like data; the epoch count and the λs are tuned on
    the **validation** period with the equal budget of v2 §5: 24 Optuna trials, re-selection over 3 seeds).
-   One model serves accuracy and explanations (no B2 / B2conv split).
+   One model serves accuracy and explanations (no B2 / B2conv split). **Tuning (Assil, 2026-11-26):** each main
+   arm (A, B, C, D) gets its own budget, so no arm inherits another's tuning; E and F reuse D's settings (they
+   test D's edges, not a tuning). The search covers six settings, the network's size staying as point 5 fixes
+   it: stage-A epochs 300–1500, stage-B epochs 0–400, learning rate 0.003–0.03 (log), λ_shape 0.001–1 (log),
+   λ_gain = r · λ_shape with r 0.01–0.5 (log; so λ_gain < λ_shape), λ_δ 0.001–1 (log). Objective: the median
+   validation NSE of the core wells (v2 §5). The settings tuned in R1 serve every regime (R2, R3, refit). Cost
+   (Colab smoke run, 2026-11-26): ≈ 0.4 s per epoch on one thread, a full fit ≈ 5 min, ≈ 280 fits per hour on
+   a 24-vCPU runtime.
 8. **Residual row (sensitivity only):** ρ_i(t) bounded (|ρ| ≤ 0.20 sd_i), seeing the day of year and static
    facts only; off in the main model.
 9. **Seeds:** 10 per primary arm; replay of every checkpoint to < 1e-5 m.
@@ -164,5 +171,6 @@ Decided by Assil on 2026-11-26 (AskUserQuestion, recommendation first; each the 
 4. **CQ15:** built (R1.4, R2.2) and used as a static fact in one with/without row (§1, §5); Gate R1 waits for it.
 Settled by the data: no BSS evidence in v5 (§1; T62).
 
-Still open: the λ ranges and the epoch ranges of the tuning (after the Colab smoke run gives the time per epoch);
-the exact node features list; the Manouba transfer (qualitative, outside these contrasts).
+5. **Tuning** (after the Colab smoke run): each main arm its own budget, E and F reuse D's; six settings,
+   ranges in §3 point 7.
+Still open: the exact node features list; the Manouba transfer (qualitative, outside these contrasts).

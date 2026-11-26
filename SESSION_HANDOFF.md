@@ -31,27 +31,45 @@ date.
 
 ---
 
-## ▶ START HERE (state at the end of the session of 2026-11-26 evening, ≈ 19:45 local time)
+## ▶ START HERE (state at the end of the session of 2026-11-26 night, ≈ 23:55 local time)
 
-**Running or pending when this was written (check each):**
-- Colab: **nothing running** (session `ext` stopped 2026-11-26 ≈ 19:46 after the Track 2 eval run; balance 163.49 units). Track 2 eval: statement F1 0.113 (step16 note: the non-exhaustive-gold sample check is next).
-- Workers: `neon` on **T85** (CQ15 in ontology + graph + SHACL-AF rule + release rebuild; report
-  `results/_agents/reports/T85.md`); `sol` on **T89** (Track 1 runner + Assil's review sheet; report T89.md).
-  Review both, rerun their tests, commit. Then brief neon **T88** (CQ10 + CQ16 + register codes; brief ready) and
-  afterwards CQ9 + CQ13 (brief to write: the gate needs all 16 CQ suites).
-- The graph release is stale since R2.3 (new alignment files) until T85 rebuilds it.
+**Running or pending when this was written:** nothing. Colab: no session (`t1pilot` pulled and stopped; balance
+161.94 units). Workers `sol` and `neon` closed. No laptop job. Nothing pushed this session (commits are local: push
+only when Assil says so).
 
-**Where we are in `docs/v5_plan.md`:** R0 ✅ · **R1 ✅ (Gate R1 passed 2026-11-26)** · R2 in progress:
-- R2.1: Track 2 done on dev (Qwen3-8B chosen by the fixed rule, F1 0.462); eval running. Track 1: **the 30 PDFs are complete** (12 scripted, 14 by Assil, 4 replacements by the rule;
-  `configs/track1_papers.csv`); next T89's runner (review it first): pilot (orders 1–2) → main (28) on Colab with Qwen3-8B
-  → Assil's review sheet.
-- R2.2: CQ15 (T85 running); CQ10, CQ16, register codes (T88); CQ9, CQ13 (to brief); then the RegisteredParcel ⊑
-  s4agri:Parcel alignment (lead).
-- R2.3: SAREF4WATR, ENVO, deeper SWEET done; GEMET and CORINE wait for Eionet (unreachable from here); the scorer and
-  the HCAT gold done (T87); matchers (OntoAligner: lexical, retrieval, LLM on Colab) to brief; AGROVOC needs
-  Assil's labels.
-- R2.4 not started: Manouba from free data (GEE) + a sourced extent (Ferchichi et al. 2017 once downloaded), the TN
-  KG, the reuse %, pyLODE, the persisted Oxigraph store; then OOPS! again and Gate R2.
+**Do first, in this order:**
+1. **Apply the CQ15 validation fix** (`docs/notes/step16_v5.md`, section "R2.2: CQ15 in the graph (T85) and why
+   validation went from 9 to 82 minutes"): in `ontology/shapes/lulcw-shapes.ttl`, `lulcwsh:IrrigationClassificationKeyShape`,
+   first constraint, replace `?c lulcw:classifiedParcel ?p ; lulcw:seasonYear ?y ; lulcw:derivationRule $this .` by
+   `?c lulcw:classifiedParcel ?p ; lulcw:seasonYear ?y ; lulcw:derivationRule ?rule . FILTER (?rule = $this)`, with a
+   comment saying why (`scripts/diag_bench_not_exists.py`: quadratic before, 13,260 parcel-seasons in 9 s after).
+   Commit it before any worker edits the shapes file.
+2. Open the two workers. **neon → T88** (CQ10 + CQ16 + register codes + T85's follow-ups; brief updated: no release
+   rebuild, the SPARQL-in-shapes rule). **sol → T92** (alignment matchers: fuzzy, bge-m3 retrieval, Qwen3-8B, a Colab
+   step; brief ready).
+3. After T88: **rebuild the release** (lead): `PFE_DATASET=v5` `src.kg.build_kg` (≈ 5.5 min), `src.kg.apply_rules`
+   (rules were 648 s: profile them with `scripts/diag_profile_rules.py`; validation should drop back to ≈ 10 min),
+   `src.kg.inventory` / `src.kg.export` / `src.kg.controls` for the three policies (edges must be identical), then
+   the graph suites (test_ontology, test_modules, test_kg, test_kg_rules, test_cq, test_release, test_inventory,
+   test_export, test_controls) and `src.kg.ontology_docs` (regenerate; `--check`). Then **neon → T91** (CQ9 + CQ13;
+   brief ready; CQ9 data `data/interim/vigieau_communes_66.parquet` built).
+4. Lead, after T88: the GEMET / CORINE / SAREF4AGRI alignments (vocabularies in `data/raw/vocab/`, logged;
+   SAREF4AGRI v2.1.1 to fetch again through `build_imports`; `s4agri:Parcel ⊑ geo:sfContains some s4agri:Crop`, so
+   `lulcw:RegisteredParcel` gets a close match, not a subclass: fallow and non-cropped codes hold no crop).
+5. Track 1: Assil reviews the pilot sheet; then the prompt/schema decision (the pilot rule allows changes after the
+   two pilot papers only), then the main run (28 papers, ≈ 4 h on an L4: the pilot took ≈ 27 min for 30 pages) with
+   the command in T89's report (`EXTRACT_SPLIT=main`, `EXTRACT_RUN=track1_qwen3_main`).
+6. Then R2.4 (Manouba KG from free data, reuse %, persisted store, OOPS!), Gate R2; design of twin v2 (R3.3) and the
+   Hetero-STGNN black box (R3.2) can start as code (no runs before the gates).
+
+**Where we are in `docs/v5_plan.md`:** R0 ✅ · R1 ✅ (Gate R1 passed 2026-11-26) · R2 in progress:
+- R2.1: Track 2 ✅ (eval F1 0.113; sample check: implied precision ≈ 0.17). Track 1: pilot ✅ (88 statements from the
+  two pilot papers, `results/v5/extraction/track1_qwen3_pilot/`), review sheet for Assil ✅, main run ⬜.
+- R2.2: CQ15 ✅ (T85, ontology 0.11.0; validation fix to apply); CQ10, CQ16 (T88) ⬜; CQ9, CQ13 (T91) ⬜.
+- R2.3: SAREF4WATR, ENVO, deeper SWEET ✅; HCAT gold + scorer ✅; GEMET/CLC files ✅, alignments ⬜; matchers (T92) ⬜;
+  AGROVOC labels (Assil) ⬜.
+- R2.4: pyLODE documentation ✅ (`docs/ontology/`, regenerate after each ontology change); Manouba KG, reuse %,
+  persisted store, OOPS! ⬜.
 
 **VPN (installed 2026-11-26 ≈ 19:45 at Assil's request):** `openvpn` 2.7.9 + `networkmanager-openvpn` 1.12.5
 (pacman), NetworkManager profile **`Univ-Manouba`** imported from the university's `.ovpn` (certificate-based, server
@@ -62,13 +80,47 @@ since 2017, so Chu 2026 and Jeong 2026 stay out of reach). The 23 open-access pa
 not by the network. Never connect it while a Colab job is being pulled. **Test of 2026-11-26 19:47:** the profile loads, but the server (196.203.128.101, UDP 1194) answered "no route to host" from the home network: server down or the port blocked on that network; retry later or from another network, else ask the university's IT. The sudo password Assil gave for this
 session is not stored anywhere (`sudo -k` run at the end).
 
-**Waiting for Assil:** the AGROVOC labels (`data/interim/agrovoc_gold_worksheet.xlsx`, dev codes first; `import`
-after each sitting); the 26 papers of `docs/papers_to_download.md`; later the Track 1 review and the alignment
-ledger review. The defence date when known.
+**Waiting for Assil:**
+1. **The Track 1 pilot review:** open `data/interim/track1_review_pilot.xlsx` (88 statements from the two pilot
+   papers; sheet "Guide" says what to judge), choose `accept` or `reject` (+ a reason) per row, save, then tell Claude
+   (it runs `python -m src.kg.track1_review import --worksheet data/interim/track1_review_pilot.xlsx --out
+   data/interim/track1_review_pilot.csv` and the score). Worth checking first: statements about exchanges between two
+   aquifers (Track 2's main confusion).
+2. The AGROVOC labels (`data/interim/agrovoc_gold_worksheet.xlsx`, dev codes first; `import` after each sitting).
+3. Papers: **Ferchichi et al. 2017** (Manouba aquifer, needed for R2.4's extent; doi:10.1007/s12517-017-3314-4, open
+   access but blocks scripts), Shapoori 2015 (VPN); `docs/papers_to_download.md`.
+4. Later: the alignment ledger review; the defence date when known.
 
 ---
 
 ## Session log
+
+### 2026-11-26 (night, Claude Opus 5.5, from ≈ 22:50 local time)
+- T89 (sol) reviewed and committed (`9b6269b`); Track 1 passages rebuilt on the complete 30-paper set (453 passages;
+  pilot = orders 1–2, 30 passages; main = 28 papers, 423 passages).
+- T85 (neon, CQ15 in the graph, ontology 0.11.0) reviewed: results exact (13,260 LU-6 parcel-seasons = T76's
+  statuses) but **graph validation 9 → 82 min**. Cause found (synthetic benchmark + per-shape profiler): rdflib orders a
+  `FILTER NOT EXISTS` / `OPTIONAL` block's patterns without knowing the variables bound outside it, so the CQ15
+  completeness check scans all 13,260 classifications for each of the 13,260 observations. A runtime-aware pattern
+  order does not help (benchmark); the fix is to rewrite that one block (written, to apply first next session).
+  T85 committed (`4535474`) after the lead's rerun of all nine graph suites (all pass).
+- sol → **T90** (pyLODE HTML docs of the modules and profiles; pyLODE 3.6.1 installed by the lead as an isolated
+  `uv tool`, because it would upgrade the pinned httpx2/httpcore2).
+- Track 2 sample check done and committed (`e3f6a87`): implied precision ≈ 0.17 instead of 0.069; the main error is
+  aquifer–aquifer leakage forced into `RiverExchange` (step16 note).
+- CQ9 data: `src/ingest/vigieau_communes.py` → `data/interim/vigieau_communes_66.parquet` (226 communes × 6,054 days,
+  SUP/SOU/AEP levels; committed `8f3daaa`). GEMET 4.2.3 and the CLC vocabulary saved from Internet Archive copies
+  (`data/raw/vocab/`, logged) for the GEMET/CORINE alignments (lead, after T88/T91: they touch
+  `ontology_modules.py`/catalog). OntoAligner 1.9.4 wheel unpacked for reading in `.agents/ref/` (its deps would
+  downgrade huggingface-hub and add `datasets`: run it on Colab only).
+- Briefs ready: **T88** (neon; updated: no release rebuild, T85 follow-ups, the SPARQL-in-shapes rule), **T91**
+  (neon after T88: CQ9 + CQ13).
+- Colab `t1pilot` (L4, ≈ 23:11–23:51 local, ≈ 1.5 units): Track 1 pilot done (30 pages, 88 statements, 0 invalid);
+  pulled, session stopped; review sheet `data/interim/track1_review_pilot.xlsx` written for Assil.
+- T90 + T90b (sol) committed (`4bf4df3`): pyLODE pages of the 7 modules and 3 profiles, 43 terms pyLODE omits listed
+  from the source; `src.kg.ontology_docs --check` gate.
+- Assil at ≈ 23:40: "once sol finishes update the handoff and stop": workers closed, nothing running, this file
+  updated; nothing pushed.
 
 ### 2026-11-26 (evening, Claude Opus 5.5, from ≈ 17:50 local time)
 - Assil: "before u start doing anything, give me what u need from me and guide me one by one until u don't need

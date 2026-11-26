@@ -295,7 +295,7 @@ scores above stay the pre-specified result.
   order: orders 35, 36, 37, 42). The set is 30 papers: 12 scripted, 14 by hand, 4 replacements; the other downloaded
   replacements are marked `outside_set`. Pilot = orders 1 and 2, as fixed.
 
-### R2.1 Track 2: the sample check of unmatched predictions — rule fixed before judging (Claude, 2026-11-26 ≈ 23:20)
+### R2.1 Track 2: the sample check of unmatched predictions — rule fixed before judging (Claude, 2026-11-26 ≈ 23:05)
 
 Why: the gold was curated as graph evidence, not as an exhaustive annotation, so an unmatched prediction can be a true
 statement the gold lacks; the eval precision (0.069) is then a lower bound. The check estimates how much.
@@ -311,7 +311,7 @@ statement the gold lacks; the eval precision (0.069) is then a lower bound. The 
   (matched + supported share × 95 unmatched, over 102). The pre-specified scores stay the result; this is a reading
   aid, labelled as Claude's judgement.
 
-**Result of the sample check (Claude's judgement, 2026-11-26 ≈ 23:40; sheet `configs/track2_sample_check.csv`, one
+**Result of the sample check (Claude's judgement, 2026-11-26 ≈ 23:10; sheet `configs/track2_sample_check.csv`, one
 reason per verdict).** Of the 19 sampled unmatched
 predictions: **3 supported** (one an exact duplicate of another on the same page, so 2 distinct statements the gold
 lacks), **6 partly** (the right exchange on the page but a wrong direction or code, or a methodological or
@@ -329,3 +329,32 @@ supported on content but adds no statement, so the implied precision uses the 2 
   in the Pliocene → leakage from the Quaternary) but has no category of its own for it (it falls under `other`): the
   pilot review should look at how the model handles such statements before the main run. The pre-specified Track 2
   scores stay the result.
+
+### R2.2: CQ15 in the graph (T85) and why validation went from 9 to 82 minutes (Claude, 2026-11-26 night)
+
+**What was done (T85, neon; reviewed by Claude).** Ontology 0.11.0 (39 terms: 6 `lulc`, 33 `eo`): registered parcels,
+parcel–zone overlaps, Sentinel-2 summer NDVI observations with their quality counts, SIM2 summer soil wetness, the
+probable-irrigation rule as a `DerivationRule` whose thresholds are read from `irrigation_s2_rule.json` (validity
+`HeuristicRule`, from the 2020 census check), the 650 zone-season shares of all 65 wells, and the parcel-seasons of the
+two LU-6 zones only (13,260). The SHACL-AF rule (order 70) derives the 13,260 classifications inside the graph; they
+equal T76's Python statuses one for one (`test_kg_rules` 8, `test_cq`). Graph: facts 471,653 → 771,662 triples,
+rule outputs +119,340. Every graph suite passed on the lead's rerun (logs `results/logs/t85_review_*.log`).
+
+**The slowdown and its cause.** Rules 252 → 648 s, validation 551 → 4,905 s. A per-shape profile on the release graph
+stopped after 15 min inside one check, `IrrigationClassificationKeyShape`'s completeness query:
+`FILTER NOT EXISTS { ?c lulcw:classifiedParcel ?p ; lulcw:seasonYear ?y ; lulcw:derivationRule $this }`.
+`apply_rules.fast_sparql` orders a block's patterns knowing only `$this` as bound; inside NOT EXISTS the outer `?p`
+and `?y` are bound at run time but unknown to the ordering, so `?c lulcw:derivationRule $this` (one "free" variable)
+runs first and scans all 13,260 classifications of the rule for each of the 13,260 observations. Synthetic benchmark
+(`scripts/diag_bench_not_exists.py`): 12.5 s for 500 parcel-seasons, 40.9 s for 1,000 (quadratic); a runtime-aware
+ordering by number of unbound terms does not help (both patterns have one unbound term; only their selectivity
+differs). **Fix (to apply at the start of the next session, before T88's rebuild):** write the block as
+`FILTER NOT EXISTS { ?c lulcw:classifiedParcel ?p ; lulcw:seasonYear ?y ; lulcw:derivationRule ?rule . FILTER (?rule
+= $this) }` — 13,260 parcel-seasons in 9.2 s, same violations found. The other CQ15 shapes are SHACL Core or
+subject-bound and stay fast. The rule's soil-wetness OPTIONAL costs about 40 lookups per parcel-season (not
+quadratic); where the remaining +400 s of rule time goes is to measure with `scripts/diag_profile_rules.py`.
+
+**What to keep in mind.** Inside NOT EXISTS / OPTIONAL / EXISTS, never write `$this` or a hub constant in a pattern:
+bind a fresh variable and compare it in a FILTER, and write first the pattern that uses an outer variable (rule added
+to the T88 brief). Open ontology points from T85, assigned to T88: `lulcw:cropCode`'s domain (now used on parcels too)
+and the `eo` module's description.

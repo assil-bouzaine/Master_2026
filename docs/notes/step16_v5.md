@@ -197,3 +197,26 @@ to them, and the "post-freeze weeks" of R7.1 are defined against this freeze.
   parse failures, then by the smaller model. Only the chosen model then runs on **eval**, once, and that score is
   the Track 2 result. Dev scores are reported for every candidate.
 - **Cost:** three dev runs plus one eval run on a Colab L4 (≈ 2 units/h): about 1–1.5 units.
+
+### R2.1 Track 1: the design, fixed before any paper is harvested (Claude, 2026-11-26 evening)
+
+- **Papers:** the OpenAlex harvest (T86): ten fixed queries (Mediterranean groundwater, irrigation, land-use change,
+  recharge, nitrate, seawater intrusion; Spain, Tunisia, Morocco named), open-access articles since 2010 with a PDF,
+  English or French, round-robin selection of 30, failed downloads replaced by the next candidate in order.
+- **Passages:** every page of each PDF up to its references section (`pdftotext`), at most 20 pages per paper.
+- **Model:** the one chosen on Track 2's dev pages (same decoding, greedy), so Track 1 adds no model choice.
+- **Answer:** cause–effect statements, one JSON object each: the driver (verbatim phrase) and its category (irrigation
+  expansion, groundwater abstraction, land-use or crop change, urbanisation, drought or climate, canal irrigation or
+  return flow, fertilisation, managed recharge, water policy or restriction, other), the effect (verbatim phrase) and
+  its category (groundwater level, recharge, groundwater quality or nitrate, salinisation or seawater intrusion,
+  streamflow, drought risk, water-use conflict, other), the polarity (increases, decreases, no effect, unclear), the
+  evidence type (measured, modelled, reviewed literature, stated without evidence), the place if stated, the verbatim
+  quote and the page. The exact schema and prompt are written before the first run.
+- **Measure:** no gold exists, so Assil reviews every extracted statement (accept: the quote supports the driver,
+  effect and polarity as extracted; reject otherwise, with a one-word reason). Reported: the acceptance rate (the
+  precision of the extraction as judged), per category and per evidence type. The first **two** papers in the
+  selection order are a **pilot**: the prompt and schema may be fixed after reading their outputs; they are then
+  excluded from the reported rate, which covers the other 28 papers only.
+- **Use:** accepted statements whose categories map to the ontology's mechanisms (e.g. groundwater abstraction →
+  `lulcw:PumpingDrawdown`, canal return flow → `lulcw:CanalReturnFlow`) enter the `med-causal` module as cited
+  literature hypotheses (evidence kind `lulcw:ExpertHypothesis`, DOI, quote): never as constraints of the model.

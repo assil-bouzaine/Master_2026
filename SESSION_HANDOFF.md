@@ -36,9 +36,11 @@ date.
 **Running:**
 - `neon` on T78: R2.2, seven ontology modules + EU/FR/TN profiles generated from `lulcw.ttl` (0.10.0), with a
   release, export and controls rebuild at its end.
-- `sol` (GPT Sol 6.1 high) on T79: CQ15's outputs join the v5 build; determinism checks; no full rebuild.
+- `sol` (GPT Sol 6.1 high) on T80: R2.1 Track 2 scorer, offline (`src/kg/extract_eval.py`,
+  `configs/extraction_schema.json`).
 
-No Colab job. Branch `master_2026_fixes`; today's commits are local (push only when Assil says so).
+T79 (CQ15 in the v5 build, deterministic) is committed (`9c52b42`). No Colab job. Branch `master_2026_fixes`; today's
+commits are local (push only when Assil says so).
 
 **Done today:** the bug audit closed; plan v3 §8 fully decided by Assil (also the node features); Colab smoke run;
 Sentinel-2 + CQ15 rule (verdict heuristic, `docs/irrigation_s2.md`); arms A/B; equal-budget tuner (T77); v5 canal
@@ -46,9 +48,12 @@ decision (T74). Details: session log below, `docs/notes/step16_v5.md`, `docs/v5_
 
 **Next, in order:**
 1. Review and commit T78 and T79.
-2. **Gate R1:** the full cold-rebuild audit, after T78's rebuild:
-   `PYTHONIOENCODING=utf-8 PFE_DATASET=v5 .venv/bin/python -m src.analysis.dataset_v5_audit`
-   (T79's report confirms the exact command); then record Gate R1 in `docs/v5_plan.md`.
+2. **Gate R1:** run these only after T78 stops reading the dataset.
+   - First rebuild, which adds `cq15` to `meta.json` and becomes the new baseline:
+     `PYTHONIOENCODING=utf-8 PFE_DATASET=v5 .venv/bin/python -m src.dataset.build`
+   - Then the full audit (it rebuilds again and compares every file):
+     `PYTHONIOENCODING=utf-8 PFE_DATASET=v5 .venv/bin/python -m src.analysis.dataset_v5_audit`
+   - Then record Gate R1 in `docs/v5_plan.md`.
 3. R2, then Gate R2:
    - R2.3: alignments checked at the source (network: lead);
    - R2.1: literature extraction (OpenAlex + a local LLM on Colab);

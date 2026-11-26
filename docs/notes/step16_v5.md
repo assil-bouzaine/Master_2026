@@ -246,3 +246,21 @@ body" is a management unit, not "groundwater").
   were rejected (a register code is not a collection of plants; a reanalysis grid cell is not a sensor).
 - GEMET and CORINE (Eionet) could not be reached from this network; retry before Gate R2.
 - EuroCrops is CC BY-SA: it stays a separate evaluation resource, never copied into the CC BY ontology.
+
+### R2.1 Track 2: the dev runs and the model chosen by the rule (2026-11-26 evening)
+
+Colab L4, greedy decoding, the frozen prompt, the 19 dev passages (10 gold statements); runs in
+`results/v5/extraction/<run>/` (raw answers, `config.json`, `run.json`, `score_dev.md`):
+
+| Candidate (commit) | Predictions | Parse failures | Statement P / R / F1 | Strict F1 |
+|---|---:|---:|---|---:|
+| Qwen/Qwen3-8B (`b968826…`, thinking off) | 16 | 0 | 0.375 / 0.600 / **0.462** | 0.385 |
+| Qwen/Qwen2.5-7B-Instruct (`a09a354…`) | 12 | 0 | 0.417 / 0.500 / 0.455 | 0.455 |
+| allenai/Olmo-3-7B-Instruct (`6e5971d…`) | 0 | 1 | 0 / 0 / 0 | 0 |
+
+By the rule fixed before any output (highest statement F1 on dev), **Qwen3-8B is chosen**; only it runs on eval.
+Qwen2.5-7B was within one statement of it (and better on strict F1), which the thesis reports. OLMo-3 answered `[]`
+on 18 pages and, on the long web page, produced a runaway answer that hit the 4,096-token limit (an unterminated
+string): it does not follow this extraction format zero-shot. The Qwen2.5 run did not record its commit
+(`resolved_revision` empty with transformers 5.19); its main branch has not changed since 2025-01-12, so it used
+`a09a354…`; later runs pass the commit explicitly (`EXTRACT_REVISION`).

@@ -1,23 +1,31 @@
 """Node and edge tables of the graph arms, from the validated graph release (task 12.8, step 2).
 
-    PFE_DATASET=v4 python -m src.kg.export                     # main policy
-    PFE_DATASET=v4 python -m src.kg.export --policy confident-only
+    PFE_DATASET=v5 python -m src.kg.export                     # main policy
+    PFE_DATASET=v5 python -m src.kg.export --policy confident-only
 
 One node inventory, two edge tables that differ only in the rule that makes the edges (analysis
-plan §10, §14 items 14-18):
+plan §10, §14 items 14-18; analysis plan v3 §2 and §3.5):
 
   arm C  distance rules only, those of the Taccari-style baseline (src/models/taccari.py) applied
          to single facilities: a well's 3 nearest wells; its nearest SAFRAN cell; its 2 nearest
-         pool gauges; every groundwater facility within C_PUMP_KM; the plain's canal node for the
-         wells of the plain.
+         pool gauges; every groundwater facility within C_PUMP_KM; each plain well's river-basin
+         canal node (from src.dataset.canal_basins.canal_edge_well_basins).
   arm D  every edge comes from the knowledge graph, read through the competency-question queries
          (src.kg.cq) like the inventory: the influences the export policy selects (pumping from the
          facilities attributed to the well's unit within 5 km; recharge proxies from the weather
          cells over the outcrop of its unit, in its 5 km zone, unit-wide as a regional channel, and
          over the outcrop of the overlying unit in direct contact at the well as a leakage channel;
-         river exchange from the pool gauge of an associated watercourse; canal return
-         where a return is documented) and the same-unit well links. Where the graph holds no
-         link, D has none: never a distance fallback.
+         river exchange from the pool gauge of an associated watercourse; canal return from the
+         well's river-basin canal node where a return is documented), the same-unit well links,
+         and the hydrogeological structure facts: ``monitors`` (rank-1 monitoring attribution from
+         each well's aquifer unit to the well) and ``overlies`` (direct stratigraphic contact from
+         upper aquifer unit to lower aquifer unit, with witnessing polygon counts in ``n_paths``;
+         the only relation whose ``dst`` is not a well). Where the graph holds no link, D has none:
+         never a distance fallback.
+
+The shared node inventory holds wells, facilities, weather cells, river gauges, river-basin canal
+nodes (``canal:<basin>``), and every aquifer unit of the graph carrying a ``lulcw:bdlisaCode``
+(type ``aquifer_unit``, ``has_series=False``, ``unit_type`` from its ontology class).
 
 Several evidence paths between one driver and one well make one edge (item 17): it lists the
 number of paths, carries a sign only if every path gives the same one, and is eligible, or
@@ -25,11 +33,11 @@ constrained, only if every path is. "constrained" follows the policy's constrain
 (until Gate 3 only pumping). Weights: the same functions of distance in both arms, so that the
 arms differ in which edges exist, not in how an edge is weighted: pumping exp(-d / 5 km), well
 links exp(-d / sigma) with sigma the median distance of C's 3-nearest links; recharge edges carry
-the cell's share of the outcrop in D and 1 in C; river and canal edges 1 in D, C's river edges
-exp(-d / median well-gauge distance) as in the baseline. In arm D, recharge, recharge_unitwide and
-recharge_leakage edges whose aggregated cell share is below MIN_CELL_SHARE (0.001, Gate 3 point 12)
-are dropped from the export, while the knowledge graph keeps them. The routed models renormalise
-each well's remaining recharge weights to 1.
+the cell's share of the outcrop in D and 1 in C; river, canal, monitors and overlies edges 1 in D,
+C's river edges exp(-d / median well-gauge distance) as in the baseline. In arm D, recharge,
+recharge_unitwide and recharge_leakage edges whose aggregated cell share is below MIN_CELL_SHARE
+(0.001, Gate 3 point 12) are dropped from the export, while the knowledge graph keeps them. The
+routed models renormalise each well's remaining recharge weights to 1.
 
 D also lists, per well, the groundwater facilities of the dataset within 5 km that no selected
 pumping edge connects to it (relation "pumping_unattributed"): the volume outside the policy enters
@@ -53,6 +61,7 @@ import rdflib
 
 from src.analysis.piezo_profile import PLAIN_BBOX
 from src.config import CRS_L93, CRS_WGS84, DATASET, DATASET_DIR, RAW, ROOT
+from src.dataset.canal_basins import canal_edge_well_basins
 from src.kg import release
 from src.kg.build_kg import git_version
 from src.kg.cq import KG, ask, kg_store, local
@@ -65,7 +74,15 @@ C_PUMP_KM = 10.0            # arm C: facilities within this distance
 PUMP_DECAY_M = 5000.0       # both arms: pumping weight exp(-d / 5 km)
 D_RADIUS_M = 5000.0         # the search radius of the graph's pumping and well-link rules
 MIN_CELL_SHARE = 0.001      # Gate 3 point 12: drop recharge cells holding under 0.1 % of an outcrop
-CANAL = "canal-intakes:plain"
+CANAL = "canal-intakes:plain"   # legacy plain-wide canal code (used by baseline_edges / v4 routing)
+CANAL_PREFIX = "canal:"         # per-basin canal node code prefix: canal:<basin>
+UNIT_TYPES = {
+    "AlluvialAquifer": "alluvial_aquifer",
+    "ConfiningUnit": "confining_unit",
+    "KarstAquifer": "karst_aquifer",
+    "MultilayerAquiferSystem": "multilayer_aquifer_system",
+}
+UNIT_TYPE_VALUES = (*UNIT_TYPES.values(), "unit")
 EDGE_COLS = ["relation", "src_type", "src", "dst", "weight", "distance_m", "n_paths", "sign",
              "eligible", "constrained", "depth_diff_m", "association_types"]
 
@@ -111,7 +128,58 @@ def edge(relation, src_type, src, dst, weight, distance_m=None, n_paths=1, sign=
                                 bool(eligible), bool(constrained), depth_diff_m, association_types)))
 
 
-def edges_c(wells, fac, gauges):
+def aquifer_units(store):
+    """Every unit of the graph carrying a lulcw:bdlisaCode, with its mapped ontology class."""
+    q = """PREFIX lulcw: <https://w3id.org/lulcw#>
+    SELECT ?code ?cls WHERE {
+      ?u lulcw:bdlisaCode ?code .
+      OPTIONAL { ?u a ?cls }
+    }"""
+    classes_by_code = {}
+    for row in store.query(q):
+        code = row["code"].value
+        classes = classes_by_code.setdefault(code, set())
+        if row["cls"] is not None:
+            mapped = UNIT_TYPES.get(local(row["cls"].value))
+            if mapped is not None:
+                classes.add(mapped)
+    records = []
+    for code in sorted(classes_by_code):
+        specific = classes_by_code[code]
+        if len(specific) > 1:
+            raise ValueError(f"Unit {code!r} has multiple specific aquifer classes: {sorted(specific)}")
+        records.append({"code": code, "unit_type": next(iter(specific)) if specific else "unit"})
+    return pd.DataFrame(records, columns=["code", "unit_type"])
+
+
+def overlies_edges(store):
+    """Direct stratigraphic contacts (upper unit -> lower unit) with witnessing polygon counts."""
+    q = """PREFIX lulcw: <https://w3id.org/lulcw#>
+    SELECT ?up ?low (COUNT(DISTINCT ?p) AS ?n) WHERE {
+      ?rel a lulcw:StratigraphicRelation ;
+           lulcw:relationKind lulcw:DirectContact ;
+           lulcw:upperUnit/lulcw:bdlisaCode ?up ;
+           lulcw:lowerUnit/lulcw:bdlisaCode ?low ;
+           lulcw:witnessedBy ?p .
+    }
+    GROUP BY ?up ?low
+    ORDER BY ?up ?low"""
+    return [edge("overlies", "aquifer_unit", row["up"].value, row["low"].value, 1.0,
+                 n_paths=int(row["n"].value))
+            for row in store.query(q)]
+
+
+def well_canal_basins(wells, codes=None):
+    """Map each well code to the river basin of its nearest main river (Tet, Agly, Tech, Reart)."""
+    target = list(wells["code_bss"]) if codes is None else list(codes)
+    if not target:
+        return {}
+    dummy = pd.DataFrame({"relation": "canal", "dst": target})
+    wb = canal_edge_well_basins(edges_d=dummy, wells=wells)
+    return dict(zip(wb["code_bss"], wb["basin"]))
+
+
+def edges_c(wells, fac, gauges, basin_of=None):
     """Arm C: distance rules only."""
     rows, codes = [], wells["code_bss"].to_numpy()
     d = _dist(wells, wells)
@@ -134,7 +202,10 @@ def edges_c(wells, fac, gauges):
         for j in np.where(df[i] <= C_PUMP_KM * 1000)[0]:
             rows.append(edge("pumping", "facility", fac["code_ouvrage"].iloc[j], codes[i],
                              np.exp(-df[i, j] / PUMP_DECAY_M), df[i, j]))
-    rows += [edge("canal", "canal", CANAL, w, 1.0) for w in codes[wells["in_plain"].to_numpy()]]
+    plain_wells = codes[wells["in_plain"].to_numpy()]
+    if basin_of is None:
+        basin_of = well_canal_basins(wells, plain_wells)
+    rows += [edge("canal", "canal", f"{CANAL_PREFIX}{basin_of[w]}", w, 1.0) for w in plain_wells]
     return pd.DataFrame(rows, columns=EDGE_COLS)
 
 
@@ -157,11 +228,12 @@ def aggregate(paths):
 
 
 SRC_TYPE = {"pumping": "facility", "recharge": "weather_cell", "recharge_unitwide": "weather_cell",
-            "recharge_leakage": "weather_cell", "river": "gauge", "canal": "canal"}
+            "recharge_leakage": "weather_cell", "river": "gauge", "canal": "canal",
+            "monitors": "aquifer_unit", "overlies": "aquifer_unit"}
 
 
-def edges_d(store, kg_wells, wells, fac, policy):
-    """Arm D: the selected influences and well links of the graph, one edge per driver and well."""
+def edges_d(store, kg_wells, wells, fac, policy, basin_of=None):
+    """Arm D: the selected influences, well links, and unit structure facts of the graph."""
     rows, sigma = [], link_sigma(wells)
     dropped = {rel: {"edges": 0, "eligible": 0, "constrained": 0, "wells": set()}
                for rel in ("recharge", "recharge_unitwide", "recharge_leakage")}
@@ -186,6 +258,10 @@ def edges_d(store, kg_wells, wells, fac, policy):
                 dropped[rel]["constrained"] += int(a["constrained"])
                 dropped[rel]["wells"].add(w.code_bss)
                 continue
+            if rel == "canal":
+                if basin_of is None:
+                    basin_of = well_canal_basins(wells)
+                src = f"{CANAL_PREFIX}{basin_of[w.code_bss]}"
             weight = (np.exp(-a["distance_m"] / PUMP_DECAY_M) if rel == "pumping"
                       else a["cell_weight"] if rel.startswith("recharge") else 1.0)
             rows.append(edge(rel, SRC_TYPE[rel], src, w.code_bss, weight, a["distance_m"], a["n_paths"],
@@ -201,14 +277,18 @@ def edges_d(store, kg_wells, wells, fac, policy):
                 rows.append(edge("well_link", "well", r["neighbourCode"], w.code_bss,
                                  np.exp(-r["distanceM"] / sigma), r["distanceM"],
                                  depth_diff_m=r["depthDifferenceM"]))
+        for r in ask(store, "cq01_assignments", W=W):
+            if r["rank"] == 1 and r["unitCode"] is not None:
+                rows.append(edge("monitors", "aquifer_unit", r["unitCode"], w.code_bss, 1.0))
+    rows += overlies_edges(store)
     dropped_summary = {rel: {"edges": info["edges"], "eligible": info["eligible"],
                              "constrained": info["constrained"], "wells": sorted(info["wells"])}
                        for rel, info in dropped.items()}
     return pd.DataFrame(rows, columns=EDGE_COLS), dropped_summary
 
 
-def nodes_of(edge_tables, wells, fac, gauges, cells):
-    """One node inventory for every arm: the wells and every source an arm connects."""
+def nodes_of(edge_tables, wells, fac, gauges, cells, units=None):
+    """One node inventory for every arm: wells, aquifer units, and every source an arm connects."""
     used = pd.concat(edge_tables)[["src_type", "src"]].drop_duplicates()
     out = [pd.DataFrame({"type": "well", "code": wells["code_bss"], "x93": wells["x93"], "y93": wells["y93"],
                          "core": wells["core"], "group": wells["group"], "unit": wells["code_bdlisa"],
@@ -222,19 +302,33 @@ def nodes_of(edge_tables, wells, fac, gauges, cells):
                                  "x93": [table.loc[c, "x93"] if k else np.nan for c, k in zip(codes, known)],
                                  "y93": [table.loc[c, "y93"] if k else np.nan for c, k in zip(codes, known)],
                                  "has_series": known}))
-    out.append(pd.DataFrame({"type": ["canal"], "code": [CANAL], "x93": [np.nan], "y93": [np.nan],
-                             "has_series": [True]}))
+    canal_codes = sorted(used.loc[used["src_type"] == "canal", "src"])
+    out.append(pd.DataFrame({"type": "canal", "code": canal_codes,
+                             "x93": [np.nan] * len(canal_codes), "y93": [np.nan] * len(canal_codes),
+                             "has_series": [True] * len(canal_codes)}))
+    if units is not None and len(units):
+        out.append(pd.DataFrame({"type": "aquifer_unit", "code": units["code"].to_numpy(),
+                                 "x93": np.nan, "y93": np.nan, "has_series": False,
+                                 "unit_type": units["unit_type"].to_numpy()}))
     n = pd.concat(out, ignore_index=True)
+    if "unit_type" not in n.columns:
+        n["unit_type"] = None
+    n["unit_type"] = n["unit_type"].where(n["unit_type"].notna(), None)
     n.insert(0, "node_id", np.arange(len(n)))
     return n
 
 
 def counts(edges, wells):
     """Per relation: edges, wells with one (all, core), eligible and constrained edges, and the
-    core wells without the relation."""
+    core wells without the relation (for overlies: edges and sources only, no wells)."""
     core = set(wells.loc[wells["core"], "code_bss"])
     out = {}
     for rel, g in edges.groupby("relation", sort=True):
+        if rel == "overlies":
+            out[rel] = {"edges": int(len(g)), "sources": int(g["src"].nunique()),
+                        "targets": int(g["dst"].nunique()), "eligible": int(g["eligible"].sum()),
+                        "constrained": int(g["constrained"].sum())}
+            continue
         has = set(g["dst"])
         out[rel] = {"edges": int(len(g)), "wells": len(has), "core_wells": len(has & core),
                     "sources": int(g["src"].nunique()), "eligible": int(g["eligible"].sum()),
@@ -247,6 +341,12 @@ def out_dir(policy, dataset=DATASET):
     return KG / f"export_{dataset}_{policy}"
 
 
+def _format_count(rel, c):
+    if "wells" in c:
+        return f"{rel} {c['edges']} edges, {c['wells']} wells ({c['core_wells']} core)"
+    return f"{rel} {c['edges']} edges, {c['sources']} sources"
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--policy", default="main", choices=("main", "confident-only", "all-links"))
@@ -255,10 +355,13 @@ def main():
     store = kg_store()
     wells, fac, gauges, cells = tables()
     kg_wells = dataset_wells(store)
-    ec = edges_c(wells, fac, gauges)
+    units = aquifer_units(store)
+    basin_of = well_canal_basins(wells)
+    ec = edges_c(wells, fac, gauges, basin_of=basin_of)
     ed, dropped_small_cells = edges_d(store, kg_wells, wells, fac,
-                                      rdflib.URIRef(D_IRI + f"policy/{args.policy}"))
-    nodes = nodes_of([ec, ed], wells, fac, gauges, cells)
+                                      rdflib.URIRef(D_IRI + f"policy/{args.policy}"),
+                                      basin_of=basin_of)
+    nodes = nodes_of([ec, ed], wells, fac, gauges, cells, units=units)
     out = out_dir(args.policy)
     out.mkdir(parents=True, exist_ok=True)
     nodes.to_parquet(out / "nodes.parquet", index=False)
@@ -278,8 +381,7 @@ def main():
             "arms": {"C": counts(ec, wells), "D": counts(ed, wells)}}
     (out / "manifest.json").write_text(json.dumps(meta, indent=1))
     for arm in ("C", "D"):
-        print(f"arm {arm}: " + "; ".join(f"{rel} {c['edges']} edges, {c['wells']} wells ({c['core_wells']} core)"
-                                         for rel, c in meta["arms"][arm].items()))
+        print(f"arm {arm}: " + "; ".join(_format_count(rel, c) for rel, c in meta["arms"][arm].items()))
     print(f"dropped small cells (< {MIN_CELL_SHARE:g}): " + "; ".join(
         f"{rel} {info['edges']} edges ({len(info['wells'])} wells)"
         for rel, info in dropped_small_cells.items()))

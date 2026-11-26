@@ -49,9 +49,12 @@ Graph structure and features
   - ``canal``: ``log1p`` of training-window mean weekly canal volume (plain-wide in v4, or
     per-basin when ``canal_basins_weekly.parquet`` is available in v5), standardised over all
     canal nodes (left at 0 when there is only a single canal node).
-  - Any other node type (such as v5's ``aquifer_unit`` before dedicated unit features are
-    defined): a single documented constant feature ``const_one = 1.0`` (kept at 1.0, not
-    zeroed).
+  - ``aquifer_unit``: one-hot of ``unit_type`` over the five ontology classes
+    (``alluvial_aquifer``, ``confining_unit``, ``karst_aquifer``,
+    ``multilayer_aquifer_system``, ``unit``), standardised with ``_standardise_matrix``
+    (matching the facility use one-hots).
+  - Any other unknown node type: a single documented constant feature ``const_one = 1.0``
+    (kept at 1.0, not zeroed).
 
 Encoder architecture
 --------------------
@@ -96,6 +99,15 @@ FACILITY_COLUMNS = ("log_annual_declared_vol", *USE_COLUMNS, "source_groundwater
 WEATHER_COLUMNS = ("clim_precip_mean", "clim_atm_demand_mean", "clim_net_precip_mean")
 GAUGE_COLUMNS = ("clim_log_mean_discharge",)
 CANAL_COLUMNS = ("clim_log_mean_canal_vol",)
+UNIT_TYPE_CATEGORIES = (
+    "alluvial_aquifer",
+    "confining_unit",
+    "karst_aquifer",
+    "multilayer_aquifer_system",
+    "unit",
+)
+# Prefix with "unit_class_" (not "unit_type_") so no feature name contains the weekly token "pe".
+UNIT_TYPE_COLUMNS = tuple(f"unit_class_{cat}" for cat in UNIT_TYPE_CATEGORIES)
 UNKNOWN_COLUMNS = ("const_one",)
 
 
@@ -230,6 +242,22 @@ def _canal_features(codes, start, end, pumping_weekly, pumping_points, canal_bas
 
     df = pd.DataFrame({CANAL_COLUMNS[0]: vals}, index=pd.Index(codes, name="code"))
     return _standardise_matrix(df)
+
+
+def _aquifer_unit_features(codes, unit_nodes):
+    """Aquifer-unit one-hot of unit_type over the five ontology classes, standardised."""
+    if "unit_type" in unit_nodes.columns:
+        ut = unit_nodes.set_index("code")["unit_type"].reindex(codes)
+    else:
+        ut = pd.Series("unit", index=codes, dtype=object)
+    ut = ut.fillna("unit").astype(str)
+    bad = sorted(set(ut) - set(UNIT_TYPE_CATEGORIES))
+    if bad:
+        raise ValueError(f"Unknown aquifer_unit unit_type values: {bad}")
+    out = pd.DataFrame(index=pd.Index(codes, name="code"))
+    for cat, col in zip(UNIT_TYPE_CATEGORIES, UNIT_TYPE_COLUMNS):
+        out[col] = ut.eq(cat).astype(float)
+    return _standardise_matrix(out[list(UNIT_TYPE_COLUMNS)])
 
 
 def _unknown_type_features(codes):
@@ -419,6 +447,9 @@ def build_heterodata(export_dir, arm, tables=None, train_start=None, policy="mai
                 else (pd.read_parquet(cb_path) if cb_path.is_file() else None)
             )
             Z, feat_names, _ = _canal_features(codes, start, end, pumping_weekly, pumping_points, canal_basins)
+        elif ntype == "aquifer_unit":
+            unit_nodes = nodes.loc[nodes["type"].astype(str) == "aquifer_unit"]
+            Z, feat_names, _ = _aquifer_unit_features(codes, unit_nodes)
         else:
             Z, feat_names, _ = _unknown_type_features(codes)
 

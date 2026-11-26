@@ -1,10 +1,12 @@
-"""Check the Phase 4 control graphs of analysis plan §10 on the v4 main export.
+"""Check the control graphs of analysis plan §10 and analysis plan v3 §2 on the v5 main export.
 
-    PYTHONIOENCODING=utf-8 PFE_DATASET=v4 .venv/bin/python -m tests.test_controls
+    PYTHONIOENCODING=utf-8 PFE_DATASET=v5 .venv/bin/python -m tests.test_controls
 
-Compare the controls with the exported D graph and independently check the
-geometry and nearby pumping coverage. Route each control through the same input
-code as D. Use a temporary copy to check that stale controls cannot be loaded.
+Compare the controls with the exported D graph across every relation of arm D (pumping, three
+recharge channels, river, basin canal, well links, monitors, overlies) and independently check
+the geometry and nearby pumping coverage. Route each control through both v4 routing
+(src.models.routing.routed_inputs) and v5 routing (src.models.hybrid_gnn.routed_v5_inputs).
+Use a temporary copy to check that stale controls cannot be loaded.
 """
 import json
 from collections import Counter
@@ -19,10 +21,23 @@ import pandas as pd
 from src.config import DATASET_DIR
 from src.kg import controls as C
 from src.kg.export import D_RADIUS_M, EDGE_COLS, PUMP_DECAY_M, out_dir
+from src.models.hybrid_gnn import RECHARGE_RELATIONS, routed_v5_inputs
 from src.models.routing import routed_inputs
 
-SOURCE_TYPES = {"pumping": "facility", "recharge": "weather_cell", "river": "gauge",
-                "canal": "canal", "well_link": "well"}
+SOURCE_TYPES = {
+    "pumping": "facility",
+    "recharge": "weather_cell",
+    "recharge_unitwide": "weather_cell",
+    "recharge_leakage": "weather_cell",
+    "river": "gauge",
+    "canal": "canal",
+    "well_link": "well",
+    "monitors": "aquifer_unit",
+    "overlies": "aquifer_unit",
+}
+TARGET_TYPES = {rel: "aquifer_unit" if rel == "overlies" else "well" for rel in SOURCE_TYPES}
+RECHARGE_RELS = frozenset({"recharge", "recharge_unitwide", "recharge_leakage"})
+SWAP_ONLY_DISTANCE_RELS = frozenset({"monitors", "overlies"})
 KEY = ["src", "dst"]
 BUNDLE = ["sign", "eligible", "constrained", "n_paths", "association_types"]
 UNATTRIBUTED = "pumping_unattributed"
@@ -83,7 +98,7 @@ def bundle_counts(edges, columns):
 
 def check_shared_bundles(shared):
     for name, group in shared.groupby("relation"):
-        columns = BUNDLE + ["weight"] if name == "recharge" else BUNDLE
+        columns = BUNDLE + ["weight"] if name in RECHARGE_RELS else BUNDLE
         original = group[[f"{col}_d" for col in columns]].set_axis(columns, axis=1)
         control = group[[f"{col}_e" for col in columns]].set_axis(columns, axis=1)
         pd.testing.assert_frame_equal(original, control, check_exact=True, obj=f"{name} shared bundles")
@@ -98,9 +113,10 @@ def test_degree(edges, tables, summaries):
                                        err_msg=f"E_degree draw {draw}, shared {field}")
         for name in SOURCE_TYPES:
             old, new = relation(edges, name), relation(table, name)
+            assert len(new) == len(old), (draw, name)
             for col in KEY:
                 assert Counter(old[col]) == Counter(new[col]), (draw, name, col)
-            cols = BUNDLE + ["weight"] if name == "recharge" else BUNDLE
+            cols = BUNDLE + ["weight"] if name in RECHARGE_RELS else BUNDLE
             assert bundle_counts(old, cols) == bundle_counts(new, cols), (draw, name)
             swaps = summaries[draw][name]["successful_swaps"]
             if name == "canal":
@@ -110,8 +126,9 @@ def test_degree(edges, tables, summaries):
                 assert pairs(old) != pairs(new), (draw, name)
                 expected = len(old) // 2 if name == "well_link" else len(old)
                 assert swaps == 10 * expected, (draw, name, swaps)
-    print("  3. E_degree draws 0–2 preserve each degree and bundle multiset, with 10 swaps per edge "
-          "or unordered well pair. Shared edges keep D's distance, weight and bundle.")
+    print("  3. E_degree draws 0–2 preserve each degree (including monitors and overlies) and bundle "
+          "multiset, with 10 swaps per edge or unordered well pair. Shared edges keep D's distance, "
+          "weight and bundle.")
 
 
 def distance_oracle(old, candidates, xy, rng, undirected):
@@ -148,16 +165,25 @@ def distance_oracle(old, candidates, xy, rng, undirected):
     return drawn, errors, kept
 
 
-def test_distance(edges, nodes, coordinates, tables, summaries):
+def test_distance(edges, nodes, coordinates, tables, degree_tables, summaries):
     for draw, table in enumerate(tables):
         shared = edges.merge(table, on=["relation", *KEY], suffixes=("_d", "_e"), validate="one_to_one")
         check_shared_bundles(shared)
         for name, source_type in SOURCE_TYPES.items():
             old, new = relation(edges, name), relation(table, name)
+            assert len(new) == len(old), (draw, name)
             details = summaries[draw][name]
             if name == "canal":
                 pd.testing.assert_frame_equal(old.reset_index(drop=True), new.reset_index(drop=True))
                 assert details["kept"] == len(old)
+                continue
+            if name in SWAP_ONLY_DISTANCE_RELS:
+                for col in KEY:
+                    assert Counter(old[col]) == Counter(new[col]), (draw, name, col)
+                assert bundle_counts(old, BUNDLE) == bundle_counts(new, BUNDLE), (draw, name)
+                assert pairs(old) != pairs(new), (draw, name)
+                assert pairs(new) != pairs(relation(degree_tables[draw], name)), (draw, name)
+                assert details["successful_swaps"] == 10 * len(old), (draw, name, details)
                 continue
             undirected = name == "well_link"
             if not undirected:
@@ -174,36 +200,43 @@ def test_distance(edges, nodes, coordinates, tables, summaries):
             np.testing.assert_allclose([details["median_abs_delta_m"], details["max_abs_delta_m"]],
                                        [np.median(errors), max(errors)], rtol=0, atol=1e-9)
             if not undirected:
-                cols = BUNDLE + ["weight"] if name == "recharge" else BUNDLE
+                cols = BUNDLE + ["weight"] if name in RECHARGE_RELS else BUNDLE
                 prior = old.set_index(KEY)[cols]
                 after = new.set_index(KEY)[cols]
                 for src, dst, chosen in drawn:
                     assert tuple(prior.loc[(src, dst), :]) == tuple(after.loc[(chosen, dst), :]), (draw, name, src, dst)
-    print("  4. E_distance draws 0–2 agree with independent top-five choices, kept counts, "
-          "length errors and the bundles of the original targets")
+    print("  4. E_distance draws 0–2 agree with independent top-five choices (including all 3 recharge "
+          "channels), degree-preserving swaps with distinct seeds for monitors/overlies, kept counts, "
+          "length errors and original target bundles")
 
 
 def test_random(edges, nodes, tables):
     for draw, table in enumerate(tables):
         for name, source_type in SOURCE_TYPES.items():
+            target_type = TARGET_TYPES[name]
             group = relation(table, name)
             assert len(group) == len(relation(edges, name)), (draw, name)
             assert group["src_type"].eq(source_type).all()
             assert set(group["src"]) <= set(nodes.loc[nodes["type"] == source_type, "code"])
+            assert set(group["dst"]) <= set(nodes.loc[nodes["type"] == target_type, "code"])
             assert group[["sign", "association_types"]].isna().all().all()
             assert not group[["eligible", "constrained"]].any().any()
             assert group["n_paths"].eq(1).all()
-        assert relation(table, "recharge")["weight"].eq(1.0).all()
-    print("  5. F_random draws 0–2 match D's relation counts, with compatible endpoints and empty bundles")
+        for rel in RECHARGE_RELS:
+            assert relation(table, rel)["weight"].eq(1.0).all(), (draw, rel)
+    print("  5. F_random draws 0–2 match D's relation counts across all 9 relations, with compatible "
+          "endpoints and empty bundles")
 
 
 def test_complete(nodes, table):
     sizes = nodes["type"].value_counts()
     for name, source_type in SOURCE_TYPES.items():
-        n_src = sizes[source_type] - (name == "well_link")
-        assert len(relation(table, name)) == n_src * sizes["well"], name
+        target_type = TARGET_TYPES[name]
+        n_src = sizes[source_type] - (source_type == target_type)
+        assert len(relation(table, name)) == n_src * sizes[target_type], name
     assert relation(table, UNATTRIBUTED).empty
-    print(f"  6. F_complete contains all {len(table)} compatible directed edges and no unattributed rows")
+    print(f"  6. F_complete contains all {len(table)} compatible directed edges across all 9 relations "
+          f"and no unattributed rows")
 
 
 def test_all(tables, edges, nodes, coordinates, wells, depths, sigma):
@@ -223,7 +256,7 @@ def test_all(tables, edges, nodes, coordinates, wells, depths, sigma):
             pd.testing.assert_frame_equal(draws[0], C.make_control(kind, draw=1))
         else:
             for name in (*SOURCE_TYPES, UNATTRIBUTED):
-                if name != "canal":
+                if not (kind.startswith("E_") and name == "canal"):
                     assert pairs(relation(draws[0], name)) != pairs(relation(draws[1], name)), (kind, name)
         for table in draws:
             assert table.columns.tolist() == EDGE_COLS
@@ -231,10 +264,11 @@ def test_all(tables, edges, nodes, coordinates, wells, depths, sigma):
             assert not table.duplicated(["relation", *KEY]).any()
             assert not table["src"].eq(table["dst"]).any()
             assert set(table["relation"]) <= {*SOURCE_TYPES, UNATTRIBUTED}
-            assert set(table["dst"]) <= codes_by_type["well"]
             for name, group in table.groupby("relation"):
                 src_type = "facility" if name == UNATTRIBUTED else SOURCE_TYPES[name]
+                dst_type = "well" if name == UNATTRIBUTED else TARGET_TYPES[name]
                 assert group["src_type"].eq(src_type).all() and set(group["src"]) <= codes_by_type[src_type]
+                assert set(group["dst"]) <= codes_by_type[dst_type], (kind, name)
                 if name in ("pumping", UNATTRIBUTED, "well_link"):
                     distance = lengths(group, coordinates[name])
                     np.testing.assert_allclose(group["distance_m"], distance, atol=1e-6, rtol=0)
@@ -242,7 +276,7 @@ def test_all(tables, edges, nodes, coordinates, wells, depths, sigma):
                     np.testing.assert_allclose(group["weight"], np.exp(-distance / decay), atol=1e-12, rtol=0)
                 else:
                     assert group["distance_m"].isna().all()
-                    if name in ("river", "canal"):
+                    if name in ("river", "canal", "monitors", "overlies"):
                         assert group["weight"].eq(1.0).all()
             check_well_links(relation(table, "well_link"), depths, sigma)
             pump = relation(table, "pumping").groupby("dst")["src"].agg(set).to_dict()
@@ -256,12 +290,33 @@ def test_all(tables, edges, nodes, coordinates, wells, depths, sigma):
 
 def test_routing(edges, tables):
     original = routed_inputs(edges=edges)
+    orig_v5 = routed_v5_inputs(edges=edges)
+    pumping_start = pd.read_parquet(DATASET_DIR / "pumping_weekly.parquet", columns=["week"])["week"].min()
+    in_record = orig_v5["weeks"] >= pumping_start
     for kind, draws in tables.items():
         actual = routed_inputs(edges=draws[0])
         for key, value in original.items():
             if isinstance(value, np.ndarray):
                 assert actual[key].shape == value.shape and np.isfinite(actual[key]).all(), (kind, key)
-    print(f"  8. Every draw-0 control routes finite arrays on D's {original['rain'].shape} well-by-week grid")
+        act_v5 = routed_v5_inputs(edges=draws[0])
+        for key, value in orig_v5.items():
+            if not isinstance(value, np.ndarray):
+                continue
+            assert act_v5[key].shape == value.shape, (kind, key)
+            if np.issubdtype(value.dtype, np.floating) and value.ndim == 2:
+                assert not np.isinf(act_v5[key]).any(), (kind, key)
+                if np.isfinite(value).all():
+                    assert np.isfinite(act_v5[key]).all(), (kind, key)
+                else:
+                    # Pre-record weeks (before pumping_weekly's first week) are intentionally NaN.
+                    assert np.isfinite(act_v5[key][:, in_record]).all(), (kind, key)
+            else:
+                assert np.isfinite(act_v5[key]).all(), (kind, key)
+        for ch, rel in RECHARGE_RELATIONS.items():
+            if (edges["relation"] == rel).any():
+                assert act_v5[f"has_{ch}"].any(), (kind, ch, rel)
+    print(f"  8. Every draw-0 control routes finite arrays on D's {original['rain'].shape} grid "
+          f"(v4 routing and v5 routing from {pumping_start.date()}; all 3 recharge channels active)")
 
 
 def test_stale(directory, table):
@@ -315,7 +370,7 @@ def main():
             tables[kind].append(table)
             summaries[kind].append({row["relation"]: row for row in summary})
     test_degree(edges, tables["E_degree"], summaries["E_degree"])
-    test_distance(edges, nodes, coordinates, tables["E_distance"], summaries["E_distance"])
+    test_distance(edges, nodes, coordinates, tables["E_distance"], tables["E_degree"], summaries["E_distance"])
     test_random(edges, nodes, tables["F_random"])
     test_complete(nodes, tables["F_complete"][0])
     test_all(tables, edges, nodes, coordinates, wells, depths, sigma)

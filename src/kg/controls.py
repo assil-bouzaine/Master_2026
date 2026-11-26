@@ -1,35 +1,41 @@
-"""Control graphs for arms E and F (docs/analysis_plan.md §10 and §14 item 20).
+"""Control graphs for arms E and F (docs/analysis_plan.md §10 and §14 item 20; analysis plan v3 §2).
 
-    PFE_DATASET=v4 python -m src.kg.controls
+    PFE_DATASET=v5 python -m src.kg.controls
 
-The controls share D's node inventory and model. Each changes how edges are selected.
+The controls share D's node inventory and model. Each changes how edges are selected for every
+relation of arm D:
 
-  E_degree    Swaps endpoints within each relation and preserves each node's degree.
-              This tests whether D gains from which links it has given those degrees.
-  E_distance  Draws from the five eligible sources closest to each original edge length.
-              A gain for D on well-matched relations is evidence beyond locality.
-  F_random    Draws the same number of edges as D per relation from all compatible pairs.
-              This tests what the model can learn from a graph of the same size by chance.
-  F_complete  Connects every compatible pair to test what the model can learn with all links.
+  E_degree    Swaps endpoints within each relation and preserves each node's degree (in- and
+              out-degree for directed relations, including ``monitors`` and ``overlies`` with no
+              self-loops). This tests whether D gains from which links it has given those degrees.
+  E_distance  For spatially situated relations (``pumping``, ``recharge``, ``recharge_unitwide``,
+              ``recharge_leakage``, ``river``, ``well_link``), draws from the five eligible
+              sources closest to each original edge length. For ``monitors`` (unit -> well) and
+              ``overlies`` (unit -> unit, directed, no self-loop), no spatial length exists, so
+              E_distance runs the same degree-preserving swaps with its own seed (via ``KIND_ID``),
+              producing draws distinct from E_degree's.
+  F_random    Draws the same number of edges as D per relation from all compatible pairs
+              (cell x well for every recharge channel, unit x well for ``monitors``, ordered
+              unit pairs u != v for ``overlies``, basin canal x well for ``canal``).
+  F_complete  Connects every compatible pair (including all basin canal x well pairs, all
+              unit x well pairs, and all ordered unit pairs u != v) to test what the model can
+              learn with all links.
 
-Arm E keeps the evidence bundles with the target wells, including recharge weights. Each
-well keeps its constraint setting. Shared bipartite pairs in both E controls keep their D bundles.
-The canal has one source, so E keeps its original edges. Arm F carries no edge evidence.
-Every control recalculates unattributed pumping within 5 km so each nearby facility's volume
-is represented once. The D-only recharge_unitwide sensitivity relation is omitted.
+Arm E keeps the evidence bundles with the target nodes, including cell weights for all three
+recharge channels (``recharge``, ``recharge_unitwide``, ``recharge_leakage``). Each well keeps its
+constraint setting. Shared bipartite and directed pairs in both E controls keep their D bundles.
+For ``canal``, E keeps D's original edges; F_random and F_complete draw from the basin canal nodes
+of the node inventory. Arm F carries no edge evidence. Every control recalculates unattributed
+pumping within 5 km so each nearby facility's volume is represented once.
 
 Pumping and well links use the graph's Lambert-93 coordinates written to 0.1 m for matching
-and weighting. Unattributed pumping, recharge and rivers use full-precision node coordinates.
+and weighting. Unattributed pumping, recharge channels and rivers use full-precision node
+coordinates.
 
 The CLI writes edges_<kind>_<draw>.parquet for five draws per random kind by default, plus
 edges_F_complete.parquet, summary.csv and manifest.json under the export's controls/ directory.
 The manifest records the SHA-256 hashes of edges_D.parquet and nodes.parquet. load_control
 refuses stale controls.
-
-For v4 main, E_distance draw 0 changed lengths by a median of 44.65 m for pumping,
-6,949.55 m for recharge, 13,221.12 m for rivers and 4,861.43 m for well links.
-Rivers have only five gauges, and recharge uses 8 km cells whose nearest choices are
-often already linked by D, so alternatives can be much farther away.
 """
 import argparse
 import json
@@ -42,7 +48,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 from src.config import DATASET, PROCESSED, ROOT
-from src.kg.export import CANAL, D_RADIUS_M, EDGE_COLS, PUMP_DECAY_M, SRC_TYPE, _dist, edge, out_dir
+from src.kg.export import CANAL_PREFIX, D_RADIUS_M, EDGE_COLS, PUMP_DECAY_M, SRC_TYPE, _dist, edge, out_dir
 from src.kg.release import sha256
 
 try:
@@ -51,8 +57,20 @@ except ImportError:
     from src.kg.build_kg import git_version as code_version
 
 KIND_ID = {"E_degree": 0, "E_distance": 1, "F_random": 2, "F_complete": 3}
-REL_ID = {"pumping": 0, "recharge": 1, "river": 2, "canal": 3, "well_link": 4}
+REL_ID = {
+    "pumping": 0,
+    "recharge": 1,
+    "river": 2,
+    "canal": 3,
+    "well_link": 4,
+    "recharge_unitwide": 5,
+    "recharge_leakage": 6,
+    "monitors": 7,
+    "overlies": 8,
+}
 SOURCE_TYPE = {**{rel: SRC_TYPE[rel] for rel in REL_ID if rel != "well_link"}, "well_link": "well"}
+TARGET_TYPE = {rel: "aquifer_unit" if rel == "overlies" else "well" for rel in REL_ID}
+NO_DISTANCE_RELS = frozenset({"canal", "monitors", "overlies"})
 UNATTRIBUTED = "pumping_unattributed"
 PAIR_COLS = ["src", "dst"]
 SORT_COLS = ["relation", *PAIR_COLS]
@@ -157,7 +175,7 @@ def _degree_swaps(pairs, rng, undirected):
             proposed = ((a, j), (b, i)) if rng.integers(2) else ((a, b), (i, j))
             one, two = (tuple(sorted(pair)) for pair in proposed)
         else:
-            if a == b or i == j:
+            if a == b or i == j or b == i or a == j:
                 continue
             one, two = (b, i), (a, j)
         if one in present or two in present:
@@ -220,7 +238,8 @@ def _match_distances(pairs, distances, rng, undirected):
 def _summary(relation, control, original, distances, details):
     pairs, before = _pairs(control), _pairs(original)
     shared = len(set(pairs).intersection(before))
-    return {"relation": relation, "edges": len(control), "wells": control["dst"].nunique(),
+    return {"relation": relation, "edges": len(control),
+            "wells": 0 if relation == "overlies" else control["dst"].nunique(),
             "sources": control["src"].nunique(), "overlap": shared / len(before) if before else np.nan,
             "out_degree_preserved": control["src"].value_counts().sort_index().equals(
                 original["src"].value_counts().sort_index()),
@@ -246,7 +265,7 @@ def _control_relation(kind, draw, relation, original, by_type, distances, depths
     if kind.startswith("E_") and relation == "canal":
         details = {"successful_swaps": 0} if kind == "E_degree" else {"kept": len(pairs)}
         return original, details
-    if kind == "E_degree":
+    if kind == "E_degree" or (kind == "E_distance" and relation in ("monitors", "overlies")):
         pairs, swapped = _degree_swaps(pairs, rng, undirected)
         details["successful_swaps"] = swapped
     elif kind == "E_distance":
@@ -255,9 +274,16 @@ def _control_relation(kind, draw, relation, original, by_type, distances, depths
             pairs = [(hi, lo) for lo, hi in pairs]
         pairs, details = _match_distances(pairs, distances, rng, undirected)
     else:
-        wells = by_type["well"].index
-        sources = [CANAL] if relation == "canal" else by_type[SOURCE_TYPE[relation]].index
-        compatible = list(combinations(wells, 2) if undirected else product(sources, wells))
+        src_type = SOURCE_TYPE[relation]
+        dst_type = TARGET_TYPE[relation]
+        sources = by_type[src_type].index if src_type in by_type else pd.Index([])
+        targets = by_type[dst_type].index if dst_type in by_type else pd.Index([])
+        if undirected:
+            compatible = list(combinations(targets, 2))
+        elif src_type == dst_type:
+            compatible = [(u, v) for u, v in product(sources, targets) if u != v]
+        else:
+            compatible = list(product(sources, targets))
         if kind == "F_random":
             pairs = [compatible[i] for i in rng.choice(len(compatible), len(pairs), replace=False)]
         else:
@@ -278,7 +304,8 @@ def _build_control(kind, draw, edges, nodes, depths, sigma, summarize=False):
     pumping_wells = set(edges.loc[edges["relation"].isin(("pumping", UNATTRIBUTED)), "dst"])
     originals = {rel: edges[edges["relation"] == rel] for rel in (*REL_ID, UNATTRIBUTED)}
     for relation in REL_ID:
-        distances = None if relation == "canal" else _distance_grid(relation, wells, by_type[SOURCE_TYPE[relation]])
+        distances = (None if relation in NO_DISTANCE_RELS
+                     else _distance_grid(relation, wells, by_type[SOURCE_TYPE[relation]]))
         original = originals[relation]
         control, details = _control_relation(kind, draw, relation, original, by_type, distances, depths, sigma)
         tables[relation] = control
@@ -375,7 +402,8 @@ def main():
                     "constants": {"kind_id": KIND_ID, "relation_id": REL_ID, "match_k": MATCH_K,
                                   "swaps_per_edge": SWAPS_PER_EDGE, "attempts_per_edge": ATTEMPTS_PER_EDGE,
                                   "pump_decay_m": PUMP_DECAY_M, "radius_m": D_RADIUS_M,
-                                  "well_link_sigma_m": sigma, "canal": CANAL},
+                                  "well_link_sigma_m": sigma, "canal_prefix": CANAL_PREFIX,
+                                  "canal_nodes": sorted(nodes.loc[nodes["type"] == "canal", "code"])},
                     "kinds": list(KIND_ID), "draws": draws}
         (staging / "manifest.json").write_text(json.dumps(manifest, indent=1) + "\n")
         if _hashes(directory) != hashes:

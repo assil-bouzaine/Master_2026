@@ -1,11 +1,12 @@
 """Checks of the PyG HeteroData builder and static-only encoder (src/models/hetero_graph.py).
 
-    PYTHONIOENCODING=utf-8 PFE_DATASET=v4 .venv/bin/python -m tests.test_hetero_graph
+    PYTHONIOENCODING=utf-8 PFE_DATASET=v5 .venv/bin/python -m tests.test_hetero_graph
 
-1. Equivalence with the export: for export_v4_main and arms C and D, every node count per type
-   matches nodes.parquet and every edge of edges_<arm>.parquet appears exactly once in the
-   forward edge types with its weight; reverse edges mirror every forward relation; an extra
-   v5-like node type (aquifer_unit) and directed relations (monitors, overlies) work cleanly.
+1. Equivalence with the export: for export_<dataset>_main and arms C and D, every node count per
+   type matches nodes.parquet and every edge of edges_<arm>.parquet appears exactly once in the
+   forward edge types with its weight; reverse edges mirror every forward relation; on v5, arm D
+   has monitors and overlies edge types and their reverses, arm C has neither, aquifer_unit nodes
+   carry the five standardised unit_type one-hot columns, and an unknown node type keeps const_one.
 2. Zero start: an untrained HeteroEncoder returns exact zeros for every well (zero-initialised
    linear head).
 3. No stress can enter: the encoder reads only x, edge_index and edge_attr; no node feature
@@ -25,30 +26,35 @@ import torch
 import torch.nn as nn
 from torch_geometric.data import HeteroData
 
-from src.config import DATASET_DIR, PROCESSED
+from src.config import DATASET, DATASET_DIR, PROCESSED
 from src.models.hetero_graph import (
     FORBIDDEN_WEEKLY_VARS,
+    UNIT_TYPE_COLUMNS,
     HeteroEncoder,
     build_heterodata,
 )
 
-EXPORT_V4_MAIN = PROCESSED / "kg" / "export_v4_main"
+EXPORT_MAIN = PROCESSED / "kg" / f"export_{DATASET}_main"
 
 
 @lru_cache(maxsize=1)
 def _base_tables():
-    return {
+    out = {
         "wells": pd.read_parquet(DATASET_DIR / "wells.parquet"),
         "pumping_points": pd.read_parquet(DATASET_DIR / "pumping_points.parquet"),
         "pumping_weekly": pd.read_parquet(DATASET_DIR / "pumping_weekly.parquet"),
         "forcing_weekly": pd.read_parquet(DATASET_DIR / "forcing_weekly.parquet"),
         "rivers_weekly": pd.read_parquet(DATASET_DIR / "rivers_weekly.parquet"),
     }
+    cb_path = DATASET_DIR / "canal_basins_weekly.parquet"
+    if cb_path.is_file():
+        out["canal_basins_weekly"] = pd.read_parquet(cb_path)
+    return out
 
 
 @lru_cache(maxsize=2)
 def _built_arm(arm):
-    return build_heterodata(EXPORT_V4_MAIN, arm, tables=_base_tables())
+    return build_heterodata(EXPORT_MAIN, arm, tables=_base_tables())
 
 
 def _bfs_distances(data, start_type, start_idx):
@@ -81,15 +87,17 @@ def _randomise_head(encoder, seed=123):
 
 
 def test_equivalence_with_export():
-    nodes = pd.read_parquet(EXPORT_V4_MAIN / "nodes.parquet")
-    manifest = json.loads((EXPORT_V4_MAIN / "manifest.json").read_text())
+    nodes = pd.read_parquet(EXPORT_MAIN / "nodes.parquet")
+    manifest = json.loads((EXPORT_MAIN / "manifest.json").read_text())
     wells = pd.read_parquet(DATASET_DIR / "wells.parquet")
     expected_nodes = nodes["type"].value_counts().to_dict()
     assert expected_nodes == manifest["nodes"]
 
+    built = {}
     for arm in ("C", "D"):
-        edges = pd.read_parquet(EXPORT_V4_MAIN / f"edges_{arm}.parquet")
-        data, index = build_heterodata(EXPORT_V4_MAIN, arm)
+        edges = pd.read_parquet(EXPORT_MAIN / f"edges_{arm}.parquet")
+        data, index = build_heterodata(EXPORT_MAIN, arm)
+        built[arm] = data
 
         # Node types, counts, well order, finite standardised tensors
         assert set(data.node_types) == set(expected_nodes)
@@ -123,7 +131,8 @@ def test_equivalence_with_export():
 
         assert total_fwd == len(edges), (arm, total_fwd, len(edges))
         for row in edges.itertuples():
-            key = (row.src_type, row.relation, "well", row.src, row.dst)
+            dst_type = "aquifer_unit" if row.relation == "overlies" else "well"
+            key = (row.src_type, row.relation, dst_type, row.src, row.dst)
             assert key in got_edges, f"Missing export edge {key} in arm {arm}"
             np.testing.assert_allclose(got_edges[key], float(row.weight), rtol=1e-6, atol=1e-7)
 
@@ -146,33 +155,52 @@ def test_equivalence_with_export():
         print(f"  1. arm {arm}: nodes [{node_summary}]; forward edges ({total_fwd}) [{edge_summary}]; "
               f"edge_attr width={len(data.edge_attr_names)} ({data.edge_attr_names})")
 
-    # Genericity check: v5-style aquifer_unit nodes + directed monitors and overlies relations
+    # Aquifer-unit features and structural relations on the rebuilt export (v5)
+    if "aquifer_unit" in expected_nodes:
+        for arm in ("C", "D"):
+            assert built[arm]["aquifer_unit"].feature_names == list(UNIT_TYPE_COLUMNS)
+            assert built[arm]["aquifer_unit"].x.shape == (expected_nodes["aquifer_unit"], len(UNIT_TYPE_COLUMNS))
+        for et in (
+            ("aquifer_unit", "monitors", "well"),
+            ("well", "rev_monitors", "aquifer_unit"),
+            ("aquifer_unit", "overlies", "aquifer_unit"),
+            ("aquifer_unit", "rev_overlies", "aquifer_unit"),
+        ):
+            assert et in built["D"].edge_types, f"arm D missing {et}"
+            assert et not in built["C"].edge_types, f"arm C must not have {et}"
+        print(f"     unit features & structure: aquifer_unit {len(UNIT_TYPE_COLUMNS)}-col one-hot "
+              f"({list(UNIT_TYPE_COLUMNS)}); arm D has monitors/overlies + reverses, arm C has neither")
+
+    # Unknown node-type fallback check: a type without dedicated features still gets const_one = 1.0
     w_codes = wells["code_bss"].iloc[:2].tolist()
     toy_nodes = pd.DataFrame([
-        {"type": "well", "code": w_codes[0]},
-        {"type": "well", "code": w_codes[1]},
-        {"type": "aquifer_unit", "code": "718BP02"},
-        {"type": "aquifer_unit", "code": "671AA00"},
+        {"type": "well", "code": w_codes[0], "unit_type": None},
+        {"type": "well", "code": w_codes[1], "unit_type": None},
+        {"type": "aquifer_unit", "code": "718BP02", "unit_type": "alluvial_aquifer"},
+        {"type": "aquifer_unit", "code": "671AA00", "unit_type": "multilayer_aquifer_system"},
+        {"type": "unknown_kind", "code": "X1", "unit_type": None},
     ])
     toy_edges = pd.DataFrame([
-        {"relation": "monitors", "src_type": "well", "src": w_codes[0],
-         "dst_type": "aquifer_unit", "dst": "718BP02", "weight": 1.0,
+        {"relation": "monitors", "src_type": "aquifer_unit", "src": "718BP02",
+         "dst_type": "well", "dst": w_codes[0], "weight": 1.0,
          "distance_m": None, "sign": None, "eligible": False, "constrained": False},
         {"relation": "overlies", "src_type": "aquifer_unit", "src": "671AA00",
          "dst_type": "aquifer_unit", "dst": "718BP02", "weight": 1.0,
-         "distance_m": None, "sign": "PositiveResponse", "eligible": True, "constrained": True},
+         "distance_m": None, "sign": None, "eligible": False, "constrained": False},
     ])
-    toy_data, toy_idx = build_heterodata(
-        EXPORT_V4_MAIN, "D", tables=_base_tables() | {"nodes": toy_nodes, "edges": toy_edges}
+    toy_data, _ = build_heterodata(
+        EXPORT_MAIN, "D", tables=_base_tables() | {"nodes": toy_nodes, "edges": toy_edges}
     )
-    assert set(toy_data.node_types) == {"well", "aquifer_unit"}
-    assert torch.equal(toy_data["aquifer_unit"].x, torch.ones((2, 1), dtype=torch.float32))
-    assert ("well", "monitors", "aquifer_unit") in toy_data.forward_edge_types
-    assert ("aquifer_unit", "rev_monitors", "well") in toy_data.reverse_edge_types
+    assert set(toy_data.node_types) == {"well", "aquifer_unit", "unknown_kind"}
+    assert toy_data["aquifer_unit"].feature_names == list(UNIT_TYPE_COLUMNS)
+    assert toy_data["aquifer_unit"].x.shape == (2, len(UNIT_TYPE_COLUMNS))
+    assert torch.equal(toy_data["unknown_kind"].x, torch.ones((1, 1), dtype=torch.float32))
+    assert ("aquifer_unit", "monitors", "well") in toy_data.forward_edge_types
+    assert ("well", "rev_monitors", "aquifer_unit") in toy_data.reverse_edge_types
     assert ("aquifer_unit", "overlies", "aquifer_unit") in toy_data.forward_edge_types
     assert ("aquifer_unit", "rev_overlies", "aquifer_unit") in toy_data.reverse_edge_types
     assert toy_data["aquifer_unit", "overlies", "aquifer_unit"].edge_index.shape == (2, 1)
-    print("     generic v5 check: aquifer_unit constant-1 feature + monitors/overlies forward & reverse edges ok")
+    print("     fallback check: unknown node type keeps const_one=1.0; toy unit one-hot & edges ok")
 
 
 def test_zero_start():
@@ -238,7 +266,7 @@ def test_no_stress_can_enter():
 
     for train_start in (None, "2016-04-01"):
         start_ts = pd.Timestamp(train_start or splits["train"][0])
-        before, _ = build_heterodata(EXPORT_V4_MAIN, "D", tables=base_tables, train_start=train_start)
+        before, _ = build_heterodata(EXPORT_MAIN, "D", tables=base_tables, train_start=train_start)
 
         mod_forcing = base_tables["forcing_weekly"].copy()
         out_f = (mod_forcing["week"] > train_end) | (mod_forcing["week"] < start_ts)
@@ -263,7 +291,12 @@ def test_no_stress_can_enter():
             "rivers_weekly": mod_rivers,
             "pumping_weekly": mod_pumping,
         }
-        after, _ = build_heterodata(EXPORT_V4_MAIN, "D", tables=altered, train_start=train_start)
+        if "canal_basins_weekly" in base_tables:
+            mod_cb = base_tables["canal_basins_weekly"].copy()
+            out_cb = (mod_cb["week"] > train_end) | (mod_cb["week"] < start_ts)
+            mod_cb.loc[out_cb, "volume_m3"] = 1e12
+            altered["canal_basins_weekly"] = mod_cb
+        after, _ = build_heterodata(EXPORT_MAIN, "D", tables=altered, train_start=train_start)
         for nt in before.node_types:
             assert torch.equal(before[nt].x, after[nt].x), (train_start, nt)
 
@@ -273,9 +306,9 @@ def test_no_stress_can_enter():
     in_mask = (in_forcing["cell_id"] == first_cell) & in_forcing["week"].between("2016-04-01", train_end)
     in_forcing.loc[in_mask, "rain"] += 500.0
     changed, _ = build_heterodata(
-        EXPORT_V4_MAIN, "D", tables=base_tables | {"forcing_weekly": in_forcing}, train_start="2016-04-01"
+        EXPORT_MAIN, "D", tables=base_tables | {"forcing_weekly": in_forcing}, train_start="2016-04-01"
     )
-    ref_f25, _ = build_heterodata(EXPORT_V4_MAIN, "D", tables=base_tables, train_start="2016-04-01")
+    ref_f25, _ = build_heterodata(EXPORT_MAIN, "D", tables=base_tables, train_start="2016-04-01")
     assert not torch.equal(ref_f25["weather_cell"].x, changed["weather_cell"].x)
     print(f"  3. no stress can enter: {len(forbidden)} weekly vars absent from node feature names "
           f"({sum(len(v) for v in all_feature_names.values())} features across {len(all_feature_names)} types); "
@@ -355,8 +388,8 @@ def test_locality():
 
 def test_determinism():
     base = _base_tables()
-    data1, idx1 = build_heterodata(EXPORT_V4_MAIN, "D", tables=base)
-    data2, idx2 = build_heterodata(EXPORT_V4_MAIN, "D", tables=base)
+    data1, idx1 = build_heterodata(EXPORT_MAIN, "D", tables=base)
+    data2, idx2 = build_heterodata(EXPORT_MAIN, "D", tables=base)
     assert idx1 == idx2
     for nt in data1.node_types:
         assert torch.equal(data1[nt].x, data2[nt].x)

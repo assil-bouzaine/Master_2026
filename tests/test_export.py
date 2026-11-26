@@ -1,34 +1,42 @@
 """Checks of the graph export (src/kg/export.py, task 12.8): the equivalence test.
 
-    PFE_DATASET=v4 python -m tests.test_export            # ~2-3 min (GeoPandas overlays)
+    PFE_DATASET=v5 python -m tests.test_export            # ~2-3 min (GeoPandas overlays)
 
 The export reads arm D's edges through the competency-question queries. Here the same edge lists
 are obtained three other ways, and arm C's rules are recomputed by brute force:
 
 1. Identity: the manifest binds the tables to the current validated release; every edge endpoint
-   is a node; one node per code; both arms use the one node inventory.
-2. D against the inventory (src/kg/inventory.py): per well and relation, the same sources,
+   is a node of the right type (overlies dst = aquifer_unit, all others = well); one node per
+   (type, code); aquifer_unit nodes carry unit_type in the allowed set and has_series=False;
+   both arms use the one node inventory; arm C has no monitors or overlies edges.
+2. D against the inventory (src/kg/inventory.py): per well and relation (excluding monitors and
+   overlies, which are facts rather than influences), the same sources (for canal: same wells),
    eligible and constrained edges; the well links and their counts under each depth threshold.
-3. D against whole-graph queries written here, not the CQ files: per well and mechanism, the
-   number of distinct drivers of the influences the policy selects.
+3. D against whole-graph queries written here, not the CQ files: per well and mechanism (excluding
+   monitors and overlies), the number of distinct drivers of the influences the policy selects.
 4. D against pandas rules on the source tables (never on the graph's answers):
    - pumping, exact-unit edges: the attribution table of task 12.3 and the BNPE points: a facility
      attributed to the well's recorded unit within 5 km, at a confidence the policy admits
      (tests.test_cq.pump_oracle restates the confidences); distances within 0.5 m;
-   - recharge edges and their weights, local and unit-wide: GeoPandas on BD LISA and the raw
-     SAFRAN grid (tests.test_kg_rules.oracle_coverage), applying the Gate 3 point 12 cutoff
+   - recharge edges and their weights, local, unit-wide and leakage: GeoPandas on BD LISA and the
+     raw SAFRAN grid (tests.test_kg_rules.oracle_coverage), applying the Gate 3 point 12 cutoff
      (cell share >= 0.001) independently on every side (inventory, whole-graph queries, pandas
      oracle), weights within 1e-5, no well losing all recharge edges, manifest drop counts equal
      to each oracle's;
+   - monitors: {(code_bdlisa, code_bss)} of wells.parquet for wells with a unit;
+   - overlies: direct contacts of tests.test_kg_rules.oracle_relations over the graph's polygons,
+     aggregated per (upper, lower) pair with witnessing polygon counts in n_paths;
+   - canal: every canal source is canal:<basin> with the basin of canal_edge_well_basins, and
+     the canal-edge well sets of C (plain wells) and D (5 documented wells) match;
    - the unattributed input: with the pumping edges it is exactly the dataset's groundwater
      facilities within 5 km of the well, each once.
-   River and canal edges rest on curated documentary evidence: their source-level oracle is
-   tests.test_kg_rules.test_data_rivers (BD TOPO reaches x BD LISA polygons); here they are
-   covered by checks 2 and 3.
+   River and canal influence eligibility rest on curated documentary evidence: their source-level
+   oracle is tests.test_kg_rules.test_data_rivers (BD TOPO reaches x BD LISA polygons); here they
+   are covered by checks 2 and 3.
 5. C by brute force: one weather edge (the well's own cell), the 2 nearest pool gauges, every
-   groundwater facility within 10 km and no other, at least 3 symmetric well links, the canal for
-   the wells of the plain; the distance weights of pumping and well links follow the same
-   functions in both arms.
+   groundwater facility within 10 km and no other, at least 3 symmetric well links, the basin
+   canal node for the wells of the plain; the distance weights of pumping and well links follow
+   the same functions in both arms.
 Equal edges are necessary, not sufficient, for equal predictions (analysis plan §10): node order,
 features, masks and a fixed-weight forward pass are compared when the tensors are built.
 """
@@ -40,6 +48,7 @@ import pandas as pd
 import rdflib
 
 from src.config import DATASET, DATASET_DIR, ROOT
+from src.dataset.canal_basins import canal_edge_well_basins
 from src.kg import export as E
 from src.kg import release
 from src.kg.cq import KG, ask, kg_store
@@ -69,23 +78,37 @@ def _dropped(meta, rel):
     assert 0 <= d["constrained"] <= d["eligible"] <= d["edges"], (rel, d)
     return {"edges": d["edges"], "wells": d["wells"]}
 
+
 def test_identity(nodes, ec, ed, meta):
     m = release.check()
     assert meta["release"] == m["released"] and meta["release_files"] == {
         k: v["sha256"] for k, v in m["files"].items()}, "the export was made from another release: run src.kg.export"
     assert meta["rules"]["D"]["min_cell_share"] == MIN_CELL_SHARE
     assert not nodes.duplicated(["type", "code"]).any()
+    assert "unit_type" in nodes.columns
+    is_unit = nodes["type"] == "aquifer_unit"
+    assert is_unit.any(), "expected aquifer_unit nodes in the shared node inventory"
+    assert nodes.loc[is_unit, "unit_type"].isin(E.UNIT_TYPE_VALUES).all()
+    assert nodes.loc[~is_unit, "unit_type"].isna().all()
+    assert (~nodes.loc[is_unit, "has_series"]).all(), "aquifer_unit nodes should have has_series=False"
+    assert nodes.loc[~is_unit, "has_series"].all(), "a non-unit node without an input series"
     have = set(zip(nodes["type"], nodes["code"]))
     for name, e in (("C", ec), ("D", ed)):
-        missing = (set(zip(e["src_type"], e["src"])) | {("well", c) for c in e["dst"]}) - have
+        dst_type = np.where(e["relation"] == "overlies", "aquifer_unit", "well")
+        missing = (set(zip(e["src_type"], e["src"])) | set(zip(dst_type, e["dst"]))) - have
         assert not missing, f"arm {name}: edge endpoints that are not nodes: {sorted(missing)[:5]}"
         assert not e.duplicated(["relation", "src", "dst"]).any(), f"arm {name}: a driver connected twice"
-    assert nodes["has_series"].all(), "a node without an input series"
+    assert not ec["relation"].isin(("monitors", "overlies")).any(), "arm C must not have monitors or overlies"
+    ov_meta = meta["arms"]["D"]["overlies"]
+    assert "wells" not in ov_meta and "core_wells" not in ov_meta
+    assert ov_meta["edges"] == int((ed["relation"] == "overlies").sum())
+    assert ov_meta["sources"] == int(ed.loc[ed["relation"] == "overlies", "src"].nunique())
     for rel in RECHARGE_RELS:
         rch = ed[ed["relation"] == rel]
         assert (rch["weight"] >= MIN_CELL_SHARE).all(), (rel, float(rch["weight"].min()))
     print(f"  1. export bound to the release of {meta['release']}; {len(nodes)} nodes "
-          f"({nodes['type'].value_counts().to_dict()}), every edge endpoint is one, no driver twice, "
+          f"({nodes['type'].value_counts().to_dict()}), unit_type in allowed set, every edge endpoint is "
+          f"a node of the right type, no driver twice, arm C has no monitors/overlies, "
           f"every D recharge weight >= {MIN_CELL_SHARE:g}")
 
 
@@ -120,7 +143,10 @@ def test_inventory(store, ed, meta):
             assert int(e["eligible"].sum()) == rec["eligible"] and int(e["constrained"].sum()) == rec["constrained"], \
                 (r.code_bss, r.relation)
         else:
-            assert set(e["src"]) == want, (r.code_bss, r.relation, sorted(set(e["src"]) ^ want)[:4])
+            if r.relation == "canal":
+                assert len(e) == len(want), (r.code_bss, len(e), len(want))
+            else:
+                assert set(e["src"]) == want, (r.code_bss, r.relation, sorted(set(e["src"]) ^ want)[:4])
             if r.relation == "well_link":
                 for t in THRESHOLDS:
                     got = len(e) if t is None else int((e["depth_diff_m"].abs() <= t).sum())
@@ -132,9 +158,9 @@ def test_inventory(store, ed, meta):
     for rel in RECHARGE_RELS:
         assert _dropped(meta, rel) == {
             "edges": dropped[rel]["edges"], "wells": sorted(dropped[rel]["wells"])}, (rel, "inventory")
-    print(f"  2. arm D = the inventory (with cell share >= {MIN_CELL_SHARE:g} applied on its own weights): "
-          f"{n} edges, the same sources per well and relation, the same eligible and constrained edges, "
-          f"the same links under each depth threshold")
+    print(f"  2. arm D = the inventory (excluding monitors/overlies; cell share >= {MIN_CELL_SHARE:g} applied "
+          f"on its own weights): {n} edges, the same sources/wells per relation, the same eligible and "
+          f"constrained edges, the same links under each depth threshold")
 
 
 def test_graph(store, ed, meta):
@@ -302,6 +328,30 @@ def test_pandas(store, ed, meta):
         "edges": dropped_edges, "wells": sorted(dropped_wells)}, (rel, "pandas oracle")
     dropped_counts[rel] = (dropped_edges, len(dropped_wells))
     n_rch += len(e)
+    # monitors: {(code_bdlisa, code_bss)} of wells.parquet for wells with a unit
+    mon = ed[ed["relation"] == "monitors"]
+    want_mon = {(u, b) for b, u in zip(wells["code_bss"], wells["code_bdlisa"]) if isinstance(u, str)}
+    assert set(zip(mon["src"], mon["dst"])) == want_mon, sorted(set(zip(mon["src"], mon["dst"])) ^ want_mon)[:6]
+    assert (mon["src_type"] == "aquifer_unit").all() and (mon["weight"] == 1.0).all()
+    assert mon["distance_m"].isna().all() and (mon["n_paths"] == 1).all()
+    assert mon["sign"].isna().all() and not mon["eligible"].any() and not mon["constrained"].any()
+
+    # overlies: direct contacts of tests.test_kg_rules.oracle_relations over the graph's polygons
+    from tests.test_kg_rules import oracle_relations
+    polys = {int(r[0].value) for r in store.query(
+        PRE + "SELECT ?c WHERE { ?p a lulcw:ElementaryPolygon ; lulcw:polygonCode ?c }")}
+    dc_polys = {}
+    for cp, up, low, kind, _ in oracle_relations(polys):
+        if kind == "DirectContact":
+            dc_polys.setdefault((up, low), set()).add(cp)
+    want_ov = {pair: len(cps) for pair, cps in dc_polys.items()}
+    ov = ed[ed["relation"] == "overlies"]
+    got_ov = dict(zip(zip(ov["src"], ov["dst"]), ov["n_paths"].astype(int)))
+    assert got_ov == want_ov, sorted(set(got_ov.items()) ^ set(want_ov.items()))[:6]
+    assert (ov["src_type"] == "aquifer_unit").all() and (ov["weight"] == 1.0).all()
+    assert ov["distance_m"].isna().all() and ov["sign"].isna().all()
+    assert not ov["eligible"].any() and not ov["constrained"].any()
+
     # the unattributed input
     t_wells, t_fac, _, _ = E.tables()
     d = E._dist(t_wells, t_fac)
@@ -318,11 +368,12 @@ def test_pandas(store, ed, meta):
           f"(dropped: {dropped_counts['recharge'][0]} local across {dropped_counts['recharge'][1]} wells, "
           f"{dropped_counts['recharge_unitwide'][0]} unit-wide across {dropped_counts['recharge_unitwide'][1]} wells, "
           f"{dropped_counts['recharge_leakage'][0]} leakage across {dropped_counts['recharge_leakage'][1]} wells; "
-          f"every well keeps >= 1 edge), {n_un} unattributed facility-well pairs = the other groundwater "
+          f"every well keeps >= 1 edge), {len(mon)} monitors edges, {len(ov)} overlies direct-contact edges "
+          f"(n_paths = witnessing polygons), {n_un} unattributed facility-well pairs = the other groundwater "
           f"facilities within 5 km")
 
 
-def test_arm_c(ec, ed):
+def test_arm_c(nodes, ec, ed):
     wells, fac, gauges, _ = E.tables()
     codes = wells["code_bss"].to_numpy()
     w = ec[ec["relation"] == "recharge"].set_index("dst")["src"]
@@ -338,7 +389,17 @@ def test_arm_c(ec, ed):
     k = ec[ec["relation"] == "well_link"]
     pairs = set(zip(k["src"], k["dst"]))
     assert all((b, a) in pairs for a, b in pairs) and k.groupby("dst").size().min() >= E.C_NEAREST_WELLS
-    assert set(ec[ec["relation"] == "canal"]["dst"]) == set(codes[wells["in_plain"].to_numpy()])
+    # canal: per-basin sources in both arms, unchanged canal-edge well sets
+    ec_canal = ec[ec["relation"] == "canal"]
+    ed_canal = ed[ed["relation"] == "canal"]
+    assert set(ec_canal["dst"]) == set(codes[wells["in_plain"].to_numpy()])
+    assert len(ed_canal) == 5 and ed_canal["dst"].nunique() == 5
+    for arm_name, sub in (("C", ec_canal), ("D", ed_canal)):
+        wb = canal_edge_well_basins(edges_d=sub, wells=wells).set_index("code_bss")["basin"]
+        expected_src = sub["dst"].map(lambda b: f"{E.CANAL_PREFIX}{wb.loc[b]}")
+        assert (sub["src"] == expected_src).all(), (arm_name, sub[["src", "dst"]].to_dict("records"))
+    canal_nodes = set(nodes.loc[nodes["type"] == "canal", "code"])
+    assert canal_nodes == set(ec_canal["src"]) | set(ed_canal["src"])
     assert not ec["eligible"].any() and not ec["constrained"].any() and ec["sign"].isna().all()
     sigma = E.link_sigma(wells)
     for e in (ec, ed):
@@ -346,11 +407,11 @@ def test_arm_c(ec, ed):
         assert np.allclose(x["weight"], np.exp(-x["distance_m"] / E.PUMP_DECAY_M))
         x = e[e["relation"] == "well_link"]
         assert np.allclose(x["weight"], np.exp(-x["distance_m"] / sigma))
-    unchanged = ""
     print(f"  5. arm C by brute force: {len(w)} weather edges (each well's own cell), {len(r)} river edges (2 nearest "
           f"pool gauges), {len(p)} pumping edges (every groundwater facility within {E.C_PUMP_KM:g} km), {len(k)} "
-          f"symmetric well links, the canal for the {wells['in_plain'].sum()} wells of the plain; no sign in C; "
-          f"the same distance weights in both arms{unchanged}")
+          f"symmetric well links, basin canal edges for the {wells['in_plain'].sum()} plain wells (C) and "
+          f"{len(ed_canal)} documented wells (D) across {sorted(canal_nodes)}; no sign in C; "
+          f"the same distance weights in both arms")
 
 
 def main():
@@ -360,7 +421,7 @@ def main():
     test_inventory(store, ed, meta)
     test_graph(store, ed, meta)
     test_pandas(store, ed, meta)
-    test_arm_c(ec, ed)
+    test_arm_c(nodes, ec, ed)
     print("test_export: all checks passed")
 
 

@@ -9,6 +9,8 @@ training from 2005, forcings from 2000, pumping over the whole departement with
 2005-2011 back-filled from each ouvrage's 2012-2014 mean (flagged imputed).
 v3 = v2 + BNPE rules (step 12a). v4 = v3 + quality filter, grouped folds and
 per-window artesian shares (step 12b).
+v5 adds refreshed observations, weather from 1990, basin canals and CQ15
+Sentinel-2 irrigation summaries when their snapshot is available (docs/v5_plan.md R1.5).
 
 Inputs (all produced by src.ingest.* and src.analysis.*):
     piezometer series, station table, BD LISA station stacks, SAFRAN/SIM2,
@@ -51,6 +53,8 @@ Outputs (data/processed/dataset_<version>/)
     pumping_weekly.parquet   ouvrage x usage x week (m3); pumping_points.parquet
     splits.json              time splits + leave-wells-out folds
     meta.json                build date, parameters, row counts
+    irrigation_s2_wells.parquet  (v5 with S2 snapshot) CQ15 well x year shares and train mean
+    irrigation_s2_rule.json      (v5 with S2 snapshot) frozen CQ15 rule and input hashes
 """
 import json
 from datetime import date
@@ -65,7 +69,7 @@ from src.analysis.bnpe_profile import load as load_bnpe
 from src.analysis.piezo_profile import PLAIN_BBOX
 from scipy.sparse.csgraph import connected_components
 
-from src.config import CRS_L93, CRS_WGS84, DATASET, DATASET_DIR, INTERIM, R3_STARTS, RAW
+from src.config import CRS_L93, CRS_WGS84, DATASET, DATASET_DIR, INTERIM, R3_STARTS, RAW, ROOT
 from src.dataset.bnpe_v3 import harmonise, restricted_years
 from src.ingest.hubeau_piezo import CHRON, safe_name
 
@@ -467,6 +471,23 @@ def build_restrictions():
     return w
 
 
+def build_cq15():
+    """Build CQ15 from the frozen S2 snapshot for Gate R1, or explain its absence."""
+    from src.dataset import irrigation_s2
+
+    snapshot = RAW / "gee_s2" / irrigation_s2.S2_SNAPSHOT
+    source = snapshot.relative_to(ROOT).as_posix()
+    if not snapshot.is_dir():
+        reason = f"Sentinel-2 snapshot folder does not exist: {source}"
+        print(f"CQ15 skipped: {reason}")
+        return {"status": "skipped", "s2_snapshot": source, "reason": reason, "outputs": []}
+    rule = irrigation_s2.run()
+    outputs = [OUT / "irrigation_s2_wells.parquet", OUT / "irrigation_s2_rule.json",
+               INTERIM / f"irrigation_s2_parcels_{DATASET}.parquet"]
+    return {"status": "built", "s2_snapshot": rule["s2_snapshot"], "TAU": rule["TAU"],
+            "outputs": [path.relative_to(ROOT).as_posix() for path in outputs]}
+
+
 # --------------------------------------------------------------------- main
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
@@ -547,6 +568,8 @@ def main():
         meta["quality_filter"] = {"dropped": list(BAD_QUALITY), "per_well": kept} | {
             k: sum(v[k] for v in kept.values())
             for k in ("values_dropped", "weeks_changed", "weeks_emptied")}
+    if DATASET == "v5":
+        meta["cq15"] = build_cq15()
     (OUT / "meta.json").write_text(json.dumps(meta, indent=1, ensure_ascii=False))
     if DATASET >= "v4":  # suspect placeholders, masked when scoring (decided 2026-10-24)
         from src.dataset.placeholders import main as flag_placeholders

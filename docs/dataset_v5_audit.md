@@ -23,30 +23,32 @@ Fold maps in splits.json identical: True. Each map agrees with its wells table: 
 
 ### Table sizes and coverage
 
-| table | rows | first_week | last_week | version |
-| --- | --- | --- | --- | --- |
-| forcing_weekly.parquet | 196977 | 2000-01-09 | 2026-10-11 | v4 |
-| gauges.parquet | 45 | 2005-01-02 | 2026-10-18 | v4 |
-| heads_weekly.parquet | 55141 | 2000-01-02 | 2026-10-04 | v4 |
-| placeholder_weeks.parquet | 60 | 2022-12-04 | 2024-01-21 | v4 |
-| pumping_points.parquet | 3055 | — | — | v4 |
-| pumping_weekly.parquet | 2308950 | 2003-01-05 | 2026-10-11 | v4 |
-| restrictions_weekly.parquet | 16254 | 2012-01-01 | 2026-10-25 | v4 |
-| rivers_weekly.parquet | 37714 | 2005-01-02 | 2026-10-18 | v4 |
-| wells.parquet | 65 | — | — | v4 |
-| canal_basins_weekly.parquet | 7482 | 2003-01-05 | 2026-11-22 | v5 |
-| canal_intakes_basin.parquet | 181 | — | — | v5 |
-| forcing_weekly.parquet | 271425 | 1990-01-07 | 2026-11-22 | v5 |
-| gauges.parquet | 45 | 2005-01-02 | 2026-11-29 | v5 |
-| heads_weekly.parquet | 59868 | 1990-01-07 | 2026-11-22 | v5 |
-| placeholder_weeks.parquet | 60 | 2022-12-04 | 2024-01-21 | v5 |
-| pumping_points.parquet | 3055 | — | — | v5 |
-| pumping_weekly.parquet | 2321868 | 2003-01-05 | 2026-11-22 | v5 |
-| restrictions_weekly.parquet | 16254 | 2012-01-01 | 2026-10-25 | v5 |
-| rivers_weekly.parquet | 37923 | 2005-01-02 | 2026-11-29 | v5 |
-| wells.parquet | 65 | — | — | v5 |
+| table | rows | first_week | last_week | source | version |
+| --- | --- | --- | --- | --- | --- |
+| forcing_weekly.parquet | 196977 | 2000-01-09 | 2026-10-11 | Core dataset build | v4 |
+| gauges.parquet | 45 | 2005-01-02 | 2026-10-18 | Core dataset build | v4 |
+| heads_weekly.parquet | 55141 | 2000-01-02 | 2026-10-04 | Core dataset build | v4 |
+| placeholder_weeks.parquet | 60 | 2022-12-04 | 2024-01-21 | Core dataset build | v4 |
+| pumping_points.parquet | 3055 | — | — | Core dataset build | v4 |
+| pumping_weekly.parquet | 2308950 | 2003-01-05 | 2026-10-11 | Core dataset build | v4 |
+| restrictions_weekly.parquet | 16254 | 2012-01-01 | 2026-10-25 | Core dataset build | v4 |
+| rivers_weekly.parquet | 37714 | 2005-01-02 | 2026-10-18 | Core dataset build | v4 |
+| wells.parquet | 65 | — | — | Core dataset build | v4 |
+| canal_basins_weekly.parquet | 7482 | 2003-01-05 | 2026-11-22 | Core dataset build | v5 |
+| canal_intakes_basin.parquet | 181 | — | — | Core dataset build | v5 |
+| forcing_weekly.parquet | 271425 | 1990-01-07 | 2026-11-22 | Core dataset build | v5 |
+| gauges.parquet | 45 | 2005-01-02 | 2026-11-29 | Core dataset build | v5 |
+| heads_weekly.parquet | 59868 | 1990-01-07 | 2026-11-22 | Core dataset build | v5 |
+| irrigation_s2_wells.parquet | 650 | — | — | Sentinel-2 snapshot: data/raw/gee_s2/2026-11-26 | v5 |
+| placeholder_weeks.parquet | 60 | 2022-12-04 | 2024-01-21 | Core dataset build | v5 |
+| pumping_points.parquet | 3055 | — | — | Core dataset build | v5 |
+| pumping_weekly.parquet | 2321868 | 2003-01-05 | 2026-11-22 | Core dataset build | v5 |
+| restrictions_weekly.parquet | 16254 | 2012-01-01 | 2026-10-25 | Core dataset build | v5 |
+| rivers_weekly.parquet | 37923 | 2005-01-02 | 2026-11-29 | Core dataset build | v5 |
+| wells.parquet | 65 | — | — | Core dataset build | v5 |
+| irrigation_s2_rule.json | n/a | — | — | Sentinel-2 snapshot: data/raw/gee_s2/2026-11-26 | v5 |
 
-Static tables have no week bounds. Gauge bounds describe their associated river records.
+Static tables have no week bounds. Gauge bounds describe their associated river records. CQ15's irrigation_s2_wells.parquet and irrigation_s2_rule.json come from the dated Sentinel-2 snapshot named in the inventory. Both are included in the rebuild byte comparison, and a missing CQ15 output fails it. The well shares use edition years 2017–2025 and a training-only summary, so they have no weekly bounds.
 
 ### Core well-weeks by split
 
@@ -243,22 +245,4 @@ Volumes are Mm³, grouped by the Sunday week-label year. The imputed share is th
 
 ## Reproducibility
 
-Build status: completed; return code: 0; elapsed: 39.25 s. Fresh process, rebuilt from raw inputs.
-
-| file | identical | diagnosis |
-| --- | --- | --- |
-| canal_basins_weekly.parquet | True | Identical bytes. |
-| canal_intakes_basin.parquet | True | Identical bytes. |
-| forcing_weekly.parquet | True | Identical bytes. |
-| gauges.parquet | True | Identical bytes. |
-| heads_weekly.parquet | True | Identical bytes. |
-| meta.json | True | Identical bytes. |
-| placeholder_weeks.parquet | True | Identical bytes. |
-| pumping_points.parquet | True | Identical bytes. |
-| pumping_weekly.parquet | True | Identical bytes. |
-| restrictions_weekly.parquet | True | Identical bytes. |
-| rivers_weekly.parquet | True | Identical bytes. |
-| splits.json | True | Identical bytes. |
-| wells.parquet | True | Identical bytes. |
-
-Full before/after SHA-256 digests: results/logs/dataset_v5_hashes.json. This checks the existing dataset against one fresh rebuild. meta.json's built field is a calendar date, so a same-day pass does not establish cross-day byte stability. build.py would need a fixed snapshot date or separate volatile metadata to provide that guarantee.
+Rebuild not run (--skip-rebuild). Gate R1 reproducibility is pending.

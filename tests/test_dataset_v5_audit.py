@@ -1,12 +1,14 @@
 """Small exact checks for the dataset v5 audit (docs/v5_plan.md R1.5, Gate R1).
 
-    PYTHONIOENCODING=utf-8 PFE_DATASET=v4 .venv/bin/python -m tests.test_dataset_v5_audit
+    PYTHONIOENCODING=utf-8 PFE_DATASET=v5 .venv/bin/python -m tests.test_dataset_v5_audit
 
 Synthetic cases check differences and conservation without reading or rebuilding
 the real dataset. Temporary files check the actual SHA-256 implementation.
 """
 import hashlib
 import io
+import json
+from contextlib import ExitStack, redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -132,6 +134,100 @@ def test_diagnosis_and_guard():
     print("  7. date/row-order diagnoses; missing T65 report blocks rebuild before subprocess")
 
 
+def test_cq15_inventory_and_rebuild():
+    source = "data/raw/gee_s2/test-snapshot"
+    with TemporaryDirectory() as directory:
+        root = Path(directory)
+        pd.DataFrame({"code_bss": ["a"], "year": ["train"]}).to_parquet(
+            root / A.CQ15_FILES[0], index=False)
+        (root / A.CQ15_FILES[1]).write_text(json.dumps({"s2_snapshot": source, "TAU": 0.485}))
+        inventory = A.table_inventory(root).set_index("table")
+        assert set(inventory.index) == set(A.CQ15_FILES)
+        assert inventory["source"].eq(f"Sentinel-2 snapshot: {source}").all()
+        assert inventory.loc[A.CQ15_FILES[0], "rows"] == 1
+        with patch.object(Path, "is_file", return_value=True), \
+                patch.object(A.subprocess, "run") as run:
+            run.return_value.returncode = 0
+            result = A.rebuild_audit(root)
+        assert all(row["identical"] for row in result["files"])
+        assert {row["file"] for row in result["files"]} == set(A.CQ15_FILES)
+    with TemporaryDirectory() as directory:
+        with patch.object(Path, "is_file", return_value=True), \
+                patch.object(A.subprocess, "run") as run:
+            run.return_value.returncode = 0
+            missing = A.rebuild_audit(Path(directory))
+        assert len(missing["files"]) == 2
+        assert all(not row["identical"] and "Missing before and after" in row["diagnosis"]
+                   for row in missing["files"])
+    print("  8. CQ15 inventory names S2 source; mocked rebuild compares both files and detects absence")
+
+
+def test_build_cq15_hook():
+    """Exercise main with synthetic inputs: no core build or real CQ15 writes occur."""
+    from src.dataset import build as B, irrigation_s2 as S
+    from src.dataset import placeholders
+
+    columns = ["code_bss", "bss_id", "libelle_pe", "nom_commune", "x", "y", "altitude_station",
+               "profondeur_investigation", "code_bdlisa", "layer", "group", "stack_str",
+               "pos_in_stack", "pct_days_artesian", "record_years", "core"]
+    wells = pd.DataFrame([{column: None for column in columns}]).assign(
+        code_bss="a", x=2.7, y=42.7, group="alluvium", core=True)
+    week = pd.to_datetime(["2017-01-08"])
+    heads = pd.DataFrame({"code_bss": ["a"], "week": week, "head": [1.0],
+                          "share_not_validated": [0.0]})
+    forcing = pd.DataFrame({"cell_id": ["c"], "week": week})
+    gauges = pd.DataFrame({"is_canal": [False]})
+    points = pd.DataFrame({"code_ouvrage": ["p"], "source": ["groundwater"]})
+    pumping = pd.DataFrame({"code_ouvrage": ["p"], "week": week, "volume_m3": [1.0]})
+    source = f"data/raw/gee_s2/{S.S2_SNAPSHOT}"
+    is_dir = Path.is_dir
+    with TemporaryDirectory() as directory:
+        root = Path(directory)
+        snapshot = root / source
+        snapshot.mkdir(parents=True)
+        for version, present in (("v5", True), ("v4", True), ("v5", False)):
+            out = root / "data" / "processed" / f"dataset_{version}"
+            with ExitStack() as stack:
+                for name, value in {"ROOT": root, "RAW": root / "data/raw", "OUT": out,
+                                    "INTERIM": root / "data/interim", "DATASET": version,
+                                    "CFG": {}, "MIN_WEEKS": 1}.items():
+                    stack.enter_context(patch.object(B, name, value))
+                for name, value in {"build_wells": wells, "weekly_heads": heads,
+                                    "nearest_cell": pd.DataFrame({"cell_id": ["c"], "cell_dist_m": [0.0]}),
+                                    "build_forcing": forcing, "build_rivers": (gauges, forcing),
+                                    "build_pumping": (points, pumping, 2017),
+                                    "random_folds": {"a": 0}, "sgi": [0.0]}.items():
+                    stack.enter_context(patch.object(B, name, return_value=value.copy()
+                                                    if isinstance(value, pd.DataFrame) else value))
+                stack.enter_context(patch.object(pd.DataFrame, "to_parquet"))
+                stack.enter_context(patch.object(placeholders, "main"))
+                stack.enter_context(patch.object(Path, "is_dir", autospec=True,
+                                                side_effect=lambda path: present if path == snapshot
+                                                else is_dir(path)))
+                run = stack.enter_context(patch.object(S, "run", return_value={
+                    "s2_snapshot": source, "TAU": 0.485}))
+                stdout = stack.enter_context(redirect_stdout(io.StringIO()))
+                B.main()
+                meta = json.loads((out / "meta.json").read_text())
+                if version == "v4":
+                    run.assert_not_called()
+                    assert "cq15" not in meta
+                elif present:
+                    run.assert_called_once_with()
+                    assert meta["cq15"] == {"status": "built", "s2_snapshot": source, "TAU": 0.485,
+                                            "outputs": [
+                                                "data/processed/dataset_v5/irrigation_s2_wells.parquet",
+                                                "data/processed/dataset_v5/irrigation_s2_rule.json",
+                                                "data/interim/irrigation_s2_parcels_v5.parquet"]}
+                else:
+                    run.assert_not_called()
+                    assert meta["cq15"]["status"] == "skipped"
+                    assert meta["cq15"]["s2_snapshot"] == source
+                    assert meta["cq15"]["outputs"] == []
+                    assert "CQ15 skipped" in stdout.getvalue() and source in stdout.getvalue()
+    print("  9. mocked main: v5 calls CQ15 and records provenance; v4 keeps its keys; absent snapshot skips")
+
+
 if __name__ == "__main__":
     test_hashes()
     test_wells()
@@ -140,4 +236,6 @@ if __name__ == "__main__":
     test_splits()
     test_canals()
     test_diagnosis_and_guard()
+    test_cq15_inventory_and_rebuild()
+    test_build_cq15_hook()
     print("test_dataset_v5_audit: all checks passed")

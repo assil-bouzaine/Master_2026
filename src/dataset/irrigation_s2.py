@@ -45,7 +45,6 @@ Outputs:
     docs/irrigation_s2.md                                         generated report and validation
 """
 import argparse
-import datetime as dt
 import hashlib
 import json
 import time
@@ -753,7 +752,7 @@ def run(snapshot: str = S2_SNAPSHOT, years: tuple[int, ...] = YEARS) -> dict:
     }
     rule_meta = {
         "dataset": DATASET,
-        "generated_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+        # The snapshot and input hashes give provenance without changing bytes on each run.
         "s2_snapshot": s2_dir.relative_to(ROOT).as_posix(),
         "TAU": tau,
         "MIN_PX": MIN_PX,

@@ -7,6 +7,8 @@ The first command compares v4 with v5 and checks the basin accounting. The secon
 also rebuilds v5 in a fresh Python process and compares every file's SHA-256.
 It refuses to rebuild until T65's report exists, because that worker reads v5.
 The builder overwrites its outputs from raw inputs; no model is trained here.
+The inventory and byte comparison include CQ15's well shares and frozen rule,
+which are derived from the dated Sentinel-2 snapshot.
 """
 from __future__ import annotations
 
@@ -29,6 +31,7 @@ HASHES = ROOT / "results" / "logs" / "dataset_v5_hashes.json"
 READY = ROOT / "results" / "_agents" / "reports" / "T65.md"
 HEAD_KEY = ["code_bss", "week"]
 FORCING_KEY = ["cell_id", "week"]
+CQ15_FILES = ("irrigation_s2_wells.parquet", "irrigation_s2_rule.json")
 
 
 def hash_files(directory: Path) -> dict[str, str]:
@@ -106,8 +109,13 @@ def split_summary(heads: pd.DataFrame, wells: pd.DataFrame, splits: dict) -> pd.
 
 
 def table_inventory(directory: Path) -> pd.DataFrame:
-    """Read actual row counts and time coverage, including tables not listed in meta.json."""
+    """Read table coverage and the CQ15 rule, naming their Sentinel-2 snapshot source."""
     rows = []
+    rule_path = directory / "irrigation_s2_rule.json"
+    source = "Sentinel-2 snapshot (rule JSON missing)"
+    if rule_path.is_file():
+        rule = json.loads(rule_path.read_text(encoding="utf-8"))
+        source = f"Sentinel-2 snapshot: {rule['s2_snapshot']}"
     for path in sorted(directory.rglob("*.parquet")):
         frame = pd.read_parquet(path)
         first = last = "—"
@@ -117,7 +125,11 @@ def table_inventory(directory: Path) -> pd.DataFrame:
             first = str(frame["first_week"].min().date())
             last = str(frame["last_week"].max().date())
         rows.append({"table": path.relative_to(directory).as_posix(), "rows": len(frame),
-                     "first_week": first, "last_week": last})
+                     "first_week": first, "last_week": last,
+                     "source": source if path.name == CQ15_FILES[0] else "Core dataset build"})
+    if rule_path.is_file():
+        rows.append({"table": rule_path.name, "rows": None, "first_week": "—", "last_week": "—",
+                     "source": source})
     return pd.DataFrame(rows)
 
 
@@ -235,10 +247,12 @@ def rebuild_audit(directory: Path) -> dict:
     elapsed = time.perf_counter() - started
     after = hash_files(directory)
     files = []
-    for name in sorted(set(before) | set(after)):
+    for name in sorted(set(before) | set(after) | set(CQ15_FILES)):
         identical = name in before and name in after and before[name] == after[name]
         reason = "Identical bytes."
-        if name not in before:
+        if name not in before and name not in after:
+            reason = "Missing before and after rebuild; required CQ15 output from the Sentinel-2 snapshot."
+        elif name not in before:
             reason = "Added by rebuild; absent from the initial dataset."
         elif name not in after:
             reason = "Missing after rebuild."
@@ -281,7 +295,11 @@ def comparison_report(old_dir: Path, new_dir: Path) -> tuple[str, bool]:
                         m == dict(zip(w["code_bss"], w["fold"])) for m, w in zip(fold_maps, wells))) + ".")
     inventories = [table_inventory(d).assign(version=v) for d, v in zip((old_dir, new_dir), ("v4", "v5"))]
     sections += ["### Table sizes and coverage", markdown_table(pd.concat(inventories, ignore_index=True)),
-                 "Static tables have no week bounds. Gauge bounds describe their associated river records."]
+                 "Static tables have no week bounds. Gauge bounds describe their associated river records. "
+                 "CQ15's irrigation_s2_wells.parquet and irrigation_s2_rule.json come from the dated "
+                 "Sentinel-2 snapshot named in the inventory. Both are included in the rebuild byte "
+                 "comparison, and a missing CQ15 output fails it. The well shares use edition years "
+                 "2017–2025 and a training-only summary, so they have no weekly bounds."]
     split_rows = [split_summary(h, w, s).assign(version=v)
                   for h, w, s, v in zip(heads, wells, splits, ("v4", "v5"))]
     sections += ["### Core well-weeks by split", markdown_table(pd.concat(split_rows, ignore_index=True)),

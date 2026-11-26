@@ -553,6 +553,10 @@ def render_report(df, eau_stats, tot_stats, joins, eval_res, known_acc, nocode_t
     y0, y1 = pa.VOLUME_YEARS
     n_eau_unique, n_eau_raw, n_eau_multi, n_eau_comm = eau_stats
     n_tot_unique, n_tot_raw = tot_stats
+    duplicate_note = (
+        " Duplicate keys in this snapshot are dropped before any join or nearest-point match."
+        if n_eau_raw > n_eau_unique or n_tot_raw > n_tot_unique else ""
+    )
     new_ades = joins["new_beyond_ades"]
     new_ades_irr = new_ades[new_ades["usage_main"] == "irrigation"]
     direct_prec = eval_res["overall"].iloc[0]
@@ -595,12 +599,12 @@ def render_report(df, eau_stats, tot_stats, joins, eval_res, known_acc, nocode_t
         "do not edit by hand. This report measures what BRGM's open BSS layers (`ms:BSS_EAU_POINT` "
         "and `ms:BSS_TOTAL_SANS_LABEL`) add to pump attribution (task 12.3, `docs/v5_plan.md` R1.3). "
         "It does **not** modify `pump_attribution.py`.\n",
-        "**Data hygiene note:** the raw WFS snapshot contains exact duplicate rows from `STARTINDEX` "
-        f"paging without `SORTBY`: `bss_eau_point.parquet` has {n_eau_raw:,} rows for **{n_eau_unique:,}** "
+        f"**Data hygiene note:** in BSS snapshot `{BSS_SNAPSHOT}`, "
+        f"`bss_eau_point.parquet` has {n_eau_raw:,} rows for **{n_eau_unique:,}** "
         f"unique `code_bss` water points ({n_eau_comm:,} with `coordonneescommune = Y`, i.e. placed at the "
         f"commune centroid, and {n_eau_multi} water points listing more than one BD LISA entity); "
         f"`bss_total_sans_label.parquet` has {n_tot_raw:,} rows for **{n_tot_unique:,}** unique `reference` "
-        "boreholes. All joins and nearest-point matches below use the deduplicated tables.\n",
+        f"boreholes.{duplicate_note}\n",
         f"## 1. Direct BSS code joins (declared volume {y0}–{y1})\n",
         f"Dataset `{DATASET}` has **{len(df):,}** BNPE groundwater points (**{int((df['zone'] == 'plain').sum()):,}** "
         f"in the Roussillon plain). Only **{int(df['has_bss_code'].sum())}** points (**{df.loc[df['has_bss_code'], 'code_bss_point_eau'].nunique()}** "

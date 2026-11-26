@@ -131,6 +131,13 @@ e-mails, the AGROVOC gold set, the paywalled papers, the defence date.
   `python -m src.kg.extract_llm score --pred results/v5/extraction/<run>/predictions_dev.json --split dev`.
 - Workers now: `neon` → **T85** (CQ15 in the ontology and graph, then the release rebuild); `sol` → **T86** (OpenAlex
   harvest tool for Track 1; Claude runs it).
+- ≈ 19:30: T86 committed; the real OpenAlex search ran (30 selected, `configs/track1_papers.csv`); PDF downloads
+  running (`results/logs/openalex_download_2026-11-26.log`). Track 2 dev: **Qwen2.5-7B-Instruct statement F1 0.455**
+  (P 0.417, R 0.500; commit `a09a354…`, unpinned run but main unchanged since 2025-01); Qwen3-8B (pinned
+  `b968826…`) running on `ext`; OLMo-3-7B (`6e5971d…`) next. Track 1 schema and prompt committed (`02f8bf2`).
+  Briefs ready: **T87** (sol, alignment scorer; running), **T88** (neon after T85: CQ10 + CQ16 + register codes).
+  Eionet (GEMET, CORINE) still unreachable; the Manouba aquifer paper (Ferchichi et al. 2017,
+  doi:10.1007/s12517-017-3314-4, open access) blocks scripts: on Assil's paper list.
 
 ### 2026-11-26 (Claude Opus 5.5, from ≈ 11:20 local time)
 - Assil: "there is a bug fix folder start with that if those are valid bugs then continue the work as planned";

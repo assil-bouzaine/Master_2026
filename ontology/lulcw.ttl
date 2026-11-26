@@ -19,9 +19,9 @@
 # M2 = square metre, M3 = cubic metre) and are stated in each definition.
 
 <https://w3id.org/lulcw> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/0.10.0> ;
-    owl:versionInfo "0.10.0" ;
-    owl:priorVersion <https://w3id.org/lulcw/0.9.1> ;
+    owl:versionIRI <https://w3id.org/lulcw/0.11.0> ;
+    owl:versionInfo "0.11.0" ;
+    owl:priorVersion <https://w3id.org/lulcw/0.10.0> ;
     dcterms:title "LULC-Water bridging module"@en , "Module de liaison LULC-Water"@fr ;
     dcterms:description "Bridging module of the LULC-Water network of ontologies (SAVE Water, PRIMA): wells, abstraction facilities, hydrogeological units and the qualified, evidence-carrying assertions (unit attributions, stratigraphic relations, well links, influences, annual abstraction accounting) that structure, constrain and explain a groundwater-level model of the Roussillon multilayer aquifer."@en ,
         "Module de liaison du réseau d'ontologies LULC-Water (SAVE Water, PRIMA) : piézomètres, ouvrages de prélèvement, entités hydrogéologiques et assertions qualifiées, porteuses de preuves (attributions à une entité, relations stratigraphiques, liens entre piézomètres, influences, bilans annuels des prélèvements), qui structurent, contraignent et expliquent un modèle des niveaux piézométriques de l'aquifère multicouche du Roussillon."@fr ;
@@ -43,7 +43,8 @@
         "0.8.0 (2026-11-21, CQ14, Gate 3 point 15): cover, confinement and pressure state at a monitoring point, kept apart: HydrogeologicalSetting (the place of the monitored unit in the BD LISA stack under the point: outcropping, covered or of unknown cover), PressureStateSummary (a SOSA observation: the days of a training window with the water above the station's measurement reference) and ConfinementAssessment (confined only on that pressure evidence, probable; otherwise unknown; never from mapped cover), with their schemes and properties."@en ,
         "0.9.0 (2026-11-25, v5 plan R2.2): overlying-leakage recharge influences: viaUnit"@en ,
         "0.9.1 (2026-11-26, bug audit item 5.4): updated lulcw:VerticalLeakage definition to state that it is derived since 0.9.0 only as the overlying-leakage recharge proxy (lulcw:viaUnit), never as a head-difference exchange."@en ,
-        "0.10.0 (2026-11-26, v5 plan R2.2): tagged every lulcw term with lulcw:definedInModule for the seven pan-Mediterranean modules and EU/FR/TN profiles; added lulcw:registerCode (super-property of string register-code properties in profiles); pruned unused lulcw:witnessAreaM2; made CropCode and ElementaryPolygon labels and definitions country-neutral."@en ;
+        "0.10.0 (2026-11-26, v5 plan R2.2): tagged every lulcw term with lulcw:definedInModule for the seven pan-Mediterranean modules and EU/FR/TN profiles; added lulcw:registerCode (super-property of string register-code properties in profiles); pruned unused lulcw:witnessAreaM2; made CropCode and ElementaryPolygon labels and definitions country-neutral."@en ,
+        "0.11.0 (2026-11-26, CQ15, v5 plan R2.2): added registered parcels and parcel-zone overlaps in the lulc module, and Sentinel-2 satellite index observations, summer NDVI and soil wetness observable properties, probably-irrigated zone shares, parcel-season irrigation classifications, rule thresholds, rule validity and aggregate census evaluation properties in the eo module."@en ;
     owl:imports <https://w3id.org/lulcw/imports/sosa> , <https://w3id.org/lulcw/imports/prov> ,
         <https://w3id.org/lulcw/imports/time> , <https://w3id.org/lulcw/imports/skos> ,
         <https://w3id.org/lulcw/imports/geo> .
@@ -2160,3 +2161,232 @@ lulcw:confinementState a owl:ObjectProperty , owl:FunctionalProperty ;
     rdfs:label "has confinement state"@en , "a pour état de captivité"@fr ;
     skos:definition "The state the assessment gives: confined only on pressure evidence at the point, else unknown."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/hydro> .
+
+
+# ----------------------------------------------------------------------------- CQ15 (0.11.0, 2026-11-26)
+# Probable irrigation from remote sensing (docs/competency_questions.md, CQ15; subject objective SO2):
+# registered parcels and their clipped overlaps with crop demand zones (lulc module), and Sentinel-2
+# seasonal index observations, regional summer soil wetness, per-zone probably-irrigated shares,
+# parcel-season classifications, rule thresholds, rule validity and aggregate census evaluations (eo module).
+
+# lulc module: registered parcels and parcel-zone overlaps
+
+lulcw:RegisteredParcel a owl:Class ;
+    rdfs:subClassOf geo:Feature ;
+    rdfs:label "registered parcel"@en , "parcelle déclarée"@fr ;
+    skos:definition "An agricultural parcel declared in one annual edition of a land-parcel register (in France the RPG parcelle graphique, whose identifier holds for one edition only), with its crop code and mapped area; parcel geometries stay outside the graph."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
+
+lulcw:parcelAreaM2 a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:RegisteredParcel ; rdfs:range xsd:double ;
+    rdfs:label "parcel area (m²)"@en , "surface de la parcelle (m²)"@fr ;
+    skos:definition "Mapped area of a registered parcel in square metres (projected CRS, Lambert-93 in France)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
+
+lulcw:ParcelZoneOverlap a owl:Class ;
+    rdfs:label "parcel-zone overlap"@en , "recouvrement parcelle-zone"@fr ;
+    skos:definition "N-ary relation recording the clipped area of one registered parcel that lies inside one crop demand zone, computed outside OWL (GeoPandas intersection in Lambert-93)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
+
+lulcw:overlapParcel a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ParcelZoneOverlap ; rdfs:range lulcw:RegisteredParcel ;
+    rdfs:label "overlapping parcel"@en , "parcelle recouvrante"@fr ;
+    skos:definition "The registered parcel whose clipped area inside a crop demand zone a parcel-zone overlap records."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
+
+lulcw:overlapZone a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ParcelZoneOverlap ; rdfs:range lulcw:CropDemandZone ;
+    rdfs:label "overlapping zone"@en , "zone recouverte"@fr ;
+    skos:definition "The crop demand zone inside which a parcel-zone overlap records a registered parcel's clipped area."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
+
+lulcw:overlapAreaM2 a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ParcelZoneOverlap ; rdfs:range xsd:double ;
+    rdfs:label "overlap area (m²)"@en , "surface de recouvrement (m²)"@fr ;
+    skos:definition "Clipped intersection area of a registered parcel inside a crop demand zone, in square metres (Lambert-93)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
+
+# eo module: satellite index observations, observable properties, classifications, rule parameters and evaluations
+
+lulcw:SatelliteIndexObservation a owl:Class ;
+    rdfs:subClassOf sosa:Observation ;
+    rdfs:label "satellite index observation"@en , "observation d'indice satellitaire"@fr ;
+    skos:definition "A seasonal summary of a satellite spectral index (such as Sentinel-2 NDVI) over one registered parcel: the parcel mean of the per-pixel seasonal medians over clear-sky acquisitions, qualified by valid-pixel count and mean clear acquisitions per valid pixel."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:validPixelCount a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:SatelliteIndexObservation ; rdfs:range xsd:integer ;
+    rdfs:label "valid pixel count"@en , "nombre de pixels valides"@fr ;
+    skos:definition "Number of valid clear-sky satellite pixels whose centres fall inside the registered parcel over the season."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:meanClearAcquisitions a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:SatelliteIndexObservation ; rdfs:range xsd:double ;
+    rdfs:label "mean clear acquisitions"@en , "nombre moyen d'acquisitions claires"@fr ;
+    skos:definition "Mean number of valid clear-sky satellite acquisitions per valid pixel in the registered parcel over the season."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:SummerNDVI a sosa:ObservableProperty ;
+    rdfs:label "summer NDVI"@en , "NDVI estival"@fr ;
+    skos:definition "July-August Sentinel-2 Normalized Difference Vegetation Index (B8 - B4) / (B8 + B4) summarised over a registered parcel (mean of per-pixel seasonal medians over clear-sky pixels, dimensionless in [-1, 1])."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:SummerSoilWetness a sosa:ObservableProperty ;
+    rdfs:label "summer soil wetness"@en , "humidité estivale du sol"@fr ;
+    skos:definition "July-August mean of a weather cell's weekly soil wetness index (SIM2/SAFRAN-ISBA SWI_JA, dimensionless); its feature of interest is the weather cell, never an individual parcel."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:ProbablyIrrigatedShare a sosa:ObservableProperty ;
+    rdfs:label "probably irrigated share"@en , "part probablement irriguée"@fr ;
+    skos:definition "Share of the classified agricultural parcel area (positive plus negative) inside a crop demand zone that a probable-irrigation rule classifies as probably irrigated, dimensionless in [0, 1]; unbound when no parcel area in the zone is classified."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:classifiedAreaM2 a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sosa:Observation ; rdfs:range xsd:double ;
+    rdfs:label "classified area (m²)"@en , "surface classée (m²)"@fr ;
+    skos:definition "Clipped area, in square metres, of agricultural parcels inside a crop demand zone that received a positive or negative irrigation classification (the denominator of the probably-irrigated share)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:classifiedFraction a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain sosa:Observation ; rdfs:range xsd:double ;
+    rdfs:label "classified fraction"@en , "fraction classée"@fr ;
+    skos:definition "Fraction of the total clipped agricultural parcel area inside a crop demand zone that was classified as positive or negative, dimensionless in [0, 1]; the remainder had insufficient satellite data or wet regional soil conditions."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:matchedWeatherCell a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:RegisteredParcel ; rdfs:range lulcw:WeatherCell ;
+    rdfs:label "matched weather cell"@en , "maille météorologique associée"@fr ;
+    skos:definition "The weather cell whose centre lies nearest to the registered parcel's centroid (Lambert-93), supplying regional soil-wetness context; grid-cell context, not measured field moisture."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:IrrigationClassification a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "irrigation classification"@en , "classification d'irrigation"@fr ;
+    skos:definition "The outcome of a versioned probable-irrigation rule for one registered parcel and one season: a hypothesis from summer vegetation activity under dry regional conditions, never an irrigation record or proof of rainfed management."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:classifiedParcel a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:IrrigationClassification ; rdfs:range lulcw:RegisteredParcel ;
+    rdfs:label "classified parcel"@en , "parcelle classée"@fr ;
+    skos:definition "The registered parcel to which an irrigation classification applies."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:irrigationOutcome a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:IrrigationClassification ; rdfs:range lulcw:IrrigationOutcome ;
+    rdfs:label "has irrigation outcome"@en , "a pour résultat d'irrigation"@fr ;
+    skos:definition "The categorical outcome assigned to a parcel-season by a probable-irrigation rule."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:seasonYear a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:range xsd:integer ;
+    rdfs:label "season year"@en , "année de la saison"@fr ;
+    skos:definition "Calendar year of the growing season to which a satellite index observation, summer soil-wetness summary, zone share observation or irrigation classification applies."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:IrrigationOutcome a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "irrigation outcome"@en , "résultat d'irrigation"@fr ;
+    skos:definition "Categorical outcome of a probable-irrigation rule for one parcel and one season: probably irrigated, not probably irrigated, insufficient satellite data or wet season."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+lulcw:IrrigationOutcomeScheme a skos:ConceptScheme ;
+    rdfs:label "irrigation outcomes"@en , "résultats d'irrigation"@fr ;
+    skos:definition "Values of lulcw:IrrigationOutcome (CQ15)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+lulcw:ProbablyIrrigated a lulcw:IrrigationOutcome ; skos:inScheme lulcw:IrrigationOutcomeScheme ; skos:topConceptOf lulcw:IrrigationOutcomeScheme ;
+    skos:prefLabel "probably irrigated"@en , "probablement irriguée"@fr ;
+    rdfs:label "probably irrigated"@en , "probablement irriguée"@fr ;
+    skos:definition "Rule-positive parcel-season (the legacy concept ProbablyIrrigatedParcel, qualified by season and rule): summer NDVI reaches the rule threshold under dry cell-level soil wetness with sufficient satellite quality; an irrigation hypothesis, not proof of irrigation."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+lulcw:NotProbablyIrrigated a lulcw:IrrigationOutcome ; skos:inScheme lulcw:IrrigationOutcomeScheme ; skos:topConceptOf lulcw:IrrigationOutcomeScheme ;
+    skos:prefLabel "not probably irrigated"@en , "non probablement irriguée"@fr ;
+    rdfs:label "not probably irrigated"@en , "non probablement irriguée"@fr ;
+    skos:definition "Rule-negative parcel-season: summer NDVI is below the rule threshold under dry cell-level soil wetness; not proof of rainfed management (for example, irrigated vegetable parcels may be bare in July-August)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+lulcw:InsufficientSatelliteData a lulcw:IrrigationOutcome ; skos:inScheme lulcw:IrrigationOutcomeScheme ; skos:topConceptOf lulcw:IrrigationOutcomeScheme ;
+    skos:prefLabel "insufficient satellite data"@en , "données satellitaires insuffisantes"@fr ;
+    rdfs:label "insufficient satellite data"@en , "données satellitaires insuffisantes"@fr ;
+    skos:definition "The parcel-season fails the rule's quality checks: too few valid pixels, too few clear acquisitions, or a missing summer NDVI or soil-wetness observation."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+lulcw:WetSeason a lulcw:IrrigationOutcome ; skos:inScheme lulcw:IrrigationOutcomeScheme ; skos:topConceptOf lulcw:IrrigationOutcomeScheme ;
+    skos:prefLabel "wet season (not applicable)"@en , "saison humide (sans objet)"@fr ;
+    rdfs:label "wet season (not applicable)"@en , "saison humide (sans objet)"@fr ;
+    skos:definition "Not applicable: the matched weather cell's summer soil wetness exceeds the rule's dry threshold, so a green canopy does not require irrigation."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:ndviThreshold a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:DerivationRule ; rdfs:range xsd:double ;
+    rdfs:label "NDVI threshold"@en , "seuil NDVI"@fr ;
+    skos:definition "Minimum summer NDVI value (dimensionless, in [-1, 1]) at or above which a probable-irrigation rule classifies a dry, quality-passing parcel-season as probably irrigated; frozen on the training editions."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:minValidPixels a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:DerivationRule ; rdfs:range xsd:integer ;
+    rdfs:label "minimum valid pixels"@en , "nombre minimal de pixels valides"@fr ;
+    skos:definition "Minimum count of valid clear-sky satellite pixels required by a probable-irrigation rule before classifying a parcel-season."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:minMeanClearAcquisitions a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:DerivationRule ; rdfs:range xsd:double ;
+    rdfs:label "minimum mean clear acquisitions"@en , "nombre minimal moyen d'acquisitions claires"@fr ;
+    skos:definition "Minimum mean number of clear-sky acquisitions per valid pixel required by a probable-irrigation rule before classifying a parcel-season."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:maxSoilWetness a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:DerivationRule ; rdfs:range xsd:double ;
+    rdfs:label "maximum soil wetness"@en , "humidité maximale du sol"@fr ;
+    skos:definition "Maximum regional summer soil wetness index (SWI_JA) at or below which a probable-irrigation rule treats conditions as dry; above this threshold, parcel-seasons are classified as wet season (not applicable)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:trainingEdition a owl:DatatypeProperty ;
+    rdfs:domain lulcw:DerivationRule ; rdfs:range xsd:integer ;
+    rdfs:label "training edition"@en , "édition d'apprentissage"@fr ;
+    skos:definition "A land-parcel register edition year used to calibrate and freeze a derivation rule's parameters before any validation or test evaluation (repeated once per training edition)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:RuleValidity a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "rule validity"@en , "validité de la règle"@fr ;
+    skos:definition "Validation standing of a derivation rule against independent evidence: validated or explicitly labelled a heuristic."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+lulcw:RuleValidityScheme a skos:ConceptScheme ;
+    rdfs:label "rule validity levels"@en , "niveaux de validité de règle"@fr ;
+    skos:definition "Values of lulcw:RuleValidity (CQ15)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+lulcw:ValidatedRule a lulcw:RuleValidity ; skos:inScheme lulcw:RuleValidityScheme ; skos:topConceptOf lulcw:RuleValidityScheme ;
+    skos:prefLabel "validated rule"@en , "règle validée"@fr ;
+    rdfs:label "validated rule"@en , "règle validée"@fr ;
+    skos:definition "The rule satisfies its stated independent validation criteria within its declared scope."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+lulcw:HeuristicRule a lulcw:RuleValidity ; skos:inScheme lulcw:RuleValidityScheme ; skos:topConceptOf lulcw:RuleValidityScheme ;
+    skos:prefLabel "heuristic rule"@en , "règle heuristique"@fr ;
+    rdfs:label "heuristic rule"@en , "règle heuristique"@fr ;
+    skos:definition "The rule does not satisfy all independent validation criteria (or lacks parcel-level ground truth) and is retained explicitly as a heuristic."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:ruleValidity a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:DerivationRule ; rdfs:range lulcw:RuleValidity ;
+    rdfs:label "has rule validity"@en , "a pour validité de règle"@fr ;
+    skos:definition "Validation standing of a derivation rule (validated or heuristic) based on its independent rule evaluations."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:evaluatedShare a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:RuleEvaluation ; rdfs:range xsd:double ;
+    rdfs:label "evaluated positive share"@en , "part positive évaluée"@fr ;
+    skos:definition "Positive share of classified area produced by the evaluated rule on the reference group, dimensionless in [0, 1]."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:referenceRangeLow a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:RuleEvaluation ; rdfs:range xsd:double ;
+    rdfs:label "reference range lower bound"@en , "borne inférieure de référence"@fr ;
+    skos:definition "Lower bound of the plausible irrigated share derived from an independent reference source (such as an agricultural census), dimensionless in [0, 1]."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:referenceRangeHigh a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:RuleEvaluation ; rdfs:range xsd:double ;
+    rdfs:label "reference range upper bound"@en , "borne supérieure de référence"@fr ;
+    skos:definition "Upper bound of the plausible irrigated share derived from an independent reference source, dimensionless in [0, 1]; absent when no upper bound below 1 is constrained by the reference."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+lulcw:withinReferenceRange a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:RuleEvaluation ; rdfs:range xsd:boolean ;
+    rdfs:label "within reference range"@en , "dans la plage de référence"@fr ;
+    skos:definition "Whether the rule's evaluated positive share falls inside the independent reference plausible range."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/eo> .

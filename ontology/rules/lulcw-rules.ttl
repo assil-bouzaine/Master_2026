@@ -32,6 +32,8 @@
 #             BD LISA stack under the well, and the units covering it (CQ14)
 #   order 66  confinement assessments per setting and training window, from the pressure-state
 #             summaries only: confined (probable) or unknown (CQ14)
+#   order 70  probable-irrigation classifications per registered parcel and season, from summer
+#             Sentinel-2 NDVI, quality counts and cell-level summer soil wetness (CQ15)
 #   order 90  a well link or an influence is selected by a policy only if every unit
 #             attribution it derives from is (an unaccepted segment blocks the path); last, so
 #             that it sees every derived path (it ran at order 40 until the recharge influences)
@@ -1465,3 +1467,72 @@ WHERE {
     rdfs:label "confinement assessment"@en ;
     rdfs:seeAlso lulcwr:confinementAssessment ;
     rdfs:comment "Per setting and training window (train, f25, f50): confined, with confidence probable, when the water stood above the station's measurement reference on some day of the window (a free water table cannot rise above the ground; the reference is not surveyed ground); otherwise unknown, with its reason. Never from the stack alone, never unconfined or semi-confined (no evidence type of this release supports them); a window without a depth value leaves the pressure and the state unknown (CQ14)."@en .
+
+
+#################################################################
+# CQ15: probable irrigation from Sentinel-2 summer NDVI and SIM2 soil wetness
+#################################################################
+
+# Whole-graph rule focused on the probable-irrigation rule individual (whose thresholds, version
+# and validity live in the facts graph, read from irrigation_s2_rule.json, never hard-coded here).
+# Order of checks matches src/dataset/irrigation_s2.py (_classify_one):
+#   1. insufficient satellite data: valid pixels < minValidPixels, mean clear acquisitions <
+#      minMeanClearAcquisitions, or NDVI / soil wetness missing;
+#   2. wet season (not applicable): matched weather cell's summer soil wetness > maxSoilWetness;
+#   3. probably irrigated: summer NDVI >= ndviThreshold;
+#   4. not probably irrigated: otherwise.
+# When the rule individual is absent (e.g. dataset v4 or fixtures without CQ15), the rule derives
+# nothing.
+lulcwr:ProbableIrrigationShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/probable-irrigation> ;
+    sh:order 70 ;
+    sh:rule lulcwr:probableIrrigation .
+
+lulcwr:probableIrrigation a sh:SPARQLRule ;
+    sh:order 1 ;
+    sh:prefixes <https://w3id.org/lulcw/rules> ;
+    sh:construct """
+BASE <https://w3id.org/lulcw/data/>
+CONSTRUCT {
+    ?cls a lulcw:IrrigationClassification ;
+        lulcw:classifiedParcel ?parcel ;
+        lulcw:irrigationOutcome ?outcome ;
+        lulcw:seasonYear ?year ;
+        lulcw:evidenceKind lulcw:DerivedAssertion ;
+        lulcw:derivationRule $this ;
+        prov:wasDerivedFrom ?obs , ?swiObs ;
+        prov:wasGeneratedBy <execution/kg-rules> .
+}
+WHERE {
+    $this lulcw:ndviThreshold ?tau ;
+          lulcw:minValidPixels ?minPx ;
+          lulcw:minMeanClearAcquisitions ?minObs ;
+          lulcw:maxSoilWetness ?maxSwi .
+    ?obs a lulcw:SatelliteIndexObservation ;
+         sosa:observedProperty ?prop ;
+         sosa:hasFeatureOfInterest ?parcel ;
+         lulcw:seasonYear ?year .
+    FILTER (?prop = lulcw:SummerNDVI)
+    ?parcel lulcw:sourceIdentifier ?pid .
+    OPTIONAL { ?obs lulcw:validPixelCount ?npx . }
+    OPTIONAL { ?obs sosa:hasSimpleResult ?ndvi . }
+    OPTIONAL { ?obs lulcw:meanClearAcquisitions ?nobs . }
+    OPTIONAL { ?parcel lulcw:matchedWeatherCell ?cell . }
+    OPTIONAL {
+        ?swiObs sosa:observedProperty lulcw:SummerSoilWetness ;
+                sosa:hasFeatureOfInterest ?scell ;
+                lulcw:seasonYear ?syear .
+        OPTIONAL { ?swiObs sosa:hasSimpleResult ?swi . }
+        FILTER (BOUND(?cell) && ?scell = ?cell && ?syear = ?year)
+    }
+    BIND (IF(BOUND(?npx) && BOUND(?ndvi) && BOUND(?nobs) && BOUND(?swi),
+             ?npx >= ?minPx && ?nobs >= ?minObs,
+             false) AS ?qualOk)
+    BIND (IF(!?qualOk, lulcw:InsufficientSatelliteData,
+          IF(?swi > ?maxSwi, lulcw:WetSeason,
+          IF(?ndvi >= ?tau, lulcw:ProbablyIrrigated,
+             lulcw:NotProbablyIrrigated))) AS ?outcome)
+    BIND (IRI(CONCAT("https://w3id.org/lulcw/data/irrigation-classification/",
+                     STR(?year), "/", ENCODE_FOR_URI(?pid))) AS ?cls)
+}
+""" .

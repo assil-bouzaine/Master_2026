@@ -4,21 +4,22 @@
 @prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
 @prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
 @prefix sosa:    <http://www.w3.org/ns/sosa/> .
+@prefix geo:     <http://www.opengis.net/ont/geosparql#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 
-# Generated from ontology/lulcw.ttl (version 0.10.0) by src.kg.ontology_modules.
+# Generated from ontology/lulcw.ttl (version 0.11.0) by src.kg.ontology_modules.
 # Do not edit by hand: edit ontology/lulcw.ttl and re-run the generator.
 
 <https://w3id.org/lulcw/lulc> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/lulc/0.10.0> ;
-    owl:versionInfo "0.10.0" ;
+    owl:versionIRI <https://w3id.org/lulcw/lulc/0.11.0> ;
+    owl:versionInfo "0.11.0" ;
     dcterms:title "LULC-Water land-use and crops module"@en , "Module occupation du sol et cultures LULC-Water"@fr ;
     dcterms:description "Country-agnostic land-use and agricultural water-demand vocabulary: crop codes, harmonised crop classes with FAO-56 parameters, crop demand zones, dated clipped crop areas, potential irrigation demand estimates, and irrigation demand categories."@en ,
         "Vocabulaire d'occupation du sol et de demande agricole en eau indépendant des pays : codes culture, classes de cultures harmonisées avec paramètres FAO-56, zones de demande, surfaces découpées datées, estimations de demande potentielle d'irrigation et catégories de demande."@fr ;
     dcterms:creator "Assil Bouzaine" ;
     dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
     dcterms:created "2026-11-26"^^xsd:date ;
-    owl:imports <https://w3id.org/lulcw/core> , <https://w3id.org/lulcw/hydro> , <https://w3id.org/lulcw/imports/skos> , <https://w3id.org/lulcw/imports/sosa> .
+    owl:imports <https://w3id.org/lulcw/core> , <https://w3id.org/lulcw/hydro> , <https://w3id.org/lulcw/imports/geo> , <https://w3id.org/lulcw/imports/skos> , <https://w3id.org/lulcw/imports/sosa> .
 
 dcterms:title a owl:AnnotationProperty .
 dcterms:description a owl:AnnotationProperty .
@@ -119,6 +120,11 @@ lulcw:NotCropped a lulcw:IrrigationAssumption ;
     skos:definition "Fallow or non-productive declared land, with no crop water requirement."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
 
+lulcw:ParcelZoneOverlap a owl:Class ;
+    rdfs:label "parcel-zone overlap"@en , "recouvrement parcelle-zone"@fr ;
+    skos:definition "N-ary relation recording the clipped area of one registered parcel that lies inside one crop demand zone, computed outside OWL (GeoPandas intersection in Lambert-93)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
+
 lulcw:PartlyIrrigated a lulcw:IrrigationAssumption ;
     skos:inScheme lulcw:IrrigationAssumptionScheme ;
     skos:topConceptOf lulcw:IrrigationAssumptionScheme ;
@@ -143,6 +149,12 @@ lulcw:Rainfed a lulcw:IrrigationAssumption ;
     skos:prefLabel "rainfed"@en , "pluviale"@fr ;
     rdfs:label "rainfed"@en , "pluviale"@fr ;
     skos:definition "The class is assumed not irrigated in the study area (e.g. winter cereals, pasture)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
+
+lulcw:RegisteredParcel a owl:Class ;
+    rdfs:subClassOf geo:Feature ;
+    rdfs:label "registered parcel"@en , "parcelle déclarée"@fr ;
+    skos:definition "An agricultural parcel declared in one annual edition of a land-parcel register (in France the RPG parcelle graphique, whose identifier holds for one edition only), with its crop code and mapped area; parcel geometries stay outside the graph."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
 
 lulcw:UsuallyIrrigated a lulcw:IrrigationAssumption ;
@@ -229,11 +241,39 @@ lulcw:midSeasonStageDays a owl:DatatypeProperty , owl:FunctionalProperty ;
     skos:definition "Length in days of the FAO-56 mid-season stage."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
 
+lulcw:overlapAreaM2 a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ParcelZoneOverlap ;
+    rdfs:range xsd:double ;
+    rdfs:label "overlap area (m²)"@en , "surface de recouvrement (m²)"@fr ;
+    skos:definition "Clipped intersection area of a registered parcel inside a crop demand zone, in square metres (Lambert-93)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
+
+lulcw:overlapParcel a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:domain lulcw:ParcelZoneOverlap ;
+    rdfs:range lulcw:RegisteredParcel ;
+    rdfs:label "overlapping parcel"@en , "parcelle recouvrante"@fr ;
+    skos:definition "The registered parcel whose clipped area inside a crop demand zone a parcel-zone overlap records."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
+
+lulcw:overlapZone a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:domain lulcw:ParcelZoneOverlap ;
+    rdfs:range lulcw:CropDemandZone ;
+    rdfs:label "overlapping zone"@en , "zone recouverte"@fr ;
+    skos:definition "The crop demand zone inside which a parcel-zone overlap records a registered parcel's clipped area."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
+
 lulcw:overrideCode a owl:DatatypeProperty ;
     rdfs:domain lulcw:CropClass ;
     rdfs:range xsd:string ;
     rdfs:label "override crop code"@en , "code culture prioritaire"@fr ;
     skos:definition "An RPG crop code assigned to the crop class whatever its group (the mapping rule applies overrides first)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
+
+lulcw:parcelAreaM2 a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:RegisteredParcel ;
+    rdfs:range xsd:double ;
+    rdfs:label "parcel area (m²)"@en , "surface de la parcelle (m²)"@fr ;
+    skos:definition "Mapped area of a registered parcel in square metres (projected CRS, Lambert-93 in France)."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
 
 lulcw:perennial a owl:DatatypeProperty , owl:FunctionalProperty ;

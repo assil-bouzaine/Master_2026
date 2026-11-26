@@ -7,12 +7,12 @@
 @prefix geo:     <http://www.opengis.net/ont/geosparql#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 
-# Generated from ontology/lulcw.ttl (version 0.10.0) by src.kg.ontology_modules.
+# Generated from ontology/lulcw.ttl (version 0.11.0) by src.kg.ontology_modules.
 # Do not edit by hand: edit ontology/lulcw.ttl and re-run the generator.
 
 <https://w3id.org/lulcw/med-causal> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/med-causal/0.10.0> ;
-    owl:versionInfo "0.10.0" ;
+    owl:versionIRI <https://w3id.org/lulcw/med-causal/0.11.0> ;
+    owl:versionInfo "0.11.0" ;
     dcterms:title "LULC-Water Mediterranean literature causal-evidence module"@en , "Module preuves causales de la littérature méditerranéenne LULC-Water"@fr ;
     dcterms:description "Country-agnostic documentary and literature-derived causal-evidence vocabulary: source documents, verbatim passages, exchange statements, exchange directions, hedging, evidence methods, and unit mappings, ready to hold extracted Mediterranean causal axioms (R2.1)."@en ,
         "Vocabulaire documentaire et des preuves causales issues de la littérature indépendant des pays : documents sources, passages cités, énoncés d'échange, sens d'échange, modalités, méthodes de preuve et correspondances d'entités, prêt à accueillir les axiomes causaux méditerranéens extraits (R2.1)."@fr ;

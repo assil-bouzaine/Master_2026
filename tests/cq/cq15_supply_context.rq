@@ -1,0 +1,73 @@
+# CQ15 · Separate water-supply context of a crop demand zone (CQ6 canals and CQ2 irrigation pumps)
+# (docs/competency_questions.md §4, CQ15)
+#
+# Parameters  ?zone  a lulcw:CropDemandZone
+# Reads       asserted facts (irrigation-use groundwater abstraction facilities and their annual
+#             records, canal reaches) and SHACL-AF rule outputs (lulcw:CanalUnitAssociation);
+#             no OWL reasoning. Needs XPath 3.1 math:sqrt (W3C).
+# Returns     one row per separate supply-context item known for the zone's well:
+#               - kind = "canal_association": a CQ6 canal-unit association in the well's reach
+#                 search zone (?metricM = length on outcrop in metres);
+#               - kind = "irrigation_facility": a CQ2 groundwater abstraction facility within the
+#                 zone's radius that has at least one declared annual record for IrrigationUse
+#                 (?metricM = horizontal distance from the well in metres).
+#             Never derives or returns a parcel-to-source (irrigatedBy) link: proximity to a pump
+#             or canal indicates regional supply context only, never which parcel receives water.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX math: <http://www.w3.org/2005/xpath-functions/math#>
+SELECT ?zone ?W ?kind ?entity ?code ?unitCode ?metricM ?detail ?parcelLink
+WHERE {
+    {
+        SELECT ?zone ?W ?kind ?entity ?code ?unitCode ?metricM ?detail WHERE {
+            #bind-parameters
+            ?zone a lulcw:CropDemandZone ; lulcw:zoneOf ?W .
+            ?rz a lulcw:ReachSearchZone ; lulcw:zoneOf ?W .
+            ?entity a lulcw:CanalUnitAssociation ; lulcw:withinExtent ?rz ;
+                    lulcw:associationUnit ?u ; lulcw:lengthOnOutcropM ?metricM .
+            ?u lulcw:bdlisaCode ?unitCode .
+            OPTIONAL {
+                ?entity lulcw:applicableStatement|lulcw:localizedStatement ?st .
+                ?st lulcw:exchangeDirection lulcw:SurfaceToAquifer .
+            }
+            BIND ("canal_association" AS ?kind)
+            BIND (CONCAT("canal-on-", ?unitCode) AS ?code)
+            BIND (IF(BOUND(?st),
+                     "canal reaches on outcrop with documented return flow (command area not mapped; no parcel link)",
+                     "canal reaches on outcrop (no documented return flow; command area not mapped; no parcel link)")
+                  AS ?detail)
+        }
+        GROUP BY ?zone ?W ?kind ?entity ?code ?unitCode ?metricM ?detail
+    }
+    UNION
+    {
+        SELECT ?zone ?W ?kind ?entity ?code ?unitCode ?metricM ?detail WHERE {
+            #bind-parameters
+            ?zone a lulcw:CropDemandZone ; lulcw:zoneOf ?W ; lulcw:zoneRadiusM ?r .
+            ?W geo:hasGeometry/geo:asWKT ?gw .
+            ?rec a lulcw:AnnualAbstractionRecord ; lulcw:waterUse lulcw:IrrigationUse ;
+                 sosa:hasFeatureOfInterest ?entity .
+            ?entity a lulcw:AbstractionFacility ; lulcw:bnpeCode ?code ;
+                    geo:hasGeometry/geo:asWKT ?gf .
+            OPTIONAL {
+                ?att lulcw:attributedEntity ?entity ; lulcw:role lulcw:AbstractionRole ;
+                     lulcw:rank 1 ; lulcw:candidateUnit/lulcw:bdlisaCode ?uCode .
+            }
+            BIND (STRAFTER(STR(?gf), "POINT(") AS ?pf)
+            BIND (STRAFTER(STR(?gw), "POINT(") AS ?pw)
+            BIND (xsd:double(STRBEFORE(?pf, " ")) - xsd:double(STRBEFORE(?pw, " ")) AS ?dx)
+            BIND (xsd:double(STRBEFORE(STRAFTER(?pf, " "), ")"))
+                  - xsd:double(STRBEFORE(STRAFTER(?pw, " "), ")")) AS ?dy)
+            FILTER (?dx * ?dx + ?dy * ?dy <= ?r * ?r)
+            BIND (math:sqrt(?dx * ?dx + ?dy * ?dy) AS ?metricM)
+            BIND ("irrigation_facility" AS ?kind)
+            BIND (COALESCE(?uCode, "unresolved") AS ?unitCode)
+            BIND ("groundwater facility with declared irrigation use within zone radius (no parcel-to-pump link)" AS ?detail)
+        }
+        GROUP BY ?zone ?W ?kind ?entity ?code ?unitCode ?metricM ?detail
+    }
+    BIND ("none" AS ?parcelLink)
+}
+ORDER BY ?kind ?metricM ?code

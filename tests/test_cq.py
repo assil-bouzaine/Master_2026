@@ -82,9 +82,9 @@ from src.kg.apply_rules import RULES, SHAPES, check, ontology_network, rule_reco
 from src.kg.build_kg import BNPE_SNAPSHOT, PLAIN_MARGIN_DEG
 from src.kg import release
 from src.kg.cq import ask, iris, local, one
-from tests.test_kg_rules import (GEO, KG, L, PROV, RADIUS, SOSA, TIME, build_fixture, build_leakage_fixture,
-                                 d, l93, oracle_coverage, oracle_mapped_outcrop, oracle_relations, oracle_rivers,
-                                 store_of, violations)
+from tests.test_kg_rules import (GEO, KG, L, PROV, RADIUS, SOSA, TIME, build_cq15_fixture, build_fixture,
+                                 build_leakage_fixture, d, l93, oracle_coverage, oracle_mapped_outcrop,
+                                 oracle_relations, oracle_rivers, store_of, violations)
 
 MAIN, CONF_ONLY = d("policy/main"), d("policy/confident-only")
 
@@ -1292,6 +1292,181 @@ def test_data_rivers(store):
           f"{', '.join(RIVER_ANCHORS)}; no stale answer")
 
 
+def test_cq15_fixture():
+    """CQ15 acceptance cases on synthetic fixtures: quality/wetness/threshold rules, surviving an
+    unknown supply source, nearby pump never creates a parcel link, threshold sensitivity, and
+    cq15_status (supported / partial with heuristic / unknown / not_applicable)."""
+    net = ontology_network()
+    rules_g, shapes_g = rdflib.Graph().parse(RULES), rdflib.Graph().parse(SHAPES)
+
+    def run_fx(ndvi_threshold=0.50, validity=L.HeuristicRule):
+        fx = build_cq15_fixture(ndvi_threshold=ndvi_threshold, validity=validity)
+        rec = rule_records(rules_g, "test", fx.g)
+        g = fx.g + rec + run_rules(fx.g, rules_g, rec)
+        conforms, _, res = check(g, shapes_g, net)
+        assert conforms and violations(res) == 0, res
+        return to_store(g), to_store(fx.g)
+
+    s, s_facts = run_fx(ndvi_threshold=0.50, validity=L.HeuristicRule)
+    z1, z2 = d("zone/W1"), d("zone/W2")
+
+    rows1 = {r["parcelId"]: r for r in ask(s, "cq15_classifications", zone=z1, year=2020)}
+    assert {k: local(r["outcome"]) for k, r in rows1.items()} == {
+        "P_POS": "ProbablyIrrigated",
+        "P_NEG": "NotProbablyIrrigated",
+        "P_LOW_PX": "InsufficientSatelliteData",
+        "P_LOW_OBS": "InsufficientSatelliteData",
+        "P_ZERO_PX": "InsufficientSatelliteData",
+        "P_WET": "WetSeason",
+        "P_WET_LOW_PX": "InsufficientSatelliteData",
+        "P_NO_SWI": "InsufficientSatelliteData",
+    }, rows1
+    assert rows1["P_POS"]["ndvi"] == 0.65 and rows1["P_POS"]["validPixels"] == 10
+    assert rows1["P_POS"]["meanClearAcquisitions"] == 5.0 and rows1["P_POS"]["soilWetness"] == 0.30
+    assert rows1["P_POS"]["ndviThreshold"] == 0.50 and local(rows1["P_POS"]["ruleValidity"]) == "HeuristicRule"
+    assert rows1["P_ZERO_PX"]["ndvi"] is None and rows1["P_NO_SWI"]["soilWetness"] is None
+
+    # Classification survives an unknown supply source (zone/W2 has no pump and no canal)
+    rows2 = ask(s, "cq15_classifications", zone=z2, year=2020)
+    assert len(rows2) == 1 and local(rows2[0]["outcome"]) == "ProbablyIrrigated", rows2
+    assert ask(s, "cq15_supply_context", zone=z2) == []
+
+    # Nearby pump F_IRR appears as separate supply context, never linked to any parcel
+    sup1 = ask(s, "cq15_supply_context", zone=z1)
+    assert [(r["kind"], r["code"], round(r["metricM"], 1), r["parcelLink"]) for r in sup1] == [
+        ("irrigation_facility", "F_IRR", 500.0, "none")
+    ], sup1
+    bad_links = list(s.query(
+        "PREFIX lulcw: <https://w3id.org/lulcw#> SELECT ?p ?f WHERE { "
+        "?p a lulcw:RegisteredParcel ; ?pred ?f . ?f a lulcw:AbstractionFacility }"))
+    assert not bad_links, bad_links
+
+    # Zone shares over a range (including zero-classified 2021 row with unbound share)
+    sh2 = ask(s, "cq15_zone_share", zone=z2, yearStart=2020, yearEnd=2021)
+    assert [(r["year"], r["sharePositive"], r["classifiedFraction"]) for r in sh2] == [
+        (2020, 1.0, 1.0), (2021, None, 0.0)
+    ], sh2
+
+    # Status checks: heuristic -> partial naming "heuristic"; unknown year; facts-only -> unknown; not_applicable
+    st1 = one(s, "cq15_status", zone=z1, year=2020)
+    assert st1["status"] == "partial" and "heuristic" in st1["reason"].lower() and st1["validity"] == "HeuristicRule", st1
+    assert one(s, "cq15_status", zone=z1, year=2016)["status"] == "unknown"
+    st_facts = one(s_facts, "cq15_status", zone=z1, year=2020)
+    assert st_facts["status"] == "unknown" and "missing or stale" in st_facts["reason"], st_facts
+    assert one(s, "cq15_status", zone=d("piezometer/W1"), year=2020)["status"] == "not_applicable"
+
+    # ValidatedRule: z2 (full coverage) -> supported; z1 (coverage 0.4) -> partial; z2 in 2021 (0 classified) -> partial
+    s_val, _ = run_fx(ndvi_threshold=0.50, validity=L.ValidatedRule)
+    assert one(s_val, "cq15_status", zone=z2, year=2020)["status"] == "supported"
+    assert one(s_val, "cq15_status", zone=z1, year=2020)["status"] == "partial"
+    assert one(s_val, "cq15_status", zone=z2, year=2021)["status"] == "partial"
+
+    # Changing threshold in the rule individual changes the derived outcome
+    s_hi, _ = run_fx(ndvi_threshold=0.70, validity=L.HeuristicRule)
+    hi_out = {r["parcelId"]: local(r["outcome"]) for r in ask(s_hi, "cq15_classifications", zone=z1, year=2020)}
+    assert hi_out["P_POS"] == "NotProbablyIrrigated", hi_out
+    print("  11b. CQ15 fixtures: quality/wetness/threshold rules, surviving unknown supply, nearby pump "
+          "never creates a parcel link, threshold change flips outcome, statuses supported/partial(heuristic)/unknown/not_applicable")
+
+
+def test_data_cq15(store, facts_file):
+    """CQ15 on v5 real data: LU-6 parcel outcomes = irrigation_s2_parcels_v5.parquet, all 65 wells'
+    zone shares = irrigation_s2_wells.parquet, recomputed LU-6 zone shares from graph overlaps and
+    outcomes match parquet within 1e-9, supply context has no parcel links, status states heuristic."""
+    if DATASET != "v5":
+        return
+    status_map = {
+        "ProbablyIrrigated": "positive",
+        "NotProbablyIrrigated": "negative",
+        "InsufficientSatelliteData": "insufficient_data",
+        "WetSeason": "not_applicable",
+    }
+    p_df = pd.read_parquet(INTERIM / f"irrigation_s2_parcels_{DATASET}.parquet",
+                           columns=["year", "ID_PARCEL", "status"])
+    p_df["ID_PARCEL"] = p_df["ID_PARCEL"].astype(str)
+    want_parcel = p_df.set_index(["year", "ID_PARCEL"])["status"].to_dict()
+
+    w_df = pd.read_parquet(DATASET_DIR / "irrigation_s2_wells.parquet")
+    want_well = {
+        (r.code_bss, str(r.year)): (
+            None if pd.isna(r.share_positive) else float(r.share_positive),
+            float(r.area_classified_ha) * 1e4,
+            float(r.coverage),
+        )
+        for r in w_df.itertuples(index=False)
+    }
+
+    zones = iris(store, "SELECT ?c ?z WHERE { ?z a lulcw:CropDemandZone ; lulcw:zoneOf/lulcw:bssCode ?c }")
+    assert len(zones) == 65, len(zones)
+
+    # 1. All 65 wells x 9 annual editions via cq15_zone_share (585 rows) + 65 train rows
+    n_annual = 0
+    for code, z_iri in zones.items():
+        sh_rows = ask(store, "cq15_zone_share", zone=z_iri, yearStart=2017, yearEnd=2025)
+        assert len(sh_rows) == 9, (code, len(sh_rows))
+        for r in sh_rows:
+            w_share, w_area, w_cov = want_well[(code, str(r["year"]))]
+            assert abs(r["classifiedAreaM2"] - w_area) <= 1e-6 * max(1.0, w_area), (code, r)
+            assert abs(r["classifiedFraction"] - w_cov) <= 1e-12, (code, r)
+            if w_share is None:
+                assert r["sharePositive"] is None, (code, r)
+            else:
+                assert r["sharePositive"] is not None and abs(r["sharePositive"] - w_share) <= 1e-12, (code, r)
+            assert local(r["ruleValidity"]) == "HeuristicRule"
+            n_annual += 1
+
+    # 2. LU-6 zones: every parcel-season outcome = T76 Python status, and recomputed shares within 1e-9
+    lu6 = ("10906X0039/C2-1", "10964X0119/NYLS-1")
+    n_cls_tot = 0
+    per_well_counts = {}
+    for code in lu6:
+        z_iri = zones[code]
+        tally = Counter()
+        for y in range(2017, 2026):
+            rows_y = ask(store, "cq15_classifications", zone=z_iri, year=y)
+            assert len(rows_y) > 0, (code, y)
+            pos_m2 = neg_m2 = tot_m2 = 0.0
+            for r in rows_y:
+                out_name = local(r["outcome"])
+                assert status_map[out_name] == want_parcel[(y, r["parcelId"])], (code, y, r["parcelId"], out_name)
+                tally[out_name] += 1
+                a = r["overlapAreaM2"]
+                tot_m2 += a
+                if out_name == "ProbablyIrrigated":
+                    pos_m2 += a
+                elif out_name == "NotProbablyIrrigated":
+                    neg_m2 += a
+            cls_m2 = pos_m2 + neg_m2
+            recomp_share = pos_m2 / cls_m2 if cls_m2 > 0 else None
+            recomp_cov = cls_m2 / tot_m2 if tot_m2 > 0 else None
+            w_share, _, w_cov = want_well[(code, str(y))]
+            assert abs(recomp_share - w_share) <= 1e-9, (code, y, recomp_share, w_share)
+            assert abs(recomp_cov - w_cov) <= 1e-9, (code, y, recomp_cov, w_cov)
+            st = one(store, "cq15_status", zone=z_iri, year=y)
+            assert st["status"] == "partial" and "heuristic" in st["reason"].lower() and st["parcelsClassified"] == len(rows_y), (code, y, st)
+            n_cls_tot += len(rows_y)
+        per_well_counts[code] = dict(tally)
+        sup = ask(store, "cq15_supply_context", zone=z_iri)
+        assert all(r["parcelLink"] == "none" for r in sup), (code, sup)
+        assert one(store, "cq15_status", zone=z_iri, year=2016)["status"] == "unknown"
+
+    # MILLAS C2-1 has a CQ6 canal association on 718BP02 in its separate supply context
+    sup_millas = ask(store, "cq15_supply_context", zone=zones["10906X0039/C2-1"])
+    assert any(r["kind"] == "canal_association" and r["unitCode"] == "718BP02" for r in sup_millas), sup_millas
+
+    # Non-LU-6 zone has zone-level share (heuristic partial) and facts-only LU-6 is unknown
+    other = next(c for c in zones if c not in lu6)
+    st_other = one(store, "cq15_status", zone=zones[other], year=2020)
+    assert st_other["status"] == "partial" and "heuristic" in st_other["reason"].lower() and st_other["parcelsClassified"] == 0, st_other
+    facts_only = store_of(facts_file)
+    st_f = one(facts_only, "cq15_status", zone=zones[lu6[0]], year=2020)
+    assert st_f["status"] == "unknown" and "missing or stale" in st_f["reason"], st_f
+    print(f"  18. data: CQ15 {n_annual} annual zone shares (65 wells x 9 seasons) = irrigation_s2_wells.parquet; "
+          f"{n_cls_tot} LU-6 parcel-seasons = irrigation_s2_parcels_v5.parquet ({per_well_counts}); "
+          "recomputed LU-6 shares match parquet within 1e-9; supply context separate (no parcel links); "
+          "heuristic stated in cq15_status; facts without rules: unknown")
+
+
 def main():
     s, u, g = fixture_store()
     test_cq1_fixture(s)
@@ -1305,6 +1480,7 @@ def main():
     test_cq5_fixture(s, u)
     test_cq6_fixture(s, u)
     test_cq8_rivers_fixture(s, g)
+    test_cq15_fixture()
     facts, derived = KG / f"lulcw_kg_{DATASET}.ttl", KG / f"lulcw_kg_{DATASET}_rules.ttl"
     if facts.exists() and derived.exists():
         release.check()            # the files must form a validated release (src.kg.release)
@@ -1313,6 +1489,7 @@ def main():
         test_data_forcing(store, facts)
         test_data_recharge(store)
         test_data_rivers(store)
+        test_data_cq15(store, facts)
     else:
         print("  12-17. skipped: run src.kg.build_kg and src.kg.apply_rules first")
     print("test_cq: all checks passed")

@@ -5,12 +5,12 @@
 @prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 
-# Generated from ontology/lulcw.ttl (version 0.10.0) by src.kg.ontology_modules.
+# Generated from ontology/lulcw.ttl (version 0.11.0) by src.kg.ontology_modules.
 # Do not edit by hand: edit ontology/lulcw.ttl and re-run the generator.
 
 <https://w3id.org/lulcw/profile/eu> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/profile/eu/0.10.0> ;
-    owl:versionInfo "0.10.0" ;
+    owl:versionIRI <https://w3id.org/lulcw/profile/eu/0.11.0> ;
+    owl:versionInfo "0.11.0" ;
     dcterms:title "LULC-Water European Union profile"@en , "Profil Union européenne LULC-Water"@fr ;
     dcterms:description "Optional European Union regional profile for the LULC-Water ontology network, declaring EU Water Framework Directive identifiers (such as lulcw:wfdCode) outside the pan-Mediterranean core."@en ,
         "Profil régional optionnel Union européenne du réseau d'ontologies LULC-Water, déclarant les identifiants de la directive-cadre sur l'eau (tels que lulcw:wfdCode) hors du noyau pan-méditerranéen."@fr ;

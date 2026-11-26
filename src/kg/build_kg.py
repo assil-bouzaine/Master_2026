@@ -78,7 +78,7 @@ from src.analysis.bdlisa_profile import GPKG, group_of
 from src.analysis.bnpe_profile import load as load_bnpe
 from src.analysis.piezo_profile import PLAIN_BBOX
 from src.config import CRS_L93, CRS_WGS84, DATASET, DATASET_DIR, INTERIM, PROCESSED, RAW, ROOT
-from src.kg import forcing, landuse, pressure, rivers
+from src.kg import forcing, irrigation, landuse, pressure, rivers
 from src.kg import pump_attribution as pa
 
 L = Namespace("https://w3id.org/lulcw#")
@@ -888,6 +888,7 @@ def main():
     assert riv.polygons <= set(keep["codepoly"]), "a reach piece's polygon is not in the graph"
     river = rivers.add(kg, rel, riv, unit, {k: iri("piezometer", k) for k in keys}, versions,
                        pd.read_parquet(DATASET_DIR / "pumping_points.parquet"))
+    irrig = irrigation.add(kg, rel, wells, versions) if DATASET == "v5" else None
 
     head = URIRef(D + f"kg-{DATASET}")
     kg.node(head, OWL.Ontology)
@@ -929,6 +930,8 @@ def main():
         "land_use": land, "crop_demand_code_version": versions["crop"], "forcing": forc,
         "rivers_and_canals": river, "inputs_sha256": input_hashes(),
     }
+    if irrig is not None:
+        summary["irrigation_s2"] = irrig
     (OUT / f"lulcw_kg_{DATASET}_summary.json").write_text(json.dumps(summary, indent=1,
                                                                      ensure_ascii=False))
     print(json.dumps(summary, indent=1, ensure_ascii=False))

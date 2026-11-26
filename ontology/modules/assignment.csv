@@ -94,6 +94,7 @@ HeadAboveReferenceShare,individual,hydro,4
 HedgedFinding,individual,med-causal,3
 Hedging,class,med-causal,4
 HedgingScheme,concept scheme,med-causal,3
+HeuristicRule,individual,eo,3
 HighIrrigationDemand,individual,lulc,3
 HydrogeologicalSetting,class,hydro,4
 HydrogeologicalUnit,class,hydro,4
@@ -104,10 +105,14 @@ IndirectOrdering,individual,hydro,3
 IndustryUse,individual,hydro,3
 IneligibleConstraint,individual,causal,3
 Influence,class,causal,4
+InsufficientSatelliteData,individual,eo,3
 Intake,class,hydro,4
 IrrigationAssumption,class,lulc,4
 IrrigationAssumptionScheme,concept scheme,lulc,3
+IrrigationClassification,class,eo,4
 IrrigationDemandAssessment,class,lulc,4
+IrrigationOutcome,class,eo,4
+IrrigationOutcomeScheme,concept scheme,eo,3
 IrrigationUse,individual,hydro,3
 KarstAquifer,class,hydro,4
 LateralInflow,individual,causal,3
@@ -121,6 +126,7 @@ NegativeResponse,individual,causal,3
 NoExchange,individual,med-causal,3
 NotApplicable,individual,core,2
 NotCropped,individual,lulc,3
+NotProbablyIrrigated,individual,eo,3
 NotQualified,individual,med-causal,3
 ObservationSeries,class,hydro,4
 OffMainStem,individual,hydro,3
@@ -129,6 +135,7 @@ OutcropCoverage,class,hydro,4
 OutcropSearchZone,class,hydro,4
 Outcropping,individual,hydro,3
 OverCover,individual,hydro,3
+ParcelZoneOverlap,class,lulc,4
 Partial,individual,core,2
 PartlyIrrigated,individual,lulc,3
 Piezometer,class,hydro,4
@@ -139,6 +146,8 @@ PotentialIrrigationDemandMain,individual,lulc,4
 PotentialIrrigationDemandWide,individual,lulc,4
 PressureStateSummary,class,hydro,4
 Probable,individual,core,3
+ProbablyIrrigated,individual,eo,3
+ProbablyIrrigatedShare,individual,eo,4
 PumpingDrawdown,individual,causal,3
 Rainfed,individual,lulc,3
 ReachPiece,class,hydro,4
@@ -148,6 +157,7 @@ ReconstructedRecord,individual,hydro,2
 ReconstructedWeeklyVolume,individual,causal,4
 RecordKind,class,hydro,4
 RecordKindScheme,concept scheme,hydro,3
+RegisteredParcel,class,lulc,4
 RejectedStatus,individual,core,3
 ReportedObservation,individual,core,3
 Resolution,class,core,4
@@ -164,6 +174,9 @@ RiverStage,individual,causal,4
 RiverUnitAssociation,class,hydro,4
 RuleEvaluation,class,core,4
 RuleExecution,class,core,4
+RuleValidity,class,eo,4
+RuleValidityScheme,concept scheme,eo,3
+SatelliteIndexObservation,class,eo,4
 SemiConfinedState,individual,hydro,3
 SoilDrainage,individual,causal,4
 SourceRecord,class,core,4
@@ -173,6 +186,8 @@ StratigraphicRelation,class,hydro,4
 StratigraphicRelationKind,class,hydro,4
 StratigraphicRelationKindScheme,concept scheme,hydro,3
 SummerDemand,individual,causal,3
+SummerNDVI,individual,eo,4
+SummerSoilWetness,individual,eo,4
 SupersededStatus,individual,core,2
 Supported,individual,core,2
 SurfaceToAquifer,individual,med-causal,3
@@ -191,6 +206,7 @@ UnknownAnswer,individual,core,2
 UnknownResponse,individual,causal,3
 UpstreamOfZone,individual,hydro,3
 UsuallyIrrigated,individual,lulc,3
+ValidatedRule,individual,eo,3
 VerticalLeakage,individual,causal,3
 VolumeAllocation,class,hydro,4
 WaterBalanceEstimate,individual,med-causal,3
@@ -202,6 +218,7 @@ Watercourse,class,hydro,4
 WeatherCell,class,hydro,4
 WellLink,class,core,4
 WellZone,class,hydro,4
+WetSeason,individual,eo,3
 aboutGroundwaterBody,object property,med-causal,5
 aboutSection,object property,med-causal,5
 aboutUnit,object property,med-causal,5
@@ -243,6 +260,9 @@ cellWeight,datatype property,hydro,5
 chainageFromM,datatype property,core,5
 chainageM,datatype property,core,5
 chainageToM,datatype property,core,5
+classifiedAreaM2,datatype property,eo,5
+classifiedFraction,datatype property,eo,5
+classifiedParcel,object property,eo,5
 codeVersion,datatype property,core,5
 conditions,datatype property,core,5
 confidence,object property,core,5
@@ -275,6 +295,7 @@ driverVariable,object property,causal,5
 eligibilityReason,datatype property,core,5
 eligibleDeclaredVolumeM3,datatype property,hydro,2
 evaluatedRule,object property,core,5
+evaluatedShare,datatype property,eo,5
 evidenceKind,object property,core,5
 evidenceMethod,object property,med-causal,5
 exchangeDirection,object property,med-causal,5
@@ -309,6 +330,7 @@ interveningUnit,object property,hydro,5
 investigationDepthDifferenceM,datatype property,core,5
 investigationDepthM,datatype property,core,5
 irrigationAssumption,object property,lulc,5
+irrigationOutcome,object property,eo,5
 kcEnd,datatype property,lulc,5
 kcInitial,datatype property,lulc,5
 kcMid,datatype property,lulc,5
@@ -324,11 +346,17 @@ locatedInPolygon,object property,hydro,5
 lowerUnit,object property,hydro,5
 mainStemLengthM,datatype property,hydro,5
 mappedOutcropAreaM2,datatype property,hydro,5
+matchedWeatherCell,object property,eo,5
+maxSoilWetness,datatype property,eo,5
 md5,datatype property,core,5
+meanClearAcquisitions,datatype property,eo,5
 measuredAt,object property,med-causal,5
 mechanism,object property,causal,5
 midSeasonStageDays,datatype property,lulc,5
+minMeanClearAcquisitions,datatype property,eo,5
+minValidPixels,datatype property,eo,5
 monitors,object property,hydro,5
+ndviThreshold,datatype property,eo,5
 observedTrainingWeeks,datatype property,hydro,5
 offsetFromStemM,datatype property,core,5
 omitsPathway,object property,causal,5
@@ -336,10 +364,14 @@ onMainNetwork,datatype property,hydro,5
 onMainStem,datatype property,hydro,5
 onWatercourse,object property,hydro,5
 outcropAreaM2,datatype property,hydro,5
+overlapAreaM2,datatype property,lulc,5
+overlapParcel,object property,lulc,5
+overlapZone,object property,lulc,5
 overlapsSection,object property,hydro,5
 overlies,object property,hydro,5
 overrideCode,datatype property,lulc,5
 pageLabel,datatype property,med-causal,5
+parcelAreaM2,datatype property,lulc,5
 perennial,datatype property,lulc,5
 periodEnd,datatype property,core,5
 periodStart,datatype property,core,5
@@ -360,6 +392,8 @@ rank,datatype property,core,5
 reachNature,datatype property,hydro,5
 reachOf,object property,hydro,5
 recordKind,object property,hydro,5
+referenceRangeHigh,datatype property,eo,5
+referenceRangeLow,datatype property,eo,5
 registerCode,datatype property,core,5
 relatedGauge,object property,hydro,5
 relationKind,object property,hydro,5
@@ -371,6 +405,7 @@ retrievalDate,datatype property,core,5
 role,object property,core,5
 rpgEdition,datatype property,profile/fr,1
 rpgGroupCode,datatype property,profile/fr,1
+ruleValidity,object property,eo,5
 ruleVersion,datatype property,core,5
 safranGridXHm,datatype property,profile/fr,1
 safranGridYHm,datatype property,profile/fr,1
@@ -378,6 +413,7 @@ sampleSize,datatype property,core,5
 screenBottomDepthM,datatype property,core,5
 screenTopDepthM,datatype property,core,5
 searchRadiusM,datatype property,core,5
+seasonYear,datatype property,eo,5
 sectionOf,object property,hydro,5
 selectedUnder,object property,causal,5
 seriesVariable,object property,hydro,5
@@ -394,6 +430,7 @@ statedMechanism,object property,med-causal,5
 storedIn,datatype property,core,5
 targetEntity,object property,causal,5
 temporalResolution,datatype property,core,5
+trainingEdition,datatype property,eo,5
 trainingWeeks,datatype property,hydro,5
 underPolicy,object property,causal,5
 unitAsNamed,datatype property,med-causal,5
@@ -402,6 +439,7 @@ unknownReason,datatype property,core,5
 unresolvedVolumeM3,datatype property,hydro,2
 upperUnit,object property,hydro,5
 usesGaugePool,object property,hydro,5
+validPixelCount,datatype property,eo,5
 verticalDatum,datatype property,core,5
 viaUnit,object property,causal,5
 waterSource,object property,hydro,5
@@ -411,6 +449,7 @@ wellA,object property,hydro,5
 wellB,object property,hydro,5
 wfdCode,datatype property,profile/eu,1
 withinExtent,object property,core,5
+withinReferenceRange,datatype property,eo,5
 witnessedBy,object property,hydro,5
 zoneOf,object property,hydro,5
 zoneRadiusM,datatype property,hydro,5

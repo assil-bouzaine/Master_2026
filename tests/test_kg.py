@@ -362,6 +362,76 @@ def test_hilucs(store, net):
           f"config says; {len(local)} local HILUCS values = the registry snapshot of {day} (label, definition, parent)")
 
 
+def test_irrigation_s2(store):
+    """CQ15 facts on v5: rule thresholds and validity, 2020 census evaluations, all 650 zone-season
+    shares, and LU-6 parcel/overlap/NDVI/SWI observations; never a parcel-to-source link."""
+    if DATASET != "v5":
+        return
+    meta = json.loads((DATASET_DIR / "irrigation_s2_rule.json").read_text(encoding="utf-8"))
+    r = rows(store, """SELECT ?ver ?val ?tau ?px ?obs ?swi WHERE {
+        <rule/probable-irrigation> a lulcw:DerivationRule ; lulcw:ruleVersion ?ver ;
+            lulcw:ruleValidity ?val ; lulcw:ndviThreshold ?tau ; lulcw:minValidPixels ?px ;
+            lulcw:minMeanClearAcquisitions ?obs ; lulcw:maxSoilWetness ?swi }""")
+    assert len(r) == 1, r
+    row = r.iloc[0]
+    assert abs(row["tau"] - meta["TAU"]) < 1e-12 and int(row["px"]) == meta["MIN_PX"]
+    assert abs(row["obs"] - meta["MIN_OBS"]) < 1e-12 and abs(row["swi"] - meta["SWI_DRY"]) < 1e-12
+    want_val = "HeuristicRule" if meta["validation_2020"]["verdict"] == "heuristic" else "ValidatedRule"
+    assert row["val"].endswith("#" + want_val), row["val"]
+    tr = sorted(int(x) for x in rows(store, "SELECT ?y WHERE { <rule/probable-irrigation> lulcw:trainingEdition ?y }")["y"])
+    assert tr == sorted(meta["train_editions"]), (tr, meta["train_editions"])
+
+    ev = rows(store, """SELECT ?grp ?sh ?lo ?hi ?ok WHERE {
+        ?e a lulcw:RuleEvaluation ; lulcw:evaluatedRule <rule/probable-irrigation> ;
+           lulcw:rpgGroupCode ?grp ; lulcw:evaluatedShare ?sh ; lulcw:referenceRangeLow ?lo ;
+           lulcw:withinReferenceRange ?ok .
+        OPTIONAL { ?e lulcw:referenceRangeHigh ?hi } }""")
+    assert len(ev) == len(meta["validation_2020"]["groups"]), ev
+    for _, er in ev.iterrows():
+        spec = meta["validation_2020"]["groups"][str(int(er["grp"]))]
+        assert abs(er["sh"] - spec["share_positive"]) < 1e-12
+        assert abs(er["lo"] - spec["census_low"]) < 1e-12
+        if spec["census_high"] is None:
+            assert pd.isna(er["hi"])
+        else:
+            assert abs(er["hi"] - spec["census_high"]) < 1e-12
+        assert (str(er["ok"]).lower() == "true") == bool(spec["in_range"])
+
+    w_df = pd.read_parquet(DATASET_DIR / "irrigation_s2_wells.parquet")
+    sh = rows(store, """SELECT ?bss ?y ?win ?res ?area ?cov WHERE {
+        ?o sosa:observedProperty lulcw:ProbablyIrrigatedShare ; sosa:hasFeatureOfInterest ?z ;
+           lulcw:classifiedAreaM2 ?area ; lulcw:classifiedFraction ?cov .
+        ?z lulcw:zoneOf/lulcw:bssCode ?bss .
+        OPTIONAL { ?o lulcw:seasonYear ?y }
+        OPTIONAL { ?o lulcw:assessmentWindow ?win }
+        OPTIONAL { ?o sosa:hasSimpleResult ?res } }""")
+    assert len(sh) == len(w_df), (len(sh), len(w_df))
+    got = {}
+    for _, sr in sh.iterrows():
+        yr_key = str(sr["win"]) if pd.notna(sr["win"]) else str(int(sr["y"]))
+        got[(sr["bss"], yr_key)] = (None if pd.isna(sr["res"]) else float(sr["res"]), float(sr["area"]), float(sr["cov"]))
+    for wr in w_df.itertuples(index=False):
+        res, area, cov = got[(wr.code_bss, str(wr.year))]
+        assert abs(area - wr.area_classified_ha * 1e4) <= 1e-6 * max(1.0, area)
+        assert abs(cov - wr.coverage) <= 1e-12
+        if pd.isna(wr.share_positive):
+            assert res is None, (wr.code_bss, wr.year, res)
+        else:
+            assert res is not None and abs(res - wr.share_positive) <= 1e-12
+
+    n_parcels = int(rows(store, "SELECT (COUNT(?p) AS ?n) WHERE { ?p a lulcw:RegisteredParcel }")["n"].iloc[0])
+    n_ov = int(rows(store, "SELECT (COUNT(?o) AS ?n) WHERE { ?o a lulcw:ParcelZoneOverlap }")["n"].iloc[0])
+    n_ndvi = int(rows(store, "SELECT (COUNT(?o) AS ?n) WHERE { ?o a lulcw:SatelliteIndexObservation }")["n"].iloc[0])
+    n_swi = int(rows(store, "SELECT (COUNT(?o) AS ?n) WHERE { ?o sosa:observedProperty lulcw:SummerSoilWetness }")["n"].iloc[0])
+    assert n_parcels == n_ndvi and n_parcels > 0 and n_ov >= n_parcels and n_swi > 0
+    bad_supply = rows(store, """SELECT ?p ?s WHERE { ?p a lulcw:RegisteredParcel ; ?pred ?s .
+        ?s a ?c . VALUES ?c { lulcw:AbstractionFacility lulcw:Intake lulcw:CanalReach lulcw:SurfaceWaterIntake } }""")
+    assert bad_supply.empty, f"parcel linked directly to a supply entity: {bad_supply}"
+    print(f"  11. CQ15 (v5): rule {row['ver']} ({want_val}), {len(ev)} census evaluations, {len(sh)} zone shares = "
+          f"irrigation_s2_wells.parquet, {n_parcels} LU-6 parcels ({n_ov} overlaps, {n_ndvi} NDVI, {n_swi} SWI); "
+          "no parcel-to-source link")
+
+
 def main():
     if not KG_FILE.exists():
         print(f"{KG_FILE.relative_to(ROOT)} not built here, skipped (python -m src.kg.build_kg)")
@@ -380,6 +450,7 @@ def main():
     test_negative_controls(store, net)
     test_text(store)
     test_hilucs(store, net)
+    test_irrigation_s2(store)
     summary = json.loads((KG_FILE.parent / f"lulcw_kg_{DATASET}_summary.json").read_text())
     print(f"test_kg: all checks passed ({summary['triples']} triples, built {summary['built']}, "
           f"code {summary['code_version']})")

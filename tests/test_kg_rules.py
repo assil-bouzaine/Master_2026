@@ -1227,6 +1227,261 @@ def test_leakage_fixture(rules, shapes, net):
     return g
 
 
+def build_cq15_fixture(ndvi_threshold=0.50, validity=L.HeuristicRule):
+    """CQ15 synthetic fixture covering every outcome and acceptance case:
+      - P_POS:        NDVI 0.65, 10 px, 5.0 obs, dry cell c1 (SWI 0.30) -> ProbablyIrrigated
+      - P_NEG:        NDVI 0.35, 10 px, 5.0 obs, dry cell c1 (SWI 0.30) -> NotProbablyIrrigated
+      - P_LOW_PX:     NDVI 0.80,  3 px (< 4), 5.0 obs, dry c1 -> InsufficientSatelliteData
+      - P_LOW_OBS:    NDVI 0.80, 10 px, 2.5 obs (< 3), dry c1 -> InsufficientSatelliteData
+      - P_ZERO_PX:    0 px, no NDVI, no obs, dry c1           -> InsufficientSatelliteData
+      - P_WET:        NDVI 0.80, 10 px, 5.0 obs, wet cell c2 (SWI 0.65) -> WetSeason
+      - P_WET_LOW_PX: NDVI 0.80,  2 px (< 4), 5.0 obs, wet c2 -> InsufficientSatelliteData (quality first)
+      - P_NO_SWI:     NDVI 0.80, 10 px, 5.0 obs, cell c3 (no SWI obs)   -> InsufficientSatelliteData
+      - zone/W1 has an irrigation facility F_IRR nearby (500 m) and a canal association (never a parcel link)
+      - zone/W2 has P_NOSUP (high NDVI, dry, sufficient quality) and NO supply context at all, plus a
+        zero-classified-area share observation in 2021 (unbound result, never 0)
+    """
+    fx = Fixture()
+    a = fx.g.add
+    dbl = lambda v: Literal(float(v), datatype=XSD.double)  # noqa: E731
+    U = fx.unit("U1")
+    a((U, PROV.wasDerivedFrom, fx.rel))
+    a((U, L.mappedOutcropAreaM2, dbl(1.0e6)))
+    p1 = fx.polygon(201, [U])
+    w1 = fx.well("W1", 0, 0, U, L.Confident, depth=20)
+    w2 = fx.well("W2", 50000, 0, U, L.Confident, depth=25)
+    a((d("extent/forcing-cells"), RDF.type, GEO.Feature))
+    a((w1, L.locatedInPolygon, p1))
+    a((w2, L.locatedInPolygon, p1))
+    # Nearby irrigation pump for W1 (500 m away; supply context only, never linked to any parcel)
+    f_irr = fx.facility("F_IRR", 500, 0, U, L.Confident)
+    iv2020 = d("interval/year/2020")
+    a((iv2020, RDF.type, TIME.ProperInterval))
+    b2020 = d("instant/2020-01-01")
+    a((b2020, RDF.type, TIME.Instant))
+    a((b2020, TIME.inXSDDate, Literal("2020-01-01", datatype=XSD.date)))
+    a((iv2020, TIME.hasBeginning, b2020))
+    rec = d("abstraction/F_IRR/2020/IRR")
+    for p, v in ((RDF.type, L.AnnualAbstractionRecord), (SOSA.hasFeatureOfInterest, f_irr),
+                 (SOSA.observedProperty, L.DeclaredAnnualVolume), (SOSA.hasSimpleResult, dbl(50000.0)),
+                 (SOSA.phenomenonTime, iv2020), (L.waterUse, L.IrrigationUse),
+                 (L.waterSource, L.GroundwaterSource), (L.recordKind, L.DeclaredRecord),
+                 (L.inRelease, fx.rel)):
+        a((rec, p, v))
+    # Zones and crop code
+    scheme = d("crop-code-scheme/rpg")
+    a((scheme, RDF.type, SKOS.ConceptScheme))
+    cc = d("crop-code/PEC")
+    for p, v in ((RDF.type, L.CropCode), (SKOS.inScheme, scheme), (SKOS.notation, Literal("PEC")),
+                 (SKOS.prefLabel, Literal("Pêchers", lang="fr")),
+                 (L.rpgGroupCode, Literal(20, datatype=XSD.integer))):
+        a((cc, p, v))
+    z1, z2 = d("zone/W1"), d("zone/W2")
+    for z, w in ((z1, w1), (z2, w2)):
+        a((z, RDF.type, L.CropDemandZone))
+        a((z, L.zoneOf, w))
+        a((z, L.zoneRadiusM, dbl(3000.0)))
+    # Weather cells and summer SWI observations
+    for k, gx in (("c1", 100), ("c2", 180), ("c3", 260)):
+        c = d(f"weather-cell/{k}")
+        a((c, RDF.type, L.WeatherCell))
+        a((c, L.safranGridXHm, Literal(gx, datatype=XSD.integer)))
+        a((c, L.safranGridYHm, Literal(200, datatype=XSD.integer)))
+        a((c, L.inRelease, fx.rel))
+        fx.geometry(c, "weather-cell", k, "POLYGON((0 0, 8000 0, 8000 8000, 0 8000, 0 0))")
+        se = d(f"series/forcing-cq15/{k}/PE")
+        a((se, RDF.type, L.ObservationSeries))
+        a((se, L.seriesVariable, L.EffectiveRainfall))
+        a((c, L.hasForcingSeries, se))
+    iv_s = d("interval/summer/2020")
+    a((iv_s, RDF.type, TIME.ProperInterval))
+    for k, swi in (("c1", 0.30), ("c2", 0.65)):
+        so = d(f"summer-swi/{k}/2020")
+        for p, v in ((RDF.type, SOSA.Observation), (SOSA.hasFeatureOfInterest, d(f"weather-cell/{k}")),
+                     (SOSA.observedProperty, L.SummerSoilWetness), (SOSA.phenomenonTime, iv_s),
+                     (L.seasonYear, Literal(2020, datatype=XSD.integer)),
+                     (SOSA.hasSimpleResult, dbl(swi))):
+            a((so, p, v))
+    # Rule individual (thresholds read from the graph, never hard-coded in SPARQL)
+    rule = d("rule/probable-irrigation")
+    for p, v in ((RDF.type, L.DerivationRule), (RDFS.comment, Literal("CQ15 fixture rule", lang="en")),
+                 (L.ruleVersion, Literal("fixture-v1")), (L.ndviThreshold, dbl(ndvi_threshold)),
+                 (L.minValidPixels, Literal(4, datatype=XSD.integer)),
+                 (L.minMeanClearAcquisitions, dbl(3.0)), (L.maxSoilWetness, dbl(0.50)),
+                 (L.trainingEdition, Literal(2017, datatype=XSD.integer)),
+                 (L.trainingEdition, Literal(2018, datatype=XSD.integer)),
+                 (L.ruleValidity, validity)):
+        a((rule, p, v))
+    # Parcels, overlaps, and summer NDVI observations
+    # (pid, zone, cell, ndvi, npx, nobs, area_m2)
+    parcel_specs = (
+        ("P_POS", z1, "c1", 0.65, 10, 5.0, 20000.0),
+        ("P_NEG", z1, "c1", 0.35, 10, 5.0, 20000.0),
+        ("P_LOW_PX", z1, "c1", 0.80, 3, 5.0, 10000.0),
+        ("P_LOW_OBS", z1, "c1", 0.80, 10, 2.5, 10000.0),
+        ("P_ZERO_PX", z1, "c1", None, 0, None, 10000.0),
+        ("P_WET", z1, "c2", 0.80, 10, 5.0, 10000.0),
+        ("P_WET_LOW_PX", z1, "c2", 0.80, 2, 5.0, 10000.0),
+        ("P_NO_SWI", z1, "c3", 0.80, 10, 5.0, 10000.0),
+        ("P_NOSUP", z2, "c1", 0.75, 12, 6.0, 30000.0),
+    )
+    for pid, z, cid, ndvi, npx, nobs, area in parcel_specs:
+        pn = d(f"parcel/2020/{pid}")
+        for p, v in ((RDF.type, L.RegisteredParcel), (L.sourceIdentifier, Literal(pid)),
+                     (L.rpgEdition, Literal(2020, datatype=XSD.integer)), (L.cropCode, cc),
+                     (L.parcelAreaM2, dbl(area)), (L.matchedWeatherCell, d(f"weather-cell/{cid}"))):
+            a((pn, p, v))
+        ov = d(f"parcel-zone-overlap/{str(z).rsplit('/', 1)[-1]}/2020/{pid}")
+        for p, v in ((RDF.type, L.ParcelZoneOverlap), (L.overlapParcel, pn),
+                     (L.overlapZone, z), (L.overlapAreaM2, dbl(area))):
+            a((ov, p, v))
+        obs = d(f"ndvi/2020/{pid}")
+        for p, v in ((RDF.type, L.SatelliteIndexObservation), (SOSA.hasFeatureOfInterest, pn),
+                     (SOSA.observedProperty, L.SummerNDVI), (SOSA.phenomenonTime, iv_s),
+                     (L.seasonYear, Literal(2020, datatype=XSD.integer)),
+                     (L.validPixelCount, Literal(npx, datatype=XSD.integer))):
+            a((obs, p, v))
+        if ndvi is not None:
+            a((obs, SOSA.hasSimpleResult, dbl(ndvi)))
+        if nobs is not None:
+            a((obs, L.meanClearAcquisitions, dbl(nobs)))
+    # Zone-level share observations (z1 partial coverage 0.4, z2 full coverage 1.0 in 2020 and 0 classified in 2021)
+    sh1 = d("irrigation-share/W1/2020")
+    for p, v in ((RDF.type, SOSA.Observation), (SOSA.hasFeatureOfInterest, z1),
+                 (SOSA.observedProperty, L.ProbablyIrrigatedShare), (SOSA.phenomenonTime, iv_s),
+                 (L.seasonYear, Literal(2020, datatype=XSD.integer)),
+                 (SOSA.hasSimpleResult, dbl(0.5)), (L.classifiedAreaM2, dbl(40000.0)),
+                 (L.classifiedFraction, dbl(0.4)), (L.derivationRule, rule)):
+        a((sh1, p, v))
+    sh2 = d("irrigation-share/W2/2020")
+    for p, v in ((RDF.type, SOSA.Observation), (SOSA.hasFeatureOfInterest, z2),
+                 (SOSA.observedProperty, L.ProbablyIrrigatedShare), (SOSA.phenomenonTime, iv_s),
+                 (L.seasonYear, Literal(2020, datatype=XSD.integer)),
+                 (SOSA.hasSimpleResult, dbl(1.0)), (L.classifiedAreaM2, dbl(30000.0)),
+                 (L.classifiedFraction, dbl(1.0)), (L.derivationRule, rule)):
+        a((sh2, p, v))
+    iv_s21 = d("interval/summer/2021")
+    a((iv_s21, RDF.type, TIME.ProperInterval))
+    sh2_21 = d("irrigation-share/W2/2021")
+    for p, v in ((RDF.type, SOSA.Observation), (SOSA.hasFeatureOfInterest, z2),
+                 (SOSA.observedProperty, L.ProbablyIrrigatedShare), (SOSA.phenomenonTime, iv_s21),
+                 (L.seasonYear, Literal(2021, datatype=XSD.integer)),
+                 (L.classifiedAreaM2, dbl(0.0)), (L.classifiedFraction, dbl(0.0)),
+                 (L.derivationRule, rule)):
+        a((sh2_21, p, v))
+    return fx
+
+
+def test_cq15_fixture(rules, shapes, net):
+    """CQ15 SHACL-AF rule fixture, threshold sensitivity and negative controls for every CQ15 shape."""
+    fx = build_cq15_fixture(ndvi_threshold=0.50)
+    facts = fx.g
+    records = rule_records(rules, "test", facts)
+    added = run_rules(facts, rules, records)
+    g = facts + records + added
+
+    got = {
+        pid: out.split("#")[-1]
+        for pid, out in select(g, """SELECT ?pid ?out WHERE {
+            ?c a lulcw:IrrigationClassification ; lulcw:classifiedParcel/lulcw:sourceIdentifier ?pid ;
+               lulcw:irrigationOutcome ?out ; lulcw:derivationRule <rule/probable-irrigation> }""")
+    }
+    want = {
+        "P_POS": "ProbablyIrrigated",
+        "P_NEG": "NotProbablyIrrigated",
+        "P_LOW_PX": "InsufficientSatelliteData",
+        "P_LOW_OBS": "InsufficientSatelliteData",
+        "P_ZERO_PX": "InsufficientSatelliteData",
+        "P_WET": "WetSeason",
+        "P_WET_LOW_PX": "InsufficientSatelliteData",
+        "P_NO_SWI": "InsufficientSatelliteData",
+        "P_NOSUP": "ProbablyIrrigated",
+    }
+    assert got == want, (got, want)
+    # Every classification cites its NDVI observation (and SWI observation when present)
+    derived = {
+        pid: set(srcs.split())
+        for pid, srcs in select(g, """SELECT ?pid (GROUP_CONCAT(STR(?s)) AS ?srcs) WHERE {
+            ?c a lulcw:IrrigationClassification ; lulcw:classifiedParcel/lulcw:sourceIdentifier ?pid ;
+               prov:wasDerivedFrom ?s } GROUP BY ?pid""")
+    }
+    assert str(d("ndvi/2020/P_POS")) in derived["P_POS"] and str(d("summer-swi/c1/2020")) in derived["P_POS"]
+    assert derived["P_NO_SWI"] == {str(d("ndvi/2020/P_NO_SWI"))}
+    conforms, _, results = check(g, shapes, net)
+    assert conforms and violations(results) == 0, results
+
+    # Threshold read from the graph, not hard-coded: raising ndviThreshold to 0.70 flips P_POS (0.65)
+    fx2 = build_cq15_fixture(ndvi_threshold=0.70)
+    g2 = fx2.g + rule_records(rules, "test", fx2.g) + run_rules(fx2.g, rules, rule_records(rules, "test", fx2.g))
+    got2 = {
+        pid: out.split("#")[-1]
+        for pid, out in select(g2, """SELECT ?pid ?out WHERE {
+            ?c a lulcw:IrrigationClassification ; lulcw:classifiedParcel/lulcw:sourceIdentifier ?pid ;
+               lulcw:irrigationOutcome ?out }""")
+    }
+    assert got2["P_POS"] == "NotProbablyIrrigated" and got2["P_NOSUP"] == "ProbablyIrrigated", got2
+
+    # Negative controls: at least one per new CQ15 shape
+    def bad(triples, remove=()):
+        h = rdflib.Graph()
+        for t in g:
+            if t not in remove:
+                h.add(t)
+        for t in triples:
+            h.add(t)
+        return check(h, shapes, net)[2]
+
+    def now(s, p):
+        return list(g.triples((s, p, None)))
+
+    dbl = lambda v: Literal(float(v), datatype=XSD.double)  # noqa: E731
+    c_pos = d("irrigation-classification/2020/P_POS")
+    c_dup = d("irrigation-classification/2020/P_POS-dup")
+    neg = {
+        "parcel with non-positive area": (
+            [(d("parcel/2020/P_POS"), L.parcelAreaM2, dbl(0.0))],
+            now(d("parcel/2020/P_POS"), L.parcelAreaM2),
+            "RegisteredParcelShape", None),
+        "parcel-zone overlap with non-positive area": (
+            [(d("parcel-zone-overlap/W1/2020/P_POS"), L.overlapAreaM2, dbl(-5.0))],
+            now(d("parcel-zone-overlap/W1/2020/P_POS"), L.overlapAreaM2),
+            "ParcelZoneOverlapShape", None),
+        "NDVI observation outside [-1, 1]": (
+            [(d("ndvi/2020/P_POS"), SOSA.hasSimpleResult, dbl(1.5))],
+            now(d("ndvi/2020/P_POS"), SOSA.hasSimpleResult),
+            "SatelliteIndexObservationShape", None),
+        "NDVI observation with negative valid pixel count": (
+            [(d("ndvi/2020/P_POS"), L.validPixelCount, Literal(-1, datatype=XSD.integer))],
+            now(d("ndvi/2020/P_POS"), L.validPixelCount),
+            "SatelliteIndexObservationShape", None),
+        "classification missing its irrigation outcome": (
+            [], now(c_pos, L.irrigationOutcome),
+            "IrrigationClassificationShape", None),
+        "zone share result outside [0, 1]": (
+            [(d("irrigation-share/W1/2020"), SOSA.hasSimpleResult, dbl(1.2))],
+            now(d("irrigation-share/W1/2020"), SOSA.hasSimpleResult),
+            "ProbablyIrrigatedShareShape", None),
+        "zone share with zero classified area carrying a result": (
+            [(d("irrigation-share/W2/2021"), SOSA.hasSimpleResult, dbl(0.0))], (),
+            "ProbablyIrrigatedShareShape", "classified area is positive"),
+        "missing classification for a parcel-season with NDVI observation": (
+            [], list(g.triples((c_pos, None, None))),
+            "IrrigationClassificationKeyShape", "has no irrigation classification"),
+        "duplicate classification for one parcel-season and rule": (
+            [(c_dup, p, o) for _, p, o in g.triples((c_pos, None, None))], (),
+            "IrrigationClassificationKeyShape", "share a parcel, a season year and a rule"),
+        "satellite observation with valid pixels missing its NDVI result": (
+            [], now(d("ndvi/2020/P_POS"), SOSA.hasSimpleResult),
+            "IrrigationClassificationKeyShape", "lacks its NDVI result"),
+    }
+    for name, (add, remove, shape, text) in neg.items():
+        res = bad(add, remove)
+        assert violations(res, shape, text) > 0, f"{name}: not caught\n{res}"
+    print(f"  3c. CQ15 fixture: all 9 parcel-season cases and threshold sensitivity hold, 0 violations; "
+          f"all {len(neg)} CQ15 shape negative controls caught")
+    return g
+
+
 # ---------------------------------------------------------------- 4. data-backed regression
 def store_of(*files):
     s = ox.Store()
@@ -1753,6 +2008,34 @@ def test_data(store):
           f"{thr:,.0f} m³, {len(high)} high-demand zone-years; report: no violation")
 
 
+def test_data_cq15(store):
+    """CQ15 derived parcel-season outcomes on v5 equal T76's Python statuses in irrigation_s2_parcels_v5.parquet."""
+    status_map = {
+        "ProbablyIrrigated": "positive",
+        "NotProbablyIrrigated": "negative",
+        "InsufficientSatelliteData": "insufficient_data",
+        "WetSeason": "not_applicable",
+    }
+    p_df = pd.read_parquet(INTERIM / f"irrigation_s2_parcels_{DATASET}.parquet",
+                           columns=["year", "ID_PARCEL", "status"])
+    p_df["ID_PARCEL"] = p_df["ID_PARCEL"].astype(str)
+    want = p_df.set_index(["year", "ID_PARCEL"])["status"].to_dict()
+
+    got = {}
+    by_out = {}
+    for y, pid, out in rows(store, """SELECT ?y ?pid ?out WHERE {
+            ?c a lulcw:IrrigationClassification ; lulcw:seasonYear ?y ;
+               lulcw:classifiedParcel/lulcw:sourceIdentifier ?pid ;
+               lulcw:irrigationOutcome ?out ; lulcw:derivationRule <rule/probable-irrigation> }"""):
+        name = out.split("#")[-1]
+        got[(int(y), pid)] = status_map[name]
+        by_out[name] = by_out.get(name, 0) + 1
+    assert len(got) > 0, "no IrrigationClassification derived in v5"
+    mismatches = [(k, v, want.get(k)) for k, v in got.items() if want.get(k) != v]
+    assert not mismatches, f"CQ15 outcomes differ from T76 Python statuses: {mismatches[:5]}"
+    return len(got), by_out
+
+
 def main():
     net = ontology_network()
     rules, shapes = rdflib.Graph().parse(RULES), rdflib.Graph().parse(SHAPES)
@@ -1760,6 +2043,7 @@ def main():
     g = test_fixtures(rules, shapes, net)
     test_negative_controls(g, shapes, net)
     test_leakage_fixture(rules, shapes, net)
+    test_cq15_fixture(rules, shapes, net)
     facts, derived = KG / f"lulcw_kg_{DATASET}.ttl", KG / f"lulcw_kg_{DATASET}_rules.ttl"
     if facts.exists() and derived.exists():
         m = release.check()        # the files must form a validated release (src.kg.release)
@@ -1780,6 +2064,10 @@ def main():
               f"associations = the GeoPandas oracle (BD TOPO reaches x 5 km discs x BD LISA polygons); "
               f"{n_riv} river influences from the nearest pool gauge (arm C's 5 gauges); gauge training "
               f"coverage = the dataset; {n_st} statements = configs/exchange_evidence.csv")
+        if DATASET == "v5":
+            n_cls, by_out = test_data_cq15(store)
+            print(f"  8. data: CQ15 {n_cls} derived LU-6 parcel-season classifications = irrigation_s2_parcels_v5.parquet "
+                  f"({by_out})")
     else:
         print("  4. skipped: run src.kg.build_kg and src.kg.apply_rules first")
     print("test_kg_rules: all checks passed")

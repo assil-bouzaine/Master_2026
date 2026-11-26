@@ -1,0 +1,79 @@
+# CQ15 · Answer status for probable irrigation in a crop demand zone and season
+# (common answer contract, docs/competency_questions.md §2 and §4 CQ15)
+#
+# Parameters  ?zone  any IRI
+#             ?year  calendar season year (xsd:integer)
+# Reads       asserted facts (zone shares, parcel NDVI observations, rule validity) and SHACL-AF
+#             rule outputs (lulcw:IrrigationClassification); no OWL reasoning.
+# Returns     one row: ?status in {not_applicable, unknown, partial, supported}, ?validity (the
+#             local name of the rule's lulcw:ruleValidity, or unbound), ?parcelsObserved,
+#             ?parcelsClassified, ?hasZoneShare, and ?reason in words (explicitly naming
+#             "heuristic" whenever the rule's validity is lulcw:HeuristicRule).
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+SELECT ?zone ?year ?status ?validity ?parcelsObserved ?parcelsClassified ?hasZoneShare ?reason
+WHERE {
+    {
+        SELECT ?zone ?year (COUNT(DISTINCT ?z) AS ?isZone) WHERE {
+            #bind-parameters
+            OPTIONAL { ?zone a lulcw:CropDemandZone . BIND (?zone AS ?z) }
+        }
+        GROUP BY ?zone ?year
+    }
+    {
+        SELECT ?zone ?year (COUNT(DISTINCT ?so) AS ?nShare)
+               (SAMPLE(?sr) AS ?shareVal) (SAMPLE(?cf) AS ?cov) (SAMPLE(?rv) AS ?shareVali) WHERE {
+            #bind-parameters
+            OPTIONAL {
+                ?so sosa:hasFeatureOfInterest ?zone ; sosa:observedProperty lulcw:ProbablyIrrigatedShare ;
+                    lulcw:seasonYear ?year ; lulcw:classifiedFraction ?cf ; lulcw:derivationRule ?r .
+                ?r lulcw:ruleValidity ?rv .
+                OPTIONAL { ?so sosa:hasSimpleResult ?sr . }
+            }
+        }
+        GROUP BY ?zone ?year
+    }
+    {
+        SELECT ?zone ?year (COUNT(DISTINCT ?obs) AS ?parcelsObserved)
+               (COUNT(DISTINCT ?cls) AS ?parcelsClassified) (SAMPLE(?cv) AS ?clsVali) WHERE {
+            #bind-parameters
+            OPTIONAL {
+                ?ov a lulcw:ParcelZoneOverlap ; lulcw:overlapZone ?zone ; lulcw:overlapParcel ?p .
+                ?obs a lulcw:SatelliteIndexObservation ; sosa:hasFeatureOfInterest ?p ;
+                     sosa:observedProperty lulcw:SummerNDVI ; lulcw:seasonYear ?year .
+                OPTIONAL {
+                    ?cls a lulcw:IrrigationClassification ; lulcw:classifiedParcel ?p ;
+                         lulcw:seasonYear ?year ; lulcw:derivationRule ?cr .
+                    ?cr lulcw:ruleValidity ?cv .
+                }
+            }
+        }
+        GROUP BY ?zone ?year
+    }
+    BIND (?nShare > 0 AS ?hasZoneShare)
+    BIND (COALESCE(?clsVali, ?shareVali) AS ?valIri)
+    BIND (IF(BOUND(?valIri), STRAFTER(STR(?valIri), "#"), ?none) AS ?validity)
+    BIND (?valIri = lulcw:HeuristicRule AS ?isHeuristic)
+    BIND (IF(?isZone = 0, "not_applicable",
+          IF((!?hasZoneShare && ?parcelsObserved = 0)
+             || (?parcelsObserved > 0 && ?parcelsClassified < ?parcelsObserved), "unknown",
+          IF(?isHeuristic || !BOUND(?shareVal) || (BOUND(?cov) && ?cov < 1.0 - 1e-9) || ?parcelsClassified = 0,
+             "partial", "supported"))) AS ?status)
+    BIND (IF(?isZone = 0, "not a crop demand zone of the graph",
+          IF(!?hasZoneShare && ?parcelsObserved = 0,
+             "no probable-irrigation observation for this zone and season",
+          IF(?parcelsObserved > 0 && ?parcelsClassified < ?parcelsObserved,
+             "parcel NDVI observations exist without derived irrigation classifications (rule outputs missing or stale)",
+          IF(?isHeuristic,
+             IF(?parcelsClassified > 0,
+                CONCAT("heuristic rule (2020 census check outside range on some crop groups; not parcel-level ground truth); ",
+                       STR(?parcelsClassified), " parcel-seasons classified in the graph"),
+                "heuristic rule (2020 census check outside range on some crop groups); zone-level share only (parcels outside the bounded graph scope)"),
+          IF(!BOUND(?shareVal),
+             "no classified parcel area in this zone and season (all area wet or insufficient satellite data)",
+          IF(BOUND(?cov) && ?cov < 1.0 - 1e-9,
+             "some parcel area had insufficient satellite data or wet regional soil conditions (incomplete coverage)",
+          IF(?parcelsClassified = 0,
+             "zone-level share only (individual parcels outside the bounded graph scope)",
+             "validated rule with complete parcel-season classifications and full zone coverage"))))))) AS ?reason)
+}

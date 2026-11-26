@@ -1,0 +1,24 @@
+# CQ15 · Per-zone probable-irrigation shares and coverage over a season range
+# (docs/competency_questions.md §4, CQ15)
+#
+# Parameters  ?zone       a lulcw:CropDemandZone
+#             ?yearStart  first season year, inclusive (xsd:integer)
+#             ?yearEnd    last season year, inclusive (xsd:integer)
+# Reads       asserted facts (lulcw:ProbablyIrrigatedShare SOSA observations and their rule);
+#             no OWL reasoning.
+# Returns     one row per season year in [?yearStart, ?yearEnd] for ?zone: ?sharePositive
+#             (unbound when classifiedAreaM2 = 0, never 0), ?classifiedAreaM2,
+#             ?classifiedFraction (coverage), and the rule's IRI, version and validity.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+SELECT ?zone ?yearStart ?yearEnd ?year ?sharePositive ?classifiedAreaM2 ?classifiedFraction
+       ?rule ?ruleVersion ?ruleValidity
+WHERE {
+    ?o sosa:hasFeatureOfInterest ?zone ; sosa:observedProperty lulcw:ProbablyIrrigatedShare ;
+       lulcw:seasonYear ?year ; lulcw:classifiedAreaM2 ?classifiedAreaM2 ;
+       lulcw:classifiedFraction ?classifiedFraction ; lulcw:derivationRule ?rule .
+    ?rule lulcw:ruleVersion ?ruleVersion ; lulcw:ruleValidity ?ruleValidity .
+    OPTIONAL { ?o sosa:hasSimpleResult ?sharePositive . }
+    FILTER (?year >= ?yearStart && ?year <= ?yearEnd)
+}
+ORDER BY ?year

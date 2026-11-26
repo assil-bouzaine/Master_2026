@@ -286,7 +286,13 @@ lulcwsh:DerivationRuleShape a sh:NodeShape ;
         [ sh:path lulcw:ruleVersion ; sh:minCount 1 ; sh:maxCount 1 ] ,
         [ sh:path lulcw:searchRadiusM ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minExclusive 0 ] ,
         [ sh:path lulcw:demandThresholdM3 ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minInclusive 0 ] ,
-        [ sh:path lulcw:appliesInExtent ; sh:class geo:Feature ] .
+        [ sh:path lulcw:appliesInExtent ; sh:class geo:Feature ] ,
+        [ sh:path lulcw:ndviThreshold ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minInclusive -1.0 ; sh:maxInclusive 1.0 ] ,
+        [ sh:path lulcw:minValidPixels ; sh:maxCount 1 ; sh:datatype xsd:integer ; sh:minInclusive 1 ] ,
+        [ sh:path lulcw:minMeanClearAcquisitions ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minInclusive 0.0 ] ,
+        [ sh:path lulcw:maxSoilWetness ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minInclusive 0.0 ] ,
+        [ sh:path lulcw:trainingEdition ; sh:datatype xsd:integer ; sh:minInclusive 2000 ] ,
+        [ sh:path lulcw:ruleValidity ; sh:maxCount 1 ; sh:class lulcw:RuleValidity ] .
 
 #################################################################
 # Well links (CQ11)
@@ -1543,4 +1549,112 @@ SELECT $this ?value WHERE {
     FILTER (NOT EXISTS { ?c lulcw:assessedSetting ?value ; lulcw:assessmentWindow ?win . }
             || EXISTS { ?c1 lulcw:assessedSetting ?value ; lulcw:assessmentWindow ?win .
                         ?c2 lulcw:assessedSetting ?value ; lulcw:assessmentWindow ?win . FILTER (?c1 != ?c2) })
+}""" ] .
+
+
+#################################################################
+# CQ15: probable irrigation from remote sensing (0.11.0, 2026-11-26)
+#################################################################
+
+lulcwsh:RegisteredParcelShape a sh:NodeShape ;
+    sh:targetClass lulcw:RegisteredParcel ;
+    sh:property [ sh:path lulcw:sourceIdentifier ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ,
+        [ sh:path lulcw:rpgEdition ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ] ,
+        [ sh:path lulcw:cropCode ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:CropCode ] ,
+        [ sh:path lulcw:parcelAreaM2 ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minExclusive 0 ] ,
+        [ sh:path lulcw:matchedWeatherCell ; sh:maxCount 1 ; sh:class lulcw:WeatherCell ] .
+
+lulcwsh:ParcelZoneOverlapShape a sh:NodeShape ;
+    sh:targetClass lulcw:ParcelZoneOverlap ;
+    sh:property [ sh:path lulcw:overlapParcel ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:RegisteredParcel ] ,
+        [ sh:path lulcw:overlapZone ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:CropDemandZone ] ,
+        [ sh:path lulcw:overlapAreaM2 ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minExclusive 0 ] .
+
+lulcwsh:SatelliteIndexObservationShape a sh:NodeShape ;
+    sh:targetClass lulcw:SatelliteIndexObservation ;
+    sh:property [ sh:path sosa:hasFeatureOfInterest ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:RegisteredParcel ] ,
+        [ sh:path sosa:observedProperty ; sh:minCount 1 ; sh:maxCount 1 ; sh:hasValue lulcw:SummerNDVI ] ,
+        [ sh:path sosa:phenomenonTime ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path lulcw:seasonYear ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ] ,
+        [ sh:path sosa:hasSimpleResult ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minInclusive -1.0 ; sh:maxInclusive 1.0 ] ,
+        [ sh:path lulcw:validPixelCount ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ;
+          sh:minInclusive 0 ] ,
+        [ sh:path lulcw:meanClearAcquisitions ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minInclusive 0.0 ] .
+
+lulcwsh:IrrigationClassificationShape a sh:NodeShape ;
+    sh:targetClass lulcw:IrrigationClassification ;
+    sh:property [ sh:path lulcw:classifiedParcel ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:RegisteredParcel ] ,
+        [ sh:path lulcw:irrigationOutcome ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:in ( lulcw:ProbablyIrrigated lulcw:NotProbablyIrrigated lulcw:InsufficientSatelliteData lulcw:WetSeason ) ] ,
+        [ sh:path lulcw:seasonYear ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ] ,
+        [ sh:path lulcw:derivationRule ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:DerivationRule ] ,
+        [ sh:path prov:wasDerivedFrom ; sh:minCount 1 ] .
+
+lulcwsh:ProbablyIrrigatedShareShape a sh:NodeShape ;
+    sh:targetSubjectsOf lulcw:classifiedFraction ;
+    sh:property [ sh:path sosa:hasFeatureOfInterest ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:CropDemandZone ] ,
+        [ sh:path sosa:observedProperty ; sh:minCount 1 ; sh:maxCount 1 ; sh:hasValue lulcw:ProbablyIrrigatedShare ] ,
+        [ sh:path sosa:hasSimpleResult ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minInclusive 0.0 ; sh:maxInclusive 1.0 ] ,
+        [ sh:path lulcw:classifiedAreaM2 ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minInclusive 0.0 ] ,
+        [ sh:path lulcw:classifiedFraction ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minInclusive 0.0 ; sh:maxInclusive 1.0 ] ,
+        [ sh:path lulcw:derivationRule ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:DerivationRule ] ,
+        [ sh:path sosa:phenomenonTime ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:sparql [
+        sh:message "a probably-irrigated share has a result iff its classified area is positive (zero classified area stays unbound, never zero)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:classifiedAreaM2 ?a .
+    OPTIONAL { $this sosa:hasSimpleResult ?r . }
+    FILTER ((?a = 0 && BOUND(?r)) || (?a > 0 && !BOUND(?r)))
+}""" ] .
+
+# Whole-graph CQ15 completeness and consistency checks (run once on the rule node rather than once
+# per parcel, keeping validation fast across thousands of parcel-seasons).
+lulcwsh:IrrigationClassificationKeyShape a sh:NodeShape ;
+    sh:targetNode <https://w3id.org/lulcw/data/rule/probable-irrigation> ;
+    sh:sparql [
+        sh:message "a parcel-season with a summer NDVI observation has no irrigation classification" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this a lulcw:DerivationRule .
+    ?value a lulcw:SatelliteIndexObservation ;
+           sosa:observedProperty lulcw:SummerNDVI ;
+           sosa:hasFeatureOfInterest ?p ;
+           lulcw:seasonYear ?y .
+    FILTER NOT EXISTS {
+        ?c lulcw:classifiedParcel ?p ; lulcw:seasonYear ?y ; lulcw:derivationRule $this .
+    }
+}""" ] , [
+        sh:message "two irrigation classifications share a parcel, a season year and a rule" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this (SAMPLE(?c) AS ?value) WHERE {
+    ?c lulcw:derivationRule $this ; lulcw:classifiedParcel ?p ; lulcw:seasonYear ?y .
+}
+GROUP BY $this ?p ?y
+HAVING (COUNT(DISTINCT ?c) > 1)""" ] , [
+        sh:message "a satellite index observation with valid pixels lacks its NDVI result or clear-acquisition count (or has a result with zero valid pixels)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this a lulcw:DerivationRule .
+    ?value a lulcw:SatelliteIndexObservation ; lulcw:validPixelCount ?px .
+    OPTIONAL { ?value sosa:hasSimpleResult ?r . }
+    OPTIONAL { ?value lulcw:meanClearAcquisitions ?nobs . }
+    FILTER ((?px > 0 && (!BOUND(?r) || !BOUND(?nobs))) || (?px = 0 && BOUND(?r)))
+}""" ] , [
+        sh:message "a probably-irrigated share observation lacks its classified area or classified fraction" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    ?value sosa:observedProperty lulcw:ProbablyIrrigatedShare .
+    FILTER (NOT EXISTS { ?value lulcw:classifiedFraction ?f }
+            || NOT EXISTS { ?value lulcw:classifiedAreaM2 ?a })
 }""" ] .

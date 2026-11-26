@@ -1,0 +1,48 @@
+# CQ15 · Parcel-season probable-irrigation classifications inside a crop demand zone
+# (docs/competency_questions.md §4, CQ15; subject objective SO2)
+#
+# Parameters  ?zone  a lulcw:CropDemandZone
+#             ?year  calendar season year (xsd:integer)
+# Reads       asserted facts (registered parcels, parcel-zone overlaps, summer NDVI observations
+#             with valid-pixel and clear-acquisition counts, cell-level summer soil wetness
+#             observations, the derivation rule with its thresholds, version and validity) and
+#             SHACL-AF rule outputs (lulcw:IrrigationClassification); no OWL reasoning.
+# Returns     one row per classified registered parcel overlapping ?zone in season ?year:
+#             parcel IRI and source identifier, crop code, full parcel area and clipped overlap
+#             area (m²), derived irrigation outcome, summer NDVI, valid pixel count, mean clear
+#             acquisitions, matched weather cell and its summer soil wetness (SWI_JA), and the
+#             rule's IRI, version, validity and thresholds. A positive outcome is a vegetation
+#             hypothesis under dry regional conditions, never proof of irrigation; a negative
+#             outcome is not proof of rainfed management.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+SELECT ?zone ?year ?parcel ?parcelId ?cropCode ?parcelAreaM2 ?overlapAreaM2 ?outcome
+       ?ndvi ?validPixels ?meanClearAcquisitions ?cell ?soilWetness
+       ?rule ?ruleVersion ?ruleValidity ?ndviThreshold ?minValidPixels
+       ?minMeanClearAcquisitions ?maxSoilWetness
+WHERE {
+    ?ov a lulcw:ParcelZoneOverlap ; lulcw:overlapZone ?zone ; lulcw:overlapParcel ?parcel ;
+        lulcw:overlapAreaM2 ?overlapAreaM2 .
+    ?parcel a lulcw:RegisteredParcel ; lulcw:sourceIdentifier ?parcelId ; lulcw:rpgEdition ?year ;
+            lulcw:cropCode/skos:notation ?cropCode ; lulcw:parcelAreaM2 ?parcelAreaM2 .
+    ?cls a lulcw:IrrigationClassification ; lulcw:classifiedParcel ?parcel ;
+         lulcw:seasonYear ?year ; lulcw:irrigationOutcome ?outcome ; lulcw:derivationRule ?rule .
+    ?rule lulcw:ruleVersion ?ruleVersion ; lulcw:ruleValidity ?ruleValidity ;
+          lulcw:ndviThreshold ?ndviThreshold ; lulcw:minValidPixels ?minValidPixels ;
+          lulcw:minMeanClearAcquisitions ?minMeanClearAcquisitions ;
+          lulcw:maxSoilWetness ?maxSoilWetness .
+    ?obs a lulcw:SatelliteIndexObservation ; sosa:hasFeatureOfInterest ?parcel ;
+         sosa:observedProperty lulcw:SummerNDVI ; lulcw:seasonYear ?year ;
+         lulcw:validPixelCount ?validPixels .
+    OPTIONAL { ?obs sosa:hasSimpleResult ?ndvi . }
+    OPTIONAL { ?obs lulcw:meanClearAcquisitions ?meanClearAcquisitions . }
+    OPTIONAL { ?parcel lulcw:matchedWeatherCell ?cell . }
+    OPTIONAL {
+        ?swiObs sosa:observedProperty lulcw:SummerSoilWetness ;
+                sosa:hasFeatureOfInterest ?scell ; lulcw:seasonYear ?syear .
+        OPTIONAL { ?swiObs sosa:hasSimpleResult ?soilWetness . }
+        FILTER (BOUND(?cell) && ?scell = ?cell && ?syear = ?year)
+    }
+}
+ORDER BY ?parcelId

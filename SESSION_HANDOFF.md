@@ -31,63 +31,34 @@ date.
 
 ---
 
-## ▶ START HERE (state at the end of the session of 2026-11-26, ≈ 15:30 local time)
+## ▶ START HERE (state at the end of the session of 2026-11-26 evening, ≈ 19:45 local time)
 
-**Nothing is running.**
-- No worker: both closed. Codex 5 h at 41 %, Gemini 5 h at 43 % at the stop.
-- No Colab, Kaggle, Camber or laptop job. The Colab smoke runtime was stopped; balance 165.18 units.
-- Everything is committed and **pushed** (2026-11-26, as assil-bouzaine, no co-author line) on branch
-  `master_2026_fixes`.
-- v5 graph release: 2026-11-26T12:48:36Z (ontology 0.10.0, 0 violations). The exports and controls of the three
-  policies are rebuilt.
+**Running or pending when this was written (check each):**
+- Colab session `ext` (L4): the Track 2 **eval** run of Qwen3-8B (`EXTRACT_RUN=qwen3_8b_eval`). If it is still
+  listed (`colab_cli status ext`): `pull ext`, score (`python -m src.kg.extract_llm score --pred
+  results/v5/extraction/qwen3_8b_eval/predictions_eval.json --split eval`), then **`stop ext`**.
+- Workers: `neon` on **T85** (CQ15 in ontology + graph + SHACL-AF rule + release rebuild; report
+  `results/_agents/reports/T85.md`); `sol` on **T89** (Track 1 runner + Assil's review sheet; report T89.md).
+  Review both, rerun their tests, commit. Then brief neon **T88** (CQ10 + CQ16 + register codes; brief ready) and
+  afterwards CQ9 + CQ13 (brief to write: the gate needs all 16 CQ suites).
+- The graph release is stale since R2.3 (new alignment files) until T85 rebuilds it.
 
-**Where we are in `docs/v5_plan.md`:**
-- **R0** ✅.
-- **R1:** the dataset is complete for Roussillon, including the CQ15 files. **Gate R1 is not yet recorded**: the
-  cold-rebuild audit with the CQ15 files is still to run (next step 1).
-- **R2:**
-  - R2.2 modules and profiles ✅ (T78);
-  - R2.1 Track 2 scorer ✅ (T80);
-  - R2.3 alignments ⬜; R2.1 model + run ⬜; CQ15/CQ16 ontology terms ⬜; R2.4 (Manouba KG, reuse %, pyLODE) ⬜.
-- **R3:**
-  - plan v3 complete: every §8 point decided by Assil, node features fixed; the tag `analysis-plan-v3` waits until
-    just before the tuning;
-  - Hybrid-GNN v2 has arms A–D, the audit fixes and a smoke-run timing (≈ 5 min per fit);
-  - the tuner and the `hgnn_tune` step are ready;
-  - twin v2 ⬜, black box (Hetero-STGNN) ⬜.
+**Where we are in `docs/v5_plan.md`:** R0 ✅ · **R1 ✅ (Gate R1 passed 2026-11-26)** · R2 in progress:
+- R2.1: Track 2 done on dev (Qwen3-8B chosen by the fixed rule, F1 0.462); eval running. Track 1: 30 papers
+  selected; 12 downloaded, **18 to be downloaded by Assil** (`docs/papers_to_download.md`, exact file names), then
+  update `configs/track1_papers.csv` (status, size, SHA-256; replacements order > 30 marked outside the set), then
+  T89's runner: pilot (2 papers) → main (28) on Colab with Qwen3-8B → Assil's review sheet.
+- R2.2: CQ15 (T85 running); CQ10, CQ16, register codes (T88); CQ9, CQ13 (to brief); then the RegisteredParcel ⊑
+  s4agri:Parcel alignment (lead).
+- R2.3: SAREF4WATR, ENVO, deeper SWEET done; GEMET and CORINE wait for Eionet (unreachable from here); the scorer and
+  the HCAT gold done (T87); matchers (OntoAligner: lexical, retrieval, LLM on Colab) to brief; AGROVOC needs
+  Assil's labels.
+- R2.4 not started: Manouba from free data (GEE) + a sourced extent (Ferchichi et al. 2017 once downloaded), the TN
+  KG, the reuse %, pyLODE, the persisted Oxigraph store; then OOPS! again and Gate R2.
 
-**Next, in order:**
-1. **Gate R1 audit** (laptop, ≈ 15–25 min, no fitting; nothing else may read `data/processed/dataset_v5/` meanwhile):
-   `PYTHONIOENCODING=utf-8 PFE_DATASET=v5 .venv/bin/python -m src.dataset.build` (new baseline: adds `cq15` to
-   `meta.json`), then `PYTHONIOENCODING=utf-8 PFE_DATASET=v5 .venv/bin/python -m src.analysis.dataset_v5_audit`.
-   Every file must be identical, CQ15 included; `meta.json`'s `built` date may differ across days (documented). Then
-   record Gate R1 in `docs/v5_plan.md`. The graph reads the dataset, so check `release.check()` still passes after the
-   rebuild (identical bytes → yes).
-2. **R2.3 alignments** (lead; needs the network to check every term at its source):
-   - SAREF4WATR, SAREF4AGRI, CORINE SKOS, ENVO, GEMET, deeper SWEET;
-   - into `ontology/alignments/` + `ledger.csv` + HermiT gate;
-   - EuroCrops HCAT mapping; AGROVOC gold set (Assil) + OntoAligner (Colab).
-3. **R2.1:**
-   - choose the open LLM on the dev statements (the review proposes Qwen2.5-7B-Instruct; compare a newer Apache-2.0
-     model first);
-   - OpenAlex pull of 20–30 open-access Mediterranean papers;
-   - Colab run → `src/kg/extract_eval.py` (Track 2) and Assil's review of the Track 1 axioms (into the med-causal
-     module).
-4. **R2.2 rest:** CQ15 terms in the `eo` module and its rule as SHACL-AF (the parcel-season design, keeping the graph
-   small); CQ16 terms; T78's follow-ups (integer register codes, `groundwaterBodyCode` → EU profile).
-5. **R2.4:**
-   - Manouba: Sentinel-2 + WorldCover + ERA5-Land through Earth Engine (`src/ingest/gee_s2.py` as the model; a
-     sourced aquifer box);
-   - Manouba KG in the TN profile; the France → Tunisia reuse %; pyLODE docs; Gate R2.
-6. **R3:**
-   - tag `analysis-plan-v3`;
-   - on Colab v5e1: `.venv/bin/python -m scripts.colab_cli up tune --runtime v5e1 --require-cpu-model "AMD EPYC 7B13"`,
-     then `push-cpu tune --dataset v5 --steps hgnn_tune --env 'HGNN_TUNE_ARMS=A B C D' --env HGNN_TUNE_WORKERS=6
-     --budget 3`;
-   - twin v2 (`src/models/twin.py`: nonlinear recharge, leakage, basin canals, imputed pumping), the black box, Gate R3.
-
-**Waiting for Assil:** (unchanged) `! camber login` if Camber should run jobs; the professor's e-mail, the two data
-e-mails, the AGROVOC gold set, the paywalled papers, the defence date.
+**Waiting for Assil:** the AGROVOC labels (`data/interim/agrovoc_gold_worksheet.xlsx`, dev codes first; `import`
+after each sitting); the 26 papers of `docs/papers_to_download.md`; later the Track 1 review and the alignment
+ledger review. The defence date when known.
 
 ---
 

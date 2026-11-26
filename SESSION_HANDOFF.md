@@ -31,36 +31,60 @@ date.
 
 ---
 
-## ▶ START HERE (state on 2026-11-26 ≈ 14:40 local time; session in progress)
+## ▶ START HERE (state at the end of the session of 2026-11-26, ≈ 15:30 local time)
 
-**Running:**
-- `neon` on T78: R2.2, seven ontology modules + EU/FR/TN profiles generated from `lulcw.ttl` (0.10.0), with a
-  release, export and controls rebuild at its end.
-- `sol` (GPT Sol 6.1 high) on T80: R2.1 Track 2 scorer, offline (`src/kg/extract_eval.py`,
-  `configs/extraction_schema.json`).
+**Nothing is running.**
+- No worker: both closed. Codex 5 h at 41 %, Gemini 5 h at 43 % at the stop.
+- No Colab, Kaggle, Camber or laptop job. The Colab smoke runtime was stopped; balance 165.18 units.
+- Everything is committed and **pushed** (2026-11-26, as assil-bouzaine, no co-author line) on branch
+  `master_2026_fixes`.
+- v5 graph release: 2026-11-26T12:48:36Z (ontology 0.10.0, 0 violations). The exports and controls of the three
+  policies are rebuilt.
 
-T79 (CQ15 in the v5 build, deterministic) is committed (`9c52b42`). No Colab job. Branch `master_2026_fixes`; today's
-commits are local (push only when Assil says so).
-
-**Done today:** the bug audit closed; plan v3 §8 fully decided by Assil (also the node features); Colab smoke run;
-Sentinel-2 + CQ15 rule (verdict heuristic, `docs/irrigation_s2.md`); arms A/B; equal-budget tuner (T77); v5 canal
-decision (T74). Details: session log below, `docs/notes/step16_v5.md`, `docs/v5_plan.md`.
+**Where we are in `docs/v5_plan.md`:**
+- **R0** ✅.
+- **R1:** the dataset is complete for Roussillon, including the CQ15 files. **Gate R1 is not yet recorded**: the
+  cold-rebuild audit with the CQ15 files is still to run (next step 1).
+- **R2:**
+  - R2.2 modules and profiles ✅ (T78);
+  - R2.1 Track 2 scorer ✅ (T80);
+  - R2.3 alignments ⬜; R2.1 model + run ⬜; CQ15/CQ16 ontology terms ⬜; R2.4 (Manouba KG, reuse %, pyLODE) ⬜.
+- **R3:**
+  - plan v3 complete: every §8 point decided by Assil, node features fixed; the tag `analysis-plan-v3` waits until
+    just before the tuning;
+  - Hybrid-GNN v2 has arms A–D, the audit fixes and a smoke-run timing (≈ 5 min per fit);
+  - the tuner and the `hgnn_tune` step are ready;
+  - twin v2 ⬜, black box (Hetero-STGNN) ⬜.
 
 **Next, in order:**
-1. Review and commit T78 and T79.
-2. **Gate R1:** run these only after T78 stops reading the dataset.
-   - First rebuild, which adds `cq15` to `meta.json` and becomes the new baseline:
-     `PYTHONIOENCODING=utf-8 PFE_DATASET=v5 .venv/bin/python -m src.dataset.build`
-   - Then the full audit (it rebuilds again and compares every file):
-     `PYTHONIOENCODING=utf-8 PFE_DATASET=v5 .venv/bin/python -m src.analysis.dataset_v5_audit`
-   - Then record Gate R1 in `docs/v5_plan.md`.
-3. R2, then Gate R2:
-   - R2.3: alignments checked at the source (network: lead);
-   - R2.1: literature extraction (OpenAlex + a local LLM on Colab);
-   - R2.2 rest: CQ15/CQ16 terms and rules;
-   - R2.4: Manouba KG (Sentinel-2 + WorldCover + ERA5-Land) and the France → Tunisia reuse %.
-4. R3: tag `analysis-plan-v3`, then on Colab `push-cpu <name> --dataset v5 --steps hgnn_tune --env
-   'HGNN_TUNE_ARMS=A B C D'` (≈ 300 fits; T77's report has the full command), twin v2, the black box, Gate R3.
+1. **Gate R1 audit** (laptop, ≈ 15–25 min, no fitting; nothing else may read `data/processed/dataset_v5/` meanwhile):
+   `PYTHONIOENCODING=utf-8 PFE_DATASET=v5 .venv/bin/python -m src.dataset.build` (new baseline: adds `cq15` to
+   `meta.json`), then `PYTHONIOENCODING=utf-8 PFE_DATASET=v5 .venv/bin/python -m src.analysis.dataset_v5_audit`.
+   Every file must be identical, CQ15 included; `meta.json`'s `built` date may differ across days (documented). Then
+   record Gate R1 in `docs/v5_plan.md`. The graph reads the dataset, so check `release.check()` still passes after the
+   rebuild (identical bytes → yes).
+2. **R2.3 alignments** (lead; needs the network to check every term at its source):
+   - SAREF4WATR, SAREF4AGRI, CORINE SKOS, ENVO, GEMET, deeper SWEET;
+   - into `ontology/alignments/` + `ledger.csv` + HermiT gate;
+   - EuroCrops HCAT mapping; AGROVOC gold set (Assil) + OntoAligner (Colab).
+3. **R2.1:**
+   - choose the open LLM on the dev statements (the review proposes Qwen2.5-7B-Instruct; compare a newer Apache-2.0
+     model first);
+   - OpenAlex pull of 20–30 open-access Mediterranean papers;
+   - Colab run → `src/kg/extract_eval.py` (Track 2) and Assil's review of the Track 1 axioms (into the med-causal
+     module).
+4. **R2.2 rest:** CQ15 terms in the `eo` module and its rule as SHACL-AF (the parcel-season design, keeping the graph
+   small); CQ16 terms; T78's follow-ups (integer register codes, `groundwaterBodyCode` → EU profile).
+5. **R2.4:**
+   - Manouba: Sentinel-2 + WorldCover + ERA5-Land through Earth Engine (`src/ingest/gee_s2.py` as the model; a
+     sourced aquifer box);
+   - Manouba KG in the TN profile; the France → Tunisia reuse %; pyLODE docs; Gate R2.
+6. **R3:**
+   - tag `analysis-plan-v3`;
+   - on Colab v5e1: `.venv/bin/python -m scripts.colab_cli up tune --runtime v5e1 --require-cpu-model "AMD EPYC 7B13"`,
+     then `push-cpu tune --dataset v5 --steps hgnn_tune --env 'HGNN_TUNE_ARMS=A B C D' --env HGNN_TUNE_WORKERS=6
+     --budget 3`;
+   - twin v2 (`src/models/twin.py`: nonlinear recharge, leakage, basin canals, imputed pumping), the black box, Gate R3.
 
 **Waiting for Assil:** (unchanged) `! camber login` if Camber should run jobs; the professor's e-mail, the two data
 e-mails, the AGROVOC gold set, the paywalled papers, the defence date.
@@ -91,6 +115,13 @@ e-mails, the AGROVOC gold set, the paywalled papers, the defence date.
 - R1.4: `src/ingest/gee_s2.py` pulled 142,282 parcel-years (8 min); logged in `data/README.md`.
 - Arms A/B (facts, no graph) added to Hybrid-GNN v2; canal routing by basin node or plain node.
 - Workers now: neon → T76 (CQ15 rule), sol → T77 (tuner). Usage at ≈ 13:45: Claude 5 h ≈ 60 %.
+- Afternoon:
+  - T76 (CQ15 rule: heuristic verdict) and T77 (tuner) reviewed and committed; plan v3 node features fixed.
+  - T79 (CQ15 in the v5 build, deterministic), T80 (Track 2 scorer) and T78 (ontology modules and profiles,
+    0.10.0, release rebuilt) reviewed and committed.
+- Assil at ≈ 15:10: "after the 2 workers complete review their work and commit and push as assil-bouzaine and
+  update where we are and what are the next steps". Done: workers closed, this file updated, branch pushed.
+  Claude 5 h ≈ 85 % at the stop.
 
 ### 2026-11-25 (evening, Claude Opus 5.5, from ≈ 21:00 local time)
 - Read `gemini_neon_review.md` (513 lines: 12 fixes, roadmap R0–R7). Assil: do all of it, in a new branch

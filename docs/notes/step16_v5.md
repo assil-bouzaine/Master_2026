@@ -220,3 +220,29 @@ to them, and the "post-freeze weeks" of R7.1 are defined against this freeze.
 - **Use:** accepted statements whose categories map to the ontology's mechanisms (e.g. groundwater abstraction →
   `lulcw:PumpingDrawdown`, canal return flow → `lulcw:CanalReturnFlow`) enter the `med-causal` module as cited
   literature hypotheses (evidence kind `lulcw:ExpertHypothesis`, DOI, quote): never as constraints of the model.
+
+### R2.3: alignments to SAREF4WATR, ENVO and deeper SWEET (2026-11-26 evening)
+
+**What was done.** Three vocabularies were read at versioned sources (SAREF4WATR v2.1.1, ENVO's 2026-10-23
+release, SWEET's rivers, hydrological phenomena and agriculture modules), the terms we use extracted locally
+(`src/kg/build_imports.py --only`), and 32 correspondences written with the two definitions compared and a
+counterexample considered (`ontology/alignments/ledger.csv`): 28 asserted (6 subclass axioms, the rest SKOS
+close or broad matches), 4 rejected. The reasoner gate now checks every SKOS mapping relation; it passes (50
+asserted correspondences in all, 14 required subclass links hold, none of the 29 forbidden ones). EuroCrops' French
+mapping (RPG code → HCAT3, by the EuroCrops authors) was pulled as the gold of a second matching experiment.
+
+**Why this way.** A subclass link says every instance of our class *is* one of theirs, so it was asserted only where
+every instance in our graph fits their definition: our monitoring stations and river gauges are SAREF4WATR monitoring
+infrastructure and gauging stations; our 22 watercourses (checked one by one) are natural rivers (SAREF4WATR, ENVO);
+our alluvial and karst units are aquifers in ENVO's sense (as already for GWML2). Where a known instance breaks the
+definition, only a close match: some piezometers are springs, not wells; 50 canal reaches are mapped underground
+(a closed conduit, not SAREF's open "channel"); a BNPE intake record can describe one installation under several
+codes. Rejected correspondences are kept because they show the traps a word-matching tool falls into (a "groundwater
+body" is a management unit, not "groundwater").
+
+**What to keep in mind.**
+- SWEET has no written definitions: its matches rest on names and hierarchy, so they stay close matches.
+- SAREF4AGRI gives nothing yet: its "Parcel" waits for CQ15's registered-parcel class; "Crop" and "WeatherStation"
+  were rejected (a register code is not a collection of plants; a reanalysis grid cell is not a sensor).
+- GEMET and CORINE (Eionet) could not be reached from this network; retry before Gate R2.
+- EuroCrops is CC BY-SA: it stays a separate evaluation resource, never copied into the CC BY ontology.

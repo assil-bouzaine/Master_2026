@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Track 2 exchange statement extraction",
+  "description": "Answer with a JSON array. Copy quotes verbatim. Page labels are strings, including 'web page'. Code arrays use the spelling in exchange_evidence.csv and may be empty.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["document", "page", "quote", "mechanism", "direction", "hedging", "method", "subject", "units", "watercourses"],
+    "properties": {
+      "document": {
+        "type": "string",
+        "enum": ["brgm-rp-71486-fr", "sierm-frdg243", "sierm-frdg351", "smnpr-fonctionnement-des-nappes"]
+      },
+      "page": {"type": "string", "pattern": "\\S"},
+      "quote": {"type": "string", "pattern": "\\S"},
+      "mechanism": {"type": "string", "enum": ["CanalReturnFlow", "RiverExchange"]},
+      "direction": {
+        "type": "string",
+        "enum": ["aquifer_to_surface", "equilibrium", "no_exchange", "not_qualified", "surface_to_aquifer"]
+      },
+      "hedging": {"type": "string", "enum": ["hedged", "stated"]},
+      "method": {
+        "type": "string",
+        "enum": ["differential_gauging", "geochemical_tracing", "synthesis", "water_balance"]
+      },
+      "subject": {"type": "string", "enum": ["aggregate", "unit"]},
+      "units": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {"type": "string", "enum": ["671AA00", "671AB01", "671AB02", "671AB03", "671AB04", "718BP01", "718BP02", "718BP03", "718BP04"]}
+      },
+      "watercourses": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {"type": "string", "enum": ["Y0110540", "Y02-0400", "Y03-0400", "Y0320500", "Y04-0400", "Y0460600", "Y0470560", "Y06-0400"]}
+      }
+    }
+  }
+}

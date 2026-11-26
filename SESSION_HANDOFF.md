@@ -34,9 +34,7 @@ date.
 ## ▶ START HERE (state at the end of the session of 2026-11-26 evening, ≈ 19:45 local time)
 
 **Running or pending when this was written (check each):**
-- Colab session `ext` (L4): the Track 2 **eval** run of Qwen3-8B (`EXTRACT_RUN=qwen3_8b_eval`). If it is still
-  listed (`colab_cli status ext`): `pull ext`, score (`python -m src.kg.extract_llm score --pred
-  results/v5/extraction/qwen3_8b_eval/predictions_eval.json --split eval`), then **`stop ext`**.
+- Colab: **nothing running** (session `ext` stopped 2026-11-26 ≈ 19:46 after the Track 2 eval run; balance 163.49 units). Track 2 eval: statement F1 0.113 (step16 note: the non-exhaustive-gold sample check is next).
 - Workers: `neon` on **T85** (CQ15 in ontology + graph + SHACL-AF rule + release rebuild; report
   `results/_agents/reports/T85.md`); `sol` on **T89** (Track 1 runner + Assil's review sheet; report T89.md).
   Review both, rerun their tests, commit. Then brief neon **T88** (CQ10 + CQ16 + register codes; brief ready) and
@@ -62,7 +60,7 @@ date.
 `nmcli connection up Univ-Manouba`; disconnect: `nmcli connection down Univ-Manouba`. Use it only for Assil's
 browser downloads (publishers allow IP access for Springer and Wiley; Elsevier/ScienceDirect is **not** subscribed
 since 2017, so Chu 2026 and Jeong 2026 stay out of reach). The 23 open-access papers are blocked only for scripts,
-not by the network. Never connect it while a Colab job is being pulled. The sudo password Assil gave for this
+not by the network. Never connect it while a Colab job is being pulled. **Test of 2026-11-26 19:47:** the profile loads, but the server (196.203.128.101, UDP 1194) answered "no route to host" from the home network: server down or the port blocked on that network; retry later or from another network, else ask the university's IT. The sudo password Assil gave for this
 session is not stored anywhere (`sudo -k` run at the end).
 
 **Waiting for Assil:** the AGROVOC labels (`data/interim/agrovoc_gold_worksheet.xlsx`, dev codes first; `import`

@@ -93,6 +93,15 @@ e-mails, the AGROVOC gold set, the paywalled papers, the defence date.
 
 ## Session log
 
+### 2026-11-26 (evening, Claude Opus 5.5, from ≈ 17:50 local time)
+- Assil: "before u start doing anything, give me what u need from me and guide me one by one until u don't need
+  anything from me". Claude listed 9 items (now: Camber login, 4 quick decisions, the AGROVOC labelling rules;
+  e-mails: the professor, SMNPR; homework: the gold set labels, 8 paywalled papers; later: Track 1 review, ledger
+  review); retired from his list: the SHOULD/COULD CQ review (all 16 CQs are in the adopted v5 plan).
+- Camber CLI login done by Assil (`camber me` works, user `assil0723`).
+- Decided by Assil: **push only at the end of this session** (commit locally until then); **Manouba transfer from
+  free data only** (no local data: Sentinel-2, WorldCover, ERA5-Land, published aquifer maps).
+
 ### 2026-11-26 (Claude Opus 5.5, from ≈ 11:20 local time)
 - Assil: "there is a bug fix folder start with that if those are valid bugs then continue the work as planned";
   Codex workers must use GPT Sol 6.1 high (not the global 6.2 default): spawned with `-m gpt-6.1-sol -c

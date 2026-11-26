@@ -189,4 +189,5 @@ Settled by the data: no BSS evidence in v5 (§1; T62).
 5. **Tuning** (after the Colab smoke run): each main arm its own budget, E and F reuse D's; six settings,
    ranges in §3 point 7.
 6. **Node features:** the list in §3 point 5 (fixed from the code, 2026-11-26).
-Still open: the Manouba transfer (qualitative, outside these contrasts).
+7. **Manouba transfer** (Assil, 2026-11-26): free data only (Sentinel-2, ESA WorldCover, ERA5-Land, published
+   aquifer maps; no local data); qualitative, outside these contrasts.

@@ -112,6 +112,15 @@ e-mails, the AGROVOC gold set, the paywalled papers, the defence date.
   15/15 files byte-identical; release check OK; the gate's dataset tests pass (logs `results/logs/gate_r1_*`). The
   v5 panel caches (`results/v5/_cache/panel*.parquet`) had to be refreshed (their identity record holds
   `meta.json`'s hash): content identical. `openpyxl` 3.1.5 installed and pinned (gold-set worksheet, T81).
+- Workers opened (space `sp34af9f51e4d6b4cc4d1eee9c657f4623`): `sol` (GPT-6.1-Sol high) → **T81** (the AGROVOC
+  gold-set worksheet + import for Assil); `neon` (Gemini 4 Neon high) → **T82** (R2.1 Track 2: passages, prompt,
+  dev/eval split fixed by Claude, the LLM runner with a stub, GPU step).
+- **R2.3 started (lead):** SAREF4WATR v2.1.1 + ENVO 2026-10-23 alignment modules, deeper SWEET, 32 ledger rows (28
+  asserted, 4 rejected), gate 8 extended to every SKOS mapping relation, meta 0.4.0; `test_ontology` passes.
+  EuroCrops HCAT3 + French mapping pulled (183/198 codes; the gold of an RPG → HCAT experiment). GEMET and CORINE SKOS:
+  Eionet unreachable from this network today (retry). **The graph release is stale** (ontology files changed): rebuild
+  after the R2.2 terms (CQ15/CQ16), `PFE_DATASET=v5 .venv/bin/python -m src.kg.apply_rules` (≈ 10–15 min), then the
+  exports and controls of the three policies and the graph test suites.
 
 ### 2026-11-26 (Claude Opus 5.5, from ≈ 11:20 local time)
 - Assil: "there is a bug fix folder start with that if those are valid bugs then continue the work as planned";

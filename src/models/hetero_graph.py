@@ -138,15 +138,17 @@ def _standardise_matrix(df):
     return Z, names, {"mean": means.to_dict(), "sd": sds.to_dict()}
 
 
-def _well_features(codes, train_start, policy, tables, static_edges, pumping_weekly, pumping_points):
-    """Well static features: statics.static_table('B') in export well order, standardised."""
+def _well_features(codes, train_start, policy, tables, static_edges, pumping_weekly, pumping_points,
+                   features="B"):
+    """Well static features: statics.static_table(features) in export well order, standardised
+    (set B, the knowledge-graph facts, for every graph arm; set A only for arm A)."""
     statics_tables = {
         "wells": _load_table(tables, "wells", DATASET_DIR / "wells.parquet"),
         "pumping_weekly": pumping_weekly,
         "pumping_points": pumping_points,
         "edges": static_edges,
     }
-    raw = statics.static_table(features="B", train_start=train_start, policy=policy, tables=statics_tables)
+    raw = statics.static_table(features=features, train_start=train_start, policy=policy, tables=statics_tables)
     raw = raw.reindex(codes)
     return statics.standardise(raw)
 
@@ -504,6 +506,47 @@ def build_heterodata(export_dir, arm, tables=None, train_start=None, policy="mai
     data.edge_attr_names = list(edge_attr_names)
     data.validate(raise_on_error=True)
     return data, index
+
+
+def build_well_graph(export_dir, features, codes=None, tables=None, train_start=None, policy="main"):
+    """Arms A and B of analysis plan v3 §5 ("facts, no graph"): a HeteroData holding only the wells,
+    with fact set ``features`` ("A": the baseline facts; "B": the knowledge-graph facts, the same as
+    every graph arm's wells), and no edge type at all. ``HeteroEncoder`` then reduces to a small network
+    applied to each well's own facts (input projection, ELU, head): no message passing, so a well's
+    parameters depend on its own facts only. Returns ``(data, index)`` like ``build_heterodata``;
+    ``codes`` (default: the export's wells in node order) fixes the well order."""
+    export_path = Path(export_dir) if export_dir is not None else None
+    start, end, _ = statics.training_window(train_start)
+    if codes is None:
+        nodes = _load_table(tables, "nodes", export_path / "nodes.parquet")
+        codes = nodes.loc[nodes["type"].astype(str) == "well", "code"].tolist()
+    codes = list(codes)
+    if len(set(codes)) != len(codes):
+        raise ValueError("Duplicate well codes")
+    static_edges = None
+    pumping_weekly = pumping_points = None
+    if features == "B":
+        if tables is not None and "static_edges" in tables:
+            static_edges = tables["static_edges"]
+        else:
+            static_edges = pd.read_parquet(export_path / "edges_D.parquet")
+        pumping_weekly = _load_table(tables, "pumping_weekly", DATASET_DIR / "pumping_weekly.parquet")
+        pumping_points = _load_table(tables, "pumping_points", DATASET_DIR / "pumping_points.parquet")
+    Z, feat_names, _ = _well_features(codes, train_start, policy, tables, static_edges, pumping_weekly,
+                                      pumping_points, features=features)
+    data = HeteroData()
+    data["well"].x = torch.from_numpy(np.ascontiguousarray(Z, dtype=np.float32))
+    data["well"].feature_names = list(feat_names)
+    data["well"].node_codes = codes
+    data.arm = f"facts {features}, no graph"
+    data.policy = str(policy)
+    data.train_start = start.date().isoformat()
+    data.train_end = end.date().isoformat()
+    data.forward_edge_types = []
+    data.reverse_edge_types = []
+    data.edge_attr_names = []
+    data.validate(raise_on_error=True)
+    return data, {"well": {c: i for i, c in enumerate(codes)}}
 
 
 class HeteroEncoder(nn.Module):

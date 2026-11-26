@@ -939,10 +939,41 @@ def test_encoder_never_sees_stress_and_v5_forward():
                     assert np.allclose(dec[:, y2019], tot[:, y2019], rtol=1e-5, atol=1e-6), (arm, key)
                     backfill += float((tot[:, y1217] - dec[:, y1217]).sum())
                 assert backfill > 0.0, arm
+
                 summaries.append(
                     f"arm {arm}: {len(data['codes'])}x{len(data['weeks'])}, "
                     f"canal_mode={prep['routed']['canal_mode']}, max_centre_err={real_err:.2e}"
                 )
+
+            # Arms A and B (plan v3 §5, "facts, no graph"): the baseline inputs, the plain canal series, a
+            # graph of wells only with fact set A or B, and no message passing: a well's parameters do not move
+            # when every other well's facts change.
+            for arm, width in (("A", 6), ("B", 14)):
+                args = H.build_parser().parse_args(["--arm", arm, "--stage", "B", "--epochs", "1"])
+                prep = H.prepare(args, verbose=False)
+                gd = prep["graph_data"]
+                assert gd.node_types == ["well"] and gd.edge_types == [], (arm, gd.node_types, gd.edge_types)
+                assert tuple(gd["well"].x.shape) == (65, width), (arm, tuple(gd["well"].x.shape))
+                assert prep["routed"]["canal_mode"] == "plain", arm
+                assert prep["fp_extra"]["well_facts"] == arm and prep["fp_extra"]["message_passing"] is False
+                net_ab = H.HybridGNN(graph_data=gd, **prep["model_kwargs"])
+                net_ab.eval()
+                k = int(net_ab.well_graph_idx[0])
+                with torch.no_grad():
+                    net_ab.encoder.head.weight.normal_(generator=torch.Generator().manual_seed(74))
+                    e1 = net_ab.encode().clone()
+                    gd2 = gd.clone()
+                    others = torch.ones(gd2["well"].x.shape[0], dtype=torch.bool)
+                    others[k] = False
+                    gd2["well"].x[others] += 5.0
+                    e2 = net_ab.encode(gd2)
+                assert torch.equal(e1[0], e2[0]) and bool((e1[1:] != e2[1:]).any()), arm
+                X_ab = {kk: torch.from_numpy(v) for kk, v in prep["data"]["X"].items()}
+                obs_ab = torch.from_numpy(np.isfinite(prep["data"]["head"]) & (prep["data"]["split"] == "train"))
+                net_ab.estimate_centres(X_ab, obs_ab)
+                with torch.no_grad():
+                    assert np.isfinite(net_ab(X_ab).numpy()).all(), arm
+                summaries.append(f"arm {arm}: wells only, {width} facts, no message passing, canal_mode=plain")
         v5_msg = "; ".join(summaries)
 
     print(f"  7. encoder never sees stresses ({len(seen_calls)} hooked calls, only x/edge_index/edge_attr; "

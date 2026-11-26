@@ -18,9 +18,10 @@ PyTorch module, keeping the exact additive decomposition and sign guarantees of
    - ``pumping`` and ``pumping_unattributed`` (weighted sums of facility volumes);
    - ``river`` split into ``river_c`` (constrained in arm D's export, sign >= 0) and
      ``river`` (free), merged back into ``river`` in saved outputs;
-   - ``canal`` using each well's river-basin series from ``canal_basins_weekly.parquet``
-     (basin from ``src.dataset.canal_basins.canal_edge_well_basins``), split into
-     ``canal_c`` (constrained in arm D's export, sign >= 0) and ``canal`` (free).
+   - ``canal`` using the series of the river basin the export's canal node names
+     (``canal:<basin>``: the basin of the well's nearest main river, ``src.kg.export``) from
+     ``canal_basins_weekly.parquet``, or the plain-wide series for the baseline edges of arms A
+     and B; split into ``canal_c`` (constrained in arm D's export, sign >= 0) and ``canal`` (free).
    A well without an edge for a channel gets zero stress and zero contribution there.
 2. **Nonlinear monotone recharge (§3.3):** each recharge channel passes its weighted rain
    and ETP (mm/week) through ``src.models.bucket.bucket`` with per-(well, channel)
@@ -48,7 +49,11 @@ PyTorch module, keeping the exact additive decomposition and sign guarantees of
      perturbations therefore never shift ``m_ir`` and preserve exact monotonicity at every
      week. A held-out leave-wells-out well gets its ``m_ir`` from its own observed training
      weeks (no head value enters beyond the training mask that defines ``mu_i``).
-6. **Graph parameter encoder and two stages (§3.5):** raw parameters
+6. **Arms A and B** (plan v3 §5, RQ1 "facts"): the baseline inputs (``routing.baseline_edges``: each
+   well's own weather cell, the facilities within 3 km, the plain's canal) and a HeteroData holding
+   only the wells (``hetero_graph.build_well_graph``), with fact set A or B: the encoder has no edge
+   to pass messages along, so each well's parameters come from its own facts only.
+   **Graph parameter encoder and two stages (§3.5):** raw parameters
    ``theta_i = theta_group(i) + HeteroEncoder(data)_i + delta_i``. ``HeteroEncoder`` reads
    only the static ``HeteroData`` (never a stress). ``stage="A"`` omits ``delta`` (not a
    parameter). ``stage="B"`` refines stage A: ``train_seed`` first runs the stage-A epochs with
@@ -105,7 +110,7 @@ from src.models import response as R
 from src.models import routing as RT
 from src.models.evaluate import RESULTS, evaluate_run
 from src.models.features import build_panel, river_series
-from src.models.hetero_graph import HeteroEncoder, build_heterodata
+from src.models.hetero_graph import HeteroEncoder, build_heterodata, build_well_graph
 from src.models.lstm import (
     cached_seed,
     median_nse,
@@ -195,6 +200,11 @@ INIT_KAPPA = 0.2
 INIT_BETA = 0.1
 
 REGIMES = ("R1", "R2", "R3_f25", "R3_f50", "refit")
+# Arms A and B (analysis plan v3 §5, RQ1 "facts"): the baseline inputs (routing.baseline_edges, v4's panel rules)
+# and no message passing, the encoder reading each well's own facts only: set A, or set B (the knowledge-graph
+# facts every graph arm's wells carry). Arms C, D and the controls read set B through their graph.
+FACT_ARMS = ("A", "B")
+CANAL_PLAIN = "canal-intakes:plain"   # src.kg.export.CANAL: the plain-wide canal node of the baseline edges
 ALLOW_TRAIN_ENV = "PFE_ALLOW_TRAIN"
 # PFE_NO_SCORE=1 stops main() before the seed-mean predictions and their scores: a timing or smoke run
 # never scores the test period (plan v3 §0: no v5 result is scored before the analysis-plan-v3 tag).
@@ -785,9 +795,10 @@ def routed_v5_inputs(
     - ``pump_gw``, ``pump_un``, ``has_pumping``, ``has_pumping_unattributed``, and their declared parts
       ``pump_gw_decl``, ``pump_un_decl`` (facility-years not flagged ``imputed``; plan v3 §3.6);
     - ``river``, ``has_river``;
-    - ``canal``, ``has_canal`` using each canal-edge well's river-basin series from
-      ``canal_basins_weekly.parquet`` (nearest main river via ``canal_edge_well_basins``),
-      falling back to plain-wide ``canal_series`` only when the basin table is absent.
+    - ``canal``, ``has_canal``: the series of the basins a well's canal edges name (``canal:<basin>``,
+      the weighted mean when a control links several), or the plain-wide ``canal_series`` for an edge
+      from the plain node (the baseline edges of arms A and B); ``canal_mode`` says which.
+    ``reaches`` is unused since the exports name the basins (kept for callers' signatures).
     """
     splits = json.loads((DATASET_DIR / "splits.json").read_text())
     wells = pd.read_parquet(DATASET_DIR / "wells.parquet")
@@ -886,62 +897,67 @@ def routed_v5_inputs(
         out["has_river"] = np.zeros(N, dtype=bool)
         out["river"] = np.zeros((N, T), dtype=float)
 
-    # 4. Basin-specific canal volume (Mm3/week) for wells with a canal edge.
+    # 4. Canal volume (Mm3/week) for wells with a canal edge. A canal edge names either a river basin's canal
+    # node ("canal:<basin>", every v5 export and its controls) or the plain-wide node (the baseline inputs of
+    # arms A and B, routing.baseline_edges): the first get their basins' series (the weighted mean when a control
+    # links several), the second the plain's whole series, as v4's baseline inputs did. Gaps inside the canal
+    # record are 0.0; weeks before the record stay NaN so hybrid_arrays fills them with the well's training mean
+    # instead of a step from 0.
     canal_edges = edges[edges["relation"] == "canal"]
     canal_well_set = set(canal_edges["dst"].unique())
     has_canal = np.array([c in canal_well_set for c in codes], dtype=bool)
     out["has_canal"] = has_canal
-
-    wide_basin, canal_mode = _canal_basin_wide(
-        weeks, reconstruction, canal_basins_weekly=canal_basins_weekly, canal_intakes_basin=canal_intakes_basin
-    )
-    out["canal_mode"] = canal_mode
     canal_arr = np.zeros((N, T), dtype=float)
     well_basins = {}
+    plain_src = canal_edges["src"].astype(str) == CANAL_PLAIN
+    plain_wells = set(canal_edges.loc[plain_src, "dst"])
+    basin_edges = canal_edges[~plain_src]
+    if plain_wells & set(basin_edges["dst"]):
+        raise ValueError("a well has both plain-wide and basin canal edges")
 
-    if wide_basin is not None and has_canal.any():
+    modes = []
+    if len(basin_edges) and has_canal.any():
+        wide_basin, canal_mode = _canal_basin_wide(
+            weeks, reconstruction, canal_basins_weekly=canal_basins_weekly, canal_intakes_basin=canal_intakes_basin
+        )
+        if wide_basin is None:
+            raise FileNotFoundError("basin canal edges need canal_basins_weekly.parquet (dataset v5)")
+        modes.append(canal_mode)
         basin_cols = set(wide_basin.columns)
-        # The basins each well's canal edges name on src (e.g. "canal:Tet" or "Tet"), with the edge weights.
-        # In arms C and D a well has one basin; a control (F_random, F_complete) may link it to several.
         basins_of = {}
-        for src_val, dst_val, wgt in zip(canal_edges["src"], canal_edges["dst"], canal_edges["weight"]):
+        for src_val, dst_val, wgt in zip(basin_edges["src"], basin_edges["dst"], basin_edges["weight"]):
             name = str(src_val)
             suffix = name.split(":", 1)[-1]
             basin = name if name in basin_cols else (suffix if suffix in basin_cols else None)
-            if basin is not None:
-                linked = basins_of.setdefault(dst_val, {})
-                linked[basin] = linked.get(basin, 0.0) + float(wgt)
-
-        need_snap = sorted(w for w in canal_well_set if w in codes and w not in basins_of)
-        if need_snap:
-            sub_edges = canal_edges[canal_edges["dst"].isin(need_snap)]
-            wb_df = CB.canal_edge_well_basins(edges_d=sub_edges, wells=wells, reaches=reaches)
-            for code, basin in zip(wb_df["code_bss"], wb_df["basin"]):
-                basins_of[code] = {basin: 1.0}
-
-        cb_start = wide_basin.index.min()
-        in_record = weeks >= cb_start
+            if basin is None:
+                raise KeyError(f"canal source {name!r} of well {dst_val!r} names no basin of {sorted(basin_cols)}")
+            linked = basins_of.setdefault(dst_val, {})
+            linked[basin] = linked.get(basin, 0.0) + float(wgt)
+        in_record = weeks >= wide_basin.index.min()
         for i, code in enumerate(codes):
-            if not has_canal[i]:
-                continue
             linked = basins_of.get(code)
-            if not linked or any(b not in basin_cols for b in linked):
-                raise KeyError(f"Could not resolve canal basin for well {code!r} (got {linked!r})")
+            if not linked:
+                continue
             total = sum(linked.values())
             if not total > 0:
                 raise ValueError(f"canal edges of well {code!r} have no positive weight: {linked!r}")
             well_basins[code] = "+".join(sorted(linked))
-            # The weighted mean of the linked basins' series, as rivers and recharge cells are routed. Gaps
-            # inside the canal record are 0.0; pre-record weeks (e.g. 1990-2002) stay NaN so hybrid_arrays
-            # fills them with the well's training mean instead of a step from 0.
             parts = []
             for basin, wgt in sorted(linked.items()):
                 series = wide_basin[basin].reindex(weeks).to_numpy(dtype=float)
                 parts.append(wgt / total * np.where(in_record & ~np.isfinite(series), 0.0, series))
             canal_arr[i] = np.sum(parts, axis=0)
-    elif has_canal.any():
-        plain = canal_series(pw, pts).reindex(weeks).fillna(0.0).to_numpy(dtype=float) / 1e6
-        canal_arr[has_canal] = plain[None, :]
+    if plain_wells:
+        modes.append("plain")
+        plain_series = canal_series(pw, pts)
+        plain = (plain_series / 1e6).reindex(weeks).to_numpy(dtype=float)
+        in_record = weeks >= pd.Timestamp(plain_series.index.min())
+        plain = np.where(in_record & ~np.isfinite(plain), 0.0, plain)
+        for i, code in enumerate(codes):
+            if code in plain_wells:
+                canal_arr[i] = plain
+                well_basins[code] = "plain"
+    out["canal_mode"] = "+".join(modes) if modes else "none"
 
     out["canal"] = canal_arr
     out["well_canal_basin"] = well_basins
@@ -1392,10 +1408,12 @@ def seed_outputs(net, data, graph_data=None):
 # ---------------------------------------------------------------------------
 
 def _arm_name(s):
+    if s in FACT_ARMS:
+        return s
     try:
         RT.parse_arm(s)
     except ValueError as err:
-        raise argparse.ArgumentTypeError(str(err)) from err
+        raise argparse.ArgumentTypeError(f"{err} (or A, B: facts, no graph)") from err
     return s
 
 
@@ -1527,6 +1545,8 @@ def _export_dir(policy="main", dataset=DATASET):
 def _build_graph_for_arm(arm, policy="main", train_start=None, dataset=DATASET):
     """Build the static ``HeteroData`` for ``arm`` (including control arms from ``load_arm``)."""
     exp_dir = _export_dir(policy, dataset)
+    if arm in FACT_ARMS:
+        return build_well_graph(exp_dir, features=arm, train_start=train_start, policy=policy)
     kind, draw = RT.parse_arm(arm)
     if draw is None and kind in ("C", "D"):
         return build_heterodata(exp_dir, arm, train_start=train_start, policy=policy)
@@ -1556,7 +1576,7 @@ def prepare(args, *, error=None, verbose=True):
             fail(f"unknown wells: {missing}")
         P = P[P["code_bss"].isin(opt["only"])]
 
-    routed = routed_v5_inputs(arm, policy, reconstruction=opt["reconstruction"])
+    routed = routed_v5_inputs("baseline" if arm in FACT_ARMS else arm, policy, reconstruction=opt["reconstruction"])
     river_c = constrained_wells("river", policy=policy)
     canal_c = constrained_wells("canal", policy=policy)
     data = hybrid_arrays(
@@ -1596,6 +1616,8 @@ def prepare(args, *, error=None, verbose=True):
         "reliable_pumping_from": RELIABLE_PUMPING_FROM,
         "pumping_record_start": routed["pumping_record_start"],
         "pumping_declared": "facility-years not flagged imputed, from reliable_pumping_from",
+        "well_facts": arm if arm in FACT_ARMS else "B",
+        "message_passing": arm not in FACT_ARMS,
         "canal_mode": routed["canal_mode"],
         "river_constrained_wells": sorted(set(data["codes"]) & river_c),
         "canal_constrained_wells": sorted(set(data["codes"]) & canal_c),

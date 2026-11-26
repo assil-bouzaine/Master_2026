@@ -242,6 +242,17 @@ Notes:
 - Zone names and codes changed over the years (e.g. `76_66_7` "Têt aval" →
   `76_66_0005`); grouping by name ("Têt") covers all versions.
 
+**Commune history for CQ9 (2026-11-26, night).** `python -m src.ingest.vigieau_communes` (cached):
+
+| Date | Source | URL | Output | Rows | Size |
+|---|---|---|---|---|---|
+| 2026-11-26 | same dataset, resource "Historique Communes" (one JSON array, 12.1 GB unpacked, streamed from the zip, never unpacked on disk) | `https://static.data.gouv.fr/resources/donnee-secheresse-vigieau/20261126-170419/historique-communes.zip` (SHA-256 `f31955f2879e82c8…`) | `raw/vigieau/2026-11-26/historique-communes.zip`; `interim/vigieau_communes_66.parquet` (commune, name, date, SUP, SOU, AEP levels 0–4) | 1,368,204 = 226 communes × 6,054 days (2010-05-01 → 2026-11-26) | 594,629,369 B |
+
+Every commune of the département is listed every day; a null level (0) is VigiEau's "no restriction of that type". The
+first restriction in the département is on 2012-03-28 (the order files start in 2012: before 2012 the absence of a
+restriction is not evidenced); drinking-water (AEP) levels exist only from 2024-04-28. Explanation context only (CQ9),
+never a model input.
+
 ### Model-ready dataset v3 (Step 12a)
 
 Script: `PFE_DATASET=v3 python -m src.dataset.build` (2026-10-20) →
@@ -610,6 +621,15 @@ v1.1.1 returns 404): its candidate correspondences are rejected in the ledger, a
 terms. GEMET and the CORINE Land Cover SKOS vocabulary (both on Eionet, `www.eionet.europa.eu`,
 `dd.eionet.europa.eu`) could not be reached from this network on 2026-11-26 (TLS connections time out, IPv4 and
 IPv6): retry later.
+
+**GEMET and CORINE from the Internet Archive (2026-11-26, night).** Eionet was still unreachable (DNS resolves to
+87.54.7.182; TCP connections time out), so the two files were taken from the Internet Archive's copies of the Eionet
+URLs, as raw bytes (`id_` mode), logged in `data/raw/vocab/sources.json` with the original URL and the snapshot time:
+
+| File | Original URL (archive snapshot) | Licence | Bytes | SHA-256 (first 16) |
+|---|---|---|---|---|
+| `gemet.rdf.gz` | `https://www.eionet.europa.eu/gemet/latest/gemet.rdf.gz` (2026-03-09 18:06:56 UTC); GEMET Concepts version 4.2.3 of 2021-12-06 | CC BY 4.0 (stated in the file) | 7,423,725 | `96002bb7cd1f89bc` |
+| `clc_eionet.rdf` | `http://dd.eionet.europa.eu/vocabulary/landcover/clc/rdf` (2022-06-29 05:27:16 UTC); Eionet data dictionary vocabulary "Corine Land Cover", modified 2015-04-23, empty definitions | Eionet terms of use (to check before reuse) | 26,007 | `b6a64d9af98ec057` |
 
 ### EuroCrops HCAT3 and its French mapping (R2.3, 2026-11-26)
 

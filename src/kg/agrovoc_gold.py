@@ -5,6 +5,8 @@
     python -m src.kg.agrovoc_gold search "pêcher"  # concepts whose French or English labels hold
                                                    # these words (accents, case, plurals ignored)
     python -m src.kg.agrovoc_gold blind           # the second annotator's sheet (no candidates)
+    python -m src.kg.agrovoc_gold worksheet       # the Rules and Labels workbook for LibreOffice
+    python -m src.kg.agrovoc_gold import          # saves workbook answers, then checks the gold set
     python -m src.kg.agrovoc_gold check           # validates the filled files, reports agreement
 
 The gold set is Assil's judgement, one row per crop code of the well zones (most area first):
@@ -46,8 +48,11 @@ Protocol (Codex review of 2026-10-26, §6; docs/notes/step12_ontology.md, 12.9):
 - The matchers are scored against these files, so they are not edited after their outputs
   have been seen.
 """
+import argparse
 import re
 import sys
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 import pandas as pd
 
@@ -58,6 +63,7 @@ from src.kg.agrovoc_candidates import norm
 GOLD = ROOT / "configs" / "lu_agrovoc_gold.csv"
 SECOND = ROOT / "configs" / "lu_agrovoc_gold_second.csv"
 CANDIDATES = ROOT / "configs" / "lu_agrovoc_candidates.csv"
+WORKSHEET = ROOT / "data" / "interim" / "agrovoc_gold_worksheet.xlsx"
 RELATIONS = ("exactMatch", "closeMatch", "broadMatch", "narrowMatch", "none")
 COLUMNS = ["code", "label", "area_ha", "split", "second", "relation", "concept", "alternatives", "note"]
 LABEL_COLUMNS = ["relation", "concept", "alternatives", "note"]
@@ -113,6 +119,184 @@ def blind():
         t[k] = ""
     t.to_csv(SECOND, index=False)
     print(f"-> {SECOND.relative_to(ROOT)}: {len(t)} codes; give it with the search command only")
+
+
+def worksheet(out=None, force=False):
+    """Put the task 12.9 rules and word candidates beside the answers, without losing a sitting."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.utils import get_column_letter
+    from openpyxl.worksheet.datavalidation import DataValidation
+
+    out = Path(out) if out is not None else WORKSHEET
+    if out.exists() and not force:
+        print(f"{out} exists and may hold Assil's answers: run import first; use --force to overwrite.")
+        sys.exit(1)
+    g = pd.read_csv(GOLD, dtype=str, keep_default_na=False)
+    candidates = pd.read_csv(CANDIDATES, dtype=str, keep_default_na=False)
+    by_code = {}
+    for code, rows in candidates.groupby("code", sort=False):
+        values = []
+        for r in rows.drop_duplicates("concept").head(8).itertuples():
+            value = f"{r.concept.rsplit('/', 1)[-1]} · {r.pref_fr} | {r.pref_en}"
+            if r.broader_fr:
+                value += f" · ↑ {r.broader_fr}"
+            values.append(value)
+        by_code[code] = values
+
+    book = Workbook()
+    rules = book.active
+    rules.title = "Rules"
+    note = (ROOT / "docs" / "notes" / "step12_ontology.md").read_text(encoding="utf-8")
+    heading = "### 12.9 gold-set decision rules (Assil, 2026-11-26, before any label)"
+    # Keep all paragraphs, including the annotator and eval-example cautions, verbatim.
+    section = note.split(heading, 1)[1].split("\n## ", 1)[0].strip()
+    lines = [heading, *section.split("\n\n"), "Read: code <relation> concept",
+             "exactMatch: same meaning", "closeMatch: nearly the same meaning",
+             "broadMatch: the concept is broader than the code",
+             "narrowMatch: the concept is narrower than the code", "none: no concept fits",
+             "Fill relation, concept, alternatives, note. Dev codes come first: they are needed first.",
+             "concept and alternatives: short id (c_3360) or full IRI; separate alternatives with ;",
+             "To find a concept outside the candidates, in a terminal at the repository root:",
+             'PYTHONIOENCODING=utf-8 .venv/bin/python -m src.kg.agrovoc_gold search "mots"',
+             "Or use https://agrovoc.fao.org/browse/agrovoc/fr/",
+             "The website shows the current release. check refuses concepts added after the 2026-10-26 snapshot.",
+             "Save the file, then run after every sitting:",
+             "PYTHONIOENCODING=utf-8 .venv/bin/python -m src.kg.agrovoc_gold import",
+             "import saves the answers into configs/lu_agrovoc_gold.csv and checks them."]
+    rules.column_dimensions["A"].width = 115
+    for line in lines:
+        rules.append([line])
+        cell = rules.cell(rules.max_row, 1)
+        cell.alignment = Alignment(wrap_text=True, vertical="top")
+        rules.row_dimensions[cell.row].height = 16 * sum(max(1, (len(s) + 109) // 110)
+                                                        for s in line.splitlines())
+    rules["A1"].font = Font(bold=True)
+
+    labels = book.create_sheet("Labels")
+    headers = ["code", "label", "area_ha", "split", *LABEL_COLUMNS]
+    headers += [f"candidate_{i}" for i in range(1, 9)]
+    labels.append(headers)
+    ordered = g.assign(_area=pd.to_numeric(g["area_ha"]))
+    ordered = ordered.sort_values(["split", "_area"], ascending=[True, False], kind="stable")
+    for _, r in ordered.iterrows():
+        values = [r[k] for k in headers[:8]]
+        values[2] = float(r["area_ha"])
+        cand = by_code.get(r["code"], [])
+        labels.append(values + cand + [""] * (8 - len(cand)))
+    labels.freeze_panes = "C2"
+    labels.auto_filter.ref = labels.dimensions
+    dropdown = DataValidation(type="list", formula1='"' + ",".join(RELATIONS) + '"', allow_blank=True)
+    dropdown.errorTitle = "Choose a relation"
+    dropdown.error = "Use one of the five relations, or leave the cell empty."
+    dropdown.showErrorMessage = True
+    labels.add_data_validation(dropdown)
+    dropdown.add(f"E2:E{labels.max_row}")
+    widths = [12, 52, 15, 10, 18, 48, 60, 60] + [65] * 8
+    for col, width in enumerate(widths, 1):
+        labels.column_dimensions[get_column_letter(col)].width = width
+        labels.cell(1, col).font = Font(bold=True)
+    for row in labels.iter_rows(min_row=2):
+        for cell in row:
+            if isinstance(cell.value, str):
+                cell.data_type = "s"  # A note beginning with '=' remains literal text on regeneration.
+            cell.alignment = Alignment(vertical="top", wrap_text=cell.column != 1)
+            if 5 <= cell.column <= 8:
+                cell.fill = PatternFill("solid", fgColor="FFF2CC")
+            elif cell.column >= 9:
+                cell.font = Font(color="777777")
+        labels.row_dimensions[row[0].row].height = 60
+    out.parent.mkdir(parents=True, exist_ok=True)
+    book.save(out)
+    book.close()
+    print(f"-> {out}: {len(g)} codes, dev first; import after every sitting")
+
+
+def _normalise_concept(value):
+    """Accept AGROVOC short ids (including the snapshot's hexadecimal ids) or their full IRIs."""
+    prefix = "http://aims.fao.org/aos/agrovoc/"
+    short = value[len(prefix):] if value.startswith(prefix) else value
+    if not re.fullmatch(r"c_[A-Za-z0-9_-]+", short):
+        raise ValueError(f"{value!r}: expected a short id such as c_3360 or its full AGROVOC IRI")
+    return prefix + short
+
+
+def import_worksheet(path=None):
+    """Validate every worksheet row before saving answers; snapshot errors never discard a sitting."""
+    from openpyxl import load_workbook
+    from openpyxl.utils import get_column_letter
+
+    path = Path(path) if path is not None else WORKSHEET
+    g = pd.read_csv(GOLD, dtype=str, keep_default_na=False)
+    book = load_workbook(path)
+    problems, answers, seen = [], {}, set()
+    try:
+        if "Labels" not in book.sheetnames:
+            print("Labels: missing sheet")
+            sys.exit(1)
+        labels = book["Labels"]
+        headers = [c.value for c in labels[1]]
+        for name in ["code", *LABEL_COLUMNS]:
+            if headers.count(name) != 1:
+                problems.append(f"Labels!1: header {name!r} must occur exactly once")
+        if not problems:
+            columns = {name: headers.index(name) + 1 for name in ["code", *LABEL_COLUMNS]}
+            known = set(g["code"])
+            for row in labels.iter_rows(min_row=2):
+                if all(c.value is None or str(c.value).strip() == "" for c in row):
+                    continue
+                values = {name: "" if row[col - 1].value is None else str(row[col - 1].value).strip()
+                          for name, col in columns.items()}
+                code = values.pop("code")
+
+                def error(name, message):
+                    cell = f"{get_column_letter(columns[name])}{row[0].row}"
+                    problems.append(f"{code or '(missing code)'} Labels!{cell} ({name}): {message}")
+
+                if not code or code not in known:
+                    error("code", "missing code" if not code else "unknown code")
+                elif code in seen:
+                    error("code", "code occurs twice")
+                seen.add(code)
+                if values["relation"] and values["relation"] not in RELATIONS:
+                    error("relation", f"{values['relation']!r} is not in {RELATIONS}")
+                if values["concept"]:
+                    try:
+                        values["concept"] = _normalise_concept(values["concept"])
+                    except ValueError as exc:
+                        error("concept", str(exc))
+                alternatives = []
+                for value in values["alternatives"].split(";"):
+                    if not value.strip():
+                        continue
+                    try:
+                        alternatives.append(_normalise_concept(value.strip()))
+                    except ValueError as exc:
+                        error("alternatives", str(exc))
+                values["alternatives"] = "; ".join(alternatives)
+                answers[code] = values
+            for code in sorted(known - seen):
+                problems.append(f"{code} Labels!{get_column_letter(columns['code'])}: code missing from worksheet")
+    finally:
+        book.close()
+    if problems:
+        print("Worksheet format errors; gold CSV unchanged:\n  " + "\n  ".join(problems))
+        sys.exit(1)
+    for name in LABEL_COLUMNS:
+        g[name] = [answers[code][name] for code in g["code"]]
+    # Match template/upgrade's CSV format, keeping the existing UTF-8 BOM and line endings too.
+    original = GOLD.read_bytes()
+    encoding = "utf-8-sig" if original.startswith(b"\xef\xbb\xbf") else "utf-8"
+    newline = "\r\n" if b"\r\n" in original else "\n"
+    with NamedTemporaryFile(dir=GOLD.parent, suffix=".csv", delete=False) as handle:
+        temporary = Path(handle.name)
+    try:
+        g.to_csv(temporary, index=False, encoding=encoding, lineterminator=newline)
+        temporary.replace(GOLD)
+    finally:
+        temporary.unlink(missing_ok=True)
+    print(f"-> {GOLD}: answers saved. If check fails, fix the workbook and import again.")
+    check()
 
 
 def kappa(a, b):
@@ -190,6 +374,17 @@ if __name__ == "__main__":
         upgrade()
     elif cmd == ["blind"]:
         blind()
+    elif cmd == ["worksheet"]:
+        parser = argparse.ArgumentParser(description="Make Assil's AGROVOC worksheet")
+        parser.add_argument("--out", type=Path)
+        parser.add_argument("--force", action="store_true")
+        args = parser.parse_args(sys.argv[2:])
+        worksheet(args.out, args.force)
+    elif cmd == ["import"]:
+        parser = argparse.ArgumentParser(description="Save worksheet answers and check the gold set")
+        parser.add_argument("path", nargs="?", type=Path)
+        args = parser.parse_args(sys.argv[2:])
+        import_worksheet(args.path)
     elif cmd == ["search"] and len(sys.argv) > 2:
         search(" ".join(sys.argv[2:]))
     elif cmd == ["check"]:

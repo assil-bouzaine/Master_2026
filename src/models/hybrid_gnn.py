@@ -71,7 +71,9 @@ PyTorch module, keeping the exact additive decomposition and sign guarantees of
    ``rho_i(t) = 0.2 * sd_i * tanh(MLP(day-of-year features, static facts))``, never seeing a
    stress; off by default.
 9. **Training guard:** the CLI refuses to train unless ``PFE_ALLOW_TRAIN=1`` is set, so
-   training runs only on Colab and never accidentally on the laptop.
+   training runs only on Colab and never accidentally on the laptop. ``PFE_NO_SCORE=1`` stops it
+   after the seeds are saved, before any score (smoke and timing runs: nothing of v5 is scored
+   before the ``analysis-plan-v3`` tag).
 """
 from __future__ import annotations
 
@@ -187,6 +189,10 @@ INIT_BETA = 0.1
 
 REGIMES = ("R1", "R2", "R3_f25", "R3_f50", "refit")
 ALLOW_TRAIN_ENV = "PFE_ALLOW_TRAIN"
+# PFE_NO_SCORE=1 stops main() before the seed-mean predictions and their scores: a timing or smoke run
+# never scores the test period (plan v3 §0: no v5 result is scored before the analysis-plan-v3 tag).
+# An environment variable, not an option, so it never enters a run's configuration or fingerprint.
+NO_SCORE_ENV = "PFE_NO_SCORE"
 
 # Raw parameter layout per well:
 #   [0 : R]                 -> gain raw (R)
@@ -1721,7 +1727,7 @@ def main():
         save_seed(path, pz, data["codes"], data["weeks"], val_score, best_ep, fp)
         write_manifest(out, vars(prep["config_args"]) | {"fingerprint": fp}, [s])
 
-    if fold is not None:
+    if fold is not None or os.environ.get(NO_SCORE_ENV) == "1":
         return
 
     pred, n = seed_mean_predictions(out, P.assign(sd=P["sd"].clip(lower=SD_FLOOR)), args.seeds)

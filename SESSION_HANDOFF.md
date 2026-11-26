@@ -121,6 +121,16 @@ e-mails, the AGROVOC gold set, the paywalled papers, the defence date.
   Eionet unreachable from this network today (retry). **The graph release is stale** (ontology files changed): rebuild
   after the R2.2 terms (CQ15/CQ16), `PFE_DATASET=v5 .venv/bin/python -m src.kg.apply_rules` (≈ 10–15 min), then the
   exports and controls of the three policies and the graph test suites.
+- T81 (worksheet; Assil's file `data/interim/agrovoc_gold_worksheet.xlsx` generated), T82 + T83 (Track 2 runner,
+  fixes) and T84 (Colab GPU path for v5) reviewed and committed. R2.1 model-selection rule fixed before any output
+  (step16 note: Qwen2.5-7B-Instruct, Qwen3-8B, OLMo-3-7B-Instruct on dev, best statement F1).
+- **⚠ Colab session `ext` (L4, 2.33 units/h) RUNNING since ≈ 19:02 local** (job: `extract`, Qwen2.5-7B-Instruct,
+  dev). If this session ends: `.venv/bin/python -m scripts.colab_cli pull ext`, then `stop ext` (never leave it
+  billing). Then the other two candidates the same way (`EXTRACT_RUN=qwen3_8b_dev` with
+  `EXTRACT_TEMPLATE_KWARGS={"enable_thinking": false}`, `EXTRACT_RUN=olmo3_7b_dev`), score each with
+  `python -m src.kg.extract_llm score --pred results/v5/extraction/<run>/predictions_dev.json --split dev`.
+- Workers now: `neon` → **T85** (CQ15 in the ontology and graph, then the release rebuild); `sol` → **T86** (OpenAlex
+  harvest tool for Track 1; Claude runs it).
 
 ### 2026-11-26 (Claude Opus 5.5, from ≈ 11:20 local time)
 - Assil: "there is a bug fix folder start with that if those are valid bugs then continue the work as planned";

@@ -31,40 +31,31 @@ date.
 
 ---
 
-## ▶ START HERE (state on 2026-11-26 ≈ 13:45 local time; session in progress)
+## ▶ START HERE (state on 2026-11-26 ≈ 14:40 local time; session in progress)
 
-**Running:** worker `neon` on T76 (CQ15 rule on the Sentinel-2 parcel observations, census validation, per-well
-irrigated share → `src/dataset/irrigation_s2.py`), worker `sol` (GPT Sol 6.1 high) on T77 (equal-budget tuner
-`src/models/tune_hgnn.py` + `hgnn_tune` step; told to accept arms A–D). No Colab, Kaggle or Camber job (the smoke
-runtime was stopped). Branch `master_2026_fixes`; today's commits are local (push only when Assil says so).
+**Running:**
+- `neon` on T78: R2.2, seven ontology modules + EU/FR/TN profiles generated from `lulcw.ttl` (0.10.0), with a
+  release, export and controls rebuild at its end.
+- `sol` (GPT Sol 6.1 high) on T79: CQ15's outputs join the v5 build; determinism checks; no full rebuild.
 
-**Done today (details: session log below, `docs/notes/step16_v5.md`, `docs/v5_plan.md` §1b):**
-- **Bug audit `docs/v5_bugs_to_fix.md`:** every item checked and fixed or placed. Items 1 and 4, and a new
-  zero-pumping bug: lead. Items 2 and 3: T71. Item 5.3: T72. Item 5.4: T74. Item 5.5: R2.2, using T75.
-- **Plan v3 §8, all decided by Assil (recommendation first):**
-  - canal sign ≥ 0 at the two measured wells (graph decision, T74, ontology 0.9.1);
-  - pumping trains only through declared facility-years;
-  - twin criterion: D beats C in a majority of worlds, sign test;
-  - CQ15 built with a with/without row;
-  - tuning: each main arm its own budget, six training settings.
-- **Model work:**
-  - Colab smoke run: ≈ 0.4 s per epoch; replay across machines < 1e-5 m.
-  - The v5 CPU path for Colab (T73).
-  - Arms A/B of Hybrid-GNN v2 (facts, no graph).
-- **R1.4 data:** Sentinel-2 spring and summer NDVI/NDMI per parcel, 2017–2025 (`src/ingest/gee_s2.py`).
-- **R2.2 input:** the unused-term review (T75).
+No Colab job. Branch `master_2026_fixes`; today's commits are local (push only when Assil says so).
+
+**Done today:** the bug audit closed; plan v3 §8 fully decided by Assil (also the node features); Colab smoke run;
+Sentinel-2 + CQ15 rule (verdict heuristic, `docs/irrigation_s2.md`); arms A/B; equal-budget tuner (T77); v5 canal
+decision (T74). Details: session log below, `docs/notes/step16_v5.md`, `docs/v5_plan.md`.
 
 **Next, in order:**
-1. Review and commit T76 and T77. Then Gate R1: build CQ15's per-well share into dataset v5 and re-run the
-   reproducibility audit with it. Manouba Sentinel-2 + WorldCover + ERA5-Land (R1.4, second part) is still open.
-2. R2 (then Gate R2):
-   - R2.2: ontology split into modules and France/Tunisia profiles (T75 and T59 as inputs), CQ15/CQ16 terms and
-     rules;
-   - R2.3: alignments checked at their source (network: lead);
+1. Review and commit T78 and T79.
+2. **Gate R1:** the full cold-rebuild audit, after T78's rebuild:
+   `PYTHONIOENCODING=utf-8 PFE_DATASET=v5 .venv/bin/python -m src.analysis.dataset_v5_audit`
+   (T79's report confirms the exact command); then record Gate R1 in `docs/v5_plan.md`.
+3. R2, then Gate R2:
+   - R2.3: alignments checked at the source (network: lead);
    - R2.1: literature extraction (OpenAlex + a local LLM on Colab);
-   - R2.4: KGs + export + Gate R2.
-3. R3: the `analysis-plan-v3` tag (node-feature list still open), then tuning on Colab (`hgnn_tune`, ≈ 300 fits),
-   twin v2 (R3.3), the black box (Hetero-STGNN), Gate R3.
+   - R2.2 rest: CQ15/CQ16 terms and rules;
+   - R2.4: Manouba KG (Sentinel-2 + WorldCover + ERA5-Land) and the France → Tunisia reuse %.
+4. R3: tag `analysis-plan-v3`, then on Colab `push-cpu <name> --dataset v5 --steps hgnn_tune --env
+   'HGNN_TUNE_ARMS=A B C D'` (≈ 300 fits; T77's report has the full command), twin v2, the black box, Gate R3.
 
 **Waiting for Assil:** (unchanged) `! camber login` if Camber should run jobs; the professor's e-mail, the two data
 e-mails, the AGROVOC gold set, the paywalled papers, the defence date.

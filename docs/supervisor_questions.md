@@ -136,6 +136,11 @@ Attach `docs/review_2026-10-23.md` (the reasons), or this file.
 
 ## 5. Data request: monthly drinking-water production (French)
 
+**Not sent, and §6 neither (Assil, 2026-11-26: "don't write it, if we are not depending on them").** The plan does not
+depend on SMNPR or BRGM data: pumping effects are claimed from between-year and between-well variation only, under
+three pumping reconstructions, and the thesis states that only yearly volumes exist; CORNEILLA PD5's 0.00 m weeks
+stay masked. Kept as a record.
+
 To send to the water utility or the syndicate that runs the SAGE of the Roussillon
 aquifers (find the contact on their website). Assil sends it; the supervisor may be
 copied.

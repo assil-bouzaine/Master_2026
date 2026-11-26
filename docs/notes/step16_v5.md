@@ -119,3 +119,35 @@ five cleanups. Every claim was checked against the code and the data before anyt
   `_smoke` folder is excluded from every report.
 - Fits are cheap. So the tuning can give every arm its own budget (24 trials, re-selection over 3 seeds) rather
   than tuning only arm D, which would favour it. To decide with Assil, together with the ranges.
+
+## 2026-11-26 (afternoon) — CQ15, the tuner, the ontology modules; session end
+
+### What was done
+
+- **CQ15** (T76, then T79). The rule labels each parcel-year:
+  - *insufficient data*: fewer than 4 valid pixels or 3 clear summer acquisitions;
+  - *not applicable*: soil wetness of the parcel's weather cell above 0.5;
+  - *positive*: summer NDVI ≥ 0.485, a threshold set by Otsu's method on 2017–2019 only and frozen before the
+    census was looked at.
+
+  The 2020 census check gives orchards 0.71 (in range), vines 0.13 (too high) and market gardening 0.18 (too
+  low), so the verdict is **heuristic**, as CQ15's contract foresees. Each well's 2017–2019 share of
+  probably irrigated land is the static fact of the with/without row. Since T79 the v5 build makes these
+  files, and two runs give identical bytes.
+- **Arms A and B** of Hybrid-GNN v2: facts only, no graph. **The equal-budget tuner** (T77): 24 trials per arm,
+  scored on validation only, then re-selection over 3 seeds.
+- **The ontology split** (T78, ontology 0.10.0). `lulcw.ttl` stays the one authored file. Each term carries the
+  module it belongs to, and a generator writes the 7 modules and the EU/FR/TN profiles from it. 96.4 % of the
+  terms sit in the country-agnostic core; the French register codes live only in the France profile. The graph
+  release was rebuilt with 0 violations, and the exports are unchanged.
+- **R2.1, Track 2 scorer** (T80): the answer format and the precision/recall scoring of the LLM extraction
+  against the 32 hand-checked statements, fixed before any model is chosen or run.
+
+### What to keep in mind
+
+- **CQ15 "heuristic":** say "probably irrigated by a vegetation rule". It is not an irrigation map: vines are
+  over-detected and vegetable plots under-detected. Four mountain wells get green alpine pastures counted as
+  irrigation (their coverage is low; the 33 core wells are at ≥ 98 %).
+- **Gate R1 is not yet recorded as passed.** The cold-rebuild audit with the CQ15 files still has to run (the
+  commands are in `SESSION_HANDOFF.md`).
+

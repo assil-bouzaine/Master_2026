@@ -1,0 +1,33 @@
+{
+  "design": "R2.1 Track 1 (docs/v5_plan.md): fixed before any result is seen. No selection by paper findings.",
+  "endpoint": "https://api.openalex.org/works",
+  "parameters": {
+    "filter": "open_access.is_oa:true,type:article,from_publication_date:2010-01-01",
+    "per_page": 25,
+    "sort": "relevance_score:desc"
+  },
+  "user_agent": "pfe-research-harvest/1.0",
+  "request_interval_seconds": 1,
+  "target": 30,
+  "max_pdf_bytes": 26214400,
+  "eligibility": {
+    "required": ["doi", "best_oa_location.pdf_url", "title"],
+    "languages": ["en", "fr"],
+    "exclude_retracted": true
+  },
+  "selection": "Keep eligible works in response order. Take one from each query q01 to q10 per round; skip an already selected DOI (case-insensitive) or OpenAlex id. Stop at 30 or exhaustion. rank_in_query is the original one-based response position, including ineligible works.",
+  "download": "Write pdf/<OpenAlex short id>.pdf through a temporary name, then rename. Reuse existing valid PDFs. Require %PDF- and at most 25 MiB. Record failures and take the next unique candidate in the same round-robin order until 30 PDFs exist or candidates run out. Retain failed attempts in the metadata CSV.",
+  "cache": "Cache each raw response once as data/raw/openalex/<date>/<query id>.json; never fetch it again. No API key, e-mail or personal data in request parameters or headers.",
+  "queries": [
+    {"id": "q01", "search": "groundwater irrigation Mediterranean aquifer overexploitation"},
+    {"id": "q02", "search": "land use change groundwater recharge Mediterranean"},
+    {"id": "q03", "search": "irrigation canal return flow aquifer recharge"},
+    {"id": "q04", "search": "groundwater level decline irrigation Spain"},
+    {"id": "q05", "search": "groundwater depletion irrigation Tunisia"},
+    {"id": "q06", "search": "groundwater irrigation aquifer Morocco"},
+    {"id": "q07", "search": "drought groundwater level Mediterranean"},
+    {"id": "q08", "search": "nitrate groundwater agriculture Mediterranean"},
+    {"id": "q09", "search": "seawater intrusion coastal aquifer pumping Mediterranean"},
+    {"id": "q10", "search": "olive orchard vineyard irrigation groundwater"}
+  ]
+}

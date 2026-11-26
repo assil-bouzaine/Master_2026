@@ -1,0 +1,87 @@
+{
+  "pylode_version": "3.6.1",
+  "complete": true,
+  "errors": [],
+  "sources": [
+    {
+      "source": "modules/lulcw-causal.ttl",
+      "title": "LULC-Water causal mechanisms and constraints module",
+      "version": "0.11.0",
+      "terms": 49,
+      "sha256": "fb951051746e68e3742768727241ac58f75a210ed67b70d699ea807f105a9731",
+      "page": "lulcw-causal.html"
+    },
+    {
+      "source": "modules/lulcw-core.ttl",
+      "title": "LULC-Water core module",
+      "version": "0.11.0",
+      "terms": 91,
+      "sha256": "76c82abac326bbadef4458d81ecf46dcc38fd29e0f89bbe7e8088d5ca6d289bb",
+      "page": "lulcw-core.html"
+    },
+    {
+      "source": "modules/lulcw-eo.ttl",
+      "title": "LULC-Water Earth-observation module",
+      "version": "0.11.0",
+      "terms": 33,
+      "sha256": "e57bf10afb85ae81b7877145e55028c23c4f453deff7c486a78457688cecb114",
+      "page": "lulcw-eo.html"
+    },
+    {
+      "source": "modules/lulcw-hydro.ttl",
+      "title": "LULC-Water hydrogeology and surface-water module",
+      "version": "0.11.0",
+      "terms": 182,
+      "sha256": "b0df635c7b1f60f5769a98278c4a2d9cd3c36f70f26f0471f3718fba6404a7ae",
+      "page": "lulcw-hydro.html"
+    },
+    {
+      "source": "modules/lulcw-lulc.ttl",
+      "title": "LULC-Water land-use and crops module",
+      "version": "0.11.0",
+      "terms": 40,
+      "sha256": "75e1336bf71dff0f7ffc5b59d1db475d4cd80713e94a5fb2ec8da8d63027b831",
+      "page": "lulcw-lulc.html"
+    },
+    {
+      "source": "modules/lulcw-med-causal.ttl",
+      "title": "LULC-Water Mediterranean literature causal-evidence module",
+      "version": "0.11.0",
+      "terms": 44,
+      "sha256": "d4196ec3f511f565aef52eeafa6c313e72beabb87e003e5982c4989569b0baa5",
+      "page": "lulcw-med-causal.html"
+    },
+    {
+      "source": "modules/lulcw-xai.ttl",
+      "title": "LULC-Water explainable AI module",
+      "version": "0.11.0",
+      "terms": 0,
+      "sha256": "ec39e3dd22416241ac8c7561e29df7c4cda87de25f19cbcfae1969f6b7e9c3f0",
+      "page": "lulcw-xai.html"
+    },
+    {
+      "source": "profiles/lulcw-eu-profile.ttl",
+      "title": "LULC-Water European Union profile",
+      "version": "0.11.0",
+      "terms": 1,
+      "sha256": "ff6de34fb71065756c67edc06caa577983a4154a08d6ff796926b5b25c7a1d8e",
+      "page": "lulcw-eu-profile.html"
+    },
+    {
+      "source": "profiles/lulcw-fr-profile.ttl",
+      "title": "LULC-Water France profile",
+      "version": "0.11.0",
+      "terms": 14,
+      "sha256": "e567008acd0df24e102e0d55299e2ae3f22ad2427f879fe73c0cb83fe92c567f",
+      "page": "lulcw-fr-profile.html"
+    },
+    {
+      "source": "profiles/lulcw-tn-profile.ttl",
+      "title": "LULC-Water Tunisia profile",
+      "version": "0.11.0",
+      "terms": 0,
+      "sha256": "a420459f40bc9f2326c6170d5727b0969d5ad5eb6f53fdb4422eb9f410af9d8e",
+      "page": "lulcw-tn-profile.html"
+    }
+  ]
+}

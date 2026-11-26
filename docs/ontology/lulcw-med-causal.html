@@ -1,0 +1,3245 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>correspondances d'entité</title>
+    <style>
+        #pylode {
+            position: fixed;
+            top: 205px;
+            left: -150px;
+            font-size: small;
+            transform: rotate(-90deg);
+            color: grey;
+        }
+        #pylode a {
+            font-size: 1.5em;
+            font-weight: bold;
+            text-decoration: none;
+            color: #005A9C;
+        }
+        #pylode a:hover {
+            color: #333;
+        }
+        #pylode #p {
+            color: #329545;
+        }
+        #pylode #y {
+            color: #f9cb33;
+        }
+        #pylode #version {
+            font-size: 1.0em;
+        }
+
+        #profile {
+            font-style: italic;
+            font-size: 1.25em;
+            color: darkred!important;
+        }
+
+        .cardinality {
+            font-style: italic;
+            color: #aa00aa;
+        }
+
+        dl {
+            /*border: 1px solid navy;*/
+            /*padding:5px;*/
+        }
+
+        dt {
+            font-weight: bold;
+            padding: 0;
+        }
+
+        dd {
+            margin-bottom: 10px;
+            padding-top: 7px;
+            line-height: 1.6em;
+        }
+
+        ul.pylodelitlist {
+            list-style-type: none;
+            margin-left: -40px;
+        }
+
+        #metadata ul li,
+        #classes ul li {
+            margin-bottom: 10px;
+        }
+
+        #metadata dd p {
+          margin: 0 0 1em 0;
+        }
+
+        ul.hlist {
+            list-style-type: none;
+            border: 1px solid navy;
+            padding:5px;
+            background-color: #F4FFFF;
+        }
+
+        div.hierarchy {
+            margin-bottom: 30px;
+            background-color: #F4FFFF;
+            padding: 10px;
+        }
+
+        ul.hierarchy {
+            padding: 5px 25px 5px 25px;
+        }
+
+        ul.hierarchy li {
+            margin-top:5px;
+        }
+
+        ul.hlist li {
+            display: inline;
+            margin-right: 10px;
+        }
+
+        .entity {
+            border: 1px solid navy;
+            margin:5px 0 5px 0;
+            padding: 5px;
+        }
+
+        .entity th {
+            width: 150px;
+            vertical-align: top;
+        }
+
+        .entity th,
+        .entity td {
+            padding-bottom: 20px;
+        }
+
+        .entity table th {
+            text-align: left;
+        }
+
+        section#overview img {
+            max-width: 1000px;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            text-align: left
+        }
+        h1, h2, h3 {
+            color: #005A9C; background: white
+        }
+        h1 {
+            font: 170% sans-serif;
+            line-height: 110%;
+        }
+        h2 {
+            font: 140% sans-serif;
+            margin-top:40px;
+        }
+        h3 {
+            font: 120% sans-serif;
+            margin-top: 20px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid navy;
+        }
+        h4 { font: bold 100% sans-serif }
+        h5 {
+            font: italic 100% sans-serif;
+            margin-bottom: 10px;
+        }
+        h6 { font: small-caps 100% sans-serif }
+
+        body {
+            padding: 2em 70px 2em 70px;
+            margin: 0;
+            font-family: sans-serif;
+            color: black;
+            background: white;
+            background-position: top left;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            text-align: left;
+        }
+
+        section {
+            max-width: 1500px;
+        }
+
+        .figure {
+            margin-bottom: 20px;
+        }
+
+        :link { color: #00C; background: transparent }
+        :visited { color: #609; background: transparent }
+        a:active { color: #C00; background: transparent }
+
+        .sup-c,
+        .sup-op,
+        .sup-fp,
+        .sup-dp,
+        .sup-ap,
+        .sup-p,
+        .sup-ni,
+        .sup-con,
+        .sup-col,
+        .sup-ns,
+        .sup-ps {
+            cursor:help;
+        }
+
+        .sup-c {
+            color:orange;
+        }
+
+        .sup-op {
+            color:navy;
+        }
+
+        .sup-fp {
+            color:lightskyblue;
+        }
+
+        .sup-dp {
+            color:green;
+        }
+
+        .sup-ap {
+            color:darkred;
+        }
+
+        .sup-p {
+            color:black;
+        }
+
+        .sup-ni {
+            color:brown;
+        }
+
+        .sup-con {
+            color:orange;
+        }
+
+        .sup-col {
+            color:darkred;
+        }
+
+        .sup-ns {
+            color:lightgreen;
+        }
+
+        .sup-ps {
+            color:lightblue;
+        }
+
+        sup {
+            margin-left: -3px;
+        }
+        code {
+            font-size: large;
+            color: darkred;
+        }
+
+        /* less prominent links for properties */
+        .proplink {
+            color: #336;
+            text-decoration: none;
+        }
+
+        #toc {
+            position: fixed;
+            top: 0;
+            right: 0;
+            z-index: 2;
+            height: 100%;
+            overflow-y: auto;
+            padding: 10px;
+            border: solid 1px navy;
+            font-size: small;
+            width: 180px;
+        }
+        #toc h3 {
+            margin-top: 5px;
+        }
+
+        #toc ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        #toc .first > li {
+            margin-top: 5px;
+        }
+
+        #toc .second,
+        #toc .third {
+            padding-left: 10px;
+        }
+
+        .second li {
+            margin-top: 0.5em;
+        }
+
+        #content {
+            width: calc(100% - 150px);
+        }
+
+        .hover_property {
+            cursor: help;
+            text-decoration: none;
+            border-bottom: dashed 1px;
+        }
+
+        .setclass {
+            list-style-type: none;
+        }
+
+        code{
+            word-wrap: break-word;
+          }
+        table {
+            table-layout: fixed;
+            width: 100%;
+        }
+        td {
+            word-wrap: break-word;
+            line-height: 1.6em ;
+        }
+        #legend table.entity {
+            width: 25%;
+        }
+        @media (max-width: 768px) {
+            /* #toc and #pylode are siblings of #content directly under
+               body; flex ordering pulls the ToC (last in the document)
+               to the top of the page */
+            body {
+                display: flex;
+                flex-direction: column;
+                padding: 1em 16px;
+            }
+
+            dd {
+                margin-left: 20px;
+            }
+
+            #pylode {
+                display: none;
+            }
+
+            #content {
+                width: 100%;
+            }
+
+            #toc {
+                order: -1;
+                position: static;
+                width: auto;
+                height: auto;
+                overflow-y: visible;
+            }
+
+            img {
+                max-width: 100%;
+                height: auto;
+            }
+
+            /* long IRIs in link text must be able to break anywhere */
+            a {
+                overflow-wrap: anywhere;
+            }
+
+            /* stack property tables otherwise columns are squeezed */
+            table,
+            thead,
+            tbody,
+            tr,
+            th,
+            td {
+                display: block;
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            .entity th,
+            .entity td {
+                padding-bottom: 6px;
+            }
+
+            .entity td {
+                padding-bottom: 16px;
+            }
+
+            #legend table.entity {
+                width: 100%;
+            }
+        }
+
+	</style>
+    <link href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABhklEQVQ4jbWPzStEURjG3yQLirlGKUnKFO45Z+SjmXvnnmthQcpCoVhYmD/AwmJiI3OvZuZc2U3UlKU0/gAslMw9JgvhHxAr2fko7r0jHSsl+TgbTz2Lt5731/MASEiJW9ONml2QyX6rsGalmnT74v8BDf12hxJfpV8d1uwNKUBYszabdFv84L8B9X0rESVmmUup2fme0cVhJWaZHw4NWL1SewEAfDe6H3Dy6Ll456WEJsRZS630MwCAOI20ei5OBpxse5zcBZw8eS4uPpfIuDiCainIg9umBCU0GZzgLZ9Hn31OgoATL+CkLDGB5H1OKj4nFd/FBxUXJ0UZNb4edw/6nLyJXaj5FeCVyPLNIVmYK8TG1IwWb16L1gEACAFV90ftoT8bdOX0EeyY99gxBXZMgRz6qGb1KantAACI0UvE6F5XJqEjpsdURouI0Vt5gGOUkUNnPu7ObGIIMfNaGqDmjDRi9FZldF1lRgYzeqUyeoiY4ag5Iy3RgOYRM8+/M2bG8efsO4hGrpmJseyMAAAAAElFTkSuQmCC" rel="icon" sizes="16x16" type="image/png">
+    <link href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAC40lEQVRYhe2UT0hUQRzHp6Iss1B3VZKIDbbdfW9mnoi4f3zzjkJQeOgS0SEIb1EWBGGlLLu460zQPQM1unUIIjA6rfpm6ZAhHjoIRVQUFUlEbG+euTsdXG1d3VL3bVD4g+9h+L35fT/8fvN7ADgY9aHY5fpIvK82HO9ysu66wxWOzbkjcekKx0a2ALYA/n2AGi3a6ArFezcidziecQygNhhrcUficjP6PwBqtGijKxy/thnVBePHywYoDsFhl53GV8SEcsTx4usCMLUewTVpc23BNvEzm6Neyf1+KcG2vwqwUjgrOJq2JmHftwmkVBRGTvncFodnbI7vChO/FRznCmHsNM7aHM9Yk7Df5iqsLMw9sMNOK2g+jS4IEz0UJv4iuJZb2RltWnB4UZqH6ioGAgAAGe5vtiZhtzDx7OoRadLmeM7m6IRjhnLMW2Vx1bA5GhAmnhIcz6/xNj4Ujsky8UspwfayjDPjsF2Y6L7N8Vzx/BfP+KPg6LbgSqd8DnfJW2CnbaLhfH5ephpqygJYvQU4Z3P82TLRsDDhUTnmrSq+Y3N0Mg+Xldy/zwEAnLMWZ3pHpNExmfLs/t0dOdVcbT0JeKxUwFP2VljjqiE47Jp53LTXNxhsUZjerTByXWX6VZWRs/4bIQ2ACv+UAomgDzLCISNZxAxZKMhIDjLy1JfsaK+I+eGBUBNk5E2x8RogX/PdcDZUqieWTSh5D6nOVKqfhoycUmlHFFIyu5RXqf7AcQDISCpv/tqbMBqK883RtmpISRoxQyJKPgGn3wNk5NEigDFa6hslqV/Kj+FdBQD0bshIDlKSLlVcoWQo36UhR80BAMB73lulMn0EMpJTqD6qJiOt3mho/8GbkT2BZNgDB/V+RI0fkOrT3kRIVQbaDizJm2hdNbINBxwk5xAj3yEjuV9rZ1iIkgxixkLBA83mz8uCjLwoGwAx0vOnFSy5mtR4VTaAQvVORMnwZgSpzkrV/QmdE2tKe46+MQAAAABJRU5ErkJggg==" rel="icon" sizes="32x32" type="image/png">
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <script id="schema.org" type="application/ld+json">
+[
+  {
+    "@id": "https://w3id.org/lulcw#EvidenceMethodScheme",
+    "@type": [
+      "https://schema.org/DefinedTermSet"
+    ],
+    "https://schema.org/description": [
+      {
+        "@language": "en",
+        "@value": "Values of lulcw:EvidenceMethod."
+      }
+    ],
+    "https://schema.org/name": [
+      {
+        "@language": "en",
+        "@value": "evidence methods"
+      },
+      {
+        "@language": "fr",
+        "@value": "m\u00e9thodes de preuve"
+      }
+    ]
+  },
+  {
+    "@id": "https://w3id.org/lulcw#ExchangeDirectionScheme",
+    "@type": [
+      "https://schema.org/DefinedTermSet"
+    ],
+    "https://schema.org/description": [
+      {
+        "@language": "en",
+        "@value": "Values of lulcw:ExchangeDirection."
+      }
+    ],
+    "https://schema.org/name": [
+      {
+        "@language": "en",
+        "@value": "exchange directions"
+      },
+      {
+        "@language": "fr",
+        "@value": "sens d'\u00e9change"
+      }
+    ]
+  },
+  {
+    "@id": "https://w3id.org/lulcw#HedgingScheme",
+    "@type": [
+      "https://schema.org/DefinedTermSet"
+    ],
+    "https://schema.org/description": [
+      {
+        "@language": "en",
+        "@value": "Values of lulcw:Hedging."
+      }
+    ],
+    "https://schema.org/name": [
+      {
+        "@language": "en",
+        "@value": "hedging levels"
+      },
+      {
+        "@language": "fr",
+        "@value": "modalit\u00e9s"
+      }
+    ]
+  },
+  {
+    "@id": "https://w3id.org/lulcw#UnitMappingScheme",
+    "@type": [
+      "https://schema.org/DefinedTermSet"
+    ],
+    "https://schema.org/description": [
+      {
+        "@language": "en",
+        "@value": "Values of lulcw:UnitMapping."
+      }
+    ],
+    "https://schema.org/name": [
+      {
+        "@language": "en",
+        "@value": "unit mappings"
+      },
+      {
+        "@language": "fr",
+        "@value": "correspondances d'entit\u00e9"
+      }
+    ]
+  },
+  {
+    "@id": "https://w3id.org/lulcw/med-causal",
+    "@type": [
+      "https://schema.org/DefinedTermSet"
+    ],
+    "https://schema.org/creator": [
+      {
+        "@value": "Assil Bouzaine"
+      }
+    ],
+    "https://schema.org/dateCreated": [
+      {
+        "@type": "http://www.w3.org/2001/XMLSchema#date",
+        "@value": "2026-11-26"
+      }
+    ],
+    "https://schema.org/description": [
+      {
+        "@language": "en",
+        "@value": "Country-agnostic documentary and literature-derived causal-evidence vocabulary: source documents, verbatim passages, exchange statements, exchange directions, hedging, evidence methods, and unit mappings, ready to hold extracted Mediterranean causal axioms (R2.1)."
+      },
+      {
+        "@language": "fr",
+        "@value": "Vocabulaire documentaire et des preuves causales issues de la litt\u00e9rature ind\u00e9pendant des pays : documents sources, passages cit\u00e9s, \u00e9nonc\u00e9s d'\u00e9change, sens d'\u00e9change, modalit\u00e9s, m\u00e9thodes de preuve et correspondances d'entit\u00e9s, pr\u00eat \u00e0 accueillir les axiomes causaux m\u00e9diterran\u00e9ens extraits (R2.1)."
+      }
+    ],
+    "https://schema.org/license": [
+      {
+        "@id": "https://creativecommons.org/licenses/by/4.0/"
+      }
+    ],
+    "https://schema.org/name": [
+      {
+        "@language": "en",
+        "@value": "LULC-Water Mediterranean literature causal-evidence module"
+      },
+      {
+        "@language": "fr",
+        "@value": "Module preuves causales de la litt\u00e9rature m\u00e9diterran\u00e9enne LULC-Water"
+      }
+    ]
+  }
+]
+    </script>
+  </head>
+  <body>
+    <div id="content">
+      <div class="section" id="metadata">
+        <h1>LULC-Water Mediterranean literature causal-evidence moduleModule preuves causales de la littérature méditerranéenne LULC-Waterevidence methodsméthodes de preuveexchange directionssens d'échangehedging levelsmodalitésunit mappingscorrespondances d'entité</h1>
+        <h2>Metadata</h2>
+        <dl>
+          <div>
+            <dt>
+              <strong>IRI</strong>
+            </dt>
+            <dd>
+              <code>https://w3id.org/lulcw#UnitMappingScheme</code>
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <a class="hover_property" href="http://purl.org/dc/terms/title" title="A name given to the resource. Defined in DCMI Metadata Terms">Title</a>
+            </dt>
+            <dd>
+              <ul class="pylodelitlist">
+                <li><p>LULC-Water Mediterranean literature causal-evidence module</p></li>
+                <li><p>Module preuves causales de la littérature méditerranéenne LULC-Water</p></li>
+                <li><p>evidence methods</p></li>
+                <li><p>méthodes de preuve</p></li>
+                <li><p>exchange directions</p></li>
+                <li><p>sens d'échange</p></li>
+                <li><p>hedging levels</p></li>
+                <li><p>modalités</p></li>
+                <li><p>unit mappings</p></li>
+                <li><p>correspondances d'entité</p></li>
+              </ul>
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <a class="hover_property" href="http://purl.org/dc/terms/creator" title="An entity responsible for making the resource. Defined in DCMI Metadata Terms">Creator</a>
+            </dt>
+            <dd><p>Assil Bouzaine</p></dd>
+          </div>
+          <div>
+            <dt>
+              <a class="hover_property" href="http://purl.org/dc/terms/created" title="Date of creation of the resource. Defined in DCMI Metadata Terms">Date Created</a>
+            </dt>
+            <dd><p>2026-11-26</p></dd>
+          </div>
+          <div>
+            <dt>
+              <a class="hover_property" href="http://purl.org/dc/terms/license" title="Recommended practice is to identify the license document with a URI. If this is not possible or feasible, a literal value that identifies the license may be provided. Defined in DCMI Metadata Terms">License</a>
+            </dt>
+            <dd>
+              <a href="https://creativecommons.org/licenses/by/4.0/">https://creativecommons.org/licenses/by/4.0/</a>
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <a class="hover_property" href="http://www.w3.org/2002/07/owl#versionIRI" title="The property that identifies the version IRI of an ontology. Defined in The OWL 2 Schema vocabulary (OWL 2)">Version Iri</a>
+            </dt>
+            <dd>
+              <a href="https://w3id.org/lulcw/med-causal/0.11.0">https://w3id.org/lulcw/med-causal/0.11.0</a>
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <a class="hover_property" href="http://www.w3.org/2002/07/owl#versionInfo" title="The annotation property that provides version information for an ontology or another OWL construct. Defined in The OWL 2 Schema vocabulary (OWL 2)">Version Info</a>
+            </dt>
+            <dd><p>0.11.0</p></dd>
+          </div>
+          <div>
+            <dt>
+              <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+            </dt>
+            <dd>
+              <ul class="pylodelitlist">
+                <li><p>Country-agnostic documentary and literature-derived causal-evidence vocabulary: source documents, verbatim passages, exchange statements, exchange directions, hedging, evidence methods, and unit mappings, ready to hold extracted Mediterranean causal axioms (R2.1).</p></li>
+                <li><p>Vocabulaire documentaire et des preuves causales issues de la littérature indépendant des pays : documents sources, passages cités, énoncés d'échange, sens d'échange, modalités, méthodes de preuve et correspondances d'entités, prêt à accueillir les axiomes causaux méditerranéens extraits (R2.1).</p></li>
+                <li><p>Values of lulcw:EvidenceMethod.</p></li>
+                <li><p>Values of lulcw:ExchangeDirection.</p></li>
+                <li><p>Values of lulcw:Hedging.</p></li>
+                <li><p>Values of lulcw:UnitMapping.</p></li>
+              </ul>
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <a class="hover_property" href="http://www.w3.org/2002/07/owl#imports" title="The property that is used for importing other ontologies into a given ontology. Defined in The OWL 2 Schema vocabulary (OWL 2)">Imports</a>
+            </dt>
+            <dd>
+              <ul class="pylodelitlist">
+                <li>
+                  <a href="https://w3id.org/lulcw/causal">https://w3id.org/lulcw/causal</a>
+                </li>
+                <li>
+                  <a href="https://w3id.org/lulcw/core">https://w3id.org/lulcw/core</a>
+                </li>
+                <li>
+                  <a href="https://w3id.org/lulcw/hydro">https://w3id.org/lulcw/hydro</a>
+                </li>
+                <li>
+                  <a href="https://w3id.org/lulcw/imports/geo">https://w3id.org/lulcw/imports/geo</a>
+                </li>
+                <li>
+                  <a href="https://w3id.org/lulcw/imports/prov">https://w3id.org/lulcw/imports/prov</a>
+                </li>
+                <li>
+                  <a href="https://w3id.org/lulcw/imports/skos">https://w3id.org/lulcw/imports/skos</a>
+                </li>
+              </ul>
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+            </dt>
+            <dd>
+              <ul class="pylodelitlist">
+                <li>
+                  <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+                </li>
+                <li>
+                  <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+                </li>
+                <li>
+                  <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+                </li>
+                <li>
+                  <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+                </li>
+              </ul>
+            </dd>
+          </div>
+        </dl>
+      </div>
+      <div class="section" id="classes">
+        <h2>Classes</h2>
+        <h3 id="class-hierarchy">Class Hierarchy</h3>
+        <div class="hierarchy">
+          <ul class="hierarchy">
+            <li>
+              <a href="#Document">document</a>
+            </li>
+            <li>
+              <a href="#DocumentPassage">document passage</a>
+            </li>
+            <li>
+              <a href="#EvidenceMethod">evidence method</a>
+            </li>
+            <li>
+              <a href="#ExchangeDirection">exchange direction</a>
+            </li>
+            <li>
+              <a href="#ExchangeStatement">exchange statement</a>
+            </li>
+            <li>
+              <a href="#Hedging">hedging</a>
+            </li>
+            <li>
+              <a href="#UnitMapping">unit mapping</a>
+            </li>
+          </ul>
+        </div>
+        <h3 id="class-definitions">Class Definitions</h3>
+        <div class="property entity" id="Document">
+          <h3>documentdocument
+            <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#Document</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>A published report or sheet that statements of the graph are read from, kept as a dated local copy with its checksum.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#subClassOf" title="The subject is a subclass of a class. Defined in The RDF Schema vocabulary (RDFS)">Sub Class Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="http://www.w3.org/ns/prov#Entity">Entity</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/inRangeOf" title="Inverse of rdfs:range. Defined in Ontology Documentation Profile">In Range Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#inDocument">in document</a>
+                  <sup class="sup-op" title="OWL Object Property">op</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="DocumentPassage">
+          <h3>document passagepassage de document
+            <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#DocumentPassage</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>A located passage of a document: its printed page (or sheet page) and a short verbatim quote.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#subClassOf" title="The subject is a subclass of a class. Defined in The RDF Schema vocabulary (RDFS)">Sub Class Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="http://www.w3.org/ns/prov#Entity">Entity</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/inDomainOf" title="Inverse of rdfs:domain. Defined in Ontology Documentation Profile">In Domain Of</a>
+              </th>
+              <td>
+                <ul class="pylodelitlist">
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#inDocument">in document</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#pageLabel">page</a>
+                      <sup class="sup-dp" title="OWL Datatype Property">dp</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#quote">quote</a>
+                      <sup class="sup-dp" title="OWL Datatype Property">dp</sup>
+                    </span>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="EvidenceMethod">
+          <h3>evidence methodméthode de la preuve
+            <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#EvidenceMethod</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>How the finding behind an exchange statement was obtained, as far as its source says. Separate from the hedging (how assertively the source words it) and from any confidence: assertive wording is not evidence calibration.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#subClassOf" title="The subject is a subclass of a class. Defined in The RDF Schema vocabulary (RDFS)">Sub Class Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="http://www.w3.org/2004/02/skos/core#Concept">Concept</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/inRangeOf" title="Inverse of rdfs:range. Defined in Ontology Documentation Profile">In Range Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#evidenceMethod">has evidence method</a>
+                  <sup class="sup-op" title="OWL Object Property">op</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/hasMember" title="None. Defined in None">Has Member</a>
+              </th>
+              <td>
+                <ul class="pylodelitlist">
+                  <li>
+                    <a href="https://w3id.org/lulcw#DifferentialGauging">differential gauging</a>
+                  </li>
+                  <li>
+                    <a href="https://w3id.org/lulcw#GeochemicalTracing">geochemical tracing</a>
+                  </li>
+                  <li>
+                    <a href="https://w3id.org/lulcw#SynthesisStatement">synthesis</a>
+                  </li>
+                  <li>
+                    <a href="https://w3id.org/lulcw#WaterBalanceEstimate">water balance</a>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="ExchangeDirection">
+          <h3>exchange directionsens de l'échange
+            <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#ExchangeDirection</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>Direction of a documented exchange between surface water and a unit, at the state or period the source states; a state, not a timeless property, and not the sign of a head response.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#subClassOf" title="The subject is a subclass of a class. Defined in The RDF Schema vocabulary (RDFS)">Sub Class Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="http://www.w3.org/2004/02/skos/core#Concept">Concept</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/inRangeOf" title="Inverse of rdfs:range. Defined in Ontology Documentation Profile">In Range Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#exchangeDirection">has exchange direction</a>
+                  <sup class="sup-op" title="OWL Object Property">op</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/hasMember" title="None. Defined in None">Has Member</a>
+              </th>
+              <td>
+                <ul class="pylodelitlist">
+                  <li>
+                    <a href="https://w3id.org/lulcw#AquiferToSurface">from the aquifer to surface water</a>
+                  </li>
+                  <li>
+                    <a href="https://w3id.org/lulcw#ExchangeEquilibrium">in equilibrium</a>
+                  </li>
+                  <li>
+                    <a href="https://w3id.org/lulcw#NoExchange">no exchange</a>
+                  </li>
+                  <li>
+                    <a href="https://w3id.org/lulcw#NotQualified">not qualified</a>
+                  </li>
+                  <li>
+                    <a href="https://w3id.org/lulcw#SurfaceToAquifer">from surface water to the aquifer</a>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="ExchangeStatement">
+          <h3>exchange statementénoncé d'échange
+            <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#ExchangeStatement</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>A statement read from a document about water exchange between surface water (a river section, a watercourse or the canals) and hydrogeological units: its mechanism, direction, state or period, quantity, hedging, method, how the source names its subject, and the passage it comes from. The subject is a unit itself (lulcw:aboutUnit) or an aggregate of units (lulcw:aggregateMemberUnit, and lulcw:aboutGroundwaterBody when the source states a WFD body). The graph records what the source says, at the scale the source says it; it is not a measured effect, and statements that disagree are kept side by side.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#subClassOf" title="The subject is a subclass of a class. Defined in The RDF Schema vocabulary (RDFS)">Sub Class Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="http://www.w3.org/ns/prov#Entity">Entity</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/inDomainOf" title="Inverse of rdfs:domain. Defined in Ontology Documentation Profile">In Domain Of</a>
+              </th>
+              <td>
+                <ul class="pylodelitlist">
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#aboutGroundwaterBody">about groundwater body</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#aboutSection">about section</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#aboutUnit">about unit</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#aboutWatercourse">about watercourse</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#aggregateMemberUnit">aggregate member unit</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#evidenceMethod">has evidence method</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#exchangeDirection">has exchange direction</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#fluxM3s">flux (m³/s)</a>
+                      <sup class="sup-dp" title="OWL Datatype Property">dp</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#fluxUncertaintyM3s">flux uncertainty (m³/s)</a>
+                      <sup class="sup-dp" title="OWL Datatype Property">dp</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#hedging">has hedging</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#measuredAt">measured at</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#stateDescription">state described</a>
+                      <sup class="sup-dp" title="OWL Datatype Property">dp</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#statedMechanism">stated mechanism</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#unitAsNamed">unit as named</a>
+                      <sup class="sup-dp" title="OWL Datatype Property">dp</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#unitMapping">has unit mapping</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/inRangeOf" title="Inverse of rdfs:range. Defined in Ontology Documentation Profile">In Range Of</a>
+              </th>
+              <td>
+                <ul class="pylodelitlist">
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#applicableStatement">applicable statement</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#localizedStatement">localised aggregate statement</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="Hedging">
+          <h3>hedgingmodalité
+            <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#Hedging</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>Whether a source states a finding or hedges it (conditional mood, 'could', 'seems', reported speech).</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#subClassOf" title="The subject is a subclass of a class. Defined in The RDF Schema vocabulary (RDFS)">Sub Class Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="http://www.w3.org/2004/02/skos/core#Concept">Concept</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/inRangeOf" title="Inverse of rdfs:range. Defined in Ontology Documentation Profile">In Range Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#hedging">has hedging</a>
+                  <sup class="sup-op" title="OWL Object Property">op</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/hasMember" title="None. Defined in None">Has Member</a>
+              </th>
+              <td>
+                <ul class="pylodelitlist">
+                  <li>
+                    <a href="https://w3id.org/lulcw#HedgedFinding">hedged</a>
+                  </li>
+                  <li>
+                    <a href="https://w3id.org/lulcw#StatedFinding">stated</a>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="UnitMapping">
+          <h3>unit mappingcorrespondance d'entité
+            <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#UnitMapping</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>How the units a statement is about were identified in the graph's BD LISA release.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#subClassOf" title="The subject is a subclass of a class. Defined in The RDF Schema vocabulary (RDFS)">Sub Class Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="http://www.w3.org/2004/02/skos/core#Concept">Concept</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/inRangeOf" title="Inverse of rdfs:range. Defined in Ontology Documentation Profile">In Range Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#unitMapping">has unit mapping</a>
+                  <sup class="sup-op" title="OWL Object Property">op</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/hasMember" title="None. Defined in None">Has Member</a>
+              </th>
+              <td>
+                <ul class="pylodelitlist">
+                  <li>
+                    <a href="https://w3id.org/lulcw#UnitListedBySource">listed by the source</a>
+                  </li>
+                  <li>
+                    <a href="https://w3id.org/lulcw#UnitMappedByName">mapped by name</a>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div class="section" id="objectproperties">
+        <h2>Object Properties</h2>
+        <h3 id="object-property-hierarchy">Object Property Hierarchy</h3>
+        <div class="hierarchy">
+          <ul class="hierarchy">
+            <li>
+              <a href="#aboutGroundwaterBody">about groundwater body</a>
+            </li>
+            <li>
+              <a href="#aboutSection">about section</a>
+            </li>
+            <li>
+              <a href="#aboutUnit">about unit</a>
+            </li>
+            <li>
+              <a href="#aboutWatercourse">about watercourse</a>
+            </li>
+            <li>
+              <a href="#aggregateMemberUnit">aggregate member unit</a>
+            </li>
+            <li>
+              <a href="#applicableStatement">applicable statement</a>
+            </li>
+            <li>
+              <a href="#evidenceMethod">has evidence method</a>
+            </li>
+            <li>
+              <a href="#exchangeDirection">has exchange direction</a>
+            </li>
+            <li>
+              <a href="#hedging">has hedging</a>
+            </li>
+            <li>
+              <a href="#unitMapping">has unit mapping</a>
+            </li>
+            <li>
+              <a href="#inDocument">in document</a>
+            </li>
+            <li>
+              <a href="#localizedStatement">localised aggregate statement</a>
+            </li>
+            <li>
+              <a href="#measuredAt">measured at</a>
+            </li>
+            <li>
+              <a href="#statedMechanism">stated mechanism</a>
+            </li>
+          </ul>
+        </div>
+        <h3 id="object-property-definitions">Object Property Definitions</h3>
+        <div class="property entity" id="aboutGroundwaterBody">
+          <h3>about groundwater bodyporte sur la masse d'eau souterraine
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#aboutGroundwaterBody</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The WFD groundwater body an exchange statement is about, when the source states the exchange at that scale (e.g. a characterisation sheet's table of river exchanges).</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw#GroundwaterBody">lulcw:GroundwaterBody</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="aboutSection">
+          <h3>about sectionporte sur le secteur
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#aboutSection</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The river section an exchange statement is about, when the source delimits it.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw#RiverSection">lulcw:RiverSection</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="aboutUnit">
+          <h3>about unitporte sur l'entité
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#aboutUnit</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>A hydrogeological unit an exchange statement is about itself, as identified by lulcw:unitMapping: the source names this unit (a formation or a code mapped to exactly this unit, or a groundwater body made of this unit alone). A statement about an aggregate of several units uses lulcw:aggregateMemberUnit instead.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw#HydrogeologicalUnit">lulcw:HydrogeologicalUnit</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="aboutWatercourse">
+          <h3>about watercourseporte sur le cours d'eau
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#aboutWatercourse</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The watercourse an exchange statement is about. Without lulcw:aboutSection, the source does not delimit the stretch, and the statement is listed for the watercourse but never applied to a zone.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw#Watercourse">lulcw:Watercourse</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="aggregateMemberUnit">
+          <h3>aggregate member unitentité membre de l'agrégat
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#aggregateMemberUnit</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>A unit that belongs to the aggregate an exchange statement is about (a groundwater body of several units, or a group the source names, such as 'the Quaternary formations'). Membership does not say that this unit takes part in the exchange: the statement is localised to the unit only by a separate, stated inference (lulcw:localizedStatement), never by membership alone.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw#HydrogeologicalUnit">lulcw:HydrogeologicalUnit</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="applicableStatement">
+          <h3>applicable statementénoncé applicable
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#applicableStatement</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>An exchange statement about the association's unit itself (lulcw:aboutUnit) and about a section that holds reach pieces of the association's zone and watercourse (for a canal-unit association: a canal-return statement naming the unit). A statement measured at a site (lulcw:measuredAt) applies only to the associations of that site's zone. Statements about an aggregate are never applicable; see lulcw:localizedStatement.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="evidenceMethod">
+          <h3>has evidence methoda pour méthode de preuve
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#evidenceMethod</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>How the source obtained the finding (differential gauging, geochemical tracing, water balance, or a synthesis that does not say).</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#EvidenceMethod">evidence method</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="exchangeDirection">
+          <h3>has exchange directiona pour sens d'échange
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#exchangeDirection</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The direction the statement gives, at its state or period.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeDirection">exchange direction</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="hedging">
+          <h3>has hedginga pour modalité
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#hedging</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>Whether the source states or hedges the finding.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Hedging">hedging</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="inDocument">
+          <h3>in documentdans le document
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#inDocument</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The document a passage is taken from.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#DocumentPassage">document passage</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Document">document</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="localizedStatement">
+          <h3>localised aggregate statementénoncé d'agrégat localisé
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#localizedStatement</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>Derived by a rule: a statement about an aggregate that the association's unit belongs to (lulcw:aggregateMemberUnit), localised to the unit because the association's river reaches (about a section that holds pieces of them in the zone) or canal reaches run on the unit's outcrop, where the unit is the member in contact with the surface water. A separate inference from lulcw:applicableStatement: it documents the exchange at the aggregate's scale and makes no response sign eligible until the localisation is reviewed (Gate 3).</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="measuredAt">
+          <h3>measured atmesuré au point
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#measuredAt</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The site (e.g. a piezometer) where the measurement behind an exchange statement was made, when the source names one. The statement is evidence at that site: it applies only to the associations of the site's own zone, and another well of the same unit does not inherit it.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="http://www.opengis.net/ont/geosparql#Feature">geo:Feature</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="statedMechanism">
+          <h3>stated mechanismmécanisme énoncé
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#statedMechanism</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The mechanism an exchange statement is about (river exchange, canal return flow, vertical leakage).</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw#Mechanism">lulcw:Mechanism</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="unitMapping">
+          <h3>has unit mappinga pour correspondance d'entité
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#unitMapping</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>How the statement's units were identified in the BD LISA release.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#UnitMapping">unit mapping</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div class="section" id="datatypeproperties">
+        <h2>Datatype Properties</h2>
+        <div class="property entity" id="flux(m/s)">
+          <h3>flux (m³/s)flux (m³/s)
+            <sup class="sup-dp" title="OWL Datatype Property">dp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#fluxM3s</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The exchange flux the statement gives, in cubic metres per second, positive in the stated direction.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="http://www.w3.org/2001/XMLSchema#double">xsd:double</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="fluxuncertainty(m/s)">
+          <h3>flux uncertainty (m³/s)incertitude du flux (m³/s)
+            <sup class="sup-dp" title="OWL Datatype Property">dp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#fluxUncertaintyM3s</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The plus-or-minus uncertainty the source gives for the flux, in cubic metres per second.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="http://www.w3.org/2001/XMLSchema#double">xsd:double</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="page">
+          <h3>pagepage
+            <sup class="sup-dp" title="OWL Datatype Property">dp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#pageLabel</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The printed page (or sheet page) of a passage, as the document numbers it.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#DocumentPassage">document passage</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="http://www.w3.org/2001/XMLSchema#string">xsd:string</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="quote">
+          <h3>quotecitation
+            <sup class="sup-dp" title="OWL Datatype Property">dp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#quote</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>A short verbatim quote of the passage, in the document's language.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#DocumentPassage">document passage</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="http://www.w3.org/2001/XMLSchema#string">xsd:string</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="statedescribed">
+          <h3>state describedétat décrit
+            <sup class="sup-dp" title="OWL Datatype Property">dp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#stateDescription</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The hydrological state or scale the statement holds for, in words (e.g. 'low flow, at the scale of the water body'; 'irrigation season, 11-13 September 2017').</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="http://www.w3.org/2001/XMLSchema#string">xsd:string</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="unitasnamed">
+          <h3>unit as namedentité telle que nommée
+            <sup class="sup-dp" title="OWL Datatype Property">dp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#unitAsNamed</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>How the source names the unit or groundwater body the statement is about, verbatim.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="http://www.w3.org/2001/XMLSchema#string">xsd:string</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div class="section" id="annotationproperties">
+        <h2>Annotation Properties</h2>
+        <div class="property entity" id="created">
+          <h3>Created
+            <sup class="sup-ap" title="OWL Annotation Property">ap</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>http://purl.org/dc/terms/created</code>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="creator">
+          <h3>Creator
+            <sup class="sup-ap" title="OWL Annotation Property">ap</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>http://purl.org/dc/terms/creator</code>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="description">
+          <h3>Description
+            <sup class="sup-ap" title="OWL Annotation Property">ap</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>http://purl.org/dc/terms/description</code>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="license">
+          <h3>License
+            <sup class="sup-ap" title="OWL Annotation Property">ap</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>http://purl.org/dc/terms/license</code>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="title">
+          <h3>Title
+            <sup class="sup-ap" title="OWL Annotation Property">ap</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>http://purl.org/dc/terms/title</code>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div class="section" id="functionalproperties">
+        <h2>Functional Properties</h2>
+        <div class="property entity" id="aboutGroundwaterBody">
+          <h3>about groundwater bodyporte sur la masse d'eau souterraine
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#aboutGroundwaterBody</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The WFD groundwater body an exchange statement is about, when the source states the exchange at that scale (e.g. a characterisation sheet's table of river exchanges).</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw#GroundwaterBody">lulcw:GroundwaterBody</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="evidenceMethod">
+          <h3>has evidence methoda pour méthode de preuve
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#evidenceMethod</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>How the source obtained the finding (differential gauging, geochemical tracing, water balance, or a synthesis that does not say).</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#EvidenceMethod">evidence method</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="exchangeDirection">
+          <h3>has exchange directiona pour sens d'échange
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#exchangeDirection</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The direction the statement gives, at its state or period.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeDirection">exchange direction</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="flux(m/s)">
+          <h3>flux (m³/s)flux (m³/s)
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#fluxM3s</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The exchange flux the statement gives, in cubic metres per second, positive in the stated direction.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="http://www.w3.org/2001/XMLSchema#double">xsd:double</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="fluxuncertainty(m/s)">
+          <h3>flux uncertainty (m³/s)incertitude du flux (m³/s)
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#fluxUncertaintyM3s</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The plus-or-minus uncertainty the source gives for the flux, in cubic metres per second.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="http://www.w3.org/2001/XMLSchema#double">xsd:double</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="hedging">
+          <h3>has hedginga pour modalité
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#hedging</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>Whether the source states or hedges the finding.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Hedging">hedging</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="inDocument">
+          <h3>in documentdans le document
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#inDocument</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The document a passage is taken from.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#DocumentPassage">document passage</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Document">document</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="page">
+          <h3>pagepage
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#pageLabel</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The printed page (or sheet page) of a passage, as the document numbers it.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#DocumentPassage">document passage</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="http://www.w3.org/2001/XMLSchema#string">xsd:string</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="quote">
+          <h3>quotecitation
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#quote</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>A short verbatim quote of the passage, in the document's language.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#DocumentPassage">document passage</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="http://www.w3.org/2001/XMLSchema#string">xsd:string</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="statedescribed">
+          <h3>state describedétat décrit
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#stateDescription</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The hydrological state or scale the statement holds for, in words (e.g. 'low flow, at the scale of the water body'; 'irrigation season, 11-13 September 2017').</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="http://www.w3.org/2001/XMLSchema#string">xsd:string</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="statedMechanism">
+          <h3>stated mechanismmécanisme énoncé
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#statedMechanism</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The mechanism an exchange statement is about (river exchange, canal return flow, vertical leakage).</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw#Mechanism">lulcw:Mechanism</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="unitasnamed">
+          <h3>unit as namedentité telle que nommée
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#unitAsNamed</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>How the source names the unit or groundwater body the statement is about, verbatim.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="http://www.w3.org/2001/XMLSchema#string">xsd:string</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="unitMapping">
+          <h3>has unit mappinga pour correspondance d'entité
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#unitMapping</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>How the statement's units were identified in the BD LISA release.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExchangeStatement">exchange statement</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#UnitMapping">unit mapping</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/med-causal">LULC-Water Mediterranean literature causal-evidence module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div id="namespaces">
+        <h2>Namespaces</h2>
+        <dl>
+          <dt id="dcterms">dcterms</dt>
+          <dd>
+            <code>http://purl.org/dc/terms/</code>
+          </dd>
+          <dt id="geo">geo</dt>
+          <dd>
+            <code>http://www.opengis.net/ont/geosparql#</code>
+          </dd>
+          <dt id="lulcw">lulcw</dt>
+          <dd>
+            <code>https://w3id.org/lulcw#</code>
+          </dd>
+          <dt id="owl">owl</dt>
+          <dd>
+            <code>http://www.w3.org/2002/07/owl#</code>
+          </dd>
+          <dt id="prov">prov</dt>
+          <dd>
+            <code>http://www.w3.org/ns/prov#</code>
+          </dd>
+          <dt id="rdf">rdf</dt>
+          <dd>
+            <code>http://www.w3.org/1999/02/22-rdf-syntax-ns#</code>
+          </dd>
+          <dt id="rdfs">rdfs</dt>
+          <dd>
+            <code>http://www.w3.org/2000/01/rdf-schema#</code>
+          </dd>
+          <dt id="skos">skos</dt>
+          <dd>
+            <code>http://www.w3.org/2004/02/skos/core#</code>
+          </dd>
+          <dt id="xsd">xsd</dt>
+          <dd>
+            <code>http://www.w3.org/2001/XMLSchema#</code>
+          </dd>
+        </dl>
+      </div>
+      <div id="legend">
+        <h2>Legend</h2>
+        <table class="entity">
+          <tr>
+            <td>
+              <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+            </td>
+            <td>Classes</td>
+          </tr>
+          <tr>
+            <td>
+              <sup class="sup-op" title="OWL Object Property">op</sup>
+            </td>
+            <td>Object Properties</td>
+          </tr>
+          <tr>
+            <td>
+              <sup class="sup-dp" title="OWL Datatype Property">dp</sup>
+            </td>
+            <td>Datatype Properties</td>
+          </tr>
+          <tr>
+            <td>
+              <sup class="sup-ap" title="OWL Annotation Property">ap</sup>
+            </td>
+            <td>Annotation Properties</td>
+          </tr>
+          <tr>
+            <td>
+              <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+            </td>
+            <td>Functional Properties</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+    <div id="pylode">
+      <p>made by 
+        <a href="https://github.com/rdflib/pyLODE">
+          <span id="p">p</span>
+          <span id="y">y</span>
+          <span>LODE</span>
+        </a>
+        <a href="https://github.com/rdflib/pyLODE/release/3.6.1" id="version">3.6.1</a>
+        <span> with the </span>
+        <a href="https://linked.data.gov.au/def/ontpub" id="profile">OntPub</a>
+        <span>profile</span>
+      </p>
+    </div>
+    <div id="toc">
+      <h3>Table of Contents</h3>
+      <ul class="first">
+        <li>
+          <h4>
+            <a href="#metadata">Metadata</a>
+          </h4>
+        </li>
+        <li>
+          <h4>
+            <a href="#classes">Classes</a>
+          </h4>
+          <h5>
+            <a href="#class-hierarchy" style="margin-left:10px;">Class Hierarchy</a>
+          </h5>
+          <h5>
+            <a href="#class-definitions" style="margin-left:10px;">Class Definitions</a>
+          </h5>
+          <ul class="second">
+            <li style="margin-left:10px;">
+              <a href="#Document">documentdocument</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#DocumentPassage">document passagepassage de document</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#EvidenceMethod">evidence methodméthode de la preuve</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#ExchangeDirection">exchange directionsens de l'échange</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#ExchangeStatement">exchange statementénoncé d'échange</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#Hedging">hedgingmodalité</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#UnitMapping">unit mappingcorrespondance d'entité</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <h4>
+            <a href="#objectproperties">Object Properties</a>
+          </h4>
+          <h5>
+            <a href="#object-property-hierarchy" style="margin-left:10px;">Object Property Hierarchy</a>
+          </h5>
+          <h5>
+            <a href="#object-property-definitions" style="margin-left:10px;">Object Property Definitions</a>
+          </h5>
+          <ul class="second">
+            <li style="margin-left:10px;">
+              <a href="#aboutGroundwaterBody">about groundwater bodyporte sur la masse d'eau souterraine</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#aboutSection">about sectionporte sur le secteur</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#aboutUnit">about unitporte sur l'entité</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#aboutWatercourse">about watercourseporte sur le cours d'eau</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#aggregateMemberUnit">aggregate member unitentité membre de l'agrégat</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#applicableStatement">applicable statementénoncé applicable</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#evidenceMethod">has evidence methoda pour méthode de preuve</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#exchangeDirection">has exchange directiona pour sens d'échange</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#hedging">has hedginga pour modalité</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#inDocument">in documentdans le document</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#localizedStatement">localised aggregate statementénoncé d'agrégat localisé</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#measuredAt">measured atmesuré au point</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#statedMechanism">stated mechanismmécanisme énoncé</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#unitMapping">has unit mappinga pour correspondance d'entité</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <h4>
+            <a href="#datatypeproperties">Datatype Properties</a>
+          </h4>
+          <ul class="second">
+            <li>
+              <a href="#flux(m/s)">flux (m³/s)flux (m³/s)</a>
+            </li>
+            <li>
+              <a href="#fluxuncertainty(m/s)">flux uncertainty (m³/s)incertitude du flux (m³/s)</a>
+            </li>
+            <li>
+              <a href="#page">pagepage</a>
+            </li>
+            <li>
+              <a href="#quote">quotecitation</a>
+            </li>
+            <li>
+              <a href="#statedescribed">state describedétat décrit</a>
+            </li>
+            <li>
+              <a href="#unitasnamed">unit as namedentité telle que nommée</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <h4>
+            <a href="#annotationproperties">Annotation Properties</a>
+          </h4>
+          <ul class="second">
+            <li>
+              <a href="#created">Created</a>
+            </li>
+            <li>
+              <a href="#creator">Creator</a>
+            </li>
+            <li>
+              <a href="#description">Description</a>
+            </li>
+            <li>
+              <a href="#license">License</a>
+            </li>
+            <li>
+              <a href="#title">Title</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <h4>
+            <a href="#functionalproperties">Functional Properties</a>
+          </h4>
+          <ul class="second">
+            <li>
+              <a href="#aboutGroundwaterBody">about groundwater bodyporte sur la masse d'eau souterraine</a>
+            </li>
+            <li>
+              <a href="#evidenceMethod">has evidence methoda pour méthode de preuve</a>
+            </li>
+            <li>
+              <a href="#exchangeDirection">has exchange directiona pour sens d'échange</a>
+            </li>
+            <li>
+              <a href="#flux(m/s)">flux (m³/s)flux (m³/s)</a>
+            </li>
+            <li>
+              <a href="#fluxuncertainty(m/s)">flux uncertainty (m³/s)incertitude du flux (m³/s)</a>
+            </li>
+            <li>
+              <a href="#hedging">has hedginga pour modalité</a>
+            </li>
+            <li>
+              <a href="#inDocument">in documentdans le document</a>
+            </li>
+            <li>
+              <a href="#page">pagepage</a>
+            </li>
+            <li>
+              <a href="#quote">quotecitation</a>
+            </li>
+            <li>
+              <a href="#statedMechanism">stated mechanismmécanisme énoncé</a>
+            </li>
+            <li>
+              <a href="#statedescribed">state describedétat décrit</a>
+            </li>
+            <li>
+              <a href="#unitMapping">has unit mappinga pour correspondance d'entité</a>
+            </li>
+            <li>
+              <a href="#unitasnamed">unit as namedentité telle que nommée</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <h4>
+            <a href="#namespaces">Namespaces</a>
+          </h4>
+          <ul class="second">
+            <li>
+              <a href="#dcterms">dcterms</a>
+            </li>
+            <li>
+              <a href="#geo">geo</a>
+            </li>
+            <li>
+              <a href="#lulcw">lulcw</a>
+            </li>
+            <li>
+              <a href="#owl">owl</a>
+            </li>
+            <li>
+              <a href="#prov">prov</a>
+            </li>
+            <li>
+              <a href="#rdf">rdf</a>
+            </li>
+            <li>
+              <a href="#rdfs">rdfs</a>
+            </li>
+            <li>
+              <a href="#skos">skos</a>
+            </li>
+            <li>
+              <a href="#xsd">xsd</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <h4>
+            <a href="#legend">Legend</a>
+          </h4>
+          <ul class="second"></ul>
+        </li>
+      </ul>
+    </div>
+  
+<section>
+<h2>Terms not rendered by pyLODE</h2>
+<p>pyLODE 3.6.1's ontology profile does not render SKOS concepts, concept schemes or observable-property individuals, so these entries are listed directly from <code>lulcw-med-causal.ttl</code> (SHA-256 <code>d4196ec3f511</code>).</p>
+<div class="property entity" id="EvidenceMethodScheme">
+<h3>EvidenceMethodScheme</h3>
+<table>
+<tr><th>IRI</th><td><a href="https://w3id.org/lulcw#EvidenceMethodScheme"><code>https://w3id.org/lulcw#EvidenceMethodScheme</code></a></td></tr>
+<tr><th>rdf:type</th><td><ul class="pylodelitlist"><li><a href="http://www.w3.org/2004/02/skos/core#ConceptScheme">skos:ConceptScheme</a></li></ul></td></tr>
+<tr><th>rdfs:label (en)</th><td><ul class="pylodelitlist"><li><span lang="en">evidence methods</span></li></ul></td></tr>
+<tr><th>rdfs:label (fr)</th><td><ul class="pylodelitlist"><li><span lang="fr">méthodes de preuve</span></li></ul></td></tr>
+<tr><th>skos:definition (en)</th><td><ul class="pylodelitlist"><li><span lang="en">Values of lulcw:EvidenceMethod.</span></li></ul></td></tr>
+</table>
+</div>
+<div class="property entity" id="ExchangeDirectionScheme">
+<h3>ExchangeDirectionScheme</h3>
+<table>
+<tr><th>IRI</th><td><a href="https://w3id.org/lulcw#ExchangeDirectionScheme"><code>https://w3id.org/lulcw#ExchangeDirectionScheme</code></a></td></tr>
+<tr><th>rdf:type</th><td><ul class="pylodelitlist"><li><a href="http://www.w3.org/2004/02/skos/core#ConceptScheme">skos:ConceptScheme</a></li></ul></td></tr>
+<tr><th>rdfs:label (en)</th><td><ul class="pylodelitlist"><li><span lang="en">exchange directions</span></li></ul></td></tr>
+<tr><th>rdfs:label (fr)</th><td><ul class="pylodelitlist"><li><span lang="fr">sens d&#x27;échange</span></li></ul></td></tr>
+<tr><th>skos:definition (en)</th><td><ul class="pylodelitlist"><li><span lang="en">Values of lulcw:ExchangeDirection.</span></li></ul></td></tr>
+</table>
+</div>
+<div class="property entity" id="HedgingScheme">
+<h3>HedgingScheme</h3>
+<table>
+<tr><th>IRI</th><td><a href="https://w3id.org/lulcw#HedgingScheme"><code>https://w3id.org/lulcw#HedgingScheme</code></a></td></tr>
+<tr><th>rdf:type</th><td><ul class="pylodelitlist"><li><a href="http://www.w3.org/2004/02/skos/core#ConceptScheme">skos:ConceptScheme</a></li></ul></td></tr>
+<tr><th>rdfs:label (en)</th><td><ul class="pylodelitlist"><li><span lang="en">hedging levels</span></li></ul></td></tr>
+<tr><th>rdfs:label (fr)</th><td><ul class="pylodelitlist"><li><span lang="fr">modalités</span></li></ul></td></tr>
+<tr><th>skos:definition (en)</th><td><ul class="pylodelitlist"><li><span lang="en">Values of lulcw:Hedging.</span></li></ul></td></tr>
+</table>
+</div>
+<div class="property entity" id="UnitMappingScheme">
+<h3>UnitMappingScheme</h3>
+<table>
+<tr><th>IRI</th><td><a href="https://w3id.org/lulcw#UnitMappingScheme"><code>https://w3id.org/lulcw#UnitMappingScheme</code></a></td></tr>
+<tr><th>rdf:type</th><td><ul class="pylodelitlist"><li><a href="http://www.w3.org/2004/02/skos/core#ConceptScheme">skos:ConceptScheme</a></li></ul></td></tr>
+<tr><th>rdfs:label (en)</th><td><ul class="pylodelitlist"><li><span lang="en">unit mappings</span></li></ul></td></tr>
+<tr><th>rdfs:label (fr)</th><td><ul class="pylodelitlist"><li><span lang="fr">correspondances d&#x27;entité</span></li></ul></td></tr>
+<tr><th>skos:definition (en)</th><td><ul class="pylodelitlist"><li><span lang="en">Values of lulcw:UnitMapping.</span></li></ul></td></tr>
+</table>
+</div>
+</section>
+</body>
+</html>

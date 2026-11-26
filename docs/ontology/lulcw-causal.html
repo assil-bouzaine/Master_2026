@@ -1,0 +1,2897 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>signes de réponse</title>
+    <style>
+        #pylode {
+            position: fixed;
+            top: 205px;
+            left: -150px;
+            font-size: small;
+            transform: rotate(-90deg);
+            color: grey;
+        }
+        #pylode a {
+            font-size: 1.5em;
+            font-weight: bold;
+            text-decoration: none;
+            color: #005A9C;
+        }
+        #pylode a:hover {
+            color: #333;
+        }
+        #pylode #p {
+            color: #329545;
+        }
+        #pylode #y {
+            color: #f9cb33;
+        }
+        #pylode #version {
+            font-size: 1.0em;
+        }
+
+        #profile {
+            font-style: italic;
+            font-size: 1.25em;
+            color: darkred!important;
+        }
+
+        .cardinality {
+            font-style: italic;
+            color: #aa00aa;
+        }
+
+        dl {
+            /*border: 1px solid navy;*/
+            /*padding:5px;*/
+        }
+
+        dt {
+            font-weight: bold;
+            padding: 0;
+        }
+
+        dd {
+            margin-bottom: 10px;
+            padding-top: 7px;
+            line-height: 1.6em;
+        }
+
+        ul.pylodelitlist {
+            list-style-type: none;
+            margin-left: -40px;
+        }
+
+        #metadata ul li,
+        #classes ul li {
+            margin-bottom: 10px;
+        }
+
+        #metadata dd p {
+          margin: 0 0 1em 0;
+        }
+
+        ul.hlist {
+            list-style-type: none;
+            border: 1px solid navy;
+            padding:5px;
+            background-color: #F4FFFF;
+        }
+
+        div.hierarchy {
+            margin-bottom: 30px;
+            background-color: #F4FFFF;
+            padding: 10px;
+        }
+
+        ul.hierarchy {
+            padding: 5px 25px 5px 25px;
+        }
+
+        ul.hierarchy li {
+            margin-top:5px;
+        }
+
+        ul.hlist li {
+            display: inline;
+            margin-right: 10px;
+        }
+
+        .entity {
+            border: 1px solid navy;
+            margin:5px 0 5px 0;
+            padding: 5px;
+        }
+
+        .entity th {
+            width: 150px;
+            vertical-align: top;
+        }
+
+        .entity th,
+        .entity td {
+            padding-bottom: 20px;
+        }
+
+        .entity table th {
+            text-align: left;
+        }
+
+        section#overview img {
+            max-width: 1000px;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            text-align: left
+        }
+        h1, h2, h3 {
+            color: #005A9C; background: white
+        }
+        h1 {
+            font: 170% sans-serif;
+            line-height: 110%;
+        }
+        h2 {
+            font: 140% sans-serif;
+            margin-top:40px;
+        }
+        h3 {
+            font: 120% sans-serif;
+            margin-top: 20px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid navy;
+        }
+        h4 { font: bold 100% sans-serif }
+        h5 {
+            font: italic 100% sans-serif;
+            margin-bottom: 10px;
+        }
+        h6 { font: small-caps 100% sans-serif }
+
+        body {
+            padding: 2em 70px 2em 70px;
+            margin: 0;
+            font-family: sans-serif;
+            color: black;
+            background: white;
+            background-position: top left;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            text-align: left;
+        }
+
+        section {
+            max-width: 1500px;
+        }
+
+        .figure {
+            margin-bottom: 20px;
+        }
+
+        :link { color: #00C; background: transparent }
+        :visited { color: #609; background: transparent }
+        a:active { color: #C00; background: transparent }
+
+        .sup-c,
+        .sup-op,
+        .sup-fp,
+        .sup-dp,
+        .sup-ap,
+        .sup-p,
+        .sup-ni,
+        .sup-con,
+        .sup-col,
+        .sup-ns,
+        .sup-ps {
+            cursor:help;
+        }
+
+        .sup-c {
+            color:orange;
+        }
+
+        .sup-op {
+            color:navy;
+        }
+
+        .sup-fp {
+            color:lightskyblue;
+        }
+
+        .sup-dp {
+            color:green;
+        }
+
+        .sup-ap {
+            color:darkred;
+        }
+
+        .sup-p {
+            color:black;
+        }
+
+        .sup-ni {
+            color:brown;
+        }
+
+        .sup-con {
+            color:orange;
+        }
+
+        .sup-col {
+            color:darkred;
+        }
+
+        .sup-ns {
+            color:lightgreen;
+        }
+
+        .sup-ps {
+            color:lightblue;
+        }
+
+        sup {
+            margin-left: -3px;
+        }
+        code {
+            font-size: large;
+            color: darkred;
+        }
+
+        /* less prominent links for properties */
+        .proplink {
+            color: #336;
+            text-decoration: none;
+        }
+
+        #toc {
+            position: fixed;
+            top: 0;
+            right: 0;
+            z-index: 2;
+            height: 100%;
+            overflow-y: auto;
+            padding: 10px;
+            border: solid 1px navy;
+            font-size: small;
+            width: 180px;
+        }
+        #toc h3 {
+            margin-top: 5px;
+        }
+
+        #toc ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        #toc .first > li {
+            margin-top: 5px;
+        }
+
+        #toc .second,
+        #toc .third {
+            padding-left: 10px;
+        }
+
+        .second li {
+            margin-top: 0.5em;
+        }
+
+        #content {
+            width: calc(100% - 150px);
+        }
+
+        .hover_property {
+            cursor: help;
+            text-decoration: none;
+            border-bottom: dashed 1px;
+        }
+
+        .setclass {
+            list-style-type: none;
+        }
+
+        code{
+            word-wrap: break-word;
+          }
+        table {
+            table-layout: fixed;
+            width: 100%;
+        }
+        td {
+            word-wrap: break-word;
+            line-height: 1.6em ;
+        }
+        #legend table.entity {
+            width: 25%;
+        }
+        @media (max-width: 768px) {
+            /* #toc and #pylode are siblings of #content directly under
+               body; flex ordering pulls the ToC (last in the document)
+               to the top of the page */
+            body {
+                display: flex;
+                flex-direction: column;
+                padding: 1em 16px;
+            }
+
+            dd {
+                margin-left: 20px;
+            }
+
+            #pylode {
+                display: none;
+            }
+
+            #content {
+                width: 100%;
+            }
+
+            #toc {
+                order: -1;
+                position: static;
+                width: auto;
+                height: auto;
+                overflow-y: visible;
+            }
+
+            img {
+                max-width: 100%;
+                height: auto;
+            }
+
+            /* long IRIs in link text must be able to break anywhere */
+            a {
+                overflow-wrap: anywhere;
+            }
+
+            /* stack property tables otherwise columns are squeezed */
+            table,
+            thead,
+            tbody,
+            tr,
+            th,
+            td {
+                display: block;
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            .entity th,
+            .entity td {
+                padding-bottom: 6px;
+            }
+
+            .entity td {
+                padding-bottom: 16px;
+            }
+
+            #legend table.entity {
+                width: 100%;
+            }
+        }
+
+	</style>
+    <link href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABhklEQVQ4jbWPzStEURjG3yQLirlGKUnKFO45Z+SjmXvnnmthQcpCoVhYmD/AwmJiI3OvZuZc2U3UlKU0/gAslMw9JgvhHxAr2fko7r0jHSsl+TgbTz2Lt5731/MASEiJW9ONml2QyX6rsGalmnT74v8BDf12hxJfpV8d1uwNKUBYszabdFv84L8B9X0rESVmmUup2fme0cVhJWaZHw4NWL1SewEAfDe6H3Dy6Ll456WEJsRZS630MwCAOI20ei5OBpxse5zcBZw8eS4uPpfIuDiCainIg9umBCU0GZzgLZ9Hn31OgoATL+CkLDGB5H1OKj4nFd/FBxUXJ0UZNb4edw/6nLyJXaj5FeCVyPLNIVmYK8TG1IwWb16L1gEACAFV90ftoT8bdOX0EeyY99gxBXZMgRz6qGb1KantAACI0UvE6F5XJqEjpsdURouI0Vt5gGOUkUNnPu7ObGIIMfNaGqDmjDRi9FZldF1lRgYzeqUyeoiY4ag5Iy3RgOYRM8+/M2bG8efsO4hGrpmJseyMAAAAAElFTkSuQmCC" rel="icon" sizes="16x16" type="image/png">
+    <link href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAC40lEQVRYhe2UT0hUQRzHp6Iss1B3VZKIDbbdfW9mnoi4f3zzjkJQeOgS0SEIb1EWBGGlLLu460zQPQM1unUIIjA6rfpm6ZAhHjoIRVQUFUlEbG+euTsdXG1d3VL3bVD4g+9h+L35fT/8fvN7ADgY9aHY5fpIvK82HO9ysu66wxWOzbkjcekKx0a2ALYA/n2AGi3a6ArFezcidziecQygNhhrcUficjP6PwBqtGijKxy/thnVBePHywYoDsFhl53GV8SEcsTx4usCMLUewTVpc23BNvEzm6Neyf1+KcG2vwqwUjgrOJq2JmHftwmkVBRGTvncFodnbI7vChO/FRznCmHsNM7aHM9Yk7Df5iqsLMw9sMNOK2g+jS4IEz0UJv4iuJZb2RltWnB4UZqH6ioGAgAAGe5vtiZhtzDx7OoRadLmeM7m6IRjhnLMW2Vx1bA5GhAmnhIcz6/xNj4Ujsky8UspwfayjDPjsF2Y6L7N8Vzx/BfP+KPg6LbgSqd8DnfJW2CnbaLhfH5ephpqygJYvQU4Z3P82TLRsDDhUTnmrSq+Y3N0Mg+Xldy/zwEAnLMWZ3pHpNExmfLs/t0dOdVcbT0JeKxUwFP2VljjqiE47Jp53LTXNxhsUZjerTByXWX6VZWRs/4bIQ2ACv+UAomgDzLCISNZxAxZKMhIDjLy1JfsaK+I+eGBUBNk5E2x8RogX/PdcDZUqieWTSh5D6nOVKqfhoycUmlHFFIyu5RXqf7AcQDISCpv/tqbMBqK883RtmpISRoxQyJKPgGn3wNk5NEigDFa6hslqV/Kj+FdBQD0bshIDlKSLlVcoWQo36UhR80BAMB73lulMn0EMpJTqD6qJiOt3mho/8GbkT2BZNgDB/V+RI0fkOrT3kRIVQbaDizJm2hdNbINBxwk5xAj3yEjuV9rZ1iIkgxixkLBA83mz8uCjLwoGwAx0vOnFSy5mtR4VTaAQvVORMnwZgSpzkrV/QmdE2tKe46+MQAAAABJRU5ErkJggg==" rel="icon" sizes="32x32" type="image/png">
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <script id="schema.org" type="application/ld+json">
+[
+  {
+    "@id": "https://w3id.org/lulcw#ConstraintEligibilityScheme",
+    "@type": [
+      "https://schema.org/DefinedTermSet"
+    ],
+    "https://schema.org/description": [
+      {
+        "@language": "en",
+        "@value": "Values of lulcw:ConstraintEligibility."
+      }
+    ],
+    "https://schema.org/name": [
+      {
+        "@language": "en",
+        "@value": "constraint eligibilities"
+      },
+      {
+        "@language": "fr",
+        "@value": "\u00e9ligibilit\u00e9s \u00e0 la contrainte"
+      }
+    ]
+  },
+  {
+    "@id": "https://w3id.org/lulcw#DriverGroupScheme",
+    "@type": [
+      "https://schema.org/DefinedTermSet"
+    ],
+    "https://schema.org/description": [
+      {
+        "@language": "en",
+        "@value": "Values of lulcw:DriverGroup (docs/analysis_plan.md \u00a78)."
+      }
+    ],
+    "https://schema.org/name": [
+      {
+        "@language": "en",
+        "@value": "driver groups"
+      },
+      {
+        "@language": "fr",
+        "@value": "groupes de for\u00e7ages"
+      }
+    ]
+  },
+  {
+    "@id": "https://w3id.org/lulcw#MechanismScheme",
+    "@type": [
+      "https://schema.org/DefinedTermSet"
+    ],
+    "https://schema.org/description": [
+      {
+        "@language": "en",
+        "@value": "Values of lulcw:Mechanism: the four constraint families of the design (pumping drawdown, diffuse recharge, canal return flow, river exchange), and pathways named so that a proxy is never presented as the complete supply (lateral inflow, vertical leakage)."
+      }
+    ],
+    "https://schema.org/name": [
+      {
+        "@language": "en",
+        "@value": "mechanisms"
+      },
+      {
+        "@language": "fr",
+        "@value": "m\u00e9canismes"
+      }
+    ]
+  },
+  {
+    "@id": "https://w3id.org/lulcw#ResponseSignScheme",
+    "@type": [
+      "https://schema.org/DefinedTermSet"
+    ],
+    "https://schema.org/description": [
+      {
+        "@language": "en",
+        "@value": "Values of lulcw:ResponseSign."
+      }
+    ],
+    "https://schema.org/name": [
+      {
+        "@language": "en",
+        "@value": "response signs"
+      },
+      {
+        "@language": "fr",
+        "@value": "signes de r\u00e9ponse"
+      }
+    ]
+  },
+  {
+    "@id": "https://w3id.org/lulcw/causal",
+    "@type": [
+      "https://schema.org/DefinedTermSet"
+    ],
+    "https://schema.org/creator": [
+      {
+        "@value": "Assil Bouzaine"
+      }
+    ],
+    "https://schema.org/dateCreated": [
+      {
+        "@type": "http://www.w3.org/2001/XMLSchema#date",
+        "@value": "2026-11-26"
+      }
+    ],
+    "https://schema.org/description": [
+      {
+        "@language": "en",
+        "@value": "Country-agnostic causal-knowledge and model-constraint vocabulary: qualified driver-to-head influences, physical mechanisms, response signs, driver groups, constraint eligibility, export policies, constraint decisions, and observable driver properties."
+      },
+      {
+        "@language": "fr",
+        "@value": "Vocabulaire des connaissances causales et contraintes de mod\u00e8le ind\u00e9pendant des pays : influences qualifi\u00e9es, m\u00e9canismes physiques, signes de r\u00e9ponse, groupes de for\u00e7ages, \u00e9ligibilit\u00e9 aux contraintes, politiques d'export, d\u00e9cisions de contrainte et propri\u00e9t\u00e9s observables motrices."
+      }
+    ],
+    "https://schema.org/license": [
+      {
+        "@id": "https://creativecommons.org/licenses/by/4.0/"
+      }
+    ],
+    "https://schema.org/name": [
+      {
+        "@language": "en",
+        "@value": "LULC-Water causal mechanisms and constraints module"
+      },
+      {
+        "@language": "fr",
+        "@value": "Module m\u00e9canismes causaux et contraintes LULC-Water"
+      }
+    ]
+  }
+]
+    </script>
+  </head>
+  <body>
+    <div id="content">
+      <div class="section" id="metadata">
+        <h1>LULC-Water causal mechanisms and constraints moduleModule mécanismes causaux et contraintes LULC-Waterconstraint eligibilitieséligibilités à la contraintedriver groupsgroupes de forçagesmechanismsmécanismesresponse signssignes de réponse</h1>
+        <h2>Metadata</h2>
+        <dl>
+          <div>
+            <dt>
+              <strong>IRI</strong>
+            </dt>
+            <dd>
+              <code>https://w3id.org/lulcw#ResponseSignScheme</code>
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <a class="hover_property" href="http://purl.org/dc/terms/title" title="A name given to the resource. Defined in DCMI Metadata Terms">Title</a>
+            </dt>
+            <dd>
+              <ul class="pylodelitlist">
+                <li><p>LULC-Water causal mechanisms and constraints module</p></li>
+                <li><p>Module mécanismes causaux et contraintes LULC-Water</p></li>
+                <li><p>constraint eligibilities</p></li>
+                <li><p>éligibilités à la contrainte</p></li>
+                <li><p>driver groups</p></li>
+                <li><p>groupes de forçages</p></li>
+                <li><p>mechanisms</p></li>
+                <li><p>mécanismes</p></li>
+                <li><p>response signs</p></li>
+                <li><p>signes de réponse</p></li>
+              </ul>
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <a class="hover_property" href="http://purl.org/dc/terms/creator" title="An entity responsible for making the resource. Defined in DCMI Metadata Terms">Creator</a>
+            </dt>
+            <dd><p>Assil Bouzaine</p></dd>
+          </div>
+          <div>
+            <dt>
+              <a class="hover_property" href="http://purl.org/dc/terms/created" title="Date of creation of the resource. Defined in DCMI Metadata Terms">Date Created</a>
+            </dt>
+            <dd><p>2026-11-26</p></dd>
+          </div>
+          <div>
+            <dt>
+              <a class="hover_property" href="http://purl.org/dc/terms/license" title="Recommended practice is to identify the license document with a URI. If this is not possible or feasible, a literal value that identifies the license may be provided. Defined in DCMI Metadata Terms">License</a>
+            </dt>
+            <dd>
+              <a href="https://creativecommons.org/licenses/by/4.0/">https://creativecommons.org/licenses/by/4.0/</a>
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <a class="hover_property" href="http://www.w3.org/2002/07/owl#versionIRI" title="The property that identifies the version IRI of an ontology. Defined in The OWL 2 Schema vocabulary (OWL 2)">Version Iri</a>
+            </dt>
+            <dd>
+              <a href="https://w3id.org/lulcw/causal/0.11.0">https://w3id.org/lulcw/causal/0.11.0</a>
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <a class="hover_property" href="http://www.w3.org/2002/07/owl#versionInfo" title="The annotation property that provides version information for an ontology or another OWL construct. Defined in The OWL 2 Schema vocabulary (OWL 2)">Version Info</a>
+            </dt>
+            <dd><p>0.11.0</p></dd>
+          </div>
+          <div>
+            <dt>
+              <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+            </dt>
+            <dd>
+              <ul class="pylodelitlist">
+                <li><p>Country-agnostic causal-knowledge and model-constraint vocabulary: qualified driver-to-head influences, physical mechanisms, response signs, driver groups, constraint eligibility, export policies, constraint decisions, and observable driver properties.</p></li>
+                <li><p>Vocabulaire des connaissances causales et contraintes de modèle indépendant des pays : influences qualifiées, mécanismes physiques, signes de réponse, groupes de forçages, éligibilité aux contraintes, politiques d'export, décisions de contrainte et propriétés observables motrices.</p></li>
+                <li><p>Values of lulcw:ConstraintEligibility.</p></li>
+                <li><p>Values of lulcw:DriverGroup (docs/analysis_plan.md §8).</p></li>
+                <li><p>Values of lulcw:Mechanism: the four constraint families of the design (pumping drawdown, diffuse recharge, canal return flow, river exchange), and pathways named so that a proxy is never presented as the complete supply (lateral inflow, vertical leakage).</p></li>
+                <li><p>Values of lulcw:ResponseSign.</p></li>
+              </ul>
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <a class="hover_property" href="http://www.w3.org/2002/07/owl#imports" title="The property that is used for importing other ontologies into a given ontology. Defined in The OWL 2 Schema vocabulary (OWL 2)">Imports</a>
+            </dt>
+            <dd>
+              <ul class="pylodelitlist">
+                <li>
+                  <a href="https://w3id.org/lulcw/core">https://w3id.org/lulcw/core</a>
+                </li>
+                <li>
+                  <a href="https://w3id.org/lulcw/hydro">https://w3id.org/lulcw/hydro</a>
+                </li>
+                <li>
+                  <a href="https://w3id.org/lulcw/imports/prov">https://w3id.org/lulcw/imports/prov</a>
+                </li>
+                <li>
+                  <a href="https://w3id.org/lulcw/imports/skos">https://w3id.org/lulcw/imports/skos</a>
+                </li>
+                <li>
+                  <a href="https://w3id.org/lulcw/imports/sosa">https://w3id.org/lulcw/imports/sosa</a>
+                </li>
+              </ul>
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+            </dt>
+            <dd>
+              <ul class="pylodelitlist">
+                <li>
+                  <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+                </li>
+                <li>
+                  <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+                </li>
+                <li>
+                  <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+                </li>
+                <li>
+                  <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+                </li>
+              </ul>
+            </dd>
+          </div>
+        </dl>
+      </div>
+      <div class="section" id="classes">
+        <h2>Classes</h2>
+        <h3 id="class-hierarchy">Class Hierarchy</h3>
+        <div class="hierarchy">
+          <ul class="hierarchy">
+            <li>
+              <a href="#ConstraintDecision">constraint decision</a>
+            </li>
+            <li>
+              <a href="#ConstraintEligibility">constraint eligibility</a>
+            </li>
+            <li>
+              <a href="#DriverGroup">driver group</a>
+            </li>
+            <li>
+              <a href="#ExportPolicy">export policy</a>
+            </li>
+            <li>
+              <a href="#Influence">influence</a>
+            </li>
+            <li>
+              <a href="#Mechanism">mechanism</a>
+            </li>
+            <li>
+              <a href="#ResponseSign">response sign</a>
+            </li>
+          </ul>
+        </div>
+        <h3 id="class-definitions">Class Definitions</h3>
+        <div class="property entity" id="ConstraintDecision">
+          <h3>constraint decisiondécision de contrainte
+            <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#ConstraintDecision</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The decision of an export policy about the response signs of one mechanism: whether its driver was reviewed as an adequate stand-in for what the mechanism responds to (proxy review), and whether the eligible signs of the mechanism constrain the model (approval), each with its basis. A sign constrains a model only when its influence is selected by the policy, eligible by its pathway evidence (lulcw:constraintEligibility), and the decision for its mechanism accepts both the proxy and the constraint; a candidate (pending) decision constrains nothing.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#subClassOf" title="The subject is a subclass of a class. Defined in The RDF Schema vocabulary (RDFS)">Sub Class Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="http://www.w3.org/ns/prov#Entity">Entity</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/inDomainOf" title="Inverse of rdfs:domain. Defined in Ontology Documentation Profile">In Domain Of</a>
+              </th>
+              <td>
+                <ul class="pylodelitlist">
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#constraintApproval">constraint approval</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#decisionMechanism">decision mechanism</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#proxyReview">proxy review</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/inRangeOf" title="Inverse of rdfs:range. Defined in Ontology Documentation Profile">In Range Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#constraintDecision">has constraint decision</a>
+                  <sup class="sup-op" title="OWL Object Property">op</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="ConstraintEligibility">
+          <h3>constraint eligibilityéligibilité à la contrainte
+            <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#ConstraintEligibility</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>Whether an influence may fix the sign of a model response under a named policy.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#subClassOf" title="The subject is a subclass of a class. Defined in The RDF Schema vocabulary (RDFS)">Sub Class Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="http://www.w3.org/2004/02/skos/core#Concept">Concept</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/inRangeOf" title="Inverse of rdfs:range. Defined in Ontology Documentation Profile">In Range Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#constraintEligibility">has constraint eligibility</a>
+                  <sup class="sup-op" title="OWL Object Property">op</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/hasMember" title="None. Defined in None">Has Member</a>
+              </th>
+              <td>
+                <ul class="pylodelitlist">
+                  <li>
+                    <a href="https://w3id.org/lulcw#EligibleConstraint">eligible</a>
+                  </li>
+                  <li>
+                    <a href="https://w3id.org/lulcw#IneligibleConstraint">not eligible</a>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="DriverGroup">
+          <h3>driver groupgroupe de forçages
+            <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#DriverGroup</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>A group of drivers whose effects are reported together because the data cannot separate them.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#subClassOf" title="The subject is a subclass of a class. Defined in The RDF Schema vocabulary (RDFS)">Sub Class Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="http://www.w3.org/2004/02/skos/core#Concept">Concept</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/inRangeOf" title="Inverse of rdfs:range. Defined in Ontology Documentation Profile">In Range Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#driverGroup">in driver group</a>
+                  <sup class="sup-op" title="OWL Object Property">op</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/hasMember" title="None. Defined in None">Has Member</a>
+              </th>
+              <td>
+                <ul class="pylodelitlist">
+                  <li>
+                    <a href="https://w3id.org/lulcw#RechargeProxies">recharge proxies</a>
+                  </li>
+                  <li>
+                    <a href="https://w3id.org/lulcw#RiverDischargeGroup">river stage proxies</a>
+                  </li>
+                  <li>
+                    <a href="https://w3id.org/lulcw#SummerDemand">summer demand</a>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="ExportPolicy">
+          <h3>export policypolitique d'export
+            <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#ExportPolicy</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>A named, versioned selection policy deciding which qualified assertions become model inputs or graph edges, e.g. confident and probable pump-to-unit links for the main runs. Changing the policy changes the selection, never the stored evidence.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#subClassOf" title="The subject is a subclass of a class. Defined in The RDF Schema vocabulary (RDFS)">Sub Class Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="http://www.w3.org/ns/prov#Plan">Plan</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/inDomainOf" title="Inverse of rdfs:domain. Defined in Ontology Documentation Profile">In Domain Of</a>
+              </th>
+              <td>
+                <ul class="pylodelitlist">
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#admitsConfidence">admits confidence level</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#constraintDecision">has constraint decision</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/inRangeOf" title="Inverse of rdfs:range. Defined in Ontology Documentation Profile">In Range Of</a>
+              </th>
+              <td>
+                <ul class="pylodelitlist">
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#selectedUnder">selected under</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#underPolicy">under policy</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="Influence">
+          <h3>influenceinfluence
+            <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#Influence</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>A qualified driver-to-head pathway: a mechanism by which a named driver variable can change the head at a target, with its conditions, evidence path, response sign (possibly unknown) and constraint eligibility. A response sign refers to an increase of the driver with the stated conditions held fixed; it is not a measured causal effect.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#subClassOf" title="The subject is a subclass of a class. Defined in The RDF Schema vocabulary (RDFS)">Sub Class Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="http://www.w3.org/ns/prov#Entity">Entity</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/inDomainOf" title="Inverse of rdfs:domain. Defined in Ontology Documentation Profile">In Domain Of</a>
+              </th>
+              <td>
+                <ul class="pylodelitlist">
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#constraintEligibility">has constraint eligibility</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#driverEntity">driver entity</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#driverGroup">in driver group</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#driverVariable">driver variable</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#mechanism">has mechanism</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#omitsPathway">omits pathway</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#proxyFor">proxy for</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#responseSign">has response sign</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#targetEntity">target entity</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#viaUnit">via unit</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="Mechanism">
+          <h3>mechanismmécanisme
+            <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#Mechanism</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>A physical process by which a driver can change groundwater head, stated as a conditional specification, not as a universal law about every instance.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#subClassOf" title="The subject is a subclass of a class. Defined in The RDF Schema vocabulary (RDFS)">Sub Class Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="http://www.w3.org/2004/02/skos/core#Concept">Concept</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/inRangeOf" title="Inverse of rdfs:range. Defined in Ontology Documentation Profile">In Range Of</a>
+              </th>
+              <td>
+                <ul class="pylodelitlist">
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#decisionMechanism">decision mechanism</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#mechanism">has mechanism</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      <a href="https://w3id.org/lulcw#omitsPathway">omits pathway</a>
+                      <sup class="sup-op" title="OWL Object Property">op</sup>
+                    </span>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/hasMember" title="None. Defined in None">Has Member</a>
+              </th>
+              <td>
+                <ul class="pylodelitlist">
+                  <li>
+                    <a href="https://w3id.org/lulcw#CanalReturnFlow">canal return flow</a>
+                  </li>
+                  <li>
+                    <a href="https://w3id.org/lulcw#DiffuseRecharge">diffuse recharge</a>
+                  </li>
+                  <li>
+                    <a href="https://w3id.org/lulcw#LateralInflow">lateral inflow</a>
+                  </li>
+                  <li>
+                    <a href="https://w3id.org/lulcw#PumpingDrawdown">pumping drawdown</a>
+                  </li>
+                  <li>
+                    <a href="https://w3id.org/lulcw#RiverExchange">river exchange</a>
+                  </li>
+                  <li>
+                    <a href="https://w3id.org/lulcw#VerticalLeakage">vertical leakage</a>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="ResponseSign">
+          <h3>response signsigne de la réponse
+            <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#ResponseSign</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>Direction of the head response to an increase of a driver variable, with the stated conditions held fixed; distinct from the sign of a model contribution relative to a baseline.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#subClassOf" title="The subject is a subclass of a class. Defined in The RDF Schema vocabulary (RDFS)">Sub Class Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="http://www.w3.org/2004/02/skos/core#Concept">Concept</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/inRangeOf" title="Inverse of rdfs:range. Defined in Ontology Documentation Profile">In Range Of</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#responseSign">has response sign</a>
+                  <sup class="sup-op" title="OWL Object Property">op</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://linked.data.gov.au/def/ontpub/hasMember" title="None. Defined in None">Has Member</a>
+              </th>
+              <td>
+                <ul class="pylodelitlist">
+                  <li>
+                    <a href="https://w3id.org/lulcw#NegativeResponse">non-increasing</a>
+                  </li>
+                  <li>
+                    <a href="https://w3id.org/lulcw#PositiveResponse">non-decreasing</a>
+                  </li>
+                  <li>
+                    <a href="https://w3id.org/lulcw#UnknownResponse">unknown or conditional</a>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div class="section" id="objectproperties">
+        <h2>Object Properties</h2>
+        <h3 id="object-property-hierarchy">Object Property Hierarchy</h3>
+        <div class="hierarchy">
+          <ul class="hierarchy">
+            <li>
+              <a href="#admitsConfidence">admits confidence level</a>
+            </li>
+            <li>
+              <a href="#constraintApproval">constraint approval</a>
+            </li>
+            <li>
+              <a href="#decisionMechanism">decision mechanism</a>
+            </li>
+            <li>
+              <a href="#driverEntity">driver entity</a>
+            </li>
+            <li>
+              <a href="#driverVariable">driver variable</a>
+            </li>
+            <li>
+              <a href="#constraintDecision">has constraint decision</a>
+            </li>
+            <li>
+              <a href="#constraintEligibility">has constraint eligibility</a>
+            </li>
+            <li>
+              <a href="#mechanism">has mechanism</a>
+            </li>
+            <li>
+              <a href="#responseSign">has response sign</a>
+            </li>
+            <li>
+              <a href="#driverGroup">in driver group</a>
+            </li>
+            <li>
+              <a href="#omitsPathway">omits pathway</a>
+            </li>
+            <li>
+              <a href="#proxyFor">proxy for</a>
+            </li>
+            <li>
+              <a href="#proxyReview">proxy review</a>
+            </li>
+            <li>
+              <a href="#selectedUnder">selected under</a>
+            </li>
+            <li>
+              <a href="#targetEntity">target entity</a>
+            </li>
+            <li>
+              <a href="#underPolicy">under policy</a>
+            </li>
+            <li>
+              <a href="#viaUnit">via unit</a>
+            </li>
+          </ul>
+        </div>
+        <h3 id="object-property-definitions">Object Property Definitions</h3>
+        <div class="property entity" id="admitsConfidence">
+          <h3>admits confidence leveladmet le niveau de confiance
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#admitsConfidence</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>A confidence level whose unit attributions the export policy selects, at the resolution they were assessed. Selection does not raise their confidence.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExportPolicy">export policy</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw#ConfidenceLevel">lulcw:ConfidenceLevel</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="constraintApproval">
+          <h3>constraint approvalapprobation de la contrainte
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#constraintApproval</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>Whether the policy applies the eligible response signs of the mechanism as model constraints: candidate (pending), accepted or rejected.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ConstraintDecision">constraint decision</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw#AssessmentStatus">lulcw:AssessmentStatus</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="constraintDecision">
+          <h3>has constraint decisiona pour décision de contrainte
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#constraintDecision</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>A constraint decision of the policy, one per mechanism; a mechanism without one constrains nothing under the policy.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExportPolicy">export policy</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ConstraintDecision">constraint decision</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="constraintEligibility">
+          <h3>has constraint eligibilitya pour éligibilité à la contrainte
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#constraintEligibility</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>Whether the evidence of an influence allows its response sign to constrain a model: the evidence layer only. An eligible influence is constrained only under a policy that selects it (every segment of its pathway) and whose decision for its mechanism accepts both the driver as a proxy and the constraint (lulcw:ConstraintDecision).</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Influence">influence</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ConstraintEligibility">constraint eligibility</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="decisionMechanism">
+          <h3>decision mechanismmécanisme de la décision
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#decisionMechanism</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The mechanism whose influences the constraint decision is about.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ConstraintDecision">constraint decision</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Mechanism">mechanism</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="driverEntity">
+          <h3>driver entityentité motrice
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#driverEntity</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The entity whose driver variable an influence is about (e.g. an abstraction facility, an outcrop area, a weather cell).</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Influence">influence</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="driverGroup">
+          <h3>in driver groupdans le groupe de forçages
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#driverGroup</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>A group within which the influence's effect is reported jointly with others.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Influence">influence</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#DriverGroup">driver group</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="driverVariable">
+          <h3>driver variablevariable motrice
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#driverVariable</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The variable whose increase the response sign of an influence refers to.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Influence">influence</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="http://www.w3.org/ns/sosa/ObservableProperty">sosa:ObservableProperty</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="mechanism">
+          <h3>has mechanisma pour mécanisme
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#mechanism</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The physical mechanism an influence relies on.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Influence">influence</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Mechanism">mechanism</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="omitsPathway">
+          <h3>omits pathwayomet la voie
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#omitsPathway</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>A mechanism that can also change the head at the target but that the influence does not represent: named so that an explanation never presents the influence as the complete pathway. It does not assert that the mechanism is active at the target.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Influence">influence</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Mechanism">mechanism</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="proxyFor">
+          <h3>proxy forindicateur de
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#proxyFor</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The quantity that an influence's driver variable stands in for, when the driver is a proxy (effective rainfall over an outcrop for groundwater recharge). The response sign refers to the proxy, never to the quantity it stands in for.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Influence">influence</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="http://www.w3.org/ns/sosa/ObservableProperty">sosa:ObservableProperty</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="proxyReview">
+          <h3>proxy reviewexamen du substitut
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#proxyReview</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>Whether the driver of the mechanism's influences was reviewed as an adequate stand-in for what the mechanism responds to (e.g. a remote gauge's discharge for the river stage near a well, the plain's summed canal diversions for local canal seepage): candidate (not reviewed), accepted or rejected.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ConstraintDecision">constraint decision</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw#AssessmentStatus">lulcw:AssessmentStatus</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="responseSign">
+          <h3>has response signa pour signe de réponse
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#responseSign</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The proposed direction of the head response to an increase of the driver variable.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Influence">influence</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ResponseSign">response sign</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="selectedUnder">
+          <h3>selected underretenue par
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#selectedUnder</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>An export policy that selects this qualified assertion as a model input or graph edge.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExportPolicy">export policy</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="targetEntity">
+          <h3>target entityentité cible
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#targetEntity</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The piezometer whose head an influence may change.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Influence">influence</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw#Piezometer">lulcw:Piezometer</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="underPolicy">
+          <h3>under policyselon la politique
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#underPolicy</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The policy a volume allocation or an accounting result was computed under.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExportPolicy">export policy</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="viaUnit">
+          <h3>via unitvia l'entité
+            <sup class="sup-op" title="OWL Object Property">op</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#viaUnit</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The overlying hydrogeological unit in direct contact above the target well's monitored unit through whose outcrop an overlying-leakage recharge influence passes.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Influence">influence</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw#HydrogeologicalUnit">lulcw:HydrogeologicalUnit</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div class="section" id="annotationproperties">
+        <h2>Annotation Properties</h2>
+        <div class="property entity" id="created">
+          <h3>Created
+            <sup class="sup-ap" title="OWL Annotation Property">ap</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>http://purl.org/dc/terms/created</code>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="creator">
+          <h3>Creator
+            <sup class="sup-ap" title="OWL Annotation Property">ap</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>http://purl.org/dc/terms/creator</code>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="description">
+          <h3>Description
+            <sup class="sup-ap" title="OWL Annotation Property">ap</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>http://purl.org/dc/terms/description</code>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="license">
+          <h3>License
+            <sup class="sup-ap" title="OWL Annotation Property">ap</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>http://purl.org/dc/terms/license</code>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="title">
+          <h3>Title
+            <sup class="sup-ap" title="OWL Annotation Property">ap</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>http://purl.org/dc/terms/title</code>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div class="section" id="functionalproperties">
+        <h2>Functional Properties</h2>
+        <div class="property entity" id="constraintApproval">
+          <h3>constraint approvalapprobation de la contrainte
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#constraintApproval</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>Whether the policy applies the eligible response signs of the mechanism as model constraints: candidate (pending), accepted or rejected.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ConstraintDecision">constraint decision</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw#AssessmentStatus">lulcw:AssessmentStatus</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="decisionMechanism">
+          <h3>decision mechanismmécanisme de la décision
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#decisionMechanism</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The mechanism whose influences the constraint decision is about.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ConstraintDecision">constraint decision</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Mechanism">mechanism</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="driverVariable">
+          <h3>driver variablevariable motrice
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#driverVariable</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The variable whose increase the response sign of an influence refers to.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Influence">influence</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="http://www.w3.org/ns/sosa/ObservableProperty">sosa:ObservableProperty</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="proxyFor">
+          <h3>proxy forindicateur de
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#proxyFor</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The quantity that an influence's driver variable stands in for, when the driver is a proxy (effective rainfall over an outcrop for groundwater recharge). The response sign refers to the proxy, never to the quantity it stands in for.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Influence">influence</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="http://www.w3.org/ns/sosa/ObservableProperty">sosa:ObservableProperty</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="proxyReview">
+          <h3>proxy reviewexamen du substitut
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#proxyReview</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>Whether the driver of the mechanism's influences was reviewed as an adequate stand-in for what the mechanism responds to (e.g. a remote gauge's discharge for the river stage near a well, the plain's summed canal diversions for local canal seepage): candidate (not reviewed), accepted or rejected.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ConstraintDecision">constraint decision</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw#AssessmentStatus">lulcw:AssessmentStatus</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="responseSign">
+          <h3>has response signa pour signe de réponse
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#responseSign</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The proposed direction of the head response to an increase of the driver variable.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Influence">influence</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ResponseSign">response sign</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="underPolicy">
+          <h3>under policyselon la politique
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#underPolicy</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The policy a volume allocation or an accounting result was computed under.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#ExportPolicy">export policy</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="property entity" id="viaUnit">
+          <h3>via unitvia l'entité
+            <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+          </h3>
+          <table>
+            <tr>
+              <th>IRI</th>
+              <td>
+                <code>https://w3id.org/lulcw#viaUnit</code>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
+              </th>
+              <td><p>The overlying hydrogeological unit in direct contact above the target well's monitored unit through whose outcrop an overlying-leakage recharge influence passes.</p></td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#domain" title="A domain of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Domain</a>
+              </th>
+              <td>
+                <span>
+                  <a href="https://w3id.org/lulcw#Influence">influence</a>
+                  <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw#HydrogeologicalUnit">lulcw:HydrogeologicalUnit</a>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="None. Defined in None">Defined In Module / Défini Dans Le Module</a>
+              </th>
+              <td>
+                <a href="https://w3id.org/lulcw/causal">LULC-Water causal mechanisms and constraints module</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div id="namespaces">
+        <h2>Namespaces</h2>
+        <dl>
+          <dt id="dcterms">dcterms</dt>
+          <dd>
+            <code>http://purl.org/dc/terms/</code>
+          </dd>
+          <dt id="lulcw">lulcw</dt>
+          <dd>
+            <code>https://w3id.org/lulcw#</code>
+          </dd>
+          <dt id="owl">owl</dt>
+          <dd>
+            <code>http://www.w3.org/2002/07/owl#</code>
+          </dd>
+          <dt id="prov">prov</dt>
+          <dd>
+            <code>http://www.w3.org/ns/prov#</code>
+          </dd>
+          <dt id="rdf">rdf</dt>
+          <dd>
+            <code>http://www.w3.org/1999/02/22-rdf-syntax-ns#</code>
+          </dd>
+          <dt id="rdfs">rdfs</dt>
+          <dd>
+            <code>http://www.w3.org/2000/01/rdf-schema#</code>
+          </dd>
+          <dt id="skos">skos</dt>
+          <dd>
+            <code>http://www.w3.org/2004/02/skos/core#</code>
+          </dd>
+          <dt id="sosa">sosa</dt>
+          <dd>
+            <code>http://www.w3.org/ns/sosa/</code>
+          </dd>
+        </dl>
+      </div>
+      <div id="legend">
+        <h2>Legend</h2>
+        <table class="entity">
+          <tr>
+            <td>
+              <sup class="sup-c" title="OWL/RDFS Class">c</sup>
+            </td>
+            <td>Classes</td>
+          </tr>
+          <tr>
+            <td>
+              <sup class="sup-op" title="OWL Object Property">op</sup>
+            </td>
+            <td>Object Properties</td>
+          </tr>
+          <tr>
+            <td>
+              <sup class="sup-ap" title="OWL Annotation Property">ap</sup>
+            </td>
+            <td>Annotation Properties</td>
+          </tr>
+          <tr>
+            <td>
+              <sup class="sup-fp" title="OWL Functional Property">fp</sup>
+            </td>
+            <td>Functional Properties</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+    <div id="pylode">
+      <p>made by 
+        <a href="https://github.com/rdflib/pyLODE">
+          <span id="p">p</span>
+          <span id="y">y</span>
+          <span>LODE</span>
+        </a>
+        <a href="https://github.com/rdflib/pyLODE/release/3.6.1" id="version">3.6.1</a>
+        <span> with the </span>
+        <a href="https://linked.data.gov.au/def/ontpub" id="profile">OntPub</a>
+        <span>profile</span>
+      </p>
+    </div>
+    <div id="toc">
+      <h3>Table of Contents</h3>
+      <ul class="first">
+        <li>
+          <h4>
+            <a href="#metadata">Metadata</a>
+          </h4>
+        </li>
+        <li>
+          <h4>
+            <a href="#classes">Classes</a>
+          </h4>
+          <h5>
+            <a href="#class-hierarchy" style="margin-left:10px;">Class Hierarchy</a>
+          </h5>
+          <h5>
+            <a href="#class-definitions" style="margin-left:10px;">Class Definitions</a>
+          </h5>
+          <ul class="second">
+            <li style="margin-left:10px;">
+              <a href="#ConstraintDecision">constraint decisiondécision de contrainte</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#ConstraintEligibility">constraint eligibilityéligibilité à la contrainte</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#DriverGroup">driver groupgroupe de forçages</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#ExportPolicy">export policypolitique d'export</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#Influence">influenceinfluence</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#Mechanism">mechanismmécanisme</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#ResponseSign">response signsigne de la réponse</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <h4>
+            <a href="#objectproperties">Object Properties</a>
+          </h4>
+          <h5>
+            <a href="#object-property-hierarchy" style="margin-left:10px;">Object Property Hierarchy</a>
+          </h5>
+          <h5>
+            <a href="#object-property-definitions" style="margin-left:10px;">Object Property Definitions</a>
+          </h5>
+          <ul class="second">
+            <li style="margin-left:10px;">
+              <a href="#admitsConfidence">admits confidence leveladmet le niveau de confiance</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#constraintApproval">constraint approvalapprobation de la contrainte</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#constraintDecision">has constraint decisiona pour décision de contrainte</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#constraintEligibility">has constraint eligibilitya pour éligibilité à la contrainte</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#decisionMechanism">decision mechanismmécanisme de la décision</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#driverEntity">driver entityentité motrice</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#driverGroup">in driver groupdans le groupe de forçages</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#driverVariable">driver variablevariable motrice</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#mechanism">has mechanisma pour mécanisme</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#omitsPathway">omits pathwayomet la voie</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#proxyFor">proxy forindicateur de</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#proxyReview">proxy reviewexamen du substitut</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#responseSign">has response signa pour signe de réponse</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#selectedUnder">selected underretenue par</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#targetEntity">target entityentité cible</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#underPolicy">under policyselon la politique</a>
+            </li>
+            <li style="margin-left:10px;">
+              <a href="#viaUnit">via unitvia l'entité</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <h4>
+            <a href="#annotationproperties">Annotation Properties</a>
+          </h4>
+          <ul class="second">
+            <li>
+              <a href="#created">Created</a>
+            </li>
+            <li>
+              <a href="#creator">Creator</a>
+            </li>
+            <li>
+              <a href="#description">Description</a>
+            </li>
+            <li>
+              <a href="#license">License</a>
+            </li>
+            <li>
+              <a href="#title">Title</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <h4>
+            <a href="#functionalproperties">Functional Properties</a>
+          </h4>
+          <ul class="second">
+            <li>
+              <a href="#constraintApproval">constraint approvalapprobation de la contrainte</a>
+            </li>
+            <li>
+              <a href="#decisionMechanism">decision mechanismmécanisme de la décision</a>
+            </li>
+            <li>
+              <a href="#driverVariable">driver variablevariable motrice</a>
+            </li>
+            <li>
+              <a href="#proxyFor">proxy forindicateur de</a>
+            </li>
+            <li>
+              <a href="#proxyReview">proxy reviewexamen du substitut</a>
+            </li>
+            <li>
+              <a href="#responseSign">has response signa pour signe de réponse</a>
+            </li>
+            <li>
+              <a href="#underPolicy">under policyselon la politique</a>
+            </li>
+            <li>
+              <a href="#viaUnit">via unitvia l'entité</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <h4>
+            <a href="#namespaces">Namespaces</a>
+          </h4>
+          <ul class="second">
+            <li>
+              <a href="#dcterms">dcterms</a>
+            </li>
+            <li>
+              <a href="#lulcw">lulcw</a>
+            </li>
+            <li>
+              <a href="#owl">owl</a>
+            </li>
+            <li>
+              <a href="#prov">prov</a>
+            </li>
+            <li>
+              <a href="#rdf">rdf</a>
+            </li>
+            <li>
+              <a href="#rdfs">rdfs</a>
+            </li>
+            <li>
+              <a href="#skos">skos</a>
+            </li>
+            <li>
+              <a href="#sosa">sosa</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <h4>
+            <a href="#legend">Legend</a>
+          </h4>
+          <ul class="second"></ul>
+        </li>
+      </ul>
+    </div>
+  
+<section>
+<h2>Terms not rendered by pyLODE</h2>
+<p>pyLODE 3.6.1's ontology profile does not render SKOS concepts, concept schemes or observable-property individuals, so these entries are listed directly from <code>lulcw-causal.ttl</code> (SHA-256 <code>fb951051746e</code>).</p>
+<div class="property entity" id="CanalDiversionVolume">
+<h3>CanalDiversionVolume</h3>
+<table>
+<tr><th>IRI</th><td><a href="https://w3id.org/lulcw#CanalDiversionVolume"><code>https://w3id.org/lulcw#CanalDiversionVolume</code></a></td></tr>
+<tr><th>rdf:type</th><td><ul class="pylodelitlist"><li><a href="http://www.w3.org/ns/sosa/ObservableProperty">sosa:ObservableProperty</a></li></ul></td></tr>
+<tr><th>rdfs:label (en)</th><td><ul class="pylodelitlist"><li><span lang="en">canal diversion volume</span></li></ul></td></tr>
+<tr><th>rdfs:label (fr)</th><td><ul class="pylodelitlist"><li><span lang="fr">volume dérivé par les canaux</span></li></ul></td></tr>
+<tr><th>skos:definition (en)</th><td><ul class="pylodelitlist"><li><span lang="en">Volume declared at canal intakes, spread over the irrigation season, in cubic metres; a proxy for return flow, not a recharge volume.</span></li></ul></td></tr>
+</table>
+</div>
+<div class="property entity" id="ConstraintEligibilityScheme">
+<h3>ConstraintEligibilityScheme</h3>
+<table>
+<tr><th>IRI</th><td><a href="https://w3id.org/lulcw#ConstraintEligibilityScheme"><code>https://w3id.org/lulcw#ConstraintEligibilityScheme</code></a></td></tr>
+<tr><th>rdf:type</th><td><ul class="pylodelitlist"><li><a href="http://www.w3.org/2004/02/skos/core#ConceptScheme">skos:ConceptScheme</a></li></ul></td></tr>
+<tr><th>rdfs:label (en)</th><td><ul class="pylodelitlist"><li><span lang="en">constraint eligibilities</span></li></ul></td></tr>
+<tr><th>rdfs:label (fr)</th><td><ul class="pylodelitlist"><li><span lang="fr">éligibilités à la contrainte</span></li></ul></td></tr>
+<tr><th>skos:definition (en)</th><td><ul class="pylodelitlist"><li><span lang="en">Values of lulcw:ConstraintEligibility.</span></li></ul></td></tr>
+</table>
+</div>
+<div class="property entity" id="DriverGroupScheme">
+<h3>DriverGroupScheme</h3>
+<table>
+<tr><th>IRI</th><td><a href="https://w3id.org/lulcw#DriverGroupScheme"><code>https://w3id.org/lulcw#DriverGroupScheme</code></a></td></tr>
+<tr><th>rdf:type</th><td><ul class="pylodelitlist"><li><a href="http://www.w3.org/2004/02/skos/core#ConceptScheme">skos:ConceptScheme</a></li></ul></td></tr>
+<tr><th>rdfs:label (en)</th><td><ul class="pylodelitlist"><li><span lang="en">driver groups</span></li></ul></td></tr>
+<tr><th>rdfs:label (fr)</th><td><ul class="pylodelitlist"><li><span lang="fr">groupes de forçages</span></li></ul></td></tr>
+<tr><th>skos:definition (en)</th><td><ul class="pylodelitlist"><li><span lang="en">Values of lulcw:DriverGroup (docs/analysis_plan.md §8).</span></li></ul></td></tr>
+</table>
+</div>
+<div class="property entity" id="EffectiveRainfall">
+<h3>EffectiveRainfall</h3>
+<table>
+<tr><th>IRI</th><td><a href="https://w3id.org/lulcw#EffectiveRainfall"><code>https://w3id.org/lulcw#EffectiveRainfall</code></a></td></tr>
+<tr><th>rdf:type</th><td><ul class="pylodelitlist"><li><a href="http://www.w3.org/ns/sosa/ObservableProperty">sosa:ObservableProperty</a></li></ul></td></tr>
+<tr><th>rdfs:label (en)</th><td><ul class="pylodelitlist"><li><span lang="en">effective rainfall</span></li></ul></td></tr>
+<tr><th>rdfs:label (fr)</th><td><ul class="pylodelitlist"><li><span lang="fr">pluie efficace</span></li></ul></td></tr>
+<tr><th>skos:definition (en)</th><td><ul class="pylodelitlist"><li><span lang="en">SIM2 (SAFRAN-ISBA) daily effective rainfall (variable PE: rainfall minus actual evapotranspiration) summed over a week, in millimetres; negative in weeks when evapotranspiration exceeds rainfall. A recharge-related input, not a measured recharge.</span></li></ul></td></tr>
+</table>
+</div>
+<div class="property entity" id="GroundwaterRecharge">
+<h3>GroundwaterRecharge</h3>
+<table>
+<tr><th>IRI</th><td><a href="https://w3id.org/lulcw#GroundwaterRecharge"><code>https://w3id.org/lulcw#GroundwaterRecharge</code></a></td></tr>
+<tr><th>rdf:type</th><td><ul class="pylodelitlist"><li><a href="http://www.w3.org/ns/sosa/ObservableProperty">sosa:ObservableProperty</a></li></ul></td></tr>
+<tr><th>rdfs:label (en)</th><td><ul class="pylodelitlist"><li><span lang="en">groundwater recharge</span></li></ul></td></tr>
+<tr><th>rdfs:label (fr)</th><td><ul class="pylodelitlist"><li><span lang="fr">recharge des nappes</span></li></ul></td></tr>
+<tr><th>skos:definition (en)</th><td><ul class="pylodelitlist"><li><span lang="en">Water reaching the saturated zone of a unit per unit of time, by any pathway (diffuse infiltration, lateral inflow, leakage, river or canal losses). Not observed in this graph: effective rainfall and soil drainage over a unit&#x27;s outcrop stand in for one part of it.</span></li></ul></td></tr>
+</table>
+</div>
+<div class="property entity" id="MechanismScheme">
+<h3>MechanismScheme</h3>
+<table>
+<tr><th>IRI</th><td><a href="https://w3id.org/lulcw#MechanismScheme"><code>https://w3id.org/lulcw#MechanismScheme</code></a></td></tr>
+<tr><th>rdf:type</th><td><ul class="pylodelitlist"><li><a href="http://www.w3.org/2004/02/skos/core#ConceptScheme">skos:ConceptScheme</a></li></ul></td></tr>
+<tr><th>rdfs:label (en)</th><td><ul class="pylodelitlist"><li><span lang="en">mechanisms</span></li></ul></td></tr>
+<tr><th>rdfs:label (fr)</th><td><ul class="pylodelitlist"><li><span lang="fr">mécanismes</span></li></ul></td></tr>
+<tr><th>skos:definition (en)</th><td><ul class="pylodelitlist"><li><span lang="en">Values of lulcw:Mechanism: the four constraint families of the design (pumping drawdown, diffuse recharge, canal return flow, river exchange), and pathways named so that a proxy is never presented as the complete supply (lateral inflow, vertical leakage).</span></li></ul></td></tr>
+</table>
+</div>
+<div class="property entity" id="ReconstructedWeeklyVolume">
+<h3>ReconstructedWeeklyVolume</h3>
+<table>
+<tr><th>IRI</th><td><a href="https://w3id.org/lulcw#ReconstructedWeeklyVolume"><code>https://w3id.org/lulcw#ReconstructedWeeklyVolume</code></a></td></tr>
+<tr><th>rdf:type</th><td><ul class="pylodelitlist"><li><a href="http://www.w3.org/ns/sosa/ObservableProperty">sosa:ObservableProperty</a></li></ul></td></tr>
+<tr><th>rdfs:label (en)</th><td><ul class="pylodelitlist"><li><span lang="en">reconstructed weekly abstraction</span></li></ul></td></tr>
+<tr><th>rdfs:label (fr)</th><td><ul class="pylodelitlist"><li><span lang="fr">prélèvement hebdomadaire reconstitué</span></li></ul></td></tr>
+<tr><th>skos:definition (en)</th><td><ul class="pylodelitlist"><li><span lang="en">Weekly volume obtained by spreading annual declarations with documented profiles, in cubic metres per week; a model driver, not an observation.</span></li></ul></td></tr>
+</table>
+</div>
+<div class="property entity" id="ResponseSignScheme">
+<h3>ResponseSignScheme</h3>
+<table>
+<tr><th>IRI</th><td><a href="https://w3id.org/lulcw#ResponseSignScheme"><code>https://w3id.org/lulcw#ResponseSignScheme</code></a></td></tr>
+<tr><th>rdf:type</th><td><ul class="pylodelitlist"><li><a href="http://www.w3.org/2004/02/skos/core#ConceptScheme">skos:ConceptScheme</a></li></ul></td></tr>
+<tr><th>rdfs:label (en)</th><td><ul class="pylodelitlist"><li><span lang="en">response signs</span></li></ul></td></tr>
+<tr><th>rdfs:label (fr)</th><td><ul class="pylodelitlist"><li><span lang="fr">signes de réponse</span></li></ul></td></tr>
+<tr><th>skos:definition (en)</th><td><ul class="pylodelitlist"><li><span lang="en">Values of lulcw:ResponseSign.</span></li></ul></td></tr>
+</table>
+</div>
+<div class="property entity" id="RiverDischarge">
+<h3>RiverDischarge</h3>
+<table>
+<tr><th>IRI</th><td><a href="https://w3id.org/lulcw#RiverDischarge"><code>https://w3id.org/lulcw#RiverDischarge</code></a></td></tr>
+<tr><th>rdf:type</th><td><ul class="pylodelitlist"><li><a href="http://www.w3.org/ns/sosa/ObservableProperty">sosa:ObservableProperty</a></li></ul></td></tr>
+<tr><th>rdfs:label (en)</th><td><ul class="pylodelitlist"><li><span lang="en">river discharge</span></li></ul></td></tr>
+<tr><th>rdfs:label (fr)</th><td><ul class="pylodelitlist"><li><span lang="fr">débit de rivière</span></li></ul></td></tr>
+<tr><th>skos:definition (en)</th><td><ul class="pylodelitlist"><li><span lang="en">Weekly mean discharge at a gauge, in cubic metres per second; it represents its own site, not recharge to a whole unit.</span></li></ul></td></tr>
+</table>
+</div>
+<div class="property entity" id="RiverStage">
+<h3>RiverStage</h3>
+<table>
+<tr><th>IRI</th><td><a href="https://w3id.org/lulcw#RiverStage"><code>https://w3id.org/lulcw#RiverStage</code></a></td></tr>
+<tr><th>rdf:type</th><td><ul class="pylodelitlist"><li><a href="http://www.w3.org/ns/sosa/ObservableProperty">sosa:ObservableProperty</a></li></ul></td></tr>
+<tr><th>rdfs:label (en)</th><td><ul class="pylodelitlist"><li><span lang="en">river stage</span></li></ul></td></tr>
+<tr><th>rdfs:label (fr)</th><td><ul class="pylodelitlist"><li><span lang="fr">hauteur d&#x27;eau de la rivière</span></li></ul></td></tr>
+<tr><th>skos:definition (en)</th><td><ul class="pylodelitlist"><li><span lang="en">Water level of a river at a reach. Not observed in this graph: the weekly discharge of a gauge stands in for it near the gauge, through the gauge&#x27;s rating curve and up to the withdrawals and inflows between the gauge and the reach.</span></li></ul></td></tr>
+</table>
+</div>
+<div class="property entity" id="SoilDrainage">
+<h3>SoilDrainage</h3>
+<table>
+<tr><th>IRI</th><td><a href="https://w3id.org/lulcw#SoilDrainage"><code>https://w3id.org/lulcw#SoilDrainage</code></a></td></tr>
+<tr><th>rdf:type</th><td><ul class="pylodelitlist"><li><a href="http://www.w3.org/ns/sosa/ObservableProperty">sosa:ObservableProperty</a></li></ul></td></tr>
+<tr><th>rdfs:label (en)</th><td><ul class="pylodelitlist"><li><span lang="en">soil drainage</span></li></ul></td></tr>
+<tr><th>rdfs:label (fr)</th><td><ul class="pylodelitlist"><li><span lang="fr">drainage du sol</span></li></ul></td></tr>
+<tr><th>skos:definition (en)</th><td><ul class="pylodelitlist"><li><span lang="en">SIM2 (SAFRAN-ISBA) daily drainage (variable DRAINC, &#x27;Drainage&#x27; in Météo-France&#x27;s parameter list) summed over a week, in millimetres: modelled water leaving the soil, a recharge-related input, not a measured recharge.</span></li></ul></td></tr>
+</table>
+</div>
+</section>
+</body>
+</html>

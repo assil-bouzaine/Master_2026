@@ -3,8 +3,9 @@
 Each PDF in data/raw/documents/documents.json is read with `pdftotext -layout` using the
 same printed-page footer rules and normalisation as tests/test_exchange_evidence.py; the
 stored HTML page becomes one passage. `build_passages()` returns one deterministic record
-per actual page (dropping the trailing empty chunk after `pdftotext`'s final form feed) and
-checks that no passage exceeds MAX_PASSAGE_CHARS characters.
+per actual page (dropping the trailing empty chunk after `pdftotext`'s final form feed,
+giving unnumbered pages unique `unnumbered pNNN` labels) and checks that no passage
+exceeds MAX_PASSAGE_CHARS characters.
 """
 import hashlib
 import html
@@ -56,6 +57,9 @@ def build_passages():
             doc_pages = doc_pages[:-1]
         for physical_index, (page_label, text) in enumerate(doc_pages):
             passage_id = f"{doc}:p{physical_index:03d}"
+            # Keep `pages()` unchanged for test_exchange_evidence; disambiguate unnumbered
+            # pages here so (document, page) is unique across all passages.
+            unique_label = f"unnumbered p{physical_index:03d}" if page_label == "?" else page_label
             if len(text) > MAX_PASSAGE_CHARS:
                 raise ValueError(
                     f"Passage {passage_id} ({len(text)} chars) exceeds the "
@@ -64,7 +68,7 @@ def build_passages():
             passages.append({
                 "passage_id": passage_id,
                 "document": doc,
-                "page": page_label,
+                "page": unique_label,
                 "physical_index": physical_index,
                 "text": text,
                 "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),

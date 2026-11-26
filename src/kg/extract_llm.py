@@ -1,8 +1,9 @@
 """Track 2 LLM extraction pipeline: passages, split, prompt, runner and split scoring (v5 plan R2.1).
 
 Everything that can change a Track 2 extraction score is frozen before any model output is seen:
-the page passages, the dev/eval split, the prompt template with BD LISA and BD TOPO code tables,
-greedy decoding and answer parsing. Model selection uses the dev split only; eval is scored once.
+the page passages, the dev/eval split, the prompt template with BD LISA and BD TOPO / Hub'Eau
+code tables, greedy decoding, run-configuration locking and answer parsing. Model selection uses
+the dev split only; eval is scored once.
 
 CLI:
     PYTHONIOENCODING=utf-8 PFE_DATASET=v5 .venv/bin/python -m src.kg.extract_llm passages
@@ -15,12 +16,13 @@ import csv
 import hashlib
 import importlib.metadata
 import json
+import re
 import sys
 import time
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from src.config import INTERIM, ROOT
+from src.config import DATASET_DIR, INTERIM, ROOT
 from src.kg import extract_eval
 from src.kg.extract_passages import build_passages
 from src.kg.rivers import snapshot
@@ -31,6 +33,7 @@ PROMPT_PATH = ROOT / "configs" / "extraction_prompt_track2.md"
 SCHEMA_PATH = extract_eval.SCHEMA
 GOLD_PATH = extract_eval.GOLD
 BDLISA_PLAIN = INTERIM / "bdlisa_entities_plain.csv"
+GAUGES_PATH = DATASET_DIR / "gauges.parquet"
 
 DEV_STATEMENT_PAGES = (
     ("brgm-rp-71486-fr", "24"),
@@ -47,6 +50,7 @@ SPLIT_RULE = (
 )
 SYSTEM_MARKER = "## System"
 USER_MARKER = "## User"
+LEADING_THINK_RE = re.compile(r"^\s*<think>.*?</think>\s*", flags=re.S)
 
 
 def _sha256_file(path):
@@ -64,10 +68,20 @@ def _package_version(name):
         return None
 
 
-def read_code_tables(schema_path=SCHEMA_PATH, bdlisa_path=BDLISA_PLAIN):
+def _most_common_name(series):
+    """Return the alphabetically first mode of non-empty stripped strings, or ''."""
+    names = series.dropna().astype(str).str.strip()
+    names = names[names != ""]
+    if not len(names):
+        return ""
+    return sorted(names.mode().tolist())[0]
+
+
+def read_code_tables(schema_path=SCHEMA_PATH, bdlisa_path=BDLISA_PLAIN, gauges_path=GAUGES_PATH):
     """Read unit and watercourse names from project tables for every code in the schema.
 
-    Never invents a name: any code missing from the project tables receives an empty string.
+    Watercourses carry both the BD TOPO name (often Catalan locally) and the Hub'Eau gauge
+    table name (French where gauged). Never invents a name: missing entries stay ''.
     """
     import pandas as pd
 
@@ -90,29 +104,49 @@ def read_code_tables(schema_path=SCHEMA_PATH, bdlisa_path=BDLISA_PLAIN):
         snap / "troncon_hydrographique.parquet",
         columns=["code_du_cours_d_eau_bdcarthage", "cpx_toponyme_de_cours_d_eau"],
     )
+    gauges = pd.read_parquet(
+        Path(gauges_path),
+        columns=["code_cours_eau", "libelle_cours_eau"],
+    )
     watercourses = {}
     for code in wc_codes:
-        own = reaches[reaches["code_du_cours_d_eau_bdcarthage"] == code]
-        names = own["cpx_toponyme_de_cours_d_eau"].dropna().astype(str).str.strip()
-        names = names[names != ""]
-        if len(names):
-            modes = sorted(names.mode().tolist())
-            watercourses[code] = modes[0]
-        else:
-            watercourses[code] = ""
+        own_reaches = reaches[reaches["code_du_cours_d_eau_bdcarthage"] == code]
+        own_gauges = gauges[gauges["code_cours_eau"] == code]
+        watercourses[code] = {
+            "bdtopo": _most_common_name(own_reaches["cpx_toponyme_de_cours_d_eau"]),
+            "hubeau": _most_common_name(own_gauges["libelle_cours_eau"]),
+        }
     return {"units": units, "watercourses": watercourses}
 
 
 def format_code_table(mapping, code_header, name_header):
-    """Render a deterministic Markdown table of code -> name entries."""
+    """Render a deterministic 2-column Markdown table of code -> name entries."""
     lines = [f"| {code_header} | {name_header} |", "|---|---|"]
     for code, name in mapping.items():
         lines.append(f"| {code} | {name} |")
     return "\n".join(lines)
 
 
+def format_watercourses_table(mapping):
+    """Render a deterministic 3-column Markdown table (Code, BD TOPO name, Hub'Eau name)."""
+    lines = ["| Code | BD TOPO name | Hub'Eau name |", "|---|---|---|"]
+    for code, names in mapping.items():
+        lines.append(f"| {code} | {names['bdtopo']} | {names['hubeau']} |")
+    return "\n".join(lines)
+
+
 def build_split(passages, gold=None, code_tables=None):
     """Assign every passage and gold statement deterministically to dev or eval."""
+    seen_pages = set()
+    duplicate_pages = set()
+    for p in passages:
+        loc = (p["document"], p["page"])
+        if loc in seen_pages:
+            duplicate_pages.add(loc)
+        seen_pages.add(loc)
+    if duplicate_pages:
+        raise ValueError(f"Duplicate (document, page) keys in passages: {sorted(duplicate_pages)}")
+
     gold = extract_eval.load_gold() if gold is None else gold
     code_tables = read_code_tables() if code_tables is None else code_tables
     dev_stmt_pages = set(DEV_STATEMENT_PAGES)
@@ -121,8 +155,7 @@ def build_split(passages, gold=None, code_tables=None):
     missing_dev = dev_stmt_pages - gold_pages
     if missing_dev:
         raise ValueError(f"Dev statement pages missing from gold CSV: {sorted(missing_dev)}")
-    passage_pages = {(p["document"], p["page"]) for p in passages}
-    missing_passages = gold_pages - passage_pages
+    missing_passages = gold_pages - seen_pages
     if missing_passages:
         raise ValueError(f"Gold pages missing from passages: {sorted(missing_passages)}")
 
@@ -208,7 +241,7 @@ def messages(passage, *, template=None, units_table=None, watercourses_table=Non
         if units_table is None:
             units_table = format_code_table(code_tables["units"], "Code", "BD LISA name")
         if watercourses_table is None:
-            watercourses_table = format_code_table(code_tables["watercourses"], "Code", "Watercourse name")
+            watercourses_table = format_watercourses_table(code_tables["watercourses"])
     system_tpl, user_tpl = split_prompt_template(template)
     # Replace placeholders literally so braces in French text or JSON hints never break formatting.
     system_content = (
@@ -220,6 +253,14 @@ def messages(passage, *, template=None, units_table=None, watercourses_table=Non
         {"role": "system", "content": system_content},
         {"role": "user", "content": user_content},
     ]
+
+
+def strip_leading_think_block(raw_text):
+    """Remove at most one leading <think>...</think> block and following whitespace."""
+    match = LEADING_THINK_RE.match(raw_text)
+    if match is None:
+        return raw_text, False
+    return raw_text[match.end():], True
 
 
 def strip_json_fence(raw_text):
@@ -237,7 +278,8 @@ def strip_json_fence(raw_text):
 
 def parse_answer(raw_text, passage):
     """Parse one raw model answer into (items, None) or (None, error_message)."""
-    cleaned = strip_json_fence(raw_text)
+    without_think, _ = strip_leading_think_block(raw_text)
+    cleaned = strip_json_fence(without_think)
     try:
         parsed = json.loads(cleaned, parse_constant=_reject_constant)
     except ValueError as error:
@@ -261,6 +303,36 @@ def _atomic_write_text(path, content):
     with NamedTemporaryFile(dir=path.parent, mode="w", encoding="utf-8", delete=False) as tmp:
         tmp.write(content)
     Path(tmp.name).replace(path)
+
+
+def _same_json_value(left, right):
+    """Compare JSON values strictly so booleans never compare equal to integers."""
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, dict):
+        return (
+            set(left) == set(right)
+            and all(_same_json_value(left[k], right[k]) for k in left)
+        )
+    if isinstance(left, list):
+        return len(left) == len(right) and all(_same_json_value(a, b) for a, b in zip(left, right))
+    return left == right
+
+
+def _config_diff_fields(existing, current, prefix=""):
+    """Return sorted field names where two run configuration dicts differ."""
+    if not isinstance(existing, dict) or not isinstance(current, dict):
+        return [prefix or "<root>"]
+    diffs = []
+    for key in sorted(set(existing) | set(current)):
+        name = f"{prefix}.{key}" if prefix else key
+        if key not in existing or key not in current:
+            diffs.append(name)
+        elif key == "sha256" and isinstance(existing[key], dict) and isinstance(current[key], dict):
+            diffs.extend(_config_diff_fields(existing[key], current[key], prefix=name))
+        elif not _same_json_value(existing[key], current[key]):
+            diffs.append(name)
+    return diffs
 
 
 def _load_hf_generator(model_id, revision, dtype, max_new_tokens, chat_template_kwargs):
@@ -343,7 +415,36 @@ def run_extraction(
     prompt_template = Path(prompt_path).read_text(encoding="utf-8")
     code_tables = split_data["code_tables"]
     units_table = format_code_table(code_tables["units"], "Code", "BD LISA name")
-    watercourses_table = format_code_table(code_tables["watercourses"], "Code", "Watercourse name")
+    watercourses_table = format_watercourses_table(code_tables["watercourses"])
+
+    sha256_inputs = {
+        "prompt_template": _sha256_file(prompt_path),
+        "schema": _sha256_file(schema_path),
+        "split": _sha256_file(split_path),
+        "passages": _sha256_file(passages_path),
+    }
+    run_config = {
+        "model": model_id,
+        "requested_revision": revision,
+        "dtype": dtype,
+        "max_new_tokens": max_new_tokens,
+        "chat_template_kwargs": template_kwargs,
+        "split": split,
+        "sha256": sha256_inputs,
+    }
+
+    out_dir = Path(out_dir)
+    config_path = out_dir / "config.json"
+    if config_path.exists():
+        existing_config = json.loads(config_path.read_text(encoding="utf-8"))
+        diff_fields = _config_diff_fields(existing_config, run_config)
+        if diff_fields:
+            raise ValueError(
+                f"Refusing to resume in {out_dir}: config.json differs in {', '.join(diff_fields)}"
+            )
+    else:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        _atomic_write_text(config_path, json.dumps(run_config, indent=2, ensure_ascii=False) + "\n")
 
     selected = (
         passages
@@ -351,7 +452,6 @@ def run_extraction(
         else [p for p in passages if split_data["passages"][p["passage_id"]] == split]
     )
 
-    out_dir = Path(out_dir)
     raw_dir = out_dir / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
     run_meta_path = out_dir / "run.json"
@@ -369,6 +469,7 @@ def run_extraction(
     predictions = []
     parse_failures = []
     per_passage_seconds = {}
+    n_think_blocks = 0
 
     for passage in selected:
         pid = passage["passage_id"]
@@ -388,6 +489,10 @@ def run_extraction(
             elapsed = round(time.perf_counter() - started, 4)
             _atomic_write_text(raw_path, raw_text)
             per_passage_seconds[pid] = elapsed
+
+        _, had_think = strip_leading_think_block(raw_text)
+        if had_think:
+            n_think_blocks += 1
 
         items, error = parse_answer(raw_text, passage)
         if error is not None:
@@ -410,15 +515,11 @@ def run_extraction(
         "dtype": dtype,
         "decoding": {"do_sample": False, "max_new_tokens": max_new_tokens},
         "chat_template_kwargs": template_kwargs,
-        "sha256": {
-            "prompt_template": _sha256_file(prompt_path),
-            "schema": _sha256_file(schema_path),
-            "split": _sha256_file(split_path),
-            "passages": _sha256_file(passages_path),
-        },
+        "sha256": sha256_inputs,
         "split": split,
         "n_passages": len(selected),
         "n_predictions": len(predictions),
+        "n_think_blocks": n_think_blocks,
         "per_passage_seconds": per_passage_seconds,
         "parse_failures": parse_failures,
         "versions": {
@@ -435,6 +536,18 @@ def score_split(pred_path, split, *, split_path=SPLIT_PATH, gold_path=GOLD_PATH)
     if split not in ("dev", "eval"):
         raise ValueError(f"Split for scoring must be 'dev' or 'eval', got {split!r}")
     pred_path = Path(pred_path)
+
+    for meta_name in ("run.json", "config.json"):
+        meta_path = pred_path.parent / meta_name
+        if meta_path.is_file():
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            recorded_split = meta.get("split")
+            if recorded_split is not None and recorded_split != split:
+                raise ValueError(
+                    f"Refusing to score {pred_path} as split {split!r}: "
+                    f"{meta_path} records split {recorded_split!r}"
+                )
+
     split_data = load_split(split_path)
     split_pages = {(entry["document"], entry["page"]) for entry in split_data["pages"][split]}
 
@@ -446,12 +559,20 @@ def score_split(pred_path, split, *, split_path=SPLIT_PATH, gold_path=GOLD_PATH)
     payload = json.loads(pred_path.read_text(encoding="utf-8"), parse_constant=_reject_constant)
     if not isinstance(payload, list):
         raise ValueError("Predictions must be a JSON array of statements")
-    filtered = [
-        item for item in payload
-        if isinstance(item, dict) and (item.get("document"), item.get("page")) in split_pages
-    ]
 
-    validated = extract_eval.validate_predictions(filtered)
+    outside = [
+        (index, item.get("document"), item.get("page"))
+        for index, item in enumerate(payload)
+        if isinstance(item, dict) and (item.get("document"), item.get("page")) not in split_pages
+    ]
+    if outside:
+        listed = ", ".join(f"[{idx}] ({doc!r}, {page!r})" for idx, doc, page in outside)
+        raise ValueError(
+            f"Refusing to score {pred_path} as split {split!r}: "
+            f"{len(outside)} prediction(s) outside split {split!r}: {listed}"
+        )
+
+    validated = extract_eval.validate_predictions(payload)
     result = extract_eval.score(gold_subset, validated)
     report = extract_eval.markdown_report(result)
     report_path = pred_path.parent / f"score_{split}.md"
@@ -501,9 +622,15 @@ def main(argv=None):
             print(f"  {doc}: total={counts['dev'] + counts['eval']} (dev={counts['dev']}, eval={counts['eval']})")
         print(f"  gold statements: dev={len(split_data['gold_ids']['dev'])}, eval={len(split_data['gold_ids']['eval'])}")
         print(f"  longest passage: {longest['passage_id']} (page {longest['page']!r}, {len(longest['text'])} chars)")
-        for kind, mapping in split_data["code_tables"].items():
-            missing = [code for code, name in mapping.items() if not name]
-            print(f"  code table {kind}: {len(mapping)} codes, missing names={missing}")
+        missing_units = [code for code, name in split_data["code_tables"]["units"].items() if not name]
+        print(f"  code table units: {len(split_data['code_tables']['units'])} codes, missing names={missing_units}")
+        wc = split_data["code_tables"]["watercourses"]
+        missing_bdtopo = [code for code, names in wc.items() if not names["bdtopo"]]
+        missing_hubeau = [code for code, names in wc.items() if not names["hubeau"]]
+        print(
+            f"  code table watercourses: {len(wc)} codes, "
+            f"missing bdtopo={missing_bdtopo}, missing hubeau={missing_hubeau}"
+        )
     elif args.cmd == "run":
         try:
             pred_path, run_meta = run_extraction(
@@ -518,8 +645,8 @@ def main(argv=None):
         except (RuntimeError, ValueError, OSError) as error:
             sys.exit(str(error))
         print(
-            f"Wrote {run_meta['n_predictions']} predictions ({len(run_meta['parse_failures'])} parse failures) "
-            f"across {run_meta['n_passages']} passages to {pred_path}"
+            f"Wrote {run_meta['n_predictions']} predictions ({len(run_meta['parse_failures'])} parse failures, "
+            f"{run_meta['n_think_blocks']} leading think blocks) across {run_meta['n_passages']} passages to {pred_path}"
         )
     elif args.cmd == "score":
         try:

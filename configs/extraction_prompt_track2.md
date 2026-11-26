@@ -30,7 +30,7 @@ Every object in the JSON array must contain exactly these eight keys:
   - `unit`: the statement refers to a single groundwater unit.
   - `aggregate`: the statement refers to a multi-unit groundwater body or a group of at least two groundwater units taken together.
 - `units` (array of unique strings): BD LISA aquifer unit codes chosen **only** from the aquifer units table below. Use `[]` when no listed unit is named or identifiable. Never invent a code or repeat a code.
-- `watercourses` (array of unique strings): BD Carthage watercourse codes chosen **only** from the watercourses table below. Use `[]` when no listed watercourse is named (for example, canal-only statements or generic references to rivers). Never invent a code or repeat a code.
+- `watercourses` (array of unique strings): BD Carthage watercourse codes chosen **only** from the watercourses table below (which shows BD TOPO names alongside Hub'Eau French names where gauged). Use `[]` when no listed watercourse is named (for example, canal-only statements or generic references to rivers). Never invent a code or repeat a code.
 
 ### Aquifer units (`units`)
 

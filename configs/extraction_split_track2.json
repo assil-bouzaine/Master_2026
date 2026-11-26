@@ -176,7 +176,7 @@
       },
       {
         "document": "brgm-rp-71486-fr",
-        "page": "?"
+        "page": "unnumbered p000"
       },
       {
         "document": "sierm-frdg243",
@@ -342,7 +342,15 @@
       },
       {
         "document": "brgm-rp-71486-fr",
-        "page": "?"
+        "page": "unnumbered p001"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "unnumbered p002"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "unnumbered p049"
       },
       {
         "document": "sierm-frdg243",
@@ -399,14 +407,38 @@
       "718BP04": "Alluvions récentes du Tech"
     },
     "watercourses": {
-      "Y0110540": "la Massane (la Maçana)",
-      "Y02-0400": "le Tech",
-      "Y03-0400": "el Reart",
-      "Y0320500": "la Cantarana",
-      "Y04-0400": "la Têt",
-      "Y0460600": "el Bolès",
-      "Y0470560": "la Bassa",
-      "Y06-0400": "l'Agly"
+      "Y0110540": {
+        "bdtopo": "la Massane (la Maçana)",
+        "hubeau": "La Massane"
+      },
+      "Y02-0400": {
+        "bdtopo": "le Tech",
+        "hubeau": "Le Tech"
+      },
+      "Y03-0400": {
+        "bdtopo": "el Reart",
+        "hubeau": "Le Réart"
+      },
+      "Y0320500": {
+        "bdtopo": "la Cantarana",
+        "hubeau": "La Canterrane"
+      },
+      "Y04-0400": {
+        "bdtopo": "la Têt",
+        "hubeau": "La Têt"
+      },
+      "Y0460600": {
+        "bdtopo": "el Bolès",
+        "hubeau": "Le Bolès"
+      },
+      "Y0470560": {
+        "bdtopo": "la Bassa",
+        "hubeau": ""
+      },
+      "Y06-0400": {
+        "bdtopo": "l'Agly",
+        "hubeau": "L'Agly"
+      }
     }
   }
 }

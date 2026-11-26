@@ -31,44 +31,46 @@ date.
 
 ---
 
-## ▶ START HERE (state at the end of the session of 2026-11-25, ≈ 23:00 local time)
+## ▶ START HERE (state on 2026-11-26 ≈ 12:30 local time; session in progress)
 
-**Nothing is running.** No worker task open (Sol and Neon idle: Sol's Codex 5-hour window was at ≈ 61 %, Neon's
-Gemini window at ≈ 66 %; both reset within ≈ 1–3 h of the stop). No Colab, Kaggle, Camber or laptop job. All work is
-committed and **pushed** (2026-11-25, as assil-bouzaine) on branch `master_2026_fixes`, with the tag `phase4-v1-frozen`.
+**Running:** worker `neon` on T71 (export: aquifer units, `monitors`, `overlies`, basin canal nodes; controls for
+every relation of D; rebuild of the v5 exports and controls), worker `sol` (GPT Sol 6.1 high) on T73 (a v5 path for
+the CPU runners: `scripts/run_v5_cpu.sh` with `prepare_check` and `hgnn_smoke`, `--dataset v5` in the bundlers). No
+Colab, Kaggle or Camber job. Branch `master_2026_fixes`; commits of today local (push only when Assil says so).
 
-**Where we are in `docs/v5_plan.md`:**
-- R0 ✅ (arms report, reading, figures, RQ2 sign counts, tag).
-- R1: data pulled; dataset v5 built, audited, reproducible, ends at the last weather week (2026-11-22). Left for
-  Gate R1: R1.4 Sentinel-2 (Earth Engine **ready**), and the dataset tests on v5 (`tests.test_pumping_conservation`,
-  `tests.test_regime_boundaries`, placeholder tests).
-- R2: leakage recharge done (ontology 0.9.0; release 2026-11-25T22:35:50Z; 32/33 core wells with a recharge path,
-  CARRIE the named exception); France/Tunisia profiles, unused-term review, alignments (R2.3), literature extraction
-  (R2.1), CQ15/CQ16 to do.
-- R3: `docs/analysis_plan_v3.md` drafted; `bucket.py`, `kernels.py`, `hetero_graph.py`, `hybrid_gnn.py` built and
-  tested (no fit yet).
+**Done today:** the bug audit `docs/v5_bugs_to_fix.md` checked item by item (verdicts: `docs/v5_plan.md` §1b, step
+note `docs/notes/step16_v5.md`): all real; item 1 larger than reported (the kernel's memory also leaked imputed
+pumping) and a new bug found (v5 pumping 0 for 1990–2002); hybrid fixes committed (`9f5dfbc`), `PFE_NO_SCORE`
+(`7a2ff0c`), T72 BSS note + Gate R1 dataset tests pass on v5 (`dfd7ba5`).
 
 **Next, in order:**
-1. Open the two workers (memory `codex-worker-orchestration`; check their 5-hour windows first: stop at 70 %).
-2. **Plan v3 §8 decisions** (with Assil, AskUserQuestion, recommendation first): the canal sign where a return was
-   measured (C2-1: hard ≥ 0 needs a v5 constraint decision; `hybrid_gnn.py` already has a `canal_c` slot), the twin v2
-   criterion, tuning ranges, whether CQ15 enters v5.
-3. **Colab smoke run of `hybrid_gnn.py`** on v5 (`PFE_ALLOW_TRAIN=1`, a few epochs, arms C and D, one seed; TPU v5e1
-   or high-mem CPU through `scripts/colab_cli.py`; the CPU bundle must include the new modules, torch_geometric and
-   the v5 data/exports) to measure the epoch time; then the tuning on validation; then the twin v2 (`twin.py`).
-4. **R1.4:** `src/ingest/gee_s2.py` (summer NDVI/NDMI per RPG parcel 2017–2025 via `reduceRegions`, batched;
-   Manouba S2 + WorldCover + ERA5-Land for a sourced aquifer box) → CQ15 `ProbablyIrrigatedParcel`.
-5. R2.1 / R2.3 / R2.2-rest as listed in `docs/v5_plan.md`.
+1. Review and commit T71 (neon) and T73 (sol) when their reports arrive (`results/_agents/reports/T71.md`, `T73.md`).
+2. Plan v3 §8 decisions with Assil (canal sign at the 2 eligible 718BP02 wells, pumping reliability by year or by
+   facility-year, twin v2 criterion, CQ15 in v5); then write them into `docs/analysis_plan_v3.md` §8.
+3. Colab smoke run (after T71 + T73): `colab_cli up smoke --runtime v5e1`, `push-cpu smoke --dataset v5 --steps
+   hgnn_smoke --budget 1`, pull, stop; read the time per epoch → the tuning budget (24 trials × 3 seeds).
+4. R1.4 Sentinel-2 (`src/ingest/gee_s2.py`), then CQ15; R2.1 / R2.3 / R2.2 as listed in `docs/v5_plan.md`.
 
-**Waiting for Assil:**
-- `! camber login` only if Camber jobs should run from the terminal (web app logged in; account
-  the account named in .agents/RESOURCES.md, Student plan, CPU + single L4 GPU).
-- (unchanged) the professor's e-mail, the two data e-mails, the AGROVOC gold set, the paywalled papers, the
-  defence date.
+**Waiting for Assil:** (unchanged) `! camber login` if Camber should run jobs; the professor's e-mail, the two data
+e-mails, the AGROVOC gold set, the paywalled papers, the defence date.
 
 ---
 
 ## Session log
+
+### 2026-11-26 (Claude Opus 5.5, from ≈ 11:20 local time)
+- Assil: "there is a bug fix folder start with that if those are valid bugs then continue the work as planned";
+  Codex workers must use GPT Sol 6.1 high (not the global 6.2 default): spawned with `-m gpt-6.1-sol -c
+  model_reasoning_effort=high`, status line checked ("GPT-6.1-Sol high"); memory updated.
+- The "folder" is the file `docs/v5_bugs_to_fix.md` (audit of `720fb40`). Every item checked against code and data
+  (`docs/v5_plan.md` §1b): all real. Item 1 (imputed pumping training the pumping gain): a linear probe loss shows a
+  gradient change of 405 when only imputed pumping changes; the audit's fix leaves 273 (the 8-year kernel's memory);
+  fixed by splitting each pumping stress into declared and imputed parts (imputed response with detached gain and
+  kernel; pumping anomaly fixed in the loss before 2012): change exactly 0, values unchanged. New bug: v5 pumping 0
+  for 1990–2002 (pumping table starts 2003, weather 1990) → now the well's training mean. Item 4: stage B = stage-A
+  epochs then δ-only refinement (`--epochs-b`); held-out wells equal stage A bit for bit. Item 5.1 kernels bound;
+  5.4/5.5 deferred to R2.2. All 7 checks of `tests.test_hybrid_gnn` and `tests.test_kernels` pass.
+- Workers: neon → T71 (items 2–3), sol → T72 (BSS note, Gate R1 dataset tests on v5: all pass; committed), then T73.
 
 ### 2026-11-25 (evening, Claude Opus 5.5, from ≈ 21:00 local time)
 - Read `gemini_neon_review.md` (513 lines: 12 fixes, roadmap R0–R7). Assil: do all of it, in a new branch

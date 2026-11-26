@@ -120,6 +120,17 @@ os.execvp(python, cmd)
     regimes:*:*) m=${s#regimes:}                               # one regime: regimes:<model>:<lwo|f25|f50|refit>
                  $PY -m src.models.regimes --model "${m%%:*}" --only "${m#*:}" ;;
     regimes:*)   $PY -m src.models.regimes --model "${s#regimes:}" ;;
+    extract)     extract_args=(
+                   -m src.kg.extract_llm run
+                   --model "${EXTRACT_MODEL:?set EXTRACT_MODEL}"
+                   --split "${EXTRACT_SPLIT:-dev}"
+                   --out "${PFE_RESULTS:-results/$PFE_DATASET}/extraction/${EXTRACT_RUN:?set EXTRACT_RUN}"
+                 )
+                 [ -n "${EXTRACT_REVISION:-}" ] && extract_args+=(--revision "$EXTRACT_REVISION")
+                 [ -n "${EXTRACT_DTYPE:-}" ] && extract_args+=(--dtype "$EXTRACT_DTYPE")
+                 [ -n "${EXTRACT_MAX_NEW_TOKENS:-}" ] && extract_args+=(--max-new-tokens "$EXTRACT_MAX_NEW_TOKENS")
+                 [ -n "${EXTRACT_TEMPLATE_KWARGS:-}" ] && extract_args+=(--chat-template-kwargs "$EXTRACT_TEMPLATE_KWARGS")
+                 $PY "${extract_args[@]}" ;;
     *)           echo "unknown step $s" ;;
   esac || echo "!! step $s failed, continuing"
 done

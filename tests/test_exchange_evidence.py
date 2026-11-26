@@ -20,17 +20,16 @@
    member (negative control: the FRDR224 row rewritten as a unit statement is refused).
 """
 import csv
-import html
 import json
 import re
 import subprocess
-from functools import lru_cache
 
 import pandas as pd
 import pyogrio
 
 from src.analysis.bdlisa_profile import GPKG
 from src.config import RAW, ROOT
+from src.kg.extract_passages import norm, pages
 
 CSV = ROOT / "configs" / "exchange_evidence.csv"
 DOCS = RAW / "documents"
@@ -43,32 +42,6 @@ ENUM = {"mechanism": {"RiverExchange", "CanalReturnFlow"},
         "subject": {"unit", "aggregate"},
         "method": {"differential_gauging", "geochemical_tracing", "water_balance", "synthesis"}}
 SHEETS = {"FRDG351": "sierm-frdg351", "FRDG243": "sierm-frdg243"}
-
-
-def norm(s):
-    return " ".join(s.replace(" ", " ").split())
-
-
-@lru_cache(maxsize=None)
-def pages(doc):
-    """[(printed page label, normalised text)] of a stored document."""
-    index = json.loads((DOCS / "documents.json").read_text())
-    f = DOCS / index[doc]["file"]
-    if f.suffix == ".html":
-        t = re.sub(r"<script.*?</script>|<style.*?</style>", " ", f.read_text(encoding="utf-8"), flags=re.S)
-        return [("web page", norm(html.unescape(re.sub(r"<[^>]+>", " ", t))))]
-    out = subprocess.run(["pdftotext", "-layout", str(f), "-"], capture_output=True, text=True,
-                         check=True).stdout
-    result = []
-    for chunk in out.split("\f"):
-        m = re.findall(r"(?:^|\n)\s*(\d{1,3})\s+BRGM/RP-71486-FR|BRGM/RP-71486-FR[^\n]*?Roussillon\s+(\d{1,3})\s*(?:\n|$)",
-                       chunk)
-        # the footer line of a portrait page; the annex's landscape pages put the number on a line
-        # of its own; the groundwater-body sheets end each page with "... Page N"
-        nums = ([a or b for a, b in m] or re.findall(r"Page\s+(\d+)", chunk)
-                or re.findall(r"(?m)^\s*(\d{1,3})\s*$", chunk))
-        result.append((nums[-1] if nums else "?", norm(chunk)))
-    return result
 
 
 def found_on(doc, text):

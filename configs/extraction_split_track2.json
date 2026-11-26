@@ -1,0 +1,412 @@
+{
+  "rule": "Dev statement pages are fixed before running any model: sierm-frdg351 page 3, brgm-rp-71486-fr pages 24 and 29, and smnpr-fonctionnement-des-nappes web page (10 gold statements: 6 RiverExchange, 4 CanalReturnFlow). Every other page holding a gold statement is eval (22 statements). Pages without a gold statement are dev when 0-based physical_index % 4 == 0, else eval.",
+  "dev_statement_pages": [
+    {
+      "document": "brgm-rp-71486-fr",
+      "page": "24"
+    },
+    {
+      "document": "brgm-rp-71486-fr",
+      "page": "29"
+    },
+    {
+      "document": "sierm-frdg351",
+      "page": "3"
+    },
+    {
+      "document": "smnpr-fonctionnement-des-nappes",
+      "page": "web page"
+    }
+  ],
+  "gold_ids": {
+    "dev": [
+      "brgm-boules-aval",
+      "brgm-c2-1-mixing",
+      "brgm-canal-ancient-right",
+      "brgm-canal-recent-left",
+      "brgm-canal-recent-right",
+      "frdg351-frdr1012",
+      "frdg351-frdr211",
+      "frdg351-frdr212",
+      "smnpr-quaternary-outlet",
+      "smnpr-tet-pliocene"
+    ],
+    "eval": [
+      "brgm-basse",
+      "brgm-boules-amont",
+      "brgm-synthesis-ancient",
+      "brgm-synthesis-recent",
+      "brgm-tet-a-d",
+      "brgm-tet-d-i",
+      "brgm-tet-e-j-ancient",
+      "brgm-tet-i-j",
+      "frdg243-frdr232a",
+      "frdg351-agly-canal-return",
+      "frdg351-canal-recharge",
+      "frdg351-frdr223",
+      "frdg351-frdr224",
+      "frdg351-frdr232a",
+      "frdg351-frdr232b",
+      "frdg351-frdr234a",
+      "frdg351-frdr234b",
+      "frdg351-frdr235",
+      "frdg351-frdr237a",
+      "frdg351-frdr986b",
+      "frdg351-tet-evp-lowflow",
+      "frdg351-tet-evp-year"
+    ]
+  },
+  "passages": {
+    "brgm-rp-71486-fr:p000": "dev",
+    "brgm-rp-71486-fr:p001": "eval",
+    "brgm-rp-71486-fr:p002": "eval",
+    "brgm-rp-71486-fr:p003": "eval",
+    "brgm-rp-71486-fr:p004": "dev",
+    "brgm-rp-71486-fr:p005": "eval",
+    "brgm-rp-71486-fr:p006": "eval",
+    "brgm-rp-71486-fr:p007": "eval",
+    "brgm-rp-71486-fr:p008": "dev",
+    "brgm-rp-71486-fr:p009": "eval",
+    "brgm-rp-71486-fr:p010": "eval",
+    "brgm-rp-71486-fr:p011": "eval",
+    "brgm-rp-71486-fr:p012": "dev",
+    "brgm-rp-71486-fr:p013": "eval",
+    "brgm-rp-71486-fr:p014": "eval",
+    "brgm-rp-71486-fr:p015": "eval",
+    "brgm-rp-71486-fr:p016": "dev",
+    "brgm-rp-71486-fr:p017": "eval",
+    "brgm-rp-71486-fr:p018": "eval",
+    "brgm-rp-71486-fr:p019": "eval",
+    "brgm-rp-71486-fr:p020": "dev",
+    "brgm-rp-71486-fr:p021": "eval",
+    "brgm-rp-71486-fr:p022": "eval",
+    "brgm-rp-71486-fr:p023": "eval",
+    "brgm-rp-71486-fr:p024": "dev",
+    "brgm-rp-71486-fr:p025": "dev",
+    "brgm-rp-71486-fr:p026": "eval",
+    "brgm-rp-71486-fr:p027": "eval",
+    "brgm-rp-71486-fr:p028": "eval",
+    "brgm-rp-71486-fr:p029": "eval",
+    "brgm-rp-71486-fr:p030": "eval",
+    "brgm-rp-71486-fr:p031": "eval",
+    "brgm-rp-71486-fr:p032": "dev",
+    "brgm-rp-71486-fr:p033": "eval",
+    "brgm-rp-71486-fr:p034": "eval",
+    "brgm-rp-71486-fr:p035": "eval",
+    "brgm-rp-71486-fr:p036": "dev",
+    "brgm-rp-71486-fr:p037": "eval",
+    "brgm-rp-71486-fr:p038": "eval",
+    "brgm-rp-71486-fr:p039": "eval",
+    "brgm-rp-71486-fr:p040": "dev",
+    "brgm-rp-71486-fr:p041": "eval",
+    "brgm-rp-71486-fr:p042": "eval",
+    "brgm-rp-71486-fr:p043": "eval",
+    "brgm-rp-71486-fr:p044": "dev",
+    "brgm-rp-71486-fr:p045": "eval",
+    "brgm-rp-71486-fr:p046": "eval",
+    "brgm-rp-71486-fr:p047": "eval",
+    "brgm-rp-71486-fr:p048": "dev",
+    "brgm-rp-71486-fr:p049": "eval",
+    "sierm-frdg243:p000": "dev",
+    "sierm-frdg243:p001": "eval",
+    "sierm-frdg243:p002": "eval",
+    "sierm-frdg243:p003": "eval",
+    "sierm-frdg243:p004": "dev",
+    "sierm-frdg243:p005": "eval",
+    "sierm-frdg243:p006": "eval",
+    "sierm-frdg351:p000": "dev",
+    "sierm-frdg351:p001": "eval",
+    "sierm-frdg351:p002": "dev",
+    "sierm-frdg351:p003": "eval",
+    "sierm-frdg351:p004": "dev",
+    "sierm-frdg351:p005": "eval",
+    "sierm-frdg351:p006": "eval",
+    "sierm-frdg351:p007": "eval",
+    "smnpr-fonctionnement-des-nappes:p000": "dev"
+  },
+  "pages": {
+    "dev": [
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "11"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "16"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "20"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "24"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "28"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "29"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "37"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "42"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "46"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "5"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "50"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "54"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "?"
+      },
+      {
+        "document": "sierm-frdg243",
+        "page": "1"
+      },
+      {
+        "document": "sierm-frdg243",
+        "page": "5"
+      },
+      {
+        "document": "sierm-frdg351",
+        "page": "1"
+      },
+      {
+        "document": "sierm-frdg351",
+        "page": "3"
+      },
+      {
+        "document": "sierm-frdg351",
+        "page": "5"
+      },
+      {
+        "document": "smnpr-fonctionnement-des-nappes",
+        "page": "web page"
+      }
+    ],
+    "eval": [
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "12"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "13"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "15"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "17"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "18"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "19"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "21"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "22"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "23"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "25"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "26"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "27"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "3"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "30"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "31"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "32"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "33"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "35"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "36"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "38"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "39"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "41"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "43"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "44"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "45"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "47"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "48"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "49"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "51"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "52"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "53"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "6"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "7"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "9"
+      },
+      {
+        "document": "brgm-rp-71486-fr",
+        "page": "?"
+      },
+      {
+        "document": "sierm-frdg243",
+        "page": "2"
+      },
+      {
+        "document": "sierm-frdg243",
+        "page": "3"
+      },
+      {
+        "document": "sierm-frdg243",
+        "page": "4"
+      },
+      {
+        "document": "sierm-frdg243",
+        "page": "6"
+      },
+      {
+        "document": "sierm-frdg243",
+        "page": "7"
+      },
+      {
+        "document": "sierm-frdg351",
+        "page": "2"
+      },
+      {
+        "document": "sierm-frdg351",
+        "page": "4"
+      },
+      {
+        "document": "sierm-frdg351",
+        "page": "6"
+      },
+      {
+        "document": "sierm-frdg351",
+        "page": "7"
+      },
+      {
+        "document": "sierm-frdg351",
+        "page": "8"
+      }
+    ]
+  },
+  "code_tables": {
+    "units": {
+      "671AA00": "NV3 absent, nom de l'entité NV2 : Sables et argiles pliocènes du Roussillon",
+      "671AB01": "Alluvions anciennes de l'Agly",
+      "671AB02": "Alluvions anciennes de la Têt",
+      "671AB03": "Alluvions anciennes du Réart",
+      "671AB04": "Alluvions anciennes du Tech",
+      "718BP01": "Alluvions récentes de l'Agly",
+      "718BP02": "Alluvions récentes de la Têt",
+      "718BP03": "Alluvions récentes du Reart",
+      "718BP04": "Alluvions récentes du Tech"
+    },
+    "watercourses": {
+      "Y0110540": "la Massane (la Maçana)",
+      "Y02-0400": "le Tech",
+      "Y03-0400": "el Reart",
+      "Y0320500": "la Cantarana",
+      "Y04-0400": "la Têt",
+      "Y0460600": "el Bolès",
+      "Y0470560": "la Bassa",
+      "Y06-0400": "l'Agly"
+    }
+  }
+}

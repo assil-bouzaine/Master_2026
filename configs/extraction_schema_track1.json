@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Track 1 cause-effect statement extraction (v5 plan R2.1)",
+  "description": "Answer with a JSON array. Copy driver, effect and quote verbatim from the passage. Fixed 2026-11-26 before any paper was read by a model (docs/notes/step16_v5.md, Track 1 design). The runner adds document (OpenAlex id) and page.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["driver", "driver_category", "effect", "effect_category", "polarity", "evidence_type", "place", "quote"],
+    "properties": {
+      "driver": {"type": "string", "pattern": "\\S"},
+      "driver_category": {
+        "type": "string",
+        "enum": ["irrigation_expansion", "groundwater_abstraction", "land_use_or_crop_change", "urbanisation",
+                 "drought_or_climate", "canal_irrigation_or_return_flow", "fertilisation", "managed_recharge",
+                 "water_policy_or_restriction", "other"]
+      },
+      "effect": {"type": "string", "pattern": "\\S"},
+      "effect_category": {
+        "type": "string",
+        "enum": ["groundwater_level", "groundwater_recharge", "groundwater_quality_or_nitrate",
+                 "salinisation_or_seawater_intrusion", "streamflow", "drought_risk", "water_use_conflict", "other"]
+      },
+      "polarity": {"type": "string", "enum": ["increases", "decreases", "no_effect", "unclear"]},
+      "evidence_type": {"type": "string", "enum": ["measured", "modelled", "reviewed_literature", "stated_without_evidence"]},
+      "place": {"type": "string"},
+      "quote": {"type": "string", "pattern": "\\S"}
+    }
+  }
+}

@@ -1,0 +1,204 @@
+# Derived from the EuroCrops authors' French RPG mapping; licence CC BY-SA 4.0.
+# EuroCrops commit: b4331adc3dec584ca0e86f0f2d5c881e53cb3b68
+# Source: csvs/country_mappings/fr_2018.csv, fr_other_years.csv; hcat_core/HCAT3.csv
+# Snapshot: data/raw/eurocrops/2026-11-26/; 2018 mapping takes priority.
+# Source conflict: CSE: fr_2018.csv=3301061000; fr_other_years.csv=3399000000; fr_2018.csv wins
+code,label,area_ha,split,hcat_code,hcat_name,in_gold,source_file
+SPH,Prairie avec herbe prédominante et ressources fourragères ligneuses présentes,148558.4,eval,3302000000,pasture_meadow_grassland_grass,yes,fr_2018.csv
+VRC,Vigne (sauf vigne rouge),100695.9,eval,3303060000,vineyards_wine_vine_rebland_grapes,yes,fr_2018.csv
+SPL,Surface pastorale - Ressources fourragères ligneuses prédominantes,84472.6,dev,3302000000,pasture_meadow_grassland_grass,yes,fr_2018.csv
+VRG,Autre verger (y compris verger DOM),56546.4,eval,3303010000,orchards_fruits,yes,fr_2018.csv
+PPH,Prairie de 6 ans ou plus (couvert herbacé),33159.3,eval,3302000000,pasture_meadow_grassland_grass,yes,fr_2018.csv
+BOP,Bois pâturé,20439.5,eval,3306990000,other_tree_wood_forest,yes,fr_2018.csv
+SNE,"Surface agricole temporairement non admissible, autre que surface pâturable",18219.4,eval,3301110000,fallow_land_not_crop,yes,fr_2018.csv
+J5M,Jachère de 5 ans ou moins,10349.6,dev,3301110000,fallow_land_not_crop,yes,fr_2018.csv
+PVT,"Pêche (y compris nectarine, brugnon)",10213.2,eval,3303011100,peach,yes,fr_2018.csv
+PTR,Prairie temporaire de moins de 5 ans et autre mélange avec graminées,8046.3,eval,3301090100,temporary_grass,yes,fr_2018.csv
+OLI,Olive,7320.8,eval,3303050000,olive_plantations,yes,fr_2018.csv
+LUZ,Autre luzerne,6581.5,eval,3301090301,alfalfa_lucerne,yes,fr_2018.csv
+JAC,Jachère (terre arable),6467.3,dev,,,no,
+BDH,Blé dur d’hiver,5330.4,eval,3301010201,winter_durum_hard_wheat,yes,fr_2018.csv
+J6P,Jachère de 6 ans ou plus,4313.5,eval,3308000000,unmaintained,yes,fr_2018.csv
+ART,Artichaut,3723.4,eval,3301270000,artichoke,yes,fr_2018.csv
+AVH,Avoine d’hiver,3667.9,eval,3301010501,winter_oats,yes,fr_2018.csv
+FLA,Autre légume ou fruit annuel,2994.7,dev,3301070000,fresh_vegetables,yes,fr_2018.csv
+BTH,Blé tendre d’hiver,2454.3,eval,3301010101,winter_common_soft_wheat,yes,fr_2018.csv
+PRL,Prairie en rotation longue (6 ans ou plus),1790.4,eval,3302000000,pasture_meadow_grassland_grass,yes,fr_2018.csv
+VRN,Vigne : raisins de cuve non en production,1718.3,eval,3303060000,vineyards_wine_vine_rebland_grapes,yes,fr_2018.csv
+LBF,"Laitue, endive et autres salades",1498.1,eval,3301319900,other_salads_lettuce_leaf_vegetables,yes,fr_2018.csv
+J6S,Jachère de 6 ans ou plus déclarée comme Surface d’intérêt écologique,1446.3,dev,3308000000,unmaintained,yes,fr_2018.csv
+FLP,Autre légume ou fruit pérenne (hors petit fruit à baie),1191.0,eval,3303120000,unspecified_permanent_crops,yes,fr_2018.csv
+FAG,Autre fourrage annuel d’un autre genre,1181.8,eval,3301990000,other_arable_land_crops,yes,fr_2018.csv
+MLC,Mélange multi-espèces avec légumineuses fourragères prépondérantes sans graminées prairiales,971.7,eval,3301029900,other_dry_pulses,yes,fr_other_years.csv
+ORH,Orge d'hiver,759.4,eval,3301010401,winter_barley,yes,fr_2018.csv
+MDI,Maraîchage diversifié (plusieurs espèces de fruits et légumes majoritairement non pérennes),725.2,dev,,,no,
+MIS,Maïs (hors maïs doux),708.9,eval,3301010600,grain_maize_corn_popcorn,yes,fr_2018.csv
+CEL,Céleri,697.5,eval,3301250000,celery,yes,fr_2018.csv
+SAI,Sainfoin,691.6,eval,3301061600,onobrychis_sainfoins,yes,fr_2018.csv
+PTC,Pomme de terre,686.3,eval,3301030000,potatoes,yes,fr_2018.csv
+RGA,Ray-grass de 5 ans ou moins,629.2,dev,3301090205,lolium_ryegrass,yes,fr_2018.csv
+MLG,Mélange de légumineuses prépondérantes et de graminées fourragères de 5 ans ou moins,618.2,eval,3301020000,legumes_dried_pulses_protein_crops,yes,fr_2018.csv
+SIN,Surface pastorale ou parcours non utilisé l'année en cours,576.2,eval,,,no,
+RVI,Restructuration du vignoble,569.2,eval,3303060000,vineyards_wine_vine_rebland_grapes,yes,fr_2018.csv
+TTH,Triticale d’hiver,506.7,eval,3301010801,winter_triticale,yes,fr_2018.csv
+NOX,Noix (y compris noix de coco),490.6,dev,3303030600,walnuts,yes,fr_2018.csv
+CPL,"Mélange multi-espèces (céréales, oléagineux, légumineuses, …) sans graminées prairiales et sans prédominance de légumineuses",479.5,eval,3301010000,cereal,yes,fr_2018.csv
+MOT,Moutarde d'hiver,413.6,eval,3301210100,mustard,yes,fr_2018.csv
+LU7,Luzerne implantée pour la récolte 2017,395.8,eval,3301090301,alfalfa_lucerne,yes,fr_2018.csv
+MCR,Mélange de céréales ou pseudo-céréales d'hiver entre elles,387.8,eval,3301010000,cereal,yes,fr_2018.csv
+AGR,Agrume,375.0,dev,3303040000,citrus_plantations,yes,fr_2018.csv
+LU5,Luzerne implantée pour la récolte 2015,360.3,eval,3301090301,alfalfa_lucerne,yes,fr_other_years.csv
+TRN,Tournesol,350.3,eval,3301060500,sunflower,yes,fr_2018.csv
+CES,Chicorée / Endive / Scarole,338.0,eval,3301310200,chicory_chicories,yes,fr_2018.csv
+CHU,Chou,325.8,eval,3301210200,brassica_oleracea_cabbage,yes,fr_2018.csv
+BDP,Blé dur de printemps,324.8,dev,3301010202,spring_durum_hard_wheat,yes,fr_2018.csv
+TRE,Autre trèfle,294.0,eval,3301090303,clover,yes,fr_2018.csv
+DTY,Dactyle de 5 ans ou moins,289.3,eval,3301090203,cocksfoot_catgrass,yes,fr_2018.csv
+ORP,Orge de printemps,283.8,eval,3301010402,spring_barley,yes,fr_2018.csv
+BTP,Blé tendre de printemps,280.7,eval,3301010102,spring_common_soft_wheat,yes,fr_2018.csv
+PEP,Pépinière (plants laissés en terre plus d’un an),277.5,dev,3303070000,nurseries_nursery,yes,fr_2018.csv
+CCN,"Concombre, cornichon et courgette",277.5,eval,3301140100,cucumber_pickle,yes,fr_2018.csv
+LU6,Luzerne implantée pour la récolte 2016,253.2,eval,3301090301,alfalfa_lucerne,yes,fr_2018.csv
+OAG,"Autres oléagineux ou mélange d'oléagineux de printemps et d'été (dont moutarde ou navette d'été, sésame et nyger)",247.5,eval,3301060800,oilseed_crops,yes,fr_2018.csv
+PWT,Poire,236.1,eval,3303011200,pears,yes,fr_2018.csv
+TRU,Truffière (chênaie de plants mycorhizés),227.2,dev,3304040000,truffle,yes,fr_2018.csv
+PPA,Autre plante à parfum,214.9,eval,3301061298,unspecified_aromatic_medicinal_culinary_plants_spices_herbs,yes,fr_2018.csv
+AVP,Avoine de printemps,213.4,eval,3301010502,spring_oats,yes,fr_2018.csv
+PPP,Plantes médicinales pérennes (arbres ou arbustes) sauf cassis,212.5,eval,3301061298,unspecified_aromatic_medicinal_culinary_plants_spices_herbs,yes,fr_2018.csv
+PCH,Pois chiche,207.5,eval,3301020200,chickpeas,yes,fr_2018.csv
+SGH,Seigle d’hiver,206.5,dev,3301010301,winter_rye,yes,fr_2018.csv
+MLO,Melon et pastèque,202.6,eval,3301140300,melon,yes,fr_2018.csv
+AAR,Plantes aromatiques herbacées non pérennes (< 5 ans) autres que persil,198.9,eval,,,no,
+LEC,Lentille,145.8,eval,3301020500,lentils,yes,fr_2018.csv
+CBT,Cerise,132.5,eval,3303010400,cherry_cherries,yes,fr_2018.csv
+CRD,Coriandre,118.7,dev,3301061215,coriander,yes,fr_2018.csv
+BOR,Bordure de champ,112.5,eval,3399000000,not_known_and_other,yes,fr_2018.csv
+FVL,Féverole d'hiver,111.8,eval,3301020100,beans,yes,fr_2018.csv
+SOG,Sorgho,104.8,eval,3301010900,millet_sorghum,yes,fr_2018.csv
+GFP,Autre graminée fourragère pure de 5 ans ou moins,104.3,eval,3301090100,temporary_grass,yes,fr_2018.csv
+TOM,Tomate (en pleine terre),100.1,dev,3301280000,tomato,yes,fr_2018.csv
+SBO,Boisement aidé d'une surface agricole,99.3,eval,3306000000,tree_wood_forest,yes,fr_2018.csv
+SOJ,Soja,94.2,eval,3301160000,soy_soybeans,yes,fr_2018.csv
+CHT,Autre céréale d’hiver de genre Triticum,90.6,eval,3301010801,winter_triticale,yes,fr_2018.csv
+CAR,Carotte,89.9,eval,3301290300,carrots_daucus,yes,fr_2018.csv
+VES,"Vesce, mélilot, jarosse, serradelle",88.2,dev,3301090305,vetches,yes,fr_2018.csv
+PPR,Pois protéagineux de printemps (alimentation animale),86.3,eval,3301020600,peas,yes,fr_2018.csv
+AFG,"Autre plante fourragère annuelle (ni légumineuse, ni graminée, ni céréale, ni oléagineux)",86.1,eval,,,no,
+MLF,Mélange de légumineuses à graines ou fourragères pures,84.4,eval,3301029900,other_dry_pulses,yes,fr_other_years.csv
+PHI,Pois protéagineux d'hiver (alimentation animale),81.1,eval,3301020600,peas,yes,fr_2018.csv
+MC6,Mélange de légumineuses fourragères prépondérantes au semis implantées pour la récolte 2016 et de céréales,77.5,dev,3301090300,legumes_harvested_green,yes,fr_2018.csv
+THY,Thym,75.7,eval,3301061237,thyme,yes,fr_2018.csv
+FFO,Autre féverole fourragère,71.5,eval,3301020100,beans,yes,fr_2018.csv
+MTH,Menthe,71.1,eval,3301061222,mints_peppermint,yes,fr_2018.csv
+RDI,Radis,70.8,eval,3301290600,radish,yes,fr_2018.csv
+LU8,Luzerne implantée pour la récolte 2018,67.4,dev,3301090301,alfalfa_lucerne,yes,fr_2018.csv
+MPA,Autre mélange de plantes fixant l’azote,65.1,eval,3301990000,other_arable_land_crops,yes,fr_2018.csv
+PSL,Persil,59.5,eval,3301061227,parsly,yes,fr_2018.csv
+FSG,Autre plante fourragère sarclée d’un autre genre,55.2,eval,3301050000,fodder_roots,yes,fr_2018.csv
+ARP,Plante aromatique pérenne non arbustive ou arborée autre que la vanille,55.0,eval,,,no,
+VRT,Vigne : raisins de table,50.2,dev,3303060000,vineyards_wine_vine_rebland_grapes,yes,fr_2018.csv
+EPE,Epeautre (petit épeautre ou engrain et grand épeautre),45.9,eval,3301011000,spelt,yes,fr_2018.csv
+CMB,Courge musquée / Butternut,45.0,eval,3301140400,pumpkin_squash_gourd,yes,fr_2018.csv
+FEV,Fève,41.8,eval,3301020100,beans,yes,fr_2018.csv
+GES,"Cornille, dolique (y/c lablab), gesse",40.7,eval,3301090305,vetches,yes,fr_2018.csv
+MC7,Mélange de légumineuses fourragères prépondérantes au semis implantées pour la récolte 2017 et de céréales,40.3,dev,3301090300,legumes_harvested_green,yes,fr_2018.csv
+CML,Cameline,36.9,eval,3301061500,camelina,yes,fr_2018.csv
+TTP,Triticale de printemps,36.5,eval,3301010802,spring_triticale,yes,fr_2018.csv
+MLS,Mélange de légumineuses non fourragères prépondérantes et de céréales et/ou d'oléagineux,36.5,eval,3301029900,other_dry_pulses,yes,fr_other_years.csv
+BTA,Bande tampon,36.2,eval,3399000000,not_known_and_other,yes,fr_2018.csv
+PAS,Pastèque,35.0,dev,3301140500,watermelon,yes,fr_2018.csv
+SRS,Sarrasin,32.3,eval,3301150200,buckwheat,yes,fr_2018.csv
+LOT,"Lotier, minette",32.2,eval,3301090300,legumes_harvested_green,yes,fr_2018.csv
+AUB,Aubergine,30.7,eval,3301260000,aubergine_eggplant,yes,fr_2018.csv
+CSS,Culture sous serre hors sol,30.5,eval,3305000000,greenhouse_foil_film,yes,fr_2018.csv
+PFR,Petit fruit à baie (hors fraise),30.3,dev,3303020000,berries_berry_species,yes,fr_2018.csv
+MH6,Mélange de légumineuses fourragères prépondérantes au semis implantées pour la récolte 2016 et d’herbacées ou de graminées fourragères,28.9,eval,3301029900,other_dry_pulses,yes,fr_other_years.csv
+BAS,Basilic,28.6,eval,3301061207,basil,yes,fr_2018.csv
+JNO,Jachère sanitaire imposée par l'administration,28.3,eval,3301110000,fallow_land_not_crop,yes,fr_2018.csv
+SGP,Seigle de printemps,27.6,eval,3301010302,spring_rye,yes,fr_2018.csv
+CIB,Ciboulette,24.1,dev,3301220100,chives,yes,fr_2018.csv
+MPC,Mélange de protéagineux (pois et/ou lupin et/ou féverole) prépondérants semés avant le 31/05 et de céréales,23.4,eval,3301029900,other_dry_pulses,yes,fr_2018.csv
+CAH,Autre céréale ou pseudo-céréale secondaire d'hiver,23.2,eval,,,no,
+PFH,Autre pois fourrager d’hiver,23.1,eval,3301020600,peas,yes,fr_2018.csv
+CRF,Cerfeuil,22.4,eval,3301061214,chervil,yes,fr_2018.csv
+ROM,Romarin,22.3,dev,3301061230,rosemary,yes,fr_2018.csv
+AVO,Avocat,21.0,eval,3303100000,avocado,yes,fr_2018.csv
+FNO,Fenouil,20.4,eval,3301170000,fennel,yes,fr_2018.csv
+PEV,Pépinière (plants laissés en terre moins d’un an),20.2,eval,,,no,
+POT,"Potiron, citrouille et autres courges",19.6,eval,3301140400,pumpkin_squash_gourd,yes,fr_2018.csv
+MH5,Mélange de légumineuses fourragères prépondérantes au semis implantées pour la récolte 2015 et d’herbacées ou de graminées fourragères,19.3,dev,3301029900,other_dry_pulses,yes,fr_other_years.csv
+FET,Fétuque de 5 ans ou moins,19.1,eval,3301090202,festuca_fescue,yes,fr_2018.csv
+PVP,"Poivron, piment et aubergine",18.0,eval,3301300200,chili_pepper,yes,fr_2018.csv
+CCT,Courgette / Citrouille,16.8,eval,3301140600,zucchini_courgette,yes,fr_2018.csv
+HAR,Haricot / Flageolet,16.3,eval,3301020100,beans,yes,fr_2018.csv
+LAV,Lavande et lavandin,16.1,dev,3301061219,lavender_lavandula,yes,fr_2018.csv
+ANE,Aneth,14.4,eval,3301061203,anethum_dill,yes,fr_2018.csv
+EPI,"Epinard, oseille et bette",13.9,eval,3301310800,spinach,yes,fr_2018.csv
+BTN,Betterave,12.5,eval,3301290700,sugar_beet,yes,fr_2018.csv
+VE5,Vesce implantée pour la récolte 2015,12.5,eval,3301090305,vetches,yes,fr_other_years.csv
+CEE,Chênaie entretenue par des porcins ou des petits ruminants,12.4,dev,3306060000,oak,yes,fr_2018.csv
+LIH,Lin non textile d’hiver,12.4,eval,3301060700,flax_linseed,yes,fr_2018.csv
+RDF,Radis fourrager,11.7,eval,3301290600,radish,yes,fr_2018.csv
+LUD,Luzerne déshydratée,11.6,eval,3301090301,alfalfa_lucerne,yes,fr_2018.csv
+SA5,Sainfoin implanté pour la récolte 2015,11.5,eval,3301061600,onobrychis_sainfoins,yes,fr_other_years.csv
+PRU,"Prune (y compris mirabelle, quetsche, reine-claude, …)",11.4,dev,3303011300,plums,yes,fr_2018.csv
+ML6,Mélange de légumineuses fourragères implantées pour la récolte 2016 (entre elles),11.3,eval,3301090300,legumes_harvested_green,yes,fr_2018.csv
+MCS,Mélange de céréales ou pseudo-céréales de printemps entre elles,11.0,eval,,,no,
+MH7,Mélange de légumineuses fourragères prépondérantes au semis implantées pour la récolte 2017 et d’herbacées ou de graminées fourragères,10.2,eval,3301029900,other_dry_pulses,yes,fr_other_years.csv
+CID,Cultures conduites en inter-rangs (bandes de cultures différentes)  - 2 cultures représentant chacune plus de 25  %,10.1,eval,3301000000,arable_crops,yes,fr_2018.csv
+PPO,Petits pois,9.0,dev,3301020600,peas,yes,fr_2018.csv
+MOH,Moha,8.8,eval,3301010900,millet_sorghum,yes,fr_2018.csv
+CAG,"Autre céréale ou pseudo-céréale secondaire de printemps (alpiste, quinoa, chia, …)",6.4,eval,3301011501,winter_unspecified_cereals,yes,fr_2018.csv
+LIP,Lin non textile de printemps,5.9,eval,3301060700,flax_linseed,yes,fr_2018.csv
+TR7,Trèfle implanté pour la récolte 2017,5.5,eval,3301090303,clover,yes,fr_2018.csv
+MC5,Mélange de légumineuses fourragères prépondérantes au semis implantées pour la récolte 2015 et de céréales,5.4,dev,3301029900,other_dry_pulses,yes,fr_other_years.csv
+FRA,Fraise (en pleine terre),5.4,eval,3301130000,strawberries,yes,fr_2018.csv
+LH7,Lupin fourrager d’hiver implanté pour la récolte 2017,5.2,eval,3301020700,sweet_lupins,yes,fr_2018.csv
+VE8,Vesce implantée pour la récolte 2018,5.2,eval,3301090305,vetches,yes,fr_2018.csv
+TR5,Trèfle implanté pour la récolte 2015,4.3,eval,3301090303,clover,yes,fr_other_years.csv
+ML7,Mélange de légumineuses fourragères implantées pour la récolte 2017 (entre elles),4.1,dev,3301090300,legumes_harvested_green,yes,fr_2018.csv
+OSE,Oseille,3.7,eval,3301310700,sorrel,yes,fr_2018.csv
+SGE,Sauge,3.7,eval,3301190000,sage_chia,yes,fr_2018.csv
+NOS,Noisette,3.5,eval,3303030200,hazelnuts_hazel,yes,fr_2018.csv
+EST,Estragon,3.3,eval,3301061236,tarragon,yes,fr_2018.csv
+OIG,Oignon et échalote,3.3,dev,3301220400,onions,yes,fr_2018.csv
+CGO,Autre céréale de genre Sorghum,3.2,eval,3301010900,millet_sorghum,yes,fr_2018.csv
+TR6,Trèfle implanté pour la récolte 2016,3.0,eval,3301090303,clover,yes,fr_2018.csv
+SA8,Sainfoin implanté pour la récolte 2018,2.9,eval,3301061600,onobrychis_sainfoins,yes,fr_2018.csv
+SA7,Sainfoin implanté pour la récolte 2017,2.9,eval,3301061600,onobrychis_sainfoins,yes,fr_2018.csv
+LH8,Lupin fourrager d'hiver implanté pour la récolte 2018,2.7,dev,3301020700,sweet_lupins,yes,fr_2018.csv
+FNU,Fenugrec,2.5,eval,3301020400,fenugreek,yes,fr_2018.csv
+NVT,"Navet, rutabaga et autres légumes racines (hors carotte, radis, betterave)",2.4,eval,3301290800,turnips,yes,fr_2018.csv
+VE7,Vesce implantée pour la récolte 2017,2.4,eval,3301090305,vetches,yes,fr_2018.csv
+FVP,Féverole de printemps,2.3,eval,,,no,
+MEL,Autre mélilot,2.2,dev,3301090304,melilot,yes,fr_2018.csv
+ME8,Mélilot implanté pour la récolte 2018,2.2,eval,3301090304,melilot,yes,fr_2018.csv
+SA6,Sainfoin implanté pour la récolte 2016,2.1,eval,3301061600,onobrychis_sainfoins,yes,fr_2018.csv
+SNU,"Parc d'élevage de monogastriques avec couvert dégradé, voire sol nu",2.0,eval,,,no,
+BRH,Bourrache de 5 ans ou moins,1.9,eval,3301061209,borage,yes,fr_2018.csv
+HPC,Horticulture ornementale,1.6,dev,3301099900,other_plants_harvested_green,yes,fr_other_years.csv
+AIL,Aïl,1.6,eval,3301220200,garlic,yes,fr_2018.csv
+PCL,Phacélie de 5 ans ou moins,1.2,eval,3301061400,phacelia,yes,fr_2018.csv
+TCR,Taillis à courte rotation,1.2,eval,3306000000,tree_wood_forest,yes,fr_2018.csv
+CPA,Autre céréale de printemps de genre Avena,1.1,eval,3301010502,spring_oats,yes,fr_2018.csv
+MLT,Millet,1.1,dev,3301010900,millet_sorghum,yes,fr_2018.csv
+VER,Véronique,1.0,eval,3301061299,other_aromatic_medicinal_culinary_plants_spices_herbs,yes,fr_other_years.csv
+PME,Plantes médicinales pérennes (autres que arbres),0.9,eval,,,no,
+PHF,Pois et haricot frais (alimentation humaine),0.9,eval,,,no,
+PRF,Plantes à parfum pérennes autres que lavande et lavandin,0.9,eval,,,no,
+CHA,Autre céréale d’hiver de genre Avena,0.8,dev,3301011501,winter_unspecified_cereals,yes,fr_2018.csv
+BFS,Bordure le long d'une forêt sans production,0.8,eval,3399000000,not_known_and_other,yes,fr_2018.csv
+ROQ,Roquette,0.6,eval,3301310600,rocket_arugula,yes,fr_2018.csv
+CZH,Colza d’hiver,0.6,eval,3301060401,winter_rapeseed_rape,yes,fr_2018.csv
+POR,Poireau,0.6,eval,3301220300,leek,yes,fr_2018.csv
+VED,Vesce déshydratée,0.5,dev,3301090305,vetches,yes,fr_2018.csv
+ACP,Autre culture pérenne et jachère dans les bananeraies,0.4,eval,3303120000,unspecified_permanent_crops,yes,fr_other_years.csv
+PSE,Pensée,0.4,eval,3301085000,viola,yes,fr_2018.csv
+LEF,Lentille fourragère,0.3,eval,3301020500,lentils,yes,fr_2018.csv
+CAE,Châtaigneraie entretenue par des porcins ou des petits ruminants,0.3,eval,3303030500,sweet_chestnuts,yes,fr_2018.csv
+AME,Plantes médicinales et à parfum non pérennes (< 5 ans),0.2,dev,,,no,
+MRJ,Marjolaine / Origan,0.2,eval,3301061226,oregano,yes,fr_2018.csv
+PMV,Primevère,0.2,eval,3301083500,primrose,yes,fr_2018.csv
+PAQ,Pâquerette,0.2,eval,3301081300,daisy_daisies,yes,fr_2018.csv
+CPT,Autre céréale de printemps de genre Triticum,0.1,eval,3301010802,spring_triticale,yes,fr_2018.csv
+ARA,Arachide,0.0,dev,3301090302,arachis,yes,fr_2018.csv

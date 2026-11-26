@@ -106,7 +106,12 @@ e-mails, the AGROVOC gold set, the paywalled papers, the defence date.
   paperwork part, none only when nothing is said about the land), written in `docs/notes/step12_ontology.md`.
 - Assil: **no e-mail to the professor** ("no need to send any email to my professor"); **public or private repository
   decided later, once there is a demo** ("don't bother urself with this kinda questions"): do not ask again (Gate 3
-  point 17 and the professor's e-mail are off the waiting list).
+  point 17 and the professor's e-mail are off the waiting list). **No SMNPR e-mail either** ("don't write it, if we
+  are not depending on them").
+- **Gate R1 passed** (≈ 18:30): v5 rebuilt (new baseline with CQ15 in `meta.json`), then the audit's fresh rebuild:
+  15/15 files byte-identical; release check OK; the gate's dataset tests pass (logs `results/logs/gate_r1_*`). The
+  v5 panel caches (`results/v5/_cache/panel*.parquet`) had to be refreshed (their identity record holds
+  `meta.json`'s hash): content identical. `openpyxl` 3.1.5 installed and pinned (gold-set worksheet, T81).
 
 ### 2026-11-26 (Claude Opus 5.5, from ≈ 11:20 local time)
 - Assil: "there is a bug fix folder start with that if those are valid bugs then continue the work as planned";

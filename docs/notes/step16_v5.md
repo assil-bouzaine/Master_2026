@@ -151,3 +151,33 @@ five cleanups. Every claim was checked against the code and the data before anyt
 - **Gate R1 is not yet recorded as passed.** The cold-rebuild audit with the CQ15 files still has to run (the
   commands are in `SESSION_HANDOFF.md`).
 
+## 2026-11-26 (evening) — Assil's answers, Gate R1 passed
+
+### What was done
+
+- **What Assil decided before any work** (he asked for the list of what Claude needs, one item at a time):
+  - Camber's command-line login renewed (a free L4 GPU for the LLM extraction and the black box).
+  - Push only at the end of a session.
+  - Nitrate and the Aude feasibility (optional step R1.1c) skipped: pollution stays future work.
+  - Manouba from free data only (satellite, land cover, ERA5-Land weather, published aquifer maps).
+  - One annotator for the AGROVOC gold set for now, and the four labelling rules (the plant; one concept covering a
+    mixture; "Autre" codes as a broader match of their group; ignore the subsidy paperwork, "none" only when nothing
+    is said about the land): `docs/notes/step12_ontology.md`, section "12.9 gold-set decision rules".
+  - No e-mail to the professor or to SMNPR: the plan does not depend on them.
+- **Gate R1 passed.** The v5 build was run again (its `meta.json` now records the CQ15 files), then the audit rebuilt
+  everything in a fresh process: all 15 files byte-identical, CQ15 included. The graph release still validates.
+  The gate's dataset tests pass.
+
+### Why it matters
+
+Gate R1 says the v5 data are fixed and reproducible from the raw downloads: every later result can be traced back
+to them, and the "post-freeze weeks" of R7.1 are defined against this freeze.
+
+### What to keep in mind
+
+- **Caches record what they were built from.** The panel caches (`results/v5/_cache/`) store the hash of every
+  dataset file, `meta.json` included, and refuse to load when one changes: after the new baseline they had to be
+  rebuilt (`build_panel(refresh=True)`, same content). Any future change to `meta.json` (even its `built` date on
+  another day) will trigger the same refusal: rebuild the caches, don't silence the check.
+- **The AGROVOC labels are on the path to Gate R2**: the gate asks for the alignment P/R/F1 tables. Assil labels the
+  40 dev codes first (the matchers are tuned on them), then the 158 eval codes.

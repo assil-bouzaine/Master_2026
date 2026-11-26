@@ -245,4 +245,24 @@ Volumes are Mm³, grouped by the Sunday week-label year. The imputed share is th
 
 ## Reproducibility
 
-Rebuild not run (--skip-rebuild). Gate R1 reproducibility is pending.
+Build status: completed; return code: 0; elapsed: 72.86 s. Fresh process, rebuilt from raw inputs.
+
+| file | identical | diagnosis |
+| --- | --- | --- |
+| canal_basins_weekly.parquet | True | Identical bytes. |
+| canal_intakes_basin.parquet | True | Identical bytes. |
+| forcing_weekly.parquet | True | Identical bytes. |
+| gauges.parquet | True | Identical bytes. |
+| heads_weekly.parquet | True | Identical bytes. |
+| irrigation_s2_rule.json | True | Identical bytes. |
+| irrigation_s2_wells.parquet | True | Identical bytes. |
+| meta.json | True | Identical bytes. |
+| placeholder_weeks.parquet | True | Identical bytes. |
+| pumping_points.parquet | True | Identical bytes. |
+| pumping_weekly.parquet | True | Identical bytes. |
+| restrictions_weekly.parquet | True | Identical bytes. |
+| rivers_weekly.parquet | True | Identical bytes. |
+| splits.json | True | Identical bytes. |
+| wells.parquet | True | Identical bytes. |
+
+Full before/after SHA-256 digests: results/logs/dataset_v5_hashes.json. This checks the existing dataset against one fresh rebuild. meta.json's built field is a calendar date, so a same-day pass does not establish cross-day byte stability. build.py would need a fixed snapshot date or separate volatile metadata to provide that guarantee.

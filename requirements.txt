@@ -130,3 +130,6 @@ pycparser==3.12
 uritemplate==4.2.0
 xxhash==4.1.0
 yarl==1.25.1
+# Added 2026-11-26: the AGROVOC gold-set worksheet (src/kg/agrovoc_gold.py worksheet/import, .xlsx for LibreOffice)
+et-xmlfile==2.0.0
+openpyxl==3.1.5

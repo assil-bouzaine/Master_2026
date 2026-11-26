@@ -1,0 +1,20 @@
+prediction_index,verdict,reason
+1,supported,"groundwater returns to the Têt between Rodès and Perpignan, from geochemistry; 718BP02 incomplete (ancient alluvium too), not wrong"
+6,not_supported,"Quaternary-to-Pliocene leakage as a share of canal inflow; no river exchange, and not aquifer-to-surface"
+11,supported,canal irrigation recharges the Quaternary of the Têt basin in summer; method better 'synthesis' (piezometric monitoring)
+16,supported,"exact duplicate of prediction 11 (same page, same fields): adds no statement"
+21,not_supported,"describes the gauging plan (canal returns to the river), states no exchange with groundwater"
+26,partly,"canal irrigation recharges the alluvium (isotopes): right mechanism and direction, wrong watercourse (Boulès)"
+31,partly,"Quaternary recharged by the Canterrane (and/or rain) near Pollestres: right mechanism and direction, wrong watercourse (Têt is only a comparison)"
+36,partly,hypothesis (2): recent alluvium not influenced by Boulès recharge; direction (aquifer-to-surface) and unit codes wrong; hypothesis (1) is aquifer-aquifer
+42,partly,"methodological sentence; the page states the Têt drains the alluvium (gaining), not equilibrium; 671AB01 (Agly) wrong"
+48,not_supported,"table row: groundwater contribution to the Têt (river exchange, aquifer-to-surface), extracted as canal return flow into the aquifer"
+54,partly,"cross-reference sentence; the page states drainage by La Basse (aquifer-to-surface), not 'no exchange'"
+60,partly,"La Basse drains the aquifer (hedged, gauging): right mechanism, direction, hedging and method; unit 671AB04 (Tech) wrong, should be ancient alluvium of the Têt"
+65,not_supported,"counterfactual balance of canal intakes and river flow; no canal-to-groundwater statement, and 'aquifer-to-surface' is incoherent for a canal return"
+70,not_supported,"canal outflows to other sectors (surface water), not groundwater recharge"
+75,not_supported,"the Quaternary-to-Pliocene leakage flux (aquifer-aquifer), not a river exchange"
+80,not_supported,"Quaternary-Pliocene exchange variability (aquifer-aquifer), not a river exchange"
+85,not_supported,the report's running title
+90,not_supported,"Quaternary-to-Pliocene exchange under pumping (aquifer-aquifer), not a river exchange"
+96,not_supported,Pliocene feeds the Quaternary (aquifer-aquifer; 'secteurs de la Têt' is a place)

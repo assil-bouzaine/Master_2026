@@ -294,3 +294,38 @@ scores above stay the pre-specified result.
   either, so, at his request, each was replaced by the original rule (the next downloaded work in the round-robin
   order: orders 35, 36, 37, 42). The set is 30 papers: 12 scripted, 14 by hand, 4 replacements; the other downloaded
   replacements are marked `outside_set`. Pilot = orders 1 and 2, as fixed.
+
+### R2.1 Track 2: the sample check of unmatched predictions — rule fixed before judging (Claude, 2026-11-26 ≈ 23:20)
+
+Why: the gold was curated as graph evidence, not as an exhaustive annotation, so an unmatched prediction can be a true
+statement the gold lacks; the eval precision (0.069) is then a lower bound. The check estimates how much.
+- **Sample (mechanical):** the valid unmatched predictions listed in `results/v5/extraction/qwen3_8b_eval/score_eval.md`
+  (zero-based indices, 95 items), in increasing index order; every fifth, starting with the first (positions 0, 5,
+  …, 90): 19 predictions (indices 1, 6, 11, …, 90, 96).
+- **Judge:** Claude (the lead), against the source page (`data/interim/extraction_passages_track2.jsonl`), one verdict
+  each: **supported** (the page states this exchange: mechanism and direction as extracted, about the named unit or
+  watercourse; codes may be incomplete, none wrong); **partly** (an exchange of that mechanism is stated, but the
+  direction or a code is wrong, or the quote is general background rather than a statement about a named unit or
+  reach); **not supported** (no such statement on the page). Assil can review every verdict in the sheet.
+- **Report:** counts per verdict, the supported share with its Wilson 95 % interval, and the implied precision range
+  (matched + supported share × 95 unmatched, over 102). The pre-specified scores stay the result; this is a reading
+  aid, labelled as Claude's judgement.
+
+**Result of the sample check (Claude's judgement, 2026-11-26 ≈ 23:40; sheet `configs/track2_sample_check.csv`, one
+reason per verdict).** Of the 19 sampled unmatched
+predictions: **3 supported** (one an exact duplicate of another on the same page, so 2 distinct statements the gold
+lacks), **6 partly** (the right exchange on the page but a wrong direction or code, or a methodological or
+cross-reference sentence), **10 not supported**. A decision taken while judging, stated here: a duplicate is
+supported on content but adds no statement, so the implied precision uses the 2 distinct ones.
+- Supported share 2/19 = 0.105 (Wilson 95 % [0.029, 0.314]): **implied precision ≈ 0.17 [0.10, 0.36]** instead of the
+  scored 0.069. Counting "partly" as true too: 9/19 = 0.47 [0.27, 0.68], implied precision ≈ 0.51 [0.32, 0.71]
+  (generous: those carry wrong fields).
+- **Pattern:** half of the 10 unsupported predictions (6, 75, 80, 90, 96) are exchanges **between two aquifers**
+  (Quaternary ↔ Pliocene leakage) forced into `RiverExchange`; the schema has no leakage mechanism, and the model
+  maps any "échange" onto the two it has. The others: canal water that never reaches groundwater (canal returns to the
+  river, outflows to other sectors: 21, 65, 70), a table row with the wrong mechanism (48), the running title (85).
+- **Reading:** the gold's non-exhaustiveness explains part of the gap (precision 0.07 → about 0.17), not most of it:
+  the main error is a category confusion. Track 1's schema (driver → effect) can express a leakage statement (pumping
+  in the Pliocene → leakage from the Quaternary) but has no category of its own for it (it falls under `other`): the
+  pilot review should look at how the model handles such statements before the main run. The pre-specified Track 2
+  scores stay the result.

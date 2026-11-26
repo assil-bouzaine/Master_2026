@@ -289,3 +289,8 @@ as an exhaustive annotation of every page, so an unmatched prediction may be a t
 precision is then a lower bound. Next step: judge a fixed sample of the 95 unmatched predictions (e.g. every
 fifth, by index) against the source page and report the share that are true statements beside the scores. The
 scores above stay the pre-specified result.
+- **Done the same evening:** Assil downloaded 14 of the 18 by hand (moved from `~/Documents` to the PDF folder under
+  their OpenAlex names; size and SHA-256 recorded). The other 4 (orders 6, 17, 21, 26) could not be obtained by hand
+  either, so, at his request, each was replaced by the original rule (the next downloaded work in the round-robin
+  order: orders 35, 36, 37, 42). The set is 30 papers: 12 scripted, 14 by hand, 4 replacements; the other downloaded
+  replacements are marked `outside_set`. Pilot = orders 1 and 2, as fixed.

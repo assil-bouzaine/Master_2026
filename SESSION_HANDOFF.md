@@ -42,10 +42,9 @@ date.
 - The graph release is stale since R2.3 (new alignment files) until T85 rebuilds it.
 
 **Where we are in `docs/v5_plan.md`:** R0 ✅ · **R1 ✅ (Gate R1 passed 2026-11-26)** · R2 in progress:
-- R2.1: Track 2 done on dev (Qwen3-8B chosen by the fixed rule, F1 0.462); eval running. Track 1: 30 papers
-  selected; 12 downloaded, **18 to be downloaded by Assil** (`docs/papers_to_download.md`, exact file names), then
-  update `configs/track1_papers.csv` (status, size, SHA-256; replacements order > 30 marked outside the set), then
-  T89's runner: pilot (2 papers) → main (28) on Colab with Qwen3-8B → Assil's review sheet.
+- R2.1: Track 2 done on dev (Qwen3-8B chosen by the fixed rule, F1 0.462); eval running. Track 1: **the 30 PDFs are complete** (12 scripted, 14 by Assil, 4 replacements by the rule;
+  `configs/track1_papers.csv`); next T89's runner (review it first): pilot (orders 1–2) → main (28) on Colab with Qwen3-8B
+  → Assil's review sheet.
 - R2.2: CQ15 (T85 running); CQ10, CQ16, register codes (T88); CQ9, CQ13 (to brief); then the RegisteredParcel ⊑
   s4agri:Parcel alignment (lead).
 - R2.3: SAREF4WATR, ENVO, deeper SWEET done; GEMET and CORINE wait for Eionet (unreachable from here); the scorer and

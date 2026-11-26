@@ -1,6 +1,6 @@
 # Papers to download by hand (Assil, university access)
 
-Written 2026-11-26. Tick each line when the file is saved. Ask Claude to import them when done.
+Written 2026-11-26. **Update 2026-11-26 ≈ 20:00: section A is closed** (14 downloaded by Assil, the 4 others replaced by the rule; see the step16 note). Section B: Schorpp, Brodaric, Bazzi and Feng done (in `Articles/to_read/`); left: Ferchichi 2017, Shapoori 2015 (VPN), Chu 2026 and Jeong 2026 (Elsevier: not subscribed). Tick each line when the file is saved. Ask Claude to import them when done.
 
 ## A. Track 1 paper set (18 papers): save each PDF under EXACTLY this name
 

@@ -31,25 +31,40 @@ date.
 
 ---
 
-## ▶ START HERE (state on 2026-11-26 ≈ 12:30 local time; session in progress)
+## ▶ START HERE (state on 2026-11-26 ≈ 13:45 local time; session in progress)
 
-**Running:** worker `neon` on T71 (export: aquifer units, `monitors`, `overlies`, basin canal nodes; controls for
-every relation of D; rebuild of the v5 exports and controls), worker `sol` (GPT Sol 6.1 high) on T73 (a v5 path for
-the CPU runners: `scripts/run_v5_cpu.sh` with `prepare_check` and `hgnn_smoke`, `--dataset v5` in the bundlers). No
-Colab, Kaggle or Camber job. Branch `master_2026_fixes`; commits of today local (push only when Assil says so).
+**Running:** worker `neon` on T76 (CQ15 rule on the Sentinel-2 parcel observations, census validation, per-well
+irrigated share → `src/dataset/irrigation_s2.py`), worker `sol` (GPT Sol 6.1 high) on T77 (equal-budget tuner
+`src/models/tune_hgnn.py` + `hgnn_tune` step; told to accept arms A–D). No Colab, Kaggle or Camber job (the smoke
+runtime was stopped). Branch `master_2026_fixes`; today's commits are local (push only when Assil says so).
 
-**Done today:** the bug audit `docs/v5_bugs_to_fix.md` checked item by item (verdicts: `docs/v5_plan.md` §1b, step
-note `docs/notes/step16_v5.md`): all real; item 1 larger than reported (the kernel's memory also leaked imputed
-pumping) and a new bug found (v5 pumping 0 for 1990–2002); hybrid fixes committed (`9f5dfbc`), `PFE_NO_SCORE`
-(`7a2ff0c`), T72 BSS note + Gate R1 dataset tests pass on v5 (`dfd7ba5`).
+**Done today (details: session log below, `docs/notes/step16_v5.md`, `docs/v5_plan.md` §1b):**
+- **Bug audit `docs/v5_bugs_to_fix.md`:** every item checked and fixed or placed. Items 1 and 4, and a new
+  zero-pumping bug: lead. Items 2 and 3: T71. Item 5.3: T72. Item 5.4: T74. Item 5.5: R2.2, using T75.
+- **Plan v3 §8, all decided by Assil (recommendation first):**
+  - canal sign ≥ 0 at the two measured wells (graph decision, T74, ontology 0.9.1);
+  - pumping trains only through declared facility-years;
+  - twin criterion: D beats C in a majority of worlds, sign test;
+  - CQ15 built with a with/without row;
+  - tuning: each main arm its own budget, six training settings.
+- **Model work:**
+  - Colab smoke run: ≈ 0.4 s per epoch; replay across machines < 1e-5 m.
+  - The v5 CPU path for Colab (T73).
+  - Arms A/B of Hybrid-GNN v2 (facts, no graph).
+- **R1.4 data:** Sentinel-2 spring and summer NDVI/NDMI per parcel, 2017–2025 (`src/ingest/gee_s2.py`).
+- **R2.2 input:** the unused-term review (T75).
 
 **Next, in order:**
-1. Review and commit T71 (neon) and T73 (sol) when their reports arrive (`results/_agents/reports/T71.md`, `T73.md`).
-2. Plan v3 §8 decisions with Assil (canal sign at the 2 eligible 718BP02 wells, pumping reliability by year or by
-   facility-year, twin v2 criterion, CQ15 in v5); then write them into `docs/analysis_plan_v3.md` §8.
-3. Colab smoke run (after T71 + T73): `colab_cli up smoke --runtime v5e1`, `push-cpu smoke --dataset v5 --steps
-   hgnn_smoke --budget 1`, pull, stop; read the time per epoch → the tuning budget (24 trials × 3 seeds).
-4. R1.4 Sentinel-2 (`src/ingest/gee_s2.py`), then CQ15; R2.1 / R2.3 / R2.2 as listed in `docs/v5_plan.md`.
+1. Review and commit T76 and T77. Then Gate R1: build CQ15's per-well share into dataset v5 and re-run the
+   reproducibility audit with it. Manouba Sentinel-2 + WorldCover + ERA5-Land (R1.4, second part) is still open.
+2. R2 (then Gate R2):
+   - R2.2: ontology split into modules and France/Tunisia profiles (T75 and T59 as inputs), CQ15/CQ16 terms and
+     rules;
+   - R2.3: alignments checked at their source (network: lead);
+   - R2.1: literature extraction (OpenAlex + a local LLM on Colab);
+   - R2.4: KGs + export + Gate R2.
+3. R3: the `analysis-plan-v3` tag (node-feature list still open), then tuning on Colab (`hgnn_tune`, ≈ 300 fits),
+   twin v2 (R3.3), the black box (Hetero-STGNN), Gate R3.
 
 **Waiting for Assil:** (unchanged) `! camber login` if Camber should run jobs; the professor's e-mail, the two data
 e-mails, the AGROVOC gold set, the paywalled papers, the defence date.
@@ -71,6 +86,15 @@ e-mails, the AGROVOC gold set, the paywalled papers, the defence date.
   epochs then δ-only refinement (`--epochs-b`); held-out wells equal stage A bit for bit. Item 5.1 kernels bound;
   5.4/5.5 deferred to R2.2. All 7 checks of `tests.test_hybrid_gnn` and `tests.test_kernels` pass.
 - Workers: neon → T71 (items 2–3), sol → T72 (BSS note, Gate R1 dataset tests on v5: all pass; committed), then T73.
+- T71 (export units/overlies/basin canals, complete controls), T73 (v5 CPU path), T74 (v5 canal decision, ontology
+  0.9.1, graph release 2026-11-26T11:26:11Z), T75 (unused-term review) reviewed and committed; lead follow-ups:
+  multi-basin canal routing for controls, Taccari ignores v5-only relations.
+- Plan v3 §8 decided by Assil (two AskUserQuestion rounds, every recommendation accepted): canal sign, pumping by
+  declared facility-year (implemented: `pump_*_decl` arrays), twin criterion, CQ15, tuning budget per arm.
+- Colab smoke run (v5e1, 0.12 units): ≈ 0.4 s/epoch on 1 thread; replay of its checkpoints on the laptop < 1e-5 m.
+- R1.4: `src/ingest/gee_s2.py` pulled 142,282 parcel-years (8 min); logged in `data/README.md`.
+- Arms A/B (facts, no graph) added to Hybrid-GNN v2; canal routing by basin node or plain node.
+- Workers now: neon → T76 (CQ15 rule), sol → T77 (tuner). Usage at ≈ 13:45: Claude 5 h ≈ 60 %.
 
 ### 2026-11-25 (evening, Claude Opus 5.5, from ≈ 21:00 local time)
 - Read `gemini_neon_review.md` (513 lines: 12 fixes, roadmap R0–R7). Assil: do all of it, in a new branch

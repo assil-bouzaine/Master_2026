@@ -1,4 +1,4 @@
-"""Extract normalised page passages from the stored Track 2 documents (v5 plan R2.1).
+"""Extract normalised pages from Track 2 documents and Track 1 papers (v5 plan R2.1).
 
 Each PDF in data/raw/documents/documents.json is read with `pdftotext -layout` using the
 same printed-page footer rules and normalisation as tests/test_exchange_evidence.py; the
@@ -6,18 +6,75 @@ stored HTML page becomes one passage. `build_passages()` returns one determinist
 per actual page (dropping the trailing empty chunk after `pdftotext`'s final form feed,
 giving unnumbered pages unique `unnumbered pNNN` labels) and checks that no passage
 exceeds MAX_PASSAGE_CHARS characters.
+
+Track 1 uses physical page numbers, drops empty pages and stops before the first standalone
+references heading, with a cap of twenty physical pages per downloaded paper.
 """
+import csv
 import hashlib
 import html
 import json
 import re
 import subprocess
 from functools import lru_cache
+from pathlib import Path
 
-from src.config import RAW
+from src.config import RAW, ROOT
 
 DOCS = RAW / "documents"
 MAX_PASSAGE_CHARS = 12_000
+PAPERS_PATH = ROOT / "configs" / "track1_papers.csv"
+PAPER_PDF_DIR = RAW / "openalex" / "2026-11-26" / "pdf"
+REFERENCES_RE = re.compile(
+    r"^\s*(?:References|REFERENCES|Bibliography|Références|Literature cited|Literature Cited)\s*$"
+)
+
+
+def downloaded_papers(path=PAPERS_PATH):
+    """Read one harvest snapshot; failed downloads never enter the selection order."""
+    with Path(path).open(encoding="utf-8", newline="") as stream:
+        rows = [dict(row) for row in csv.DictReader(stream) if row["download_status"] == "downloaded"]
+    for row in rows:
+        row["document"] = row["openalex_id"].rstrip("/").rsplit("/", 1)[-1]
+        if not re.fullmatch(r"W\d+", row["document"]):
+            raise ValueError(f"Invalid OpenAlex short id: {row['document']!r}")
+        row["order"] = int(row["order"])
+    for key in ("document", "order"):
+        if len({row[key] for row in rows}) != len(rows):
+            raise ValueError(f"Duplicate downloaded paper {key}")
+    return sorted(rows, key=lambda row: row["order"])
+
+
+def build_paper_passages(papers_path=PAPERS_PATH, pdf_dir=PAPER_PDF_DIR, *, papers=None):
+    """Keep non-empty physical pages 1–20, stopping just before a references heading.
+
+    Inspect lines before normalising: a reference to the word inside a sentence must not
+    cut the paper. A missing or unreadable downloaded PDF is an error, so a partial harvest
+    cannot silently change which papers form the pilot.
+    """
+    papers = downloaded_papers(papers_path) if papers is None else papers
+    passages = []
+    for paper in sorted(papers, key=lambda row: row["order"]):
+        doc = paper["document"]
+        path = Path(pdf_dir) / f"{doc}.pdf"
+        text = subprocess.run(["pdftotext", "-layout", str(path), "-"], capture_output=True,
+                              text=True, check=True).stdout
+        for physical_page, chunk in enumerate(text.split("\f")[:20], 1):
+            lines = chunk.splitlines()
+            heading = next((i for i, line in enumerate(lines) if REFERENCES_RE.fullmatch(line)), None)
+            kept = norm("\n".join(lines if heading is None else lines[:heading]))
+            if kept:
+                passages.append({
+                    "passage_id": f"{doc}:p{physical_page:03d}",
+                    "document": doc,
+                    "page": str(physical_page),
+                    "order": paper["order"],
+                    "text": kept,
+                    "sha256": hashlib.sha256(kept.encode("utf-8")).hexdigest(),
+                })
+            if heading is not None:
+                break
+    return passages
 
 
 def norm(s):

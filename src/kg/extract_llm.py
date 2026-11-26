@@ -1,9 +1,12 @@
-"""Track 2 LLM extraction pipeline: passages, split, prompt, runner and split scoring (v5 plan R2.1).
+"""Track 1 and 2 LLM extraction: passages, split, prompt, runner and scoring (v5 plan R2.1).
 
 Everything that can change a Track 2 extraction score is frozen before any model output is seen:
 the page passages, the dev/eval split, the prompt template with BD LISA and BD TOPO / Hub'Eau
 code tables, greedy decoding, run-configuration locking and answer parsing. Model selection uses
 the dev split only; eval is scored once.
+
+Track 1 reads harvested paper pages without code tables. Its first two downloaded papers
+form a pilot; human acceptance of the remaining statements is scored by track1_review.
 
 CLI:
     PYTHONIOENCODING=utf-8 PFE_DATASET=v5 .venv/bin/python -m src.kg.extract_llm passages
@@ -24,7 +27,7 @@ from tempfile import NamedTemporaryFile
 
 from src.config import DATASET_DIR, INTERIM, ROOT
 from src.kg import extract_eval
-from src.kg.extract_passages import build_passages
+from src.kg.extract_passages import build_passages, build_paper_passages, downloaded_papers
 from src.kg.rivers import snapshot
 
 PASSAGES_PATH = INTERIM / "extraction_passages_track2.jsonl"
@@ -32,6 +35,15 @@ SPLIT_PATH = ROOT / "configs" / "extraction_split_track2.json"
 PROMPT_PATH = ROOT / "configs" / "extraction_prompt_track2.md"
 SCHEMA_PATH = extract_eval.SCHEMA
 GOLD_PATH = extract_eval.GOLD
+TRACK1_PASSAGES_PATH = INTERIM / "extraction_passages_track1.jsonl"
+TRACK1_SPLIT_PATH = ROOT / "configs" / "extraction_split_track1.json"
+TRACK1_PROMPT_PATH = ROOT / "configs" / "extraction_prompt_track1.md"
+TRACK1_SCHEMA_PATH = ROOT / "configs" / "extraction_schema_track1.json"
+TRACK1_SPLIT_RULE = (
+    "Only harvest rows with download_status = downloaded are papers. Sort them by numeric "
+    "selection order. All passages of the first two downloaded papers are pilot; all passages "
+    "of the remaining papers are main. Pilot statements are excluded from the main acceptance rate."
+)
 BDLISA_PLAIN = INTERIM / "bdlisa_entities_plain.csv"
 GAUGES_PATH = DATASET_DIR / "gauges.parquet"
 
@@ -204,6 +216,38 @@ def write_passages_and_split(passages_path=PASSAGES_PATH, split_path=SPLIT_PATH)
     return passages, split_data
 
 
+def build_paper_split(passages, papers):
+    """Freeze the paper order and metadata along with the pilot, even for empty PDFs."""
+    papers = sorted(papers, key=lambda paper: paper["order"])
+    pilot = [paper["document"] for paper in papers[:2]]
+    return {
+        "track": 1,
+        "rule": TRACK1_SPLIT_RULE,
+        "pilot_documents": pilot,
+        "papers": [{key: paper[key] for key in ("document", "order", "title", "doi")}
+                   for paper in papers],
+        "pages_kept": {paper["document"]: sum(p["document"] == paper["document"] for p in passages)
+                       for paper in papers},
+        "passages": {p["passage_id"]: "pilot" if p["document"] in pilot else "main" for p in passages},
+        "pages": {s: [{"document": p["document"], "page": p["page"]} for p in passages
+                       if (p["document"] in pilot) == (s == "pilot")] for s in ("pilot", "main")},
+    }
+
+
+def write_paper_passages_and_split(passages_path=TRACK1_PASSAGES_PATH, split_path=TRACK1_SPLIT_PATH,
+                                   *, papers_path=None, pdf_dir=None):
+    """Build both Track 1 files from a single harvest snapshot; bytes are deterministic."""
+    papers = downloaded_papers() if papers_path is None else downloaded_papers(papers_path)
+    kwargs = {} if pdf_dir is None else {"pdf_dir": pdf_dir}
+    passages = build_paper_passages(papers=papers, **kwargs)
+    split_data = build_paper_split(passages, papers)
+    for path in (Path(passages_path), Path(split_path)):
+        path.parent.mkdir(parents=True, exist_ok=True)
+    _atomic_write_text(passages_path, "".join(json.dumps(p, ensure_ascii=False) + "\n" for p in passages))
+    _atomic_write_text(split_path, json.dumps(split_data, indent=2, ensure_ascii=False) + "\n")
+    return passages, split_data
+
+
 def load_passages(path=PASSAGES_PATH):
     """Read passages from the JSONL file written by `passages`."""
     lines = Path(path).read_text(encoding="utf-8").splitlines()
@@ -215,14 +259,14 @@ def load_split(path=SPLIT_PATH):
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
-def split_prompt_template(template):
-    """Split configs/extraction_prompt_track2.md into (system_template, user_template)."""
+def split_prompt_template(template, *, track=2):
+    """Split either track's prompt into system and user templates."""
     if SYSTEM_MARKER not in template or USER_MARKER not in template:
         raise ValueError(f"Prompt template must contain {SYSTEM_MARKER!r} and {USER_MARKER!r} sections")
     _, after_system = template.split(SYSTEM_MARKER, 1)
     system_part, user_part = after_system.split(USER_MARKER, 1)
     system_text, user_text = system_part.strip(), user_part.strip()
-    for placeholder in ("{units_table}", "{watercourses_table}"):
+    for placeholder in (("{units_table}", "{watercourses_table}") if track == 2 else ()):
         if placeholder not in system_text:
             raise ValueError(f"System prompt section is missing placeholder {placeholder}")
     if "{passage}" not in user_text:
@@ -231,22 +275,26 @@ def split_prompt_template(template):
 
 
 def messages(passage, *, template=None, units_table=None, watercourses_table=None,
-             prompt_path=PROMPT_PATH, split_path=SPLIT_PATH):
+             prompt_path=None, split_path=None, track=2):
     """Build [system, user] chat messages for one passage (pure function of inputs)."""
     passage_text = passage["text"] if isinstance(passage, dict) else str(passage)
+    if track not in (1, 2):
+        raise ValueError("track must be 1 or 2")
+    prompt_path = prompt_path or (TRACK1_PROMPT_PATH if track == 1 else PROMPT_PATH)
+    split_path = split_path or (TRACK1_SPLIT_PATH if track == 1 else SPLIT_PATH)
     if template is None:
         template = Path(prompt_path).read_text(encoding="utf-8")
-    if units_table is None or watercourses_table is None:
+    if track == 2 and (units_table is None or watercourses_table is None):
         code_tables = load_split(split_path)["code_tables"]
         if units_table is None:
             units_table = format_code_table(code_tables["units"], "Code", "BD LISA name")
         if watercourses_table is None:
             watercourses_table = format_watercourses_table(code_tables["watercourses"])
-    system_tpl, user_tpl = split_prompt_template(template)
+    system_tpl, user_tpl = split_prompt_template(template, track=track)
     # Replace placeholders literally so braces in French text or JSON hints never break formatting.
     system_content = (
-        system_tpl.replace("{units_table}", units_table)
-        .replace("{watercourses_table}", watercourses_table)
+        system_tpl.replace("{units_table}", units_table or "")
+        .replace("{watercourses_table}", watercourses_table or "")
     )
     user_content = user_tpl.replace("{passage}", passage_text)
     return [
@@ -393,14 +441,22 @@ def run_extraction(
     max_new_tokens=4096,
     chat_template_kwargs=None,
     generator=None,
-    passages_path=PASSAGES_PATH,
-    split_path=SPLIT_PATH,
-    prompt_path=PROMPT_PATH,
-    schema_path=SCHEMA_PATH,
+    passages_path=None,
+    split_path=None,
+    prompt_path=None,
+    schema_path=None,
+    track=2,
 ):
     """Run greedy LLM extraction (or a test stub) over one split, saving resumable raw outputs."""
-    if split not in ("dev", "eval", "all"):
-        raise ValueError(f"Unsupported split {split!r}; choose dev, eval or all")
+    if track not in (1, 2):
+        raise ValueError("track must be 1 or 2")
+    choices = ("pilot", "main", "all") if track == 1 else ("dev", "eval", "all")
+    if split not in choices:
+        raise ValueError(f"Unsupported split {split!r} for Track {track}; choose {', '.join(choices)}")
+    passages_path = passages_path or (TRACK1_PASSAGES_PATH if track == 1 else PASSAGES_PATH)
+    split_path = split_path or (TRACK1_SPLIT_PATH if track == 1 else SPLIT_PATH)
+    prompt_path = prompt_path or (TRACK1_PROMPT_PATH if track == 1 else PROMPT_PATH)
+    schema_path = schema_path or (TRACK1_SCHEMA_PATH if track == 1 else SCHEMA_PATH)
     if chat_template_kwargs is not None and not isinstance(chat_template_kwargs, dict):
         raise ValueError("chat_template_kwargs must be a JSON object")
     template_kwargs = dict(chat_template_kwargs or {})
@@ -413,9 +469,11 @@ def run_extraction(
     passages = load_passages(passages_path)
     split_data = load_split(split_path)
     prompt_template = Path(prompt_path).read_text(encoding="utf-8")
-    code_tables = split_data["code_tables"]
-    units_table = format_code_table(code_tables["units"], "Code", "BD LISA name")
-    watercourses_table = format_watercourses_table(code_tables["watercourses"])
+    units_table = watercourses_table = None
+    if track == 2:
+        code_tables = split_data["code_tables"]
+        units_table = format_code_table(code_tables["units"], "Code", "BD LISA name")
+        watercourses_table = format_watercourses_table(code_tables["watercourses"])
 
     sha256_inputs = {
         "prompt_template": _sha256_file(prompt_path),
@@ -432,6 +490,10 @@ def run_extraction(
         "split": split,
         "sha256": sha256_inputs,
     }
+    # Track 2's legacy format is frozen. An absent track records its implicit default, 2;
+    # Track 1 records 1 explicitly, which also prevents cross-track cache reuse.
+    if track == 1:
+        run_config["track"] = 1
 
     out_dir = Path(out_dir)
     config_path = out_dir / "config.json"
@@ -483,6 +545,7 @@ def run_extraction(
                 template=prompt_template,
                 units_table=units_table,
                 watercourses_table=watercourses_table,
+                track=track,
             )
             started = time.perf_counter()
             raw_text = generate_fn(msgs)
@@ -527,6 +590,8 @@ def run_extraction(
             "torch": _package_version("torch"),
         },
     }
+    if track == 1:
+        run_meta["track"] = 1
     _atomic_write_text(run_meta_path, json.dumps(run_meta, indent=2, ensure_ascii=False) + "\n")
     return pred_path, run_meta
 
@@ -594,12 +659,14 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    sub.add_parser("passages", help="extract page passages and write the fixed dev/eval split")
+    p_passages = sub.add_parser("passages", help="extract page passages and write the fixed split")
+    p_passages.add_argument("--track", type=int, choices=(1, 2), default=2)
 
     p_run = sub.add_parser("run", help="run greedy LLM extraction on a split (Colab GPU)")
     p_run.add_argument("--model", required=True, help="Hugging Face model id")
     p_run.add_argument("--revision", default=None, help="optional Hugging Face revision/commit")
-    p_run.add_argument("--split", choices=("dev", "eval", "all"), required=True)
+    p_run.add_argument("--track", type=int, choices=(1, 2), default=2)
+    p_run.add_argument("--split", choices=("dev", "eval", "pilot", "main", "all"), required=True)
     p_run.add_argument("--out", type=Path, required=True, help="output run directory")
     p_run.add_argument("--dtype", default="bfloat16", choices=("bfloat16", "float16", "float32", "auto"))
     p_run.add_argument("--max-new-tokens", type=int, default=4096)
@@ -611,6 +678,14 @@ def main(argv=None):
 
     args = parser.parse_args(argv)
     if args.cmd == "passages":
+        if args.track == 1:
+            passages, split_data = write_paper_passages_and_split()
+            print(f"Wrote {len(passages)} passages to {TRACK1_PASSAGES_PATH.relative_to(ROOT)} "
+                  f"and split to {TRACK1_SPLIT_PATH.relative_to(ROOT)}")
+            for doc, count in split_data["pages_kept"].items():
+                role = "pilot" if doc in split_data["pilot_documents"] else "main"
+                print(f"  {doc}: {count} pages kept ({role})")
+            return
         passages, split_data = write_passages_and_split()
         longest = max(passages, key=lambda p: len(p["text"]))
         by_doc = {}
@@ -641,6 +716,7 @@ def main(argv=None):
                 dtype=args.dtype,
                 max_new_tokens=args.max_new_tokens,
                 chat_template_kwargs=args.chat_template_kwargs,
+                track=args.track,
             )
         except (RuntimeError, ValueError, OSError) as error:
             sys.exit(str(error))

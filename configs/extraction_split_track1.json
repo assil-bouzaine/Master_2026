@@ -1,0 +1,2495 @@
+{
+  "track": 1,
+  "rule": "Only harvest rows with download_status = downloaded are papers. Sort them by numeric selection order. All passages of the first two downloaded papers are pilot; all passages of the remaining papers are main. Pilot statements are excluded from the main acceptance rate.",
+  "pilot_documents": [
+    "W2740335258",
+    "W2530496797"
+  ],
+  "papers": [
+    {
+      "document": "W2740335258",
+      "order": 1,
+      "title": "OVEREXPLOITATION OF GROUNDWATER RESOURCES IN THE COASTAL AQUIFER SYSTEM OF ARGOLIS",
+      "doi": "https://doi.org/10.12681/bgsg.11792"
+    },
+    {
+      "document": "W2530496797",
+      "order": 2,
+      "title": "Groundwater recharge rates and surface runoff response to land use and land cover changes in semi-arid environments",
+      "doi": "https://doi.org/10.1186/s13717-016-0060-6"
+    },
+    {
+      "document": "W3007383966",
+      "order": 3,
+      "title": "Specific Types and Adaptability Evaluation of Managed Aquifer Recharge for Irrigation in the North China Plain",
+      "doi": "https://doi.org/10.3390/w12020562"
+    },
+    {
+      "document": "W3097213060",
+      "order": 4,
+      "title": "Assessing groundwater irrigation sustainability in the Euro-Mediterranean region with an integrated agro-hydrologic model",
+      "doi": "https://doi.org/10.5194/asr-17-227-2020"
+    },
+    {
+      "document": "W2128077923",
+      "order": 5,
+      "title": "Suitability assessment of deep groundwater for drinking and irrigation use in the Djeffara aquifers (Northern Gabes, south-eastern Tunisia)",
+      "doi": "https://doi.org/10.1007/s12665-013-2729-9"
+    },
+    {
+      "document": "W4285992970",
+      "order": 7,
+      "title": "Alleviating drought and water scarcity in the Mediterranean region through managed aquifer recharge",
+      "doi": "https://doi.org/10.1007/s10040-022-02513-5"
+    },
+    {
+      "document": "W3214833871",
+      "order": 8,
+      "title": "Integrated Surface-Groundwater Modelling of Nitrate Concentration in Mediterranean Rivers, the Júcar River Basin District, Spain",
+      "doi": "https://doi.org/10.3390/su132212835"
+    },
+    {
+      "document": "W2127359747",
+      "order": 9,
+      "title": "Intensively exploited Mediterranean aquifers: resilience to seawater intrusion and proximity to critical thresholds",
+      "doi": "https://doi.org/10.5194/hess-18-1663-2014"
+    },
+    {
+      "document": "W4383552156",
+      "order": 10,
+      "title": "Sustainability of High-Density Olive Orchards: Hints for Irrigation Management and Agroecological Approaches",
+      "doi": "https://doi.org/10.3390/w15132486"
+    },
+    {
+      "document": "W2786204358",
+      "order": 11,
+      "title": "Groundwater Overexploitation and Seawater Intrusion in Coastal Areas of Arid and Semi-Arid Regions",
+      "doi": "https://doi.org/10.3390/w10020143"
+    },
+    {
+      "document": "W4361216308",
+      "order": 12,
+      "title": "Integrated assessment of the impact of land use changes on groundwater recharge and groundwater level in the Drava floodplain, Hungary",
+      "doi": "https://doi.org/10.1038/s41598-022-21259-4"
+    },
+    {
+      "document": "W2787963346",
+      "order": 13,
+      "title": "Tracing groundwater recharge sources in the northwestern Indian alluvial aquifer using water isotopes (δ18O, δ2H and 3H)",
+      "doi": "https://doi.org/10.1016/j.jhydrol.2018.02.056"
+    },
+    {
+      "document": "W2607491746",
+      "order": 14,
+      "title": "Considering groundwater use to improve the assessment of groundwater pumping for irrigation in North Africa",
+      "doi": "https://doi.org/10.1007/s10040-017-1573-5"
+    },
+    {
+      "document": "W2799567032",
+      "order": 15,
+      "title": "Assessing Environmental Impacts of Groundwater Irrigation Using the Life Cycle Assessment Method: Application to a Tunisian Arid Region",
+      "doi": "https://doi.org/10.1002/ird.2241"
+    },
+    {
+      "document": "W7222600177",
+      "order": 16,
+      "title": "Physicochemical quality and irrigation suitability of groundwater resources in the Feija aquifer (southeastern Morocco)",
+      "doi": "https://doi.org/10.24425/jwld.2026.7325"
+    },
+    {
+      "document": "W4282541671",
+      "order": 18,
+      "title": "Nitrate in groundwater and agricultural products: intake and risk assessment in northeastern Iran",
+      "doi": "https://doi.org/10.1007/s11356-022-20831-9"
+    },
+    {
+      "document": "W3036867514",
+      "order": 19,
+      "title": "Groundwater Throughflow and Seawater Intrusion in High Quality Coastal Aquifers",
+      "doi": "https://doi.org/10.1038/s41598-020-66516-6"
+    },
+    {
+      "document": "W4210415244",
+      "order": 20,
+      "title": "Remote and Proximal Sensing Techniques for Site-Specific Irrigation Management in the Olive Orchard",
+      "doi": "https://doi.org/10.3390/app12031309"
+    },
+    {
+      "document": "W2119902141",
+      "order": 22,
+      "title": "The pronounced seasonality of global groundwater recharge",
+      "doi": "https://doi.org/10.1002/2014wr015809"
+    },
+    {
+      "document": "W2738222073",
+      "order": 23,
+      "title": "Managed aquifer recharge through off‐season irrigation in agricultural regions",
+      "doi": "https://doi.org/10.1002/2017wr020458"
+    },
+    {
+      "document": "W4391160682",
+      "order": 24,
+      "title": "Rapid groundwater decline and some cases of recovery in aquifers globally",
+      "doi": "https://doi.org/10.1038/s41586-023-06879-8"
+    },
+    {
+      "document": "W4405724552",
+      "order": 25,
+      "title": "Evaluation of groundwater pumping with solar energy for irrigation practice in Tunisia using homer energy",
+      "doi": "https://doi.org/10.12911/22998993/196294"
+    },
+    {
+      "document": "W2581784762",
+      "order": 27,
+      "title": "Examining the Relationship between Drought Indices and Groundwater Levels",
+      "doi": "https://doi.org/10.3390/w9020082"
+    },
+    {
+      "document": "W1991667513",
+      "order": 28,
+      "title": "Towards adaptation of agriculture to climate change in the Mediterranean",
+      "doi": "https://doi.org/10.1007/s10113-010-0187-4"
+    },
+    {
+      "document": "W2298374585",
+      "order": 29,
+      "title": "Impact of Demographic Growth on Seawater Intrusion: Case of the Tripoli Aquifer, Lebanon",
+      "doi": "https://doi.org/10.3390/w8030104"
+    },
+    {
+      "document": "W3195189386",
+      "order": 30,
+      "title": "Climate Change Adaptation Measures in the Irrigation of a Super-Intensive Olive Orchard in the South of Portugal",
+      "doi": "https://doi.org/10.3390/agronomy11081658"
+    },
+    {
+      "document": "W2156173684",
+      "order": 35,
+      "title": "The combined effects of a long‐term experimental drought and an extreme drought on the use of plant‐water sources in a Mediterranean forest",
+      "doi": "https://doi.org/10.1111/gcb.12785"
+    },
+    {
+      "document": "W3124280324",
+      "order": 36,
+      "title": "Spatiotemporal variation of nitrate concentrations in soil and groundwater of an intensely polluted agricultural area",
+      "doi": "https://doi.org/10.1038/s41598-021-82188-2"
+    },
+    {
+      "document": "W4310995948",
+      "order": 37,
+      "title": "Challenges and approaches for management of seawater intrusion in coastal aquifers",
+      "doi": "https://doi.org/10.1007/s10040-022-02575-5"
+    },
+    {
+      "document": "W4315851135",
+      "order": 42,
+      "title": "Farmers’ willingness to pay for irrigation water: Empirical study of public irrigated area in a context of groundwater depletion",
+      "doi": "https://doi.org/10.9755/ejfa.2022.v34.i1.2805"
+    }
+  ],
+  "pages_kept": {
+    "W2740335258": 10,
+    "W2530496797": 20,
+    "W3007383966": 14,
+    "W3097213060": 20,
+    "W2128077923": 20,
+    "W4285992970": 15,
+    "W3214833871": 18,
+    "W2127359747": 15,
+    "W4383552156": 14,
+    "W2786204358": 20,
+    "W4361216308": 14,
+    "W2787963346": 13,
+    "W2607491746": 20,
+    "W2799567032": 9,
+    "W7222600177": 10,
+    "W4282541671": 17,
+    "W3036867514": 20,
+    "W4210415244": 14,
+    "W2119902141": 20,
+    "W2738222073": 20,
+    "W4391160682": 20,
+    "W4405724552": 15,
+    "W2581784762": 14,
+    "W1991667513": 8,
+    "W2298374585": 16,
+    "W3195189386": 14,
+    "W2156173684": 20,
+    "W3124280324": 12,
+    "W4310995948": 4,
+    "W4315851135": 7
+  },
+  "passages": {
+    "W2740335258:p001": "pilot",
+    "W2740335258:p002": "pilot",
+    "W2740335258:p003": "pilot",
+    "W2740335258:p004": "pilot",
+    "W2740335258:p005": "pilot",
+    "W2740335258:p006": "pilot",
+    "W2740335258:p007": "pilot",
+    "W2740335258:p008": "pilot",
+    "W2740335258:p009": "pilot",
+    "W2740335258:p010": "pilot",
+    "W2530496797:p001": "pilot",
+    "W2530496797:p002": "pilot",
+    "W2530496797:p003": "pilot",
+    "W2530496797:p004": "pilot",
+    "W2530496797:p005": "pilot",
+    "W2530496797:p006": "pilot",
+    "W2530496797:p007": "pilot",
+    "W2530496797:p008": "pilot",
+    "W2530496797:p009": "pilot",
+    "W2530496797:p010": "pilot",
+    "W2530496797:p011": "pilot",
+    "W2530496797:p012": "pilot",
+    "W2530496797:p013": "pilot",
+    "W2530496797:p014": "pilot",
+    "W2530496797:p015": "pilot",
+    "W2530496797:p016": "pilot",
+    "W2530496797:p017": "pilot",
+    "W2530496797:p018": "pilot",
+    "W2530496797:p019": "pilot",
+    "W2530496797:p020": "pilot",
+    "W3007383966:p001": "main",
+    "W3007383966:p002": "main",
+    "W3007383966:p003": "main",
+    "W3007383966:p004": "main",
+    "W3007383966:p005": "main",
+    "W3007383966:p006": "main",
+    "W3007383966:p007": "main",
+    "W3007383966:p008": "main",
+    "W3007383966:p009": "main",
+    "W3007383966:p010": "main",
+    "W3007383966:p011": "main",
+    "W3007383966:p012": "main",
+    "W3007383966:p013": "main",
+    "W3007383966:p014": "main",
+    "W3097213060:p001": "main",
+    "W3097213060:p002": "main",
+    "W3097213060:p003": "main",
+    "W3097213060:p004": "main",
+    "W3097213060:p005": "main",
+    "W3097213060:p006": "main",
+    "W3097213060:p007": "main",
+    "W3097213060:p008": "main",
+    "W3097213060:p009": "main",
+    "W3097213060:p010": "main",
+    "W3097213060:p011": "main",
+    "W3097213060:p012": "main",
+    "W3097213060:p013": "main",
+    "W3097213060:p014": "main",
+    "W3097213060:p015": "main",
+    "W3097213060:p016": "main",
+    "W3097213060:p017": "main",
+    "W3097213060:p018": "main",
+    "W3097213060:p019": "main",
+    "W3097213060:p020": "main",
+    "W2128077923:p001": "main",
+    "W2128077923:p002": "main",
+    "W2128077923:p003": "main",
+    "W2128077923:p004": "main",
+    "W2128077923:p005": "main",
+    "W2128077923:p006": "main",
+    "W2128077923:p007": "main",
+    "W2128077923:p008": "main",
+    "W2128077923:p009": "main",
+    "W2128077923:p010": "main",
+    "W2128077923:p011": "main",
+    "W2128077923:p012": "main",
+    "W2128077923:p013": "main",
+    "W2128077923:p014": "main",
+    "W2128077923:p015": "main",
+    "W2128077923:p016": "main",
+    "W2128077923:p017": "main",
+    "W2128077923:p018": "main",
+    "W2128077923:p019": "main",
+    "W2128077923:p020": "main",
+    "W4285992970:p001": "main",
+    "W4285992970:p002": "main",
+    "W4285992970:p003": "main",
+    "W4285992970:p004": "main",
+    "W4285992970:p005": "main",
+    "W4285992970:p006": "main",
+    "W4285992970:p007": "main",
+    "W4285992970:p008": "main",
+    "W4285992970:p009": "main",
+    "W4285992970:p010": "main",
+    "W4285992970:p011": "main",
+    "W4285992970:p012": "main",
+    "W4285992970:p013": "main",
+    "W4285992970:p014": "main",
+    "W4285992970:p015": "main",
+    "W3214833871:p001": "main",
+    "W3214833871:p002": "main",
+    "W3214833871:p003": "main",
+    "W3214833871:p004": "main",
+    "W3214833871:p005": "main",
+    "W3214833871:p006": "main",
+    "W3214833871:p007": "main",
+    "W3214833871:p008": "main",
+    "W3214833871:p009": "main",
+    "W3214833871:p010": "main",
+    "W3214833871:p011": "main",
+    "W3214833871:p012": "main",
+    "W3214833871:p013": "main",
+    "W3214833871:p014": "main",
+    "W3214833871:p015": "main",
+    "W3214833871:p016": "main",
+    "W3214833871:p017": "main",
+    "W3214833871:p018": "main",
+    "W2127359747:p001": "main",
+    "W2127359747:p002": "main",
+    "W2127359747:p003": "main",
+    "W2127359747:p004": "main",
+    "W2127359747:p005": "main",
+    "W2127359747:p006": "main",
+    "W2127359747:p007": "main",
+    "W2127359747:p008": "main",
+    "W2127359747:p009": "main",
+    "W2127359747:p010": "main",
+    "W2127359747:p011": "main",
+    "W2127359747:p012": "main",
+    "W2127359747:p013": "main",
+    "W2127359747:p014": "main",
+    "W2127359747:p015": "main",
+    "W4383552156:p001": "main",
+    "W4383552156:p002": "main",
+    "W4383552156:p003": "main",
+    "W4383552156:p004": "main",
+    "W4383552156:p005": "main",
+    "W4383552156:p006": "main",
+    "W4383552156:p007": "main",
+    "W4383552156:p008": "main",
+    "W4383552156:p009": "main",
+    "W4383552156:p010": "main",
+    "W4383552156:p011": "main",
+    "W4383552156:p012": "main",
+    "W4383552156:p013": "main",
+    "W4383552156:p014": "main",
+    "W2786204358:p001": "main",
+    "W2786204358:p002": "main",
+    "W2786204358:p003": "main",
+    "W2786204358:p004": "main",
+    "W2786204358:p005": "main",
+    "W2786204358:p006": "main",
+    "W2786204358:p007": "main",
+    "W2786204358:p008": "main",
+    "W2786204358:p009": "main",
+    "W2786204358:p010": "main",
+    "W2786204358:p011": "main",
+    "W2786204358:p012": "main",
+    "W2786204358:p013": "main",
+    "W2786204358:p014": "main",
+    "W2786204358:p015": "main",
+    "W2786204358:p016": "main",
+    "W2786204358:p017": "main",
+    "W2786204358:p018": "main",
+    "W2786204358:p019": "main",
+    "W2786204358:p020": "main",
+    "W4361216308:p001": "main",
+    "W4361216308:p002": "main",
+    "W4361216308:p003": "main",
+    "W4361216308:p004": "main",
+    "W4361216308:p005": "main",
+    "W4361216308:p006": "main",
+    "W4361216308:p007": "main",
+    "W4361216308:p008": "main",
+    "W4361216308:p009": "main",
+    "W4361216308:p010": "main",
+    "W4361216308:p011": "main",
+    "W4361216308:p012": "main",
+    "W4361216308:p013": "main",
+    "W4361216308:p014": "main",
+    "W2787963346:p001": "main",
+    "W2787963346:p002": "main",
+    "W2787963346:p003": "main",
+    "W2787963346:p004": "main",
+    "W2787963346:p005": "main",
+    "W2787963346:p006": "main",
+    "W2787963346:p007": "main",
+    "W2787963346:p008": "main",
+    "W2787963346:p009": "main",
+    "W2787963346:p010": "main",
+    "W2787963346:p011": "main",
+    "W2787963346:p012": "main",
+    "W2787963346:p013": "main",
+    "W2607491746:p001": "main",
+    "W2607491746:p002": "main",
+    "W2607491746:p003": "main",
+    "W2607491746:p004": "main",
+    "W2607491746:p005": "main",
+    "W2607491746:p006": "main",
+    "W2607491746:p007": "main",
+    "W2607491746:p008": "main",
+    "W2607491746:p009": "main",
+    "W2607491746:p010": "main",
+    "W2607491746:p011": "main",
+    "W2607491746:p012": "main",
+    "W2607491746:p013": "main",
+    "W2607491746:p014": "main",
+    "W2607491746:p015": "main",
+    "W2607491746:p016": "main",
+    "W2607491746:p017": "main",
+    "W2607491746:p018": "main",
+    "W2607491746:p019": "main",
+    "W2607491746:p020": "main",
+    "W2799567032:p001": "main",
+    "W2799567032:p002": "main",
+    "W2799567032:p003": "main",
+    "W2799567032:p004": "main",
+    "W2799567032:p005": "main",
+    "W2799567032:p006": "main",
+    "W2799567032:p007": "main",
+    "W2799567032:p008": "main",
+    "W2799567032:p009": "main",
+    "W7222600177:p001": "main",
+    "W7222600177:p002": "main",
+    "W7222600177:p003": "main",
+    "W7222600177:p004": "main",
+    "W7222600177:p005": "main",
+    "W7222600177:p006": "main",
+    "W7222600177:p007": "main",
+    "W7222600177:p008": "main",
+    "W7222600177:p009": "main",
+    "W7222600177:p010": "main",
+    "W4282541671:p001": "main",
+    "W4282541671:p002": "main",
+    "W4282541671:p003": "main",
+    "W4282541671:p004": "main",
+    "W4282541671:p005": "main",
+    "W4282541671:p006": "main",
+    "W4282541671:p007": "main",
+    "W4282541671:p008": "main",
+    "W4282541671:p009": "main",
+    "W4282541671:p010": "main",
+    "W4282541671:p011": "main",
+    "W4282541671:p012": "main",
+    "W4282541671:p013": "main",
+    "W4282541671:p014": "main",
+    "W4282541671:p015": "main",
+    "W4282541671:p016": "main",
+    "W4282541671:p017": "main",
+    "W3036867514:p001": "main",
+    "W3036867514:p002": "main",
+    "W3036867514:p003": "main",
+    "W3036867514:p004": "main",
+    "W3036867514:p005": "main",
+    "W3036867514:p006": "main",
+    "W3036867514:p007": "main",
+    "W3036867514:p008": "main",
+    "W3036867514:p009": "main",
+    "W3036867514:p010": "main",
+    "W3036867514:p011": "main",
+    "W3036867514:p012": "main",
+    "W3036867514:p013": "main",
+    "W3036867514:p014": "main",
+    "W3036867514:p015": "main",
+    "W3036867514:p016": "main",
+    "W3036867514:p017": "main",
+    "W3036867514:p018": "main",
+    "W3036867514:p019": "main",
+    "W3036867514:p020": "main",
+    "W4210415244:p001": "main",
+    "W4210415244:p002": "main",
+    "W4210415244:p003": "main",
+    "W4210415244:p004": "main",
+    "W4210415244:p005": "main",
+    "W4210415244:p006": "main",
+    "W4210415244:p007": "main",
+    "W4210415244:p008": "main",
+    "W4210415244:p009": "main",
+    "W4210415244:p010": "main",
+    "W4210415244:p011": "main",
+    "W4210415244:p012": "main",
+    "W4210415244:p013": "main",
+    "W4210415244:p014": "main",
+    "W2119902141:p001": "main",
+    "W2119902141:p002": "main",
+    "W2119902141:p003": "main",
+    "W2119902141:p004": "main",
+    "W2119902141:p005": "main",
+    "W2119902141:p006": "main",
+    "W2119902141:p007": "main",
+    "W2119902141:p008": "main",
+    "W2119902141:p009": "main",
+    "W2119902141:p010": "main",
+    "W2119902141:p011": "main",
+    "W2119902141:p012": "main",
+    "W2119902141:p013": "main",
+    "W2119902141:p014": "main",
+    "W2119902141:p015": "main",
+    "W2119902141:p016": "main",
+    "W2119902141:p017": "main",
+    "W2119902141:p018": "main",
+    "W2119902141:p019": "main",
+    "W2119902141:p020": "main",
+    "W2738222073:p001": "main",
+    "W2738222073:p002": "main",
+    "W2738222073:p003": "main",
+    "W2738222073:p004": "main",
+    "W2738222073:p005": "main",
+    "W2738222073:p006": "main",
+    "W2738222073:p007": "main",
+    "W2738222073:p008": "main",
+    "W2738222073:p009": "main",
+    "W2738222073:p010": "main",
+    "W2738222073:p011": "main",
+    "W2738222073:p012": "main",
+    "W2738222073:p013": "main",
+    "W2738222073:p014": "main",
+    "W2738222073:p015": "main",
+    "W2738222073:p016": "main",
+    "W2738222073:p017": "main",
+    "W2738222073:p018": "main",
+    "W2738222073:p019": "main",
+    "W2738222073:p020": "main",
+    "W4391160682:p001": "main",
+    "W4391160682:p002": "main",
+    "W4391160682:p003": "main",
+    "W4391160682:p004": "main",
+    "W4391160682:p005": "main",
+    "W4391160682:p006": "main",
+    "W4391160682:p007": "main",
+    "W4391160682:p008": "main",
+    "W4391160682:p009": "main",
+    "W4391160682:p010": "main",
+    "W4391160682:p011": "main",
+    "W4391160682:p012": "main",
+    "W4391160682:p013": "main",
+    "W4391160682:p014": "main",
+    "W4391160682:p015": "main",
+    "W4391160682:p016": "main",
+    "W4391160682:p017": "main",
+    "W4391160682:p018": "main",
+    "W4391160682:p019": "main",
+    "W4391160682:p020": "main",
+    "W4405724552:p001": "main",
+    "W4405724552:p002": "main",
+    "W4405724552:p003": "main",
+    "W4405724552:p004": "main",
+    "W4405724552:p005": "main",
+    "W4405724552:p006": "main",
+    "W4405724552:p007": "main",
+    "W4405724552:p008": "main",
+    "W4405724552:p009": "main",
+    "W4405724552:p010": "main",
+    "W4405724552:p011": "main",
+    "W4405724552:p012": "main",
+    "W4405724552:p013": "main",
+    "W4405724552:p014": "main",
+    "W4405724552:p015": "main",
+    "W2581784762:p001": "main",
+    "W2581784762:p002": "main",
+    "W2581784762:p003": "main",
+    "W2581784762:p004": "main",
+    "W2581784762:p005": "main",
+    "W2581784762:p006": "main",
+    "W2581784762:p007": "main",
+    "W2581784762:p008": "main",
+    "W2581784762:p009": "main",
+    "W2581784762:p010": "main",
+    "W2581784762:p011": "main",
+    "W2581784762:p012": "main",
+    "W2581784762:p013": "main",
+    "W2581784762:p014": "main",
+    "W1991667513:p001": "main",
+    "W1991667513:p002": "main",
+    "W1991667513:p003": "main",
+    "W1991667513:p004": "main",
+    "W1991667513:p005": "main",
+    "W1991667513:p006": "main",
+    "W1991667513:p007": "main",
+    "W1991667513:p008": "main",
+    "W2298374585:p001": "main",
+    "W2298374585:p002": "main",
+    "W2298374585:p003": "main",
+    "W2298374585:p004": "main",
+    "W2298374585:p005": "main",
+    "W2298374585:p006": "main",
+    "W2298374585:p007": "main",
+    "W2298374585:p008": "main",
+    "W2298374585:p009": "main",
+    "W2298374585:p010": "main",
+    "W2298374585:p011": "main",
+    "W2298374585:p012": "main",
+    "W2298374585:p013": "main",
+    "W2298374585:p014": "main",
+    "W2298374585:p015": "main",
+    "W2298374585:p016": "main",
+    "W3195189386:p001": "main",
+    "W3195189386:p002": "main",
+    "W3195189386:p003": "main",
+    "W3195189386:p004": "main",
+    "W3195189386:p005": "main",
+    "W3195189386:p006": "main",
+    "W3195189386:p007": "main",
+    "W3195189386:p008": "main",
+    "W3195189386:p009": "main",
+    "W3195189386:p010": "main",
+    "W3195189386:p011": "main",
+    "W3195189386:p012": "main",
+    "W3195189386:p013": "main",
+    "W3195189386:p014": "main",
+    "W2156173684:p001": "main",
+    "W2156173684:p002": "main",
+    "W2156173684:p003": "main",
+    "W2156173684:p004": "main",
+    "W2156173684:p005": "main",
+    "W2156173684:p006": "main",
+    "W2156173684:p007": "main",
+    "W2156173684:p008": "main",
+    "W2156173684:p009": "main",
+    "W2156173684:p010": "main",
+    "W2156173684:p011": "main",
+    "W2156173684:p012": "main",
+    "W2156173684:p013": "main",
+    "W2156173684:p014": "main",
+    "W2156173684:p015": "main",
+    "W2156173684:p016": "main",
+    "W2156173684:p017": "main",
+    "W2156173684:p018": "main",
+    "W2156173684:p019": "main",
+    "W2156173684:p020": "main",
+    "W3124280324:p001": "main",
+    "W3124280324:p002": "main",
+    "W3124280324:p003": "main",
+    "W3124280324:p004": "main",
+    "W3124280324:p005": "main",
+    "W3124280324:p006": "main",
+    "W3124280324:p007": "main",
+    "W3124280324:p008": "main",
+    "W3124280324:p009": "main",
+    "W3124280324:p010": "main",
+    "W3124280324:p011": "main",
+    "W3124280324:p012": "main",
+    "W4310995948:p001": "main",
+    "W4310995948:p002": "main",
+    "W4310995948:p003": "main",
+    "W4310995948:p004": "main",
+    "W4315851135:p001": "main",
+    "W4315851135:p002": "main",
+    "W4315851135:p003": "main",
+    "W4315851135:p004": "main",
+    "W4315851135:p005": "main",
+    "W4315851135:p006": "main",
+    "W4315851135:p007": "main"
+  },
+  "pages": {
+    "pilot": [
+      {
+        "document": "W2740335258",
+        "page": "1"
+      },
+      {
+        "document": "W2740335258",
+        "page": "2"
+      },
+      {
+        "document": "W2740335258",
+        "page": "3"
+      },
+      {
+        "document": "W2740335258",
+        "page": "4"
+      },
+      {
+        "document": "W2740335258",
+        "page": "5"
+      },
+      {
+        "document": "W2740335258",
+        "page": "6"
+      },
+      {
+        "document": "W2740335258",
+        "page": "7"
+      },
+      {
+        "document": "W2740335258",
+        "page": "8"
+      },
+      {
+        "document": "W2740335258",
+        "page": "9"
+      },
+      {
+        "document": "W2740335258",
+        "page": "10"
+      },
+      {
+        "document": "W2530496797",
+        "page": "1"
+      },
+      {
+        "document": "W2530496797",
+        "page": "2"
+      },
+      {
+        "document": "W2530496797",
+        "page": "3"
+      },
+      {
+        "document": "W2530496797",
+        "page": "4"
+      },
+      {
+        "document": "W2530496797",
+        "page": "5"
+      },
+      {
+        "document": "W2530496797",
+        "page": "6"
+      },
+      {
+        "document": "W2530496797",
+        "page": "7"
+      },
+      {
+        "document": "W2530496797",
+        "page": "8"
+      },
+      {
+        "document": "W2530496797",
+        "page": "9"
+      },
+      {
+        "document": "W2530496797",
+        "page": "10"
+      },
+      {
+        "document": "W2530496797",
+        "page": "11"
+      },
+      {
+        "document": "W2530496797",
+        "page": "12"
+      },
+      {
+        "document": "W2530496797",
+        "page": "13"
+      },
+      {
+        "document": "W2530496797",
+        "page": "14"
+      },
+      {
+        "document": "W2530496797",
+        "page": "15"
+      },
+      {
+        "document": "W2530496797",
+        "page": "16"
+      },
+      {
+        "document": "W2530496797",
+        "page": "17"
+      },
+      {
+        "document": "W2530496797",
+        "page": "18"
+      },
+      {
+        "document": "W2530496797",
+        "page": "19"
+      },
+      {
+        "document": "W2530496797",
+        "page": "20"
+      }
+    ],
+    "main": [
+      {
+        "document": "W3007383966",
+        "page": "1"
+      },
+      {
+        "document": "W3007383966",
+        "page": "2"
+      },
+      {
+        "document": "W3007383966",
+        "page": "3"
+      },
+      {
+        "document": "W3007383966",
+        "page": "4"
+      },
+      {
+        "document": "W3007383966",
+        "page": "5"
+      },
+      {
+        "document": "W3007383966",
+        "page": "6"
+      },
+      {
+        "document": "W3007383966",
+        "page": "7"
+      },
+      {
+        "document": "W3007383966",
+        "page": "8"
+      },
+      {
+        "document": "W3007383966",
+        "page": "9"
+      },
+      {
+        "document": "W3007383966",
+        "page": "10"
+      },
+      {
+        "document": "W3007383966",
+        "page": "11"
+      },
+      {
+        "document": "W3007383966",
+        "page": "12"
+      },
+      {
+        "document": "W3007383966",
+        "page": "13"
+      },
+      {
+        "document": "W3007383966",
+        "page": "14"
+      },
+      {
+        "document": "W3097213060",
+        "page": "1"
+      },
+      {
+        "document": "W3097213060",
+        "page": "2"
+      },
+      {
+        "document": "W3097213060",
+        "page": "3"
+      },
+      {
+        "document": "W3097213060",
+        "page": "4"
+      },
+      {
+        "document": "W3097213060",
+        "page": "5"
+      },
+      {
+        "document": "W3097213060",
+        "page": "6"
+      },
+      {
+        "document": "W3097213060",
+        "page": "7"
+      },
+      {
+        "document": "W3097213060",
+        "page": "8"
+      },
+      {
+        "document": "W3097213060",
+        "page": "9"
+      },
+      {
+        "document": "W3097213060",
+        "page": "10"
+      },
+      {
+        "document": "W3097213060",
+        "page": "11"
+      },
+      {
+        "document": "W3097213060",
+        "page": "12"
+      },
+      {
+        "document": "W3097213060",
+        "page": "13"
+      },
+      {
+        "document": "W3097213060",
+        "page": "14"
+      },
+      {
+        "document": "W3097213060",
+        "page": "15"
+      },
+      {
+        "document": "W3097213060",
+        "page": "16"
+      },
+      {
+        "document": "W3097213060",
+        "page": "17"
+      },
+      {
+        "document": "W3097213060",
+        "page": "18"
+      },
+      {
+        "document": "W3097213060",
+        "page": "19"
+      },
+      {
+        "document": "W3097213060",
+        "page": "20"
+      },
+      {
+        "document": "W2128077923",
+        "page": "1"
+      },
+      {
+        "document": "W2128077923",
+        "page": "2"
+      },
+      {
+        "document": "W2128077923",
+        "page": "3"
+      },
+      {
+        "document": "W2128077923",
+        "page": "4"
+      },
+      {
+        "document": "W2128077923",
+        "page": "5"
+      },
+      {
+        "document": "W2128077923",
+        "page": "6"
+      },
+      {
+        "document": "W2128077923",
+        "page": "7"
+      },
+      {
+        "document": "W2128077923",
+        "page": "8"
+      },
+      {
+        "document": "W2128077923",
+        "page": "9"
+      },
+      {
+        "document": "W2128077923",
+        "page": "10"
+      },
+      {
+        "document": "W2128077923",
+        "page": "11"
+      },
+      {
+        "document": "W2128077923",
+        "page": "12"
+      },
+      {
+        "document": "W2128077923",
+        "page": "13"
+      },
+      {
+        "document": "W2128077923",
+        "page": "14"
+      },
+      {
+        "document": "W2128077923",
+        "page": "15"
+      },
+      {
+        "document": "W2128077923",
+        "page": "16"
+      },
+      {
+        "document": "W2128077923",
+        "page": "17"
+      },
+      {
+        "document": "W2128077923",
+        "page": "18"
+      },
+      {
+        "document": "W2128077923",
+        "page": "19"
+      },
+      {
+        "document": "W2128077923",
+        "page": "20"
+      },
+      {
+        "document": "W4285992970",
+        "page": "1"
+      },
+      {
+        "document": "W4285992970",
+        "page": "2"
+      },
+      {
+        "document": "W4285992970",
+        "page": "3"
+      },
+      {
+        "document": "W4285992970",
+        "page": "4"
+      },
+      {
+        "document": "W4285992970",
+        "page": "5"
+      },
+      {
+        "document": "W4285992970",
+        "page": "6"
+      },
+      {
+        "document": "W4285992970",
+        "page": "7"
+      },
+      {
+        "document": "W4285992970",
+        "page": "8"
+      },
+      {
+        "document": "W4285992970",
+        "page": "9"
+      },
+      {
+        "document": "W4285992970",
+        "page": "10"
+      },
+      {
+        "document": "W4285992970",
+        "page": "11"
+      },
+      {
+        "document": "W4285992970",
+        "page": "12"
+      },
+      {
+        "document": "W4285992970",
+        "page": "13"
+      },
+      {
+        "document": "W4285992970",
+        "page": "14"
+      },
+      {
+        "document": "W4285992970",
+        "page": "15"
+      },
+      {
+        "document": "W3214833871",
+        "page": "1"
+      },
+      {
+        "document": "W3214833871",
+        "page": "2"
+      },
+      {
+        "document": "W3214833871",
+        "page": "3"
+      },
+      {
+        "document": "W3214833871",
+        "page": "4"
+      },
+      {
+        "document": "W3214833871",
+        "page": "5"
+      },
+      {
+        "document": "W3214833871",
+        "page": "6"
+      },
+      {
+        "document": "W3214833871",
+        "page": "7"
+      },
+      {
+        "document": "W3214833871",
+        "page": "8"
+      },
+      {
+        "document": "W3214833871",
+        "page": "9"
+      },
+      {
+        "document": "W3214833871",
+        "page": "10"
+      },
+      {
+        "document": "W3214833871",
+        "page": "11"
+      },
+      {
+        "document": "W3214833871",
+        "page": "12"
+      },
+      {
+        "document": "W3214833871",
+        "page": "13"
+      },
+      {
+        "document": "W3214833871",
+        "page": "14"
+      },
+      {
+        "document": "W3214833871",
+        "page": "15"
+      },
+      {
+        "document": "W3214833871",
+        "page": "16"
+      },
+      {
+        "document": "W3214833871",
+        "page": "17"
+      },
+      {
+        "document": "W3214833871",
+        "page": "18"
+      },
+      {
+        "document": "W2127359747",
+        "page": "1"
+      },
+      {
+        "document": "W2127359747",
+        "page": "2"
+      },
+      {
+        "document": "W2127359747",
+        "page": "3"
+      },
+      {
+        "document": "W2127359747",
+        "page": "4"
+      },
+      {
+        "document": "W2127359747",
+        "page": "5"
+      },
+      {
+        "document": "W2127359747",
+        "page": "6"
+      },
+      {
+        "document": "W2127359747",
+        "page": "7"
+      },
+      {
+        "document": "W2127359747",
+        "page": "8"
+      },
+      {
+        "document": "W2127359747",
+        "page": "9"
+      },
+      {
+        "document": "W2127359747",
+        "page": "10"
+      },
+      {
+        "document": "W2127359747",
+        "page": "11"
+      },
+      {
+        "document": "W2127359747",
+        "page": "12"
+      },
+      {
+        "document": "W2127359747",
+        "page": "13"
+      },
+      {
+        "document": "W2127359747",
+        "page": "14"
+      },
+      {
+        "document": "W2127359747",
+        "page": "15"
+      },
+      {
+        "document": "W4383552156",
+        "page": "1"
+      },
+      {
+        "document": "W4383552156",
+        "page": "2"
+      },
+      {
+        "document": "W4383552156",
+        "page": "3"
+      },
+      {
+        "document": "W4383552156",
+        "page": "4"
+      },
+      {
+        "document": "W4383552156",
+        "page": "5"
+      },
+      {
+        "document": "W4383552156",
+        "page": "6"
+      },
+      {
+        "document": "W4383552156",
+        "page": "7"
+      },
+      {
+        "document": "W4383552156",
+        "page": "8"
+      },
+      {
+        "document": "W4383552156",
+        "page": "9"
+      },
+      {
+        "document": "W4383552156",
+        "page": "10"
+      },
+      {
+        "document": "W4383552156",
+        "page": "11"
+      },
+      {
+        "document": "W4383552156",
+        "page": "12"
+      },
+      {
+        "document": "W4383552156",
+        "page": "13"
+      },
+      {
+        "document": "W4383552156",
+        "page": "14"
+      },
+      {
+        "document": "W2786204358",
+        "page": "1"
+      },
+      {
+        "document": "W2786204358",
+        "page": "2"
+      },
+      {
+        "document": "W2786204358",
+        "page": "3"
+      },
+      {
+        "document": "W2786204358",
+        "page": "4"
+      },
+      {
+        "document": "W2786204358",
+        "page": "5"
+      },
+      {
+        "document": "W2786204358",
+        "page": "6"
+      },
+      {
+        "document": "W2786204358",
+        "page": "7"
+      },
+      {
+        "document": "W2786204358",
+        "page": "8"
+      },
+      {
+        "document": "W2786204358",
+        "page": "9"
+      },
+      {
+        "document": "W2786204358",
+        "page": "10"
+      },
+      {
+        "document": "W2786204358",
+        "page": "11"
+      },
+      {
+        "document": "W2786204358",
+        "page": "12"
+      },
+      {
+        "document": "W2786204358",
+        "page": "13"
+      },
+      {
+        "document": "W2786204358",
+        "page": "14"
+      },
+      {
+        "document": "W2786204358",
+        "page": "15"
+      },
+      {
+        "document": "W2786204358",
+        "page": "16"
+      },
+      {
+        "document": "W2786204358",
+        "page": "17"
+      },
+      {
+        "document": "W2786204358",
+        "page": "18"
+      },
+      {
+        "document": "W2786204358",
+        "page": "19"
+      },
+      {
+        "document": "W2786204358",
+        "page": "20"
+      },
+      {
+        "document": "W4361216308",
+        "page": "1"
+      },
+      {
+        "document": "W4361216308",
+        "page": "2"
+      },
+      {
+        "document": "W4361216308",
+        "page": "3"
+      },
+      {
+        "document": "W4361216308",
+        "page": "4"
+      },
+      {
+        "document": "W4361216308",
+        "page": "5"
+      },
+      {
+        "document": "W4361216308",
+        "page": "6"
+      },
+      {
+        "document": "W4361216308",
+        "page": "7"
+      },
+      {
+        "document": "W4361216308",
+        "page": "8"
+      },
+      {
+        "document": "W4361216308",
+        "page": "9"
+      },
+      {
+        "document": "W4361216308",
+        "page": "10"
+      },
+      {
+        "document": "W4361216308",
+        "page": "11"
+      },
+      {
+        "document": "W4361216308",
+        "page": "12"
+      },
+      {
+        "document": "W4361216308",
+        "page": "13"
+      },
+      {
+        "document": "W4361216308",
+        "page": "14"
+      },
+      {
+        "document": "W2787963346",
+        "page": "1"
+      },
+      {
+        "document": "W2787963346",
+        "page": "2"
+      },
+      {
+        "document": "W2787963346",
+        "page": "3"
+      },
+      {
+        "document": "W2787963346",
+        "page": "4"
+      },
+      {
+        "document": "W2787963346",
+        "page": "5"
+      },
+      {
+        "document": "W2787963346",
+        "page": "6"
+      },
+      {
+        "document": "W2787963346",
+        "page": "7"
+      },
+      {
+        "document": "W2787963346",
+        "page": "8"
+      },
+      {
+        "document": "W2787963346",
+        "page": "9"
+      },
+      {
+        "document": "W2787963346",
+        "page": "10"
+      },
+      {
+        "document": "W2787963346",
+        "page": "11"
+      },
+      {
+        "document": "W2787963346",
+        "page": "12"
+      },
+      {
+        "document": "W2787963346",
+        "page": "13"
+      },
+      {
+        "document": "W2607491746",
+        "page": "1"
+      },
+      {
+        "document": "W2607491746",
+        "page": "2"
+      },
+      {
+        "document": "W2607491746",
+        "page": "3"
+      },
+      {
+        "document": "W2607491746",
+        "page": "4"
+      },
+      {
+        "document": "W2607491746",
+        "page": "5"
+      },
+      {
+        "document": "W2607491746",
+        "page": "6"
+      },
+      {
+        "document": "W2607491746",
+        "page": "7"
+      },
+      {
+        "document": "W2607491746",
+        "page": "8"
+      },
+      {
+        "document": "W2607491746",
+        "page": "9"
+      },
+      {
+        "document": "W2607491746",
+        "page": "10"
+      },
+      {
+        "document": "W2607491746",
+        "page": "11"
+      },
+      {
+        "document": "W2607491746",
+        "page": "12"
+      },
+      {
+        "document": "W2607491746",
+        "page": "13"
+      },
+      {
+        "document": "W2607491746",
+        "page": "14"
+      },
+      {
+        "document": "W2607491746",
+        "page": "15"
+      },
+      {
+        "document": "W2607491746",
+        "page": "16"
+      },
+      {
+        "document": "W2607491746",
+        "page": "17"
+      },
+      {
+        "document": "W2607491746",
+        "page": "18"
+      },
+      {
+        "document": "W2607491746",
+        "page": "19"
+      },
+      {
+        "document": "W2607491746",
+        "page": "20"
+      },
+      {
+        "document": "W2799567032",
+        "page": "1"
+      },
+      {
+        "document": "W2799567032",
+        "page": "2"
+      },
+      {
+        "document": "W2799567032",
+        "page": "3"
+      },
+      {
+        "document": "W2799567032",
+        "page": "4"
+      },
+      {
+        "document": "W2799567032",
+        "page": "5"
+      },
+      {
+        "document": "W2799567032",
+        "page": "6"
+      },
+      {
+        "document": "W2799567032",
+        "page": "7"
+      },
+      {
+        "document": "W2799567032",
+        "page": "8"
+      },
+      {
+        "document": "W2799567032",
+        "page": "9"
+      },
+      {
+        "document": "W7222600177",
+        "page": "1"
+      },
+      {
+        "document": "W7222600177",
+        "page": "2"
+      },
+      {
+        "document": "W7222600177",
+        "page": "3"
+      },
+      {
+        "document": "W7222600177",
+        "page": "4"
+      },
+      {
+        "document": "W7222600177",
+        "page": "5"
+      },
+      {
+        "document": "W7222600177",
+        "page": "6"
+      },
+      {
+        "document": "W7222600177",
+        "page": "7"
+      },
+      {
+        "document": "W7222600177",
+        "page": "8"
+      },
+      {
+        "document": "W7222600177",
+        "page": "9"
+      },
+      {
+        "document": "W7222600177",
+        "page": "10"
+      },
+      {
+        "document": "W4282541671",
+        "page": "1"
+      },
+      {
+        "document": "W4282541671",
+        "page": "2"
+      },
+      {
+        "document": "W4282541671",
+        "page": "3"
+      },
+      {
+        "document": "W4282541671",
+        "page": "4"
+      },
+      {
+        "document": "W4282541671",
+        "page": "5"
+      },
+      {
+        "document": "W4282541671",
+        "page": "6"
+      },
+      {
+        "document": "W4282541671",
+        "page": "7"
+      },
+      {
+        "document": "W4282541671",
+        "page": "8"
+      },
+      {
+        "document": "W4282541671",
+        "page": "9"
+      },
+      {
+        "document": "W4282541671",
+        "page": "10"
+      },
+      {
+        "document": "W4282541671",
+        "page": "11"
+      },
+      {
+        "document": "W4282541671",
+        "page": "12"
+      },
+      {
+        "document": "W4282541671",
+        "page": "13"
+      },
+      {
+        "document": "W4282541671",
+        "page": "14"
+      },
+      {
+        "document": "W4282541671",
+        "page": "15"
+      },
+      {
+        "document": "W4282541671",
+        "page": "16"
+      },
+      {
+        "document": "W4282541671",
+        "page": "17"
+      },
+      {
+        "document": "W3036867514",
+        "page": "1"
+      },
+      {
+        "document": "W3036867514",
+        "page": "2"
+      },
+      {
+        "document": "W3036867514",
+        "page": "3"
+      },
+      {
+        "document": "W3036867514",
+        "page": "4"
+      },
+      {
+        "document": "W3036867514",
+        "page": "5"
+      },
+      {
+        "document": "W3036867514",
+        "page": "6"
+      },
+      {
+        "document": "W3036867514",
+        "page": "7"
+      },
+      {
+        "document": "W3036867514",
+        "page": "8"
+      },
+      {
+        "document": "W3036867514",
+        "page": "9"
+      },
+      {
+        "document": "W3036867514",
+        "page": "10"
+      },
+      {
+        "document": "W3036867514",
+        "page": "11"
+      },
+      {
+        "document": "W3036867514",
+        "page": "12"
+      },
+      {
+        "document": "W3036867514",
+        "page": "13"
+      },
+      {
+        "document": "W3036867514",
+        "page": "14"
+      },
+      {
+        "document": "W3036867514",
+        "page": "15"
+      },
+      {
+        "document": "W3036867514",
+        "page": "16"
+      },
+      {
+        "document": "W3036867514",
+        "page": "17"
+      },
+      {
+        "document": "W3036867514",
+        "page": "18"
+      },
+      {
+        "document": "W3036867514",
+        "page": "19"
+      },
+      {
+        "document": "W3036867514",
+        "page": "20"
+      },
+      {
+        "document": "W4210415244",
+        "page": "1"
+      },
+      {
+        "document": "W4210415244",
+        "page": "2"
+      },
+      {
+        "document": "W4210415244",
+        "page": "3"
+      },
+      {
+        "document": "W4210415244",
+        "page": "4"
+      },
+      {
+        "document": "W4210415244",
+        "page": "5"
+      },
+      {
+        "document": "W4210415244",
+        "page": "6"
+      },
+      {
+        "document": "W4210415244",
+        "page": "7"
+      },
+      {
+        "document": "W4210415244",
+        "page": "8"
+      },
+      {
+        "document": "W4210415244",
+        "page": "9"
+      },
+      {
+        "document": "W4210415244",
+        "page": "10"
+      },
+      {
+        "document": "W4210415244",
+        "page": "11"
+      },
+      {
+        "document": "W4210415244",
+        "page": "12"
+      },
+      {
+        "document": "W4210415244",
+        "page": "13"
+      },
+      {
+        "document": "W4210415244",
+        "page": "14"
+      },
+      {
+        "document": "W2119902141",
+        "page": "1"
+      },
+      {
+        "document": "W2119902141",
+        "page": "2"
+      },
+      {
+        "document": "W2119902141",
+        "page": "3"
+      },
+      {
+        "document": "W2119902141",
+        "page": "4"
+      },
+      {
+        "document": "W2119902141",
+        "page": "5"
+      },
+      {
+        "document": "W2119902141",
+        "page": "6"
+      },
+      {
+        "document": "W2119902141",
+        "page": "7"
+      },
+      {
+        "document": "W2119902141",
+        "page": "8"
+      },
+      {
+        "document": "W2119902141",
+        "page": "9"
+      },
+      {
+        "document": "W2119902141",
+        "page": "10"
+      },
+      {
+        "document": "W2119902141",
+        "page": "11"
+      },
+      {
+        "document": "W2119902141",
+        "page": "12"
+      },
+      {
+        "document": "W2119902141",
+        "page": "13"
+      },
+      {
+        "document": "W2119902141",
+        "page": "14"
+      },
+      {
+        "document": "W2119902141",
+        "page": "15"
+      },
+      {
+        "document": "W2119902141",
+        "page": "16"
+      },
+      {
+        "document": "W2119902141",
+        "page": "17"
+      },
+      {
+        "document": "W2119902141",
+        "page": "18"
+      },
+      {
+        "document": "W2119902141",
+        "page": "19"
+      },
+      {
+        "document": "W2119902141",
+        "page": "20"
+      },
+      {
+        "document": "W2738222073",
+        "page": "1"
+      },
+      {
+        "document": "W2738222073",
+        "page": "2"
+      },
+      {
+        "document": "W2738222073",
+        "page": "3"
+      },
+      {
+        "document": "W2738222073",
+        "page": "4"
+      },
+      {
+        "document": "W2738222073",
+        "page": "5"
+      },
+      {
+        "document": "W2738222073",
+        "page": "6"
+      },
+      {
+        "document": "W2738222073",
+        "page": "7"
+      },
+      {
+        "document": "W2738222073",
+        "page": "8"
+      },
+      {
+        "document": "W2738222073",
+        "page": "9"
+      },
+      {
+        "document": "W2738222073",
+        "page": "10"
+      },
+      {
+        "document": "W2738222073",
+        "page": "11"
+      },
+      {
+        "document": "W2738222073",
+        "page": "12"
+      },
+      {
+        "document": "W2738222073",
+        "page": "13"
+      },
+      {
+        "document": "W2738222073",
+        "page": "14"
+      },
+      {
+        "document": "W2738222073",
+        "page": "15"
+      },
+      {
+        "document": "W2738222073",
+        "page": "16"
+      },
+      {
+        "document": "W2738222073",
+        "page": "17"
+      },
+      {
+        "document": "W2738222073",
+        "page": "18"
+      },
+      {
+        "document": "W2738222073",
+        "page": "19"
+      },
+      {
+        "document": "W2738222073",
+        "page": "20"
+      },
+      {
+        "document": "W4391160682",
+        "page": "1"
+      },
+      {
+        "document": "W4391160682",
+        "page": "2"
+      },
+      {
+        "document": "W4391160682",
+        "page": "3"
+      },
+      {
+        "document": "W4391160682",
+        "page": "4"
+      },
+      {
+        "document": "W4391160682",
+        "page": "5"
+      },
+      {
+        "document": "W4391160682",
+        "page": "6"
+      },
+      {
+        "document": "W4391160682",
+        "page": "7"
+      },
+      {
+        "document": "W4391160682",
+        "page": "8"
+      },
+      {
+        "document": "W4391160682",
+        "page": "9"
+      },
+      {
+        "document": "W4391160682",
+        "page": "10"
+      },
+      {
+        "document": "W4391160682",
+        "page": "11"
+      },
+      {
+        "document": "W4391160682",
+        "page": "12"
+      },
+      {
+        "document": "W4391160682",
+        "page": "13"
+      },
+      {
+        "document": "W4391160682",
+        "page": "14"
+      },
+      {
+        "document": "W4391160682",
+        "page": "15"
+      },
+      {
+        "document": "W4391160682",
+        "page": "16"
+      },
+      {
+        "document": "W4391160682",
+        "page": "17"
+      },
+      {
+        "document": "W4391160682",
+        "page": "18"
+      },
+      {
+        "document": "W4391160682",
+        "page": "19"
+      },
+      {
+        "document": "W4391160682",
+        "page": "20"
+      },
+      {
+        "document": "W4405724552",
+        "page": "1"
+      },
+      {
+        "document": "W4405724552",
+        "page": "2"
+      },
+      {
+        "document": "W4405724552",
+        "page": "3"
+      },
+      {
+        "document": "W4405724552",
+        "page": "4"
+      },
+      {
+        "document": "W4405724552",
+        "page": "5"
+      },
+      {
+        "document": "W4405724552",
+        "page": "6"
+      },
+      {
+        "document": "W4405724552",
+        "page": "7"
+      },
+      {
+        "document": "W4405724552",
+        "page": "8"
+      },
+      {
+        "document": "W4405724552",
+        "page": "9"
+      },
+      {
+        "document": "W4405724552",
+        "page": "10"
+      },
+      {
+        "document": "W4405724552",
+        "page": "11"
+      },
+      {
+        "document": "W4405724552",
+        "page": "12"
+      },
+      {
+        "document": "W4405724552",
+        "page": "13"
+      },
+      {
+        "document": "W4405724552",
+        "page": "14"
+      },
+      {
+        "document": "W4405724552",
+        "page": "15"
+      },
+      {
+        "document": "W2581784762",
+        "page": "1"
+      },
+      {
+        "document": "W2581784762",
+        "page": "2"
+      },
+      {
+        "document": "W2581784762",
+        "page": "3"
+      },
+      {
+        "document": "W2581784762",
+        "page": "4"
+      },
+      {
+        "document": "W2581784762",
+        "page": "5"
+      },
+      {
+        "document": "W2581784762",
+        "page": "6"
+      },
+      {
+        "document": "W2581784762",
+        "page": "7"
+      },
+      {
+        "document": "W2581784762",
+        "page": "8"
+      },
+      {
+        "document": "W2581784762",
+        "page": "9"
+      },
+      {
+        "document": "W2581784762",
+        "page": "10"
+      },
+      {
+        "document": "W2581784762",
+        "page": "11"
+      },
+      {
+        "document": "W2581784762",
+        "page": "12"
+      },
+      {
+        "document": "W2581784762",
+        "page": "13"
+      },
+      {
+        "document": "W2581784762",
+        "page": "14"
+      },
+      {
+        "document": "W1991667513",
+        "page": "1"
+      },
+      {
+        "document": "W1991667513",
+        "page": "2"
+      },
+      {
+        "document": "W1991667513",
+        "page": "3"
+      },
+      {
+        "document": "W1991667513",
+        "page": "4"
+      },
+      {
+        "document": "W1991667513",
+        "page": "5"
+      },
+      {
+        "document": "W1991667513",
+        "page": "6"
+      },
+      {
+        "document": "W1991667513",
+        "page": "7"
+      },
+      {
+        "document": "W1991667513",
+        "page": "8"
+      },
+      {
+        "document": "W2298374585",
+        "page": "1"
+      },
+      {
+        "document": "W2298374585",
+        "page": "2"
+      },
+      {
+        "document": "W2298374585",
+        "page": "3"
+      },
+      {
+        "document": "W2298374585",
+        "page": "4"
+      },
+      {
+        "document": "W2298374585",
+        "page": "5"
+      },
+      {
+        "document": "W2298374585",
+        "page": "6"
+      },
+      {
+        "document": "W2298374585",
+        "page": "7"
+      },
+      {
+        "document": "W2298374585",
+        "page": "8"
+      },
+      {
+        "document": "W2298374585",
+        "page": "9"
+      },
+      {
+        "document": "W2298374585",
+        "page": "10"
+      },
+      {
+        "document": "W2298374585",
+        "page": "11"
+      },
+      {
+        "document": "W2298374585",
+        "page": "12"
+      },
+      {
+        "document": "W2298374585",
+        "page": "13"
+      },
+      {
+        "document": "W2298374585",
+        "page": "14"
+      },
+      {
+        "document": "W2298374585",
+        "page": "15"
+      },
+      {
+        "document": "W2298374585",
+        "page": "16"
+      },
+      {
+        "document": "W3195189386",
+        "page": "1"
+      },
+      {
+        "document": "W3195189386",
+        "page": "2"
+      },
+      {
+        "document": "W3195189386",
+        "page": "3"
+      },
+      {
+        "document": "W3195189386",
+        "page": "4"
+      },
+      {
+        "document": "W3195189386",
+        "page": "5"
+      },
+      {
+        "document": "W3195189386",
+        "page": "6"
+      },
+      {
+        "document": "W3195189386",
+        "page": "7"
+      },
+      {
+        "document": "W3195189386",
+        "page": "8"
+      },
+      {
+        "document": "W3195189386",
+        "page": "9"
+      },
+      {
+        "document": "W3195189386",
+        "page": "10"
+      },
+      {
+        "document": "W3195189386",
+        "page": "11"
+      },
+      {
+        "document": "W3195189386",
+        "page": "12"
+      },
+      {
+        "document": "W3195189386",
+        "page": "13"
+      },
+      {
+        "document": "W3195189386",
+        "page": "14"
+      },
+      {
+        "document": "W2156173684",
+        "page": "1"
+      },
+      {
+        "document": "W2156173684",
+        "page": "2"
+      },
+      {
+        "document": "W2156173684",
+        "page": "3"
+      },
+      {
+        "document": "W2156173684",
+        "page": "4"
+      },
+      {
+        "document": "W2156173684",
+        "page": "5"
+      },
+      {
+        "document": "W2156173684",
+        "page": "6"
+      },
+      {
+        "document": "W2156173684",
+        "page": "7"
+      },
+      {
+        "document": "W2156173684",
+        "page": "8"
+      },
+      {
+        "document": "W2156173684",
+        "page": "9"
+      },
+      {
+        "document": "W2156173684",
+        "page": "10"
+      },
+      {
+        "document": "W2156173684",
+        "page": "11"
+      },
+      {
+        "document": "W2156173684",
+        "page": "12"
+      },
+      {
+        "document": "W2156173684",
+        "page": "13"
+      },
+      {
+        "document": "W2156173684",
+        "page": "14"
+      },
+      {
+        "document": "W2156173684",
+        "page": "15"
+      },
+      {
+        "document": "W2156173684",
+        "page": "16"
+      },
+      {
+        "document": "W2156173684",
+        "page": "17"
+      },
+      {
+        "document": "W2156173684",
+        "page": "18"
+      },
+      {
+        "document": "W2156173684",
+        "page": "19"
+      },
+      {
+        "document": "W2156173684",
+        "page": "20"
+      },
+      {
+        "document": "W3124280324",
+        "page": "1"
+      },
+      {
+        "document": "W3124280324",
+        "page": "2"
+      },
+      {
+        "document": "W3124280324",
+        "page": "3"
+      },
+      {
+        "document": "W3124280324",
+        "page": "4"
+      },
+      {
+        "document": "W3124280324",
+        "page": "5"
+      },
+      {
+        "document": "W3124280324",
+        "page": "6"
+      },
+      {
+        "document": "W3124280324",
+        "page": "7"
+      },
+      {
+        "document": "W3124280324",
+        "page": "8"
+      },
+      {
+        "document": "W3124280324",
+        "page": "9"
+      },
+      {
+        "document": "W3124280324",
+        "page": "10"
+      },
+      {
+        "document": "W3124280324",
+        "page": "11"
+      },
+      {
+        "document": "W3124280324",
+        "page": "12"
+      },
+      {
+        "document": "W4310995948",
+        "page": "1"
+      },
+      {
+        "document": "W4310995948",
+        "page": "2"
+      },
+      {
+        "document": "W4310995948",
+        "page": "3"
+      },
+      {
+        "document": "W4310995948",
+        "page": "4"
+      },
+      {
+        "document": "W4315851135",
+        "page": "1"
+      },
+      {
+        "document": "W4315851135",
+        "page": "2"
+      },
+      {
+        "document": "W4315851135",
+        "page": "3"
+      },
+      {
+        "document": "W4315851135",
+        "page": "4"
+      },
+      {
+        "document": "W4315851135",
+        "page": "5"
+      },
+      {
+        "document": "W4315851135",
+        "page": "6"
+      },
+      {
+        "document": "W4315851135",
+        "page": "7"
+      }
+    ]
+  }
+}

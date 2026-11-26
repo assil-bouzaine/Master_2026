@@ -122,6 +122,7 @@ os.execvp(python, cmd)
     regimes:*)   $PY -m src.models.regimes --model "${s#regimes:}" ;;
     extract)     extract_args=(
                    -m src.kg.extract_llm run
+                   --track "${EXTRACT_TRACK:-2}"
                    --model "${EXTRACT_MODEL:?set EXTRACT_MODEL}"
                    --split "${EXTRACT_SPLIT:-dev}"
                    --out "${PFE_RESULTS:-results/$PFE_DATASET}/extraction/${EXTRACT_RUN:?set EXTRACT_RUN}"

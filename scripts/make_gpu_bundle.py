@@ -7,7 +7,7 @@ Contains src/, scripts/run_gpu.sh and scripts/colab_run.py, requirements.txt, th
 tests, the current dataset (PFE_DATASET), its cached feature panels (full and R3 windows),
 and the selected configurations and refit epoch records (analysis plan sections 4 and 5).
 The SAFRAN grid table supplies Taccari's weather nodes. The arm D edge table and its export
-manifest supply the black-box comparison (Gate 3 point 21). The Track 2 extraction inputs
+manifest supply the black-box comparison (Gate 3 point 21). The Track 1 and 2 extraction inputs
 (passages, prompt, split, schema and gold CSV) supply the `extract` GPU step (v5 plan R2.1).
 See docs/gpu_howto.md.
 """
@@ -35,6 +35,10 @@ def bundle_files():
                ROOT / "configs" / "extraction_prompt_track2.md",
                ROOT / "configs" / "extraction_split_track2.json",
                ROOT / "configs" / "extraction_schema.json",
+               INTERIM / "extraction_passages_track1.jsonl",
+               ROOT / "configs" / "extraction_prompt_track1.md",
+               ROOT / "configs" / "extraction_split_track1.json",
+               ROOT / "configs" / "extraction_schema_track1.json",
                ROOT / "configs" / "exchange_evidence.csv"]
     include += sorted(p for p in (results / "_cache").glob("panel*.parquet")
                       if not p.match("panel_lu_*"))

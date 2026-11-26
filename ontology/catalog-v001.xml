@@ -19,10 +19,14 @@
     <uri name="https://w3id.org/lulcw/alignments/sweet" uri="alignments/lulcw-sweet.ttl"/>
     <uri name="https://w3id.org/lulcw/alignments/hyf" uri="alignments/lulcw-hyf.ttl"/>
     <uri name="https://w3id.org/lulcw/alignments/inspire" uri="alignments/lulcw-inspire.ttl"/>
+    <uri name="https://w3id.org/lulcw/alignments/saref" uri="alignments/lulcw-saref.ttl"/>
+    <uri name="https://w3id.org/lulcw/alignments/envo" uri="alignments/lulcw-envo.ttl"/>
     <uri name="https://w3id.org/lulcw/imports/gwml2-hyfo" uri="imports/gwml2_hyfo_terms.ttl"/>
     <uri name="https://w3id.org/lulcw/imports/sweet" uri="imports/sweet_terms.ttl"/>
     <uri name="https://w3id.org/lulcw/imports/hyf" uri="imports/hyf_terms.ttl"/>
     <uri name="https://w3id.org/lulcw/imports/inspire" uri="imports/inspire_terms.ttl"/>
+    <uri name="https://w3id.org/lulcw/imports/saref" uri="imports/saref_terms.ttl"/>
+    <uri name="https://w3id.org/lulcw/imports/envo" uri="imports/envo_terms.ttl"/>
     <uri name="https://w3id.org/lulcw/imports/sosa" uri="imports/sosa_terms.ttl"/>
     <uri name="https://w3id.org/lulcw/imports/prov" uri="imports/prov_terms.ttl"/>
     <uri name="https://w3id.org/lulcw/imports/time" uri="imports/time_terms.ttl"/>

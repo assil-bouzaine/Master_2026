@@ -1,0 +1,38 @@
+@prefix lulcw:   <https://w3id.org/lulcw#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix obo:     <http://purl.obolibrary.org/obo/> .
+
+# Alignment of the lulcw module to the Environment Ontology (ENVO, OBO Foundry, CC0), release 2026-10-23,
+# read at its versioned URL on 2026-11-26 (v5 plan R2.3). The aquifer types follow the same reading as the
+# GWML2 alignment (the written mapping rule types the alluvium and karst units as aquifers); the multilayer
+# system, the piezometers (some are springs) and the canal reaches (segments of a canal) get close matches;
+# the lateral-inflow mechanism a broader process. ENVO terms are written with their numeric identifiers
+# (labels in imports/envo_terms.ttl): ENVO_00012408 aquifer, ENVO_01000002 water well, ENVO_00000022 river,
+# ENVO_00000014 canal, ENVO_01001632 groundwater flow. Every correspondence, the rejected ones included,
+# is in ledger.csv with the two definitions compared.
+
+<https://w3id.org/lulcw/alignments/envo> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/lulcw/alignments/envo/0.1.0> ;
+    dcterms:title "Alignment of LULC-Water to the Environment Ontology (ENVO)"@en ,
+        "Alignement de LULC-Water sur l'Environment Ontology (ENVO)"@fr ;
+    dcterms:description "Subclass and SKOS mapping axioms linking lulcw aquifer types, piezometers, watercourses, canal reaches and the lateral-inflow mechanism to ENVO (release 2026-10-23)."@en ;
+    dcterms:created "2026-11-26"^^xsd:date ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    owl:imports <https://w3id.org/lulcw> , <https://w3id.org/lulcw/imports/envo> .
+
+lulcw:AlluvialAquifer rdfs:subClassOf obo:ENVO_00012408 .
+lulcw:KarstAquifer rdfs:subClassOf obo:ENVO_00012408 .
+lulcw:MultilayerAquiferSystem skos:closeMatch obo:ENVO_00012408 .
+lulcw:Piezometer skos:closeMatch obo:ENVO_01000002 .
+lulcw:Watercourse rdfs:subClassOf obo:ENVO_00000022 .
+lulcw:CanalReach skos:closeMatch obo:ENVO_00000014 .
+lulcw:LateralInflow skos:broadMatch obo:ENVO_01001632 .
+
+dcterms:title a owl:AnnotationProperty .
+dcterms:description a owl:AnnotationProperty .
+dcterms:created a owl:AnnotationProperty .
+dcterms:license a owl:AnnotationProperty .

@@ -592,3 +592,32 @@ Notes:
 | placeholder weeks masked | 60 (CORNEILLA PD5) | 60 (same) |
 | quality filter | — | 437 values dropped; model-window weeks changed 7, emptied 62 |
 | last BNPE year | 2024 | 2024 (2025–2026 imputed) |
+
+### Reused vocabularies for the v5 alignments (R2.3, 2026-11-26)
+
+`python -m src.kg.build_imports --only sweet saref envo` (downloads once into `data/raw/vocab/`, logged with SHA-256
+in `data/raw/vocab/sources.json`; ROBOT MIREOT extracts in `ontology/imports/`, committed). Licences read at the
+source the same day.
+
+| File | Source | Licence | Bytes | SHA-256 (first 16) |
+|---|---|---|---|---|
+| `saref4watr.ttl` | `https://saref.etsi.org/saref4watr/v2.1.1/saref4watr.ttl` (SAREF4WATR v2.1.1, ETSI) | ETSI BSD-3-Clause | 57,491 | `964044e750d829e1` |
+| `envo.owl` | `http://purl.obolibrary.org/obo/envo/releases/2026-10-23/envo.owl` (redirects to the `v2026-10-23` tag of github.com/EnvironmentOntology/envo) | CC0 1.0 | 9,955,495 | `cc070bc1ceca4bf7` |
+| `sweet_realmHydroBody.ttl`, `sweet_phenHydro.ttl`, `sweet_humanAgriculture.ttl` | github.com/ESIPFed/sweet, `src/` (master) | CC0 | 15,804; 10,659; 8,091 | `cd8d91fe26f5a1e5`; `160789f8978b4ecc`; `569c79958b14c9b8` |
+
+Checked but not used: SAREF4AGRI v2.1.1 (`https://saref.etsi.org/saref4agri/v2.1.1/saref4agri.ttl`, 21,016 bytes;
+v1.1.1 returns 404): its candidate correspondences are rejected in the ledger, and its `Parcel` waits for CQ15's
+terms. GEMET and the CORINE Land Cover SKOS vocabulary (both on Eionet, `www.eionet.europa.eu`,
+`dd.eionet.europa.eu`) could not be reached from this network on 2026-11-26 (TLS connections time out, IPv4 and
+IPv6): retry later.
+
+### EuroCrops HCAT3 and its French mapping (R2.3, 2026-11-26)
+
+| Date | Source | Parameters | Output | Rows / bytes |
+|---|---|---|---|---|
+| 2026-11-26 | github.com/maja601/EuroCrops (CC BY-SA 4.0), raw files at commit `b4331adc3dec584ca0e86f0f2d5c881e53cb3b68` (2026-03-11) | `hcat_core/HCAT3.csv`, `csvs/country_mappings/fr_2018.csv`, `fr_other_years.csv`, `LICENSE` | `raw/eurocrops/2026-11-26/` | HCAT3: 384 classes (10,244 B, SHA-256 `47dcd2fcab18862a…`); fr_2018: 282 RPG codes (31,860 B, `3bad5f442691c7e0…`); fr_other_years: 41 codes (5,951 B, `8dfa01e9ab019570…`) |
+
+The French mapping gives an HCAT3 class for 183 of the 198 crop codes of the well zones (98.6 % of their area; 119
+distinct HCAT3 classes, 3 codes `not_known_and_other`); the 15 others are codes added after 2018. It is the EuroCrops
+authors' mapping, used as the gold of the RPG → HCAT matching experiment (no labelling needed). Share-alike licence:
+it stays a separate resource, not copied into the CC BY 4.0 ontology.

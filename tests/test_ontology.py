@@ -170,9 +170,12 @@ def test_report():
 LEDGER = ONTO / "alignments" / "ledger.csv"
 MODULES = {"gwml2-hyfo": "alignments/lulcw-gwml2-hyfo.ttl", "sweet": "alignments/lulcw-sweet.ttl",
            "hyf": "alignments/lulcw-hyf.ttl", "hyf-import": "imports/hyf_terms.ttl",
-           "inspire": "alignments/lulcw-inspire.ttl"}
+           "inspire": "alignments/lulcw-inspire.ttl", "saref": "alignments/lulcw-saref.ttl",
+           "envo": "alignments/lulcw-envo.ttl"}
+OWN_MODULES = ("gwml2-hyfo", "sweet", "hyf", "inspire", "saref", "envo")
+# every SKOS mapping relation counts (broad, narrow and related matches since 2026-11-26, R2.3)
 ALIGN = (RDFS.subClassOf, RDFS.subPropertyOf, SKOS.closeMatch, SKOS.exactMatch, SKOS.broader,
-         OWL.equivalentClass, OWL.equivalentProperty)
+         SKOS.broadMatch, SKOS.narrowMatch, SKOS.relatedMatch, OWL.equivalentClass, OWL.equivalentProperty)
 
 
 def ledger():
@@ -180,6 +183,10 @@ def ledger():
     ns = {"lulcw": L, "gwml2": "http://gwml2.org/def/gwml2#", "hyfo": "http://hyfo.spatialai.org/v1/hyfo#",
           "sohydro": "http://sweetontology.net/realmHydro/", "hyf": "https://www.opengis.net/def/schema/hy_features/hyf/",
           "inspirefc": "http://inspire.ec.europa.eu/featureconcept/",
+          "s4watr": "https://saref.etsi.org/saref4watr/", "s4agri": "https://saref.etsi.org/saref4agri/",
+          "obo": "http://purl.obolibrary.org/obo/", "sohydrobody": "http://sweetontology.net/realmHydroBody/",
+          "sophenhydro": "http://sweetontology.net/phenHydro/",
+          "sohumanagri": "http://sweetontology.net/humanAgriculture/",
           "rdfs": str(RDFS), "skos": str(SKOS), "owl": str(OWL)}
     def iri(c):
         p, local = c.split(":", 1)
@@ -196,7 +203,7 @@ def test_ledger():
     assert {r["status"] for r in rows} <= {"asserted", "rejected", "derived", "upstream"}
     assert all(r["entailment"] in ("", "required", "forbidden") for r in rows)
     graphs = {m: rdflib.Graph().parse(ONTO / f) for m, f in MODULES.items()}
-    own = {(m, t) for m in ("gwml2-hyfo", "sweet", "hyf", "inspire") for t in graphs[m]
+    own = {(m, t) for m in OWN_MODULES for t in graphs[m]
            if t[1] in ALIGN and str(t[0]).startswith(L) and not str(t[2]).startswith(L)}
     listed = {(r["module"], r["triple"]) for r in rows if r["status"] == "asserted"}
     assert own == listed, f"alignment axioms without an asserted ledger row: {sorted(own - listed)}; " \

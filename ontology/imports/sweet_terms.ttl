@@ -7,7 +7,7 @@
 @base <https://w3id.org/lulcw/imports/sweet> .
 
 <https://w3id.org/lulcw/imports/sweet> rdf:type owl:Ontology ;
-                                        rdfs:comment "MIREOT extract (declarations, annotations, hierarchy) of the terms LULC-Water uses, built by src/kg/build_imports.py with ROBOT from https://raw.githubusercontent.com/ESIPFed/sweet/master/src/realmHydro.ttl (retrieved 2026-10-24, sha256 12eec2ea1abe); https://raw.githubusercontent.com/ESIPFed/sweet/master/src/matrWater.ttl (retrieved 2026-10-24, sha256 b4a45b820f1a)." .
+                                        rdfs:comment "MIREOT extract (declarations, annotations, hierarchy) of the terms LULC-Water uses, built by src/kg/build_imports.py with ROBOT from https://raw.githubusercontent.com/ESIPFed/sweet/master/src/realmHydro.ttl (retrieved 2026-10-24, sha256 12eec2ea1abe); https://raw.githubusercontent.com/ESIPFed/sweet/master/src/matrWater.ttl (retrieved 2026-10-24, sha256 b4a45b820f1a); https://raw.githubusercontent.com/ESIPFed/sweet/master/src/realmHydroBody.ttl (retrieved 2026-11-26, sha256 cd8d91fe26f5); https://raw.githubusercontent.com/ESIPFed/sweet/master/src/phenHydro.ttl (retrieved 2026-11-26, sha256 160789f8978b); https://raw.githubusercontent.com/ESIPFed/sweet/master/src/humanAgriculture.ttl (retrieved 2026-11-26, sha256 569c79958b14)." .
 
 #################################################################
 #    Annotation properties
@@ -21,6 +21,23 @@ rdfs:label rdf:type owl:AnnotationProperty .
 #    Classes
 #################################################################
 
+###  http://sweetontology.net/humanAgriculture/Irrigation
+<http://sweetontology.net/humanAgriculture/Irrigation> rdf:type owl:Class ;
+                                                       rdfs:subClassOf <http://sweetontology.net/humanCommerce/LandUse> ,
+                                                                       <http://sweetontology.net/humanCommerce/Production> ;
+                                                       rdfs:label "irrigation"@en .
+
+
+###  http://sweetontology.net/humanCommerce/LandUse
+<http://sweetontology.net/humanCommerce/LandUse> rdf:type owl:Class ;
+                                                 rdfs:subClassOf owl:Thing .
+
+
+###  http://sweetontology.net/humanCommerce/Production
+<http://sweetontology.net/humanCommerce/Production> rdf:type owl:Class ;
+                                                    rdfs:subClassOf owl:Thing .
+
+
 ###  http://sweetontology.net/matr/Substance
 <http://sweetontology.net/matr/Substance> rdf:type owl:Class ;
                                           rdfs:subClassOf owl:Thing .
@@ -30,6 +47,34 @@ rdfs:label rdf:type owl:AnnotationProperty .
 <http://sweetontology.net/matrWater/Groundwater> rdf:type owl:Class ;
                                                  rdfs:subClassOf <http://sweetontology.net/matr/Substance> ;
                                                  rdfs:label "groundwater"@en .
+
+
+###  http://sweetontology.net/phenFluidDynamics/Flow
+<http://sweetontology.net/phenFluidDynamics/Flow> rdf:type owl:Class ;
+                                                  rdfs:subClassOf owl:Thing .
+
+
+###  http://sweetontology.net/phenFluidTransport/Transport
+<http://sweetontology.net/phenFluidTransport/Transport> rdf:type owl:Class ;
+                                                        rdfs:subClassOf owl:Thing .
+
+
+###  http://sweetontology.net/phenHydro/DeepPercolation
+<http://sweetontology.net/phenHydro/DeepPercolation> rdf:type owl:Class ;
+                                                     rdfs:subClassOf <http://sweetontology.net/phenFluidTransport/Transport> ;
+                                                     rdfs:label "deep percolation"@en .
+
+
+###  http://sweetontology.net/phenHydro/Recharge
+<http://sweetontology.net/phenHydro/Recharge> rdf:type owl:Class ;
+                                              rdfs:subClassOf <http://sweetontology.net/phenFluidTransport/Transport> ;
+                                              rdfs:label "recharge"@en .
+
+
+###  http://sweetontology.net/phenHydro/StreamDischarge
+<http://sweetontology.net/phenHydro/StreamDischarge> rdf:type owl:Class ;
+                                                     rdfs:subClassOf <http://sweetontology.net/phenFluidDynamics/Flow> ;
+                                                     rdfs:label "stream discharge"@en .
 
 
 ###  http://sweetontology.net/realm/PlanetaryRealm
@@ -71,6 +116,24 @@ rdfs:label rdf:type owl:AnnotationProperty .
 <http://sweetontology.net/realmHydro/WaterTable> rdf:type owl:Class ;
                                                  rdfs:subClassOf <http://sweetontology.net/realmHydro/HydrosphereFeature> ;
                                                  rdfs:label "water table"@en .
+
+
+###  http://sweetontology.net/realmHydroBody/BodyOfWater
+<http://sweetontology.net/realmHydroBody/BodyOfWater> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://sweetontology.net/realmHydro/HydrosphereFeature> ;
+                                                      rdfs:label "body of water"@en .
+
+
+###  http://sweetontology.net/realmHydroBody/Canal
+<http://sweetontology.net/realmHydroBody/Canal> rdf:type owl:Class ;
+                                                rdfs:subClassOf <http://sweetontology.net/realmHydroBody/BodyOfWater> ;
+                                                rdfs:label "canal"@en .
+
+
+###  http://sweetontology.net/realmHydroBody/River
+<http://sweetontology.net/realmHydroBody/River> rdf:type owl:Class ;
+                                                rdfs:subClassOf <http://sweetontology.net/realmHydroBody/BodyOfWater> ;
+                                                rdfs:label "river"@en .
 
 
 ###  Generated by the OWL API (version 4.5.29) https://github.com/owlcs/owlapi

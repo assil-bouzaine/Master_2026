@@ -1,6 +1,7 @@
 """Local copies of the reused vocabulary terms (task 12.4): ontology/imports/*_terms.ttl.
 
     .venv/bin/python -m src.kg.build_imports          # cached downloads, then ROBOT extracts
+    .venv/bin/python -m src.kg.build_imports --only saref envo   # only these sources
 
 Each source is downloaded once into data/raw/vocab/ (content negotiation for the W3C
 namespaces; the GeoSPARQL 1.1 file from OGC's 1.1.0 tag, because the OGC server now answers
@@ -15,6 +16,10 @@ HY_Features (OGC 14-111) has no OWL file either: the OGC definitions server retu
 per term (FeatureType and skos:Concept; HY_FlowPath also owl:Class). Those pages are downloaded and
 logged here (HYF_PAGES, checked 2026-11-06), and ontology/imports/hyf_terms.ttl is written by hand
 from them.
+Added 2026-11-26 (v5 plan R2.3): SAREF4WATR v2.1.1 (ETSI) and ENVO's 2026-10-23 release, both from
+versioned URLs, and three more SWEET modules (rivers and canals, hydrological phenomena, agriculture).
+MIREOT keeps an individual's label and comment (SAREF4WATR's water uses and flow properties), not its
+class membership. SAREF4WATR's licence is ETSI's BSD-3-Clause, ENVO's and SWEET's CC0.
 """
 import hashlib
 import json
@@ -36,6 +41,8 @@ ROBOT = ROOT / "tools" / "robot.jar"
 SOSA, PROV = "http://www.w3.org/ns/sosa/", "http://www.w3.org/ns/prov#"
 TIME, SKOS = "http://www.w3.org/2006/time#", "http://www.w3.org/2004/02/skos/core#"
 GEO, SWEET = "http://www.opengis.net/ont/geosparql#", "http://sweetontology.net/"
+S4WATR, OBO = "https://saref.etsi.org/saref4watr/", "http://purl.obolibrary.org/obo/"
+SWEET_SRC = "https://raw.githubusercontent.com/ESIPFed/sweet/master/src/"
 
 # name -> files (url, accept header), terms; the URLs and terms were checked on 2026-10-24
 SOURCES = {
@@ -60,13 +67,31 @@ SOURCES = {
             [GEO + t for t in ("SpatialObject", "Feature", "Geometry", "hasGeometry",
                                "hasDefaultGeometry", "asWKT", "sfIntersects", "sfWithin",
                                "hasMetricArea")]),       # hasMetricArea: added for 12.5
-    "sweet": ([("sweet_realmHydro.ttl", "https://raw.githubusercontent.com/ESIPFed/sweet/master/"
-                                        "src/realmHydro.ttl", "text/turtle"),
-               ("sweet_matrWater.ttl", "https://raw.githubusercontent.com/ESIPFed/sweet/master/"
-                                       "src/matrWater.ttl", "text/turtle")],
+    "sweet": ([("sweet_realmHydro.ttl", SWEET_SRC + "realmHydro.ttl", "text/turtle"),
+               ("sweet_matrWater.ttl", SWEET_SRC + "matrWater.ttl", "text/turtle"),
+               # added 2026-11-26 (v5 plan R2.3, deeper SWEET): rivers and canals, hydrological
+               # phenomena, agriculture
+               ("sweet_realmHydroBody.ttl", SWEET_SRC + "realmHydroBody.ttl", "text/turtle"),
+               ("sweet_phenHydro.ttl", SWEET_SRC + "phenHydro.ttl", "text/turtle"),
+               ("sweet_humanAgriculture.ttl", SWEET_SRC + "humanAgriculture.ttl", "text/turtle")],
               [SWEET + "realmHydro/" + t for t in ("Aquifer", "ConfinedAquifer", "UnconfinedAquifer",
                                                    "Aquitard", "WaterTable")]
-              + [SWEET + "matrWater/Groundwater"]),
+              + [SWEET + "matrWater/Groundwater"]
+              + [SWEET + "realmHydroBody/" + t for t in ("River", "Canal")]
+              + [SWEET + "phenHydro/" + t for t in ("Recharge", "StreamDischarge", "DeepPercolation")]
+              + [SWEET + "humanAgriculture/Irrigation"]),
+    # added 2026-11-26 (v5 plan R2.3), versioned files, licences checked at the source the same day:
+    # SAREF4WATR v2.1.1 (ETSI, BSD-3-Clause, https://forge.etsi.org/etsi-software-license);
+    # ENVO release 2026-10-23 (CC0 1.0). Terms: the asserted correspondences of
+    # ontology/alignments/lulcw-saref.ttl and lulcw-envo.ttl (individuals keep label and comment).
+    "saref": ([("saref4watr.ttl", "https://saref.etsi.org/saref4watr/v2.1.1/saref4watr.ttl", "text/turtle")],
+              [S4WATR + t for t in ("MonitoringInfrastructure", "GaugingStation", "Intake", "Channel",
+                                    "River", "Aquifer", "WaterUse", "Domestic", "Agriculture",
+                                    "Industry", "FlowRate")]),
+    "envo": ([("envo.owl", "http://purl.obolibrary.org/obo/envo/releases/2026-10-23/envo.owl",
+               "application/rdf+xml")],
+             [OBO + t for t in ("ENVO_00012408", "ENVO_01000002", "ENVO_00000022", "ENVO_00000014",
+                                "ENVO_01001632")]),
 }
 
 
@@ -120,12 +145,18 @@ def extract(name, files, terms, log):
     print(f"{out.relative_to(ROOT)}: {len(terms)} terms")
 
 
-def main():
+def main(only=None):
+    """Every source, or only the names given (`--only saref envo`): the others' files are untouched."""
     VOCAB.mkdir(parents=True, exist_ok=True)
     OUT.mkdir(parents=True, exist_ok=True)
     log_file = VOCAB / "sources.json"
     log = json.loads(log_file.read_text()) if log_file.exists() else {}
+    unknown = set(only or ()) - set(SOURCES)
+    if unknown:
+        sys.exit(f"unknown sources: {sorted(unknown)}; known: {sorted(SOURCES)}")
     for name, (files, terms) in SOURCES.items():
+        if only and name not in only:
+            continue
         for f, url, accept in files:
             download(f, url, accept, log)
         log_file.write_text(json.dumps(log, indent=1, sort_keys=True))
@@ -136,4 +167,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    args = sys.argv[1:]
+    main(args[1:] if args[:1] == ["--only"] else None)

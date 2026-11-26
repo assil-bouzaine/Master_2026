@@ -1,0 +1,648 @@
+@prefix : <https://w3id.org/lulcw/imports/envo#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://w3id.org/lulcw/imports/envo> .
+
+<https://w3id.org/lulcw/imports/envo> rdf:type owl:Ontology ;
+                                       owl:versionIRI <http://purl.obolibrary.org/obo/envo/releases/2026-10-23/envo.owl> ;
+                                       rdfs:comment "MIREOT extract (declarations, annotations, hierarchy) of the terms LULC-Water uses, built by src/kg/build_imports.py with ROBOT from http://purl.obolibrary.org/obo/envo/releases/2026-10-23/envo.owl (retrieved 2026-11-26, sha256 cc070bc1ceca)." .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty ;
+                                             rdfs:label "definition" .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000116
+<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty ;
+                                             rdfs:label "editor note" .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000117
+<http://purl.obolibrary.org/obo/IAO_0000117> rdf:type owl:AnnotationProperty ;
+                                             rdfs:label "term editor" .
+
+
+###  http://purl.org/dc/elements/1.1/creator
+<http://purl.org/dc/elements/1.1/creator> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.org/dc/elements/1.1/date
+<http://purl.org/dc/elements/1.1/date> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.geneontology.org/formats/oboInOwl#created_by
+<http://www.geneontology.org/formats/oboInOwl#created_by> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.geneontology.org/formats/oboInOwl#creation_date
+<http://www.geneontology.org/formats/oboInOwl#creation_date> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.geneontology.org/formats/oboInOwl#hasBroadSynonym
+<http://www.geneontology.org/formats/oboInOwl#hasBroadSynonym> rdf:type owl:AnnotationProperty ;
+                                                               rdfs:label "has_broad_synonym" .
+
+
+###  http://www.geneontology.org/formats/oboInOwl#hasDbXref
+<http://www.geneontology.org/formats/oboInOwl#hasDbXref> rdf:type owl:AnnotationProperty ;
+                                                         rdfs:label "database_cross_reference" .
+
+
+###  http://www.geneontology.org/formats/oboInOwl#hasExactSynonym
+<http://www.geneontology.org/formats/oboInOwl#hasExactSynonym> rdf:type owl:AnnotationProperty ;
+                                                               rdfs:label "has_exact_synonym" .
+
+
+###  http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym
+<http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> rdf:type owl:AnnotationProperty ;
+                                                                rdfs:label "has_narrow_synonym" .
+
+
+###  http://www.geneontology.org/formats/oboInOwl#hasOBONamespace
+<http://www.geneontology.org/formats/oboInOwl#hasOBONamespace> rdf:type owl:AnnotationProperty ;
+                                                               rdfs:label "has_obo_namespace" .
+
+
+###  http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym
+<http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym> rdf:type owl:AnnotationProperty ;
+                                                                 rdfs:label "has_related_synonym" .
+
+
+###  http://www.geneontology.org/formats/oboInOwl#id
+<http://www.geneontology.org/formats/oboInOwl#id> rdf:type owl:AnnotationProperty ;
+                                                  rdfs:label "id" .
+
+
+###  http://www.geneontology.org/formats/oboInOwl#inSubset
+<http://www.geneontology.org/formats/oboInOwl#inSubset> rdf:type owl:AnnotationProperty ;
+                                                        rdfs:label "in_subset" .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#comment
+rdfs:comment rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#label
+rdfs:label rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000001
+<http://purl.obolibrary.org/obo/BFO_0000001> rdf:type owl:Class ;
+                                             rdfs:subClassOf owl:Thing ;
+                                             rdfs:label "entity"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000040
+<http://purl.obolibrary.org/obo/BFO_0000040> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000001> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An independent continuant that is spatially extended whose identity is independent of that of other entities and can be maintained through time."@en ;
+                                             rdfs:label "material entity"@en .
+
+
+###  http://purl.obolibrary.org/obo/ENVO_00000014
+<http://purl.obolibrary.org/obo/ENVO_00000014> rdf:type owl:Class ;
+                                               rdfs:subClassOf <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+                                               <http://purl.obolibrary.org/obo/IAO_0000115> "Artificial watercourse with no flow or a controlled flow used for navigation, drainage or irrigation." ;
+                                               <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "EcoLexicon:canal" ,
+                                                                                                        "FTT:129" ,
+                                                                                                        "FTT:395" ,
+                                                                                                        "FTT:407" ,
+                                                                                                        "FTT:408" ,
+                                                                                                        "Geonames:H.CNL" ,
+                                                                                                        "SWEETRealm:Canal" ,
+                                                                                                        "TGN:51252" ,
+                                                                                                        "https://en.wikipedia.org/wiki/Canal" ;
+                                               <http://www.geneontology.org/formats/oboInOwl#hasOBONamespace> "ENVO" ;
+                                               <http://www.geneontology.org/formats/oboInOwl#id> "ENVO:00000014" ;
+                                               <http://www.geneontology.org/formats/oboInOwl#inSubset> <http://purl.obolibrary.org/obo/ENVO_03605014> ;
+                                               rdfs:comment "This class refers to the water contained in a canal channel, and not the channel itself." ;
+                                               rdfs:label "canal" .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000014> ;
+   owl:annotatedProperty <http://purl.obolibrary.org/obo/IAO_0000115> ;
+   owl:annotatedTarget "Artificial watercourse with no flow or a controlled flow used for navigation, drainage or irrigation." ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "MA:ma"
+ ] .
+
+
+###  http://purl.obolibrary.org/obo/ENVO_00000022
+<http://purl.obolibrary.org/obo/ENVO_00000022> rdf:type owl:Class ;
+                                               rdfs:subClassOf <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+                                               <http://purl.obolibrary.org/obo/IAO_0000115> "A stream which, through permanent or seasonal flow processes, moves from elevated land towards lower elevations through a definite channel and empties either into a sea, lake, or another river or ends on land as bed seepage and evapotranspiration exceed water supply." ;
+                                               <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "EcoLexicon:river" ,
+                                                                                                        "FTT:1179" ,
+                                                                                                        "FTT:251" ,
+                                                                                                        "LTER:474" ,
+                                                                                                        "SPIRE:River" ,
+                                                                                                        "SWEETRealm:River" ,
+                                                                                                        "TGN:21105" ;
+                                               <http://www.geneontology.org/formats/oboInOwl#hasExactSynonym> "rio" ;
+                                               <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> "braided river" ;
+                                               <http://www.geneontology.org/formats/oboInOwl#inSubset> <http://purl.obolibrary.org/obo/ENVO_03605014> ,
+                                                                                                       <http://purl.obolibrary.org/obo/ENVO_03605018> ,
+                                                                                                       <http://purl.obolibrary.org/obo/ENVO_03605025> ;
+                                               rdfs:comment "\"There are no official definitions for the generic term river as applied to geographic features, although in some countries or communities a stream is defined by its size. Many names for small rivers are specific to geographic location; examples are \"run\" in some parts of the United States, \"burn\" in Scotland and northeast England, and \"beck\" in northern England. Sometimes a river is defined as being larger than a creek, but not always: the language is vague.\"" ;
+                                               rdfs:label "river" .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000022> ;
+   owl:annotatedProperty <http://purl.obolibrary.org/obo/IAO_0000115> ;
+   owl:annotatedTarget "A stream which, through permanent or seasonal flow processes, moves from elevated land towards lower elevations through a definite channel and empties either into a sea, lake, or another river or ends on land as bed seepage and evapotranspiration exceed water supply." ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> <https://orcid.org/0000-0002-4366-3088> ,
+                                                            "ADL:FTT" ;
+   rdfs:comment "https://en.wikipedia.org/wiki/River"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000022> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasDbXref> ;
+   owl:annotatedTarget "LTER:474" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "https://vocab.lternet.edu/vocab/vocab/index.php?tema=474&/rivers"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000022> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasExactSynonym> ;
+   owl:annotatedTarget "rio" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "ADL:FTT"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000022> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasExactSynonym> ;
+   owl:annotatedTarget "rio" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000022> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "braided river" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000022> ;
+   owl:annotatedProperty rdfs:comment ;
+   owl:annotatedTarget "\"There are no official definitions for the generic term river as applied to geographic features, although in some countries or communities a stream is defined by its size. Many names for small rivers are specific to geographic location; examples are \"run\" in some parts of the United States, \"burn\" in Scotland and northeast England, and \"beck\" in northern England. Sometimes a river is defined as being larger than a creek, but not always: the language is vague.\"" ;
+   rdfs:comment "https://en.wikipedia.org/wiki/River"
+ ] .
+
+
+###  http://purl.obolibrary.org/obo/ENVO_00000029
+<http://purl.obolibrary.org/obo/ENVO_00000029> rdf:type owl:Class ;
+                                               rdfs:subClassOf <http://purl.obolibrary.org/obo/ENVO_01000813> ;
+                                               <http://purl.obolibrary.org/obo/IAO_0000115> "A flowing body of water." ;
+                                               <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "EcoLexicon:brook" ,
+                                                                                                        "EcoLexicon:course" ,
+                                                                                                        "EcoLexicon:culvert" ,
+                                                                                                        "EcoLexicon:gully" ,
+                                                                                                        "EcoLexicon:ravine" ,
+                                                                                                        "EcoLexicon:spillway" ,
+                                                                                                        "EcoLexicon:waterway" ,
+                                                                                                        "FTT:105" ,
+                                                                                                        "Geonames:H.NRWS" ,
+                                                                                                        "Geonames:H.RCH" ,
+                                                                                                        "Geonames:H.WTRC" ,
+                                                                                                        "Geonames:S.SPLY" ,
+                                                                                                        "TGN:21110" ,
+                                                                                                        "TGN:21131" ,
+                                                                                                        "TGN:21133" ,
+                                                                                                        "TGN:21137" ,
+                                                                                                        "TGN:21163" ,
+                                                                                                        "TGN:21499" ,
+                                                                                                        "https://en.wikipedia.org/wiki/Watercourse" ;
+                                               <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> "culvert" ,
+                                                                                                               "dredged channel" ,
+                                                                                                               "fork" ,
+                                                                                                               "gulch" ,
+                                                                                                               "gully" ,
+                                                                                                               "gut" ,
+                                                                                                               "gutter" ,
+                                                                                                               "kill" ,
+                                                                                                               "lode" ,
+                                                                                                               "narrows" ,
+                                                                                                               "overflow channel" ,
+                                                                                                               "passage" ,
+                                                                                                               "pup" ,
+                                                                                                               "race" ,
+                                                                                                               "ravine" ,
+                                                                                                               "reach" ,
+                                                                                                               "rill" ,
+                                                                                                               "rivulet" ,
+                                                                                                               "run" ,
+                                                                                                               "runnel" ,
+                                                                                                               "seachannel" ,
+                                                                                                               "seaway" ,
+                                                                                                               "spillway" ,
+                                                                                                               "stream" ,
+                                                                                                               "tideway" ,
+                                                                                                               "wash" ,
+                                                                                                               "water gap" ;
+                                               <http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym> "awawa" ,
+                                                                                                                "barranca" ,
+                                                                                                                "beck" ,
+                                                                                                                "branch" ,
+                                                                                                                "brook" ,
+                                                                                                                "course" ,
+                                                                                                                "draw" ,
+                                                                                                                "moat" ,
+                                                                                                                "narrows" ,
+                                                                                                                "narrows (hydrographic)" ;
+                                               rdfs:label "watercourse" .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "dredged channel" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "fork" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "gulch" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "gully" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "gut" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "Getty:TGN"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "gut" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "gutter" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "kill" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "lode" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "narrows" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "Geonames:feature"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "narrows" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "overflow channel" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "passage" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "Getty:TGN"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "passage" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "pup" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "race" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "ravine" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "reach" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "Geonames:feature"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "reach" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "Getty:TGN"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "reach" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "rill" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "rivulet" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "run" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "Getty:TGN"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "run" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "runnel" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "seachannel" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "seaway" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "spillway" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "Geonames:feature"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "spillway" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "stream" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "ADL:FTT"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "tideway" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "wash" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "water gap" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym> ;
+   owl:annotatedTarget "awawa" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym> ;
+   owl:annotatedTarget "barranca" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym> ;
+   owl:annotatedTarget "beck" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym> ;
+   owl:annotatedTarget "branch" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym> ;
+   owl:annotatedTarget "brook" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym> ;
+   owl:annotatedTarget "course" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym> ;
+   owl:annotatedTarget "draw" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym> ;
+   owl:annotatedTarget "moat" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym> ;
+   owl:annotatedTarget "narrows" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "Getty:TGN"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym> ;
+   owl:annotatedTarget "narrows (hydrographic)" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "ADL:FTT"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://purl.obolibrary.org/obo/IAO_0000115> ;
+   owl:annotatedTarget "A flowing body of water." ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "https://en.wikipedia.org/wiki/Watercourse"
+ ] .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00000029> ;
+   owl:annotatedProperty <http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym> ;
+   owl:annotatedTarget "culvert" ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "USGS:SDTS"
+ ] .
+
+
+###  http://purl.obolibrary.org/obo/ENVO_00012408
+<http://purl.obolibrary.org/obo/ENVO_00012408> rdf:type owl:Class ;
+                                               rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000040> ;
+                                               <http://purl.obolibrary.org/obo/IAO_0000115> "An underground layer of water-bearing permeable rock or unconsolidated materials (gravel, sand, silt, or clay) from which groundwater can be usefully extracted using a water well." ;
+                                               <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "EcoLexicon:aquifer" ,
+                                                                                                        "SWEETRealm:Aquifer" ,
+                                                                                                        "https://en.wikipedia.org/wiki/Aquifer" ;
+                                               <http://www.geneontology.org/formats/oboInOwl#inSubset> <http://purl.obolibrary.org/obo/ENVO_03605014> ,
+                                                                                                       <http://purl.obolibrary.org/obo/ENVO_03605018> ,
+                                                                                                       <http://purl.obolibrary.org/obo/envo#envoPolar> ;
+                                               rdfs:label "aquifer" .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_00012408> ;
+   owl:annotatedProperty <http://purl.obolibrary.org/obo/IAO_0000115> ;
+   owl:annotatedTarget "An underground layer of water-bearing permeable rock or unconsolidated materials (gravel, sand, silt, or clay) from which groundwater can be usefully extracted using a water well." ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "https://en.wikipedia.org/wiki/Aquifer"
+ ] .
+
+
+###  http://purl.obolibrary.org/obo/ENVO_01000002
+<http://purl.obolibrary.org/obo/ENVO_01000002> rdf:type owl:Class ;
+                                               rdfs:subClassOf <http://purl.obolibrary.org/obo/ENVO_01000813> ;
+                                               <http://purl.obolibrary.org/obo/IAO_0000115> "A well which provides access to groundwater held  in an aquifer." ;
+                                               <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "https://en.wikipedia.org/wiki/Water_well" ;
+                                               <http://www.geneontology.org/formats/oboInOwl#inSubset> <http://purl.obolibrary.org/obo/ENVO_03605018> ;
+                                               rdfs:label "water well" .
+
+
+###  http://purl.obolibrary.org/obo/ENVO_01000813
+<http://purl.obolibrary.org/obo/ENVO_01000813> rdf:type owl:Class ;
+                                               rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000040> ;
+                                               <http://purl.obolibrary.org/obo/IAO_0000115> "A material part of an astronomical body." ;
+                                               <http://purl.obolibrary.org/obo/IAO_0000116> "Also note that some astronomical body parts (ABPs) may have fiat boundaries: if there's strong debate about where an ABP begins or ends (over and above fuzzy boundaries), with different official classifications setting different thresholds or limits, axiomatise the class with fiat boundaries of the appropriate dimension."@en ,
+                                                                                            "Note that material entities may have immaterial entities (e.g. sites) as parts."@en ,
+                                                                                            "This class includes material parts of astronomical bodies. Immaterial parts, such as magnetospheres, are represented as sites under the influence of magnetic fields.Please post countercases in the ENVO tracker for revision of this hierarchy if needed."@en ;
+                                               <http://www.geneontology.org/formats/oboInOwl#inSubset> <http://purl.obolibrary.org/obo/envo#envoAstro> ,
+                                                                                                       <http://purl.obolibrary.org/obo/envo#envoPolar> ;
+                                               rdfs:comment "Material parts of astronomical bodies generally have boundaries formed by discontinuities in qualities, composition, or other physical characterisitcs. These boundaries are sometimes sharp, and sometimes diffuse, with different classification systems and communities declaring varying thresholds (e.g. for where a shoreline, forest, or other entity begins and ends). However, some boundaries are declared by fiat - that is, by arbitrary human convention or decree - particularly by regulatory or other authorities and communities of practice. The classes in this hierarchy attempt to offer generalisable definitions that allow multiple classfiication systems to map to and interoperate through. If desired, we can create classes that declare thresholds used by a given authority or community under the more generic ones, annotated with source information."@en ;
+                                               rdfs:label "astronomical body part"@en .
+
+
+###  http://purl.obolibrary.org/obo/ENVO_01001632
+<http://purl.obolibrary.org/obo/ENVO_01001632> rdf:type owl:Class ;
+                                               rdfs:subClassOf <http://purl.obolibrary.org/obo/ENVO_02500000> ;
+                                               <http://purl.obolibrary.org/obo/IAO_0000115> "A water flow process during which water is transported through an aquifer." ;
+                                               <http://purl.org/dc/elements/1.1/creator> <https://orcid.org/0000-0002-4366-3088> ;
+                                               <http://www.geneontology.org/formats/oboInOwl#creation_date> "2019-05-22T14:22:43+00:00"^^xsd:dateTime ;
+                                               rdfs:label "groundwater flow"@en .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/ENVO_01001632> ;
+   owl:annotatedProperty <http://purl.obolibrary.org/obo/IAO_0000115> ;
+   owl:annotatedTarget "A water flow process during which water is transported through an aquifer." ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "https://en.wikipedia.org/wiki/Groundwater_discharge"
+ ] .
+
+
+###  http://purl.obolibrary.org/obo/ENVO_02500000
+<http://purl.obolibrary.org/obo/ENVO_02500000> rdf:type owl:Class ;
+                                               rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000001> ;
+                                               <http://purl.obolibrary.org/obo/IAO_0000115> "A process in which includes the components of an environmental system as participants." ;
+                                               rdfs:comment "This is a convenience class for organisation and should not be used for annotation." ;
+                                               rdfs:label "environmental system process"@en .
+
+
+###  Generated by the OWL API (version 4.5.29) https://github.com/owlcs/owlapi

@@ -1,0 +1,353 @@
+@prefix lulcw:   <https://w3id.org/lulcw#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix sosa:    <http://www.w3.org/ns/sosa/> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# Generated from ontology/lulcw.ttl (version 0.10.0) by src.kg.ontology_modules.
+# Do not edit by hand: edit ontology/lulcw.ttl and re-run the generator.
+
+<https://w3id.org/lulcw/causal> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/lulcw/causal/0.10.0> ;
+    owl:versionInfo "0.10.0" ;
+    dcterms:title "LULC-Water causal mechanisms and constraints module"@en , "Module mécanismes causaux et contraintes LULC-Water"@fr ;
+    dcterms:description "Country-agnostic causal-knowledge and model-constraint vocabulary: qualified driver-to-head influences, physical mechanisms, response signs, driver groups, constraint eligibility, export policies, constraint decisions, and observable driver properties."@en ,
+        "Vocabulaire des connaissances causales et contraintes de modèle indépendant des pays : influences qualifiées, mécanismes physiques, signes de réponse, groupes de forçages, éligibilité aux contraintes, politiques d'export, décisions de contrainte et propriétés observables motrices."@fr ;
+    dcterms:creator "Assil Bouzaine" ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    dcterms:created "2026-11-26"^^xsd:date ;
+    owl:imports <https://w3id.org/lulcw/core> , <https://w3id.org/lulcw/hydro> , <https://w3id.org/lulcw/imports/prov> , <https://w3id.org/lulcw/imports/skos> , <https://w3id.org/lulcw/imports/sosa> .
+
+dcterms:title a owl:AnnotationProperty .
+dcterms:description a owl:AnnotationProperty .
+dcterms:creator a owl:AnnotationProperty .
+dcterms:license a owl:AnnotationProperty .
+dcterms:created a owl:AnnotationProperty .
+
+lulcw:CanalDiversionVolume a sosa:ObservableProperty ;
+    rdfs:label "canal diversion volume"@en , "volume dérivé par les canaux"@fr ;
+    skos:definition "Volume declared at canal intakes, spread over the irrigation season, in cubic metres; a proxy for return flow, not a recharge volume."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:CanalReturnFlow a lulcw:Mechanism ;
+    skos:inScheme lulcw:MechanismScheme ;
+    skos:topConceptOf lulcw:MechanismScheme ;
+    skos:prefLabel "canal return flow"@en , "retour d'irrigation par les canaux"@fr ;
+    rdfs:label "canal return flow"@en , "retour d'irrigation par les canaux"@fr ;
+    skos:definition "Canal seepage and irrigation return flow can raise the head of an alluvial unit; a diverted volume is not a recharge volume."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:ConstraintDecision a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "constraint decision"@en , "décision de contrainte"@fr ;
+    skos:definition "The decision of an export policy about the response signs of one mechanism: whether its driver was reviewed as an adequate stand-in for what the mechanism responds to (proxy review), and whether the eligible signs of the mechanism constrain the model (approval), each with its basis. A sign constrains a model only when its influence is selected by the policy, eligible by its pathway evidence (lulcw:constraintEligibility), and the decision for its mechanism accepts both the proxy and the constraint; a candidate (pending) decision constrains nothing."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:ConstraintEligibility a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "constraint eligibility"@en , "éligibilité à la contrainte"@fr ;
+    skos:definition "Whether an influence may fix the sign of a model response under a named policy."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:ConstraintEligibilityScheme a skos:ConceptScheme ;
+    rdfs:label "constraint eligibilities"@en , "éligibilités à la contrainte"@fr ;
+    skos:definition "Values of lulcw:ConstraintEligibility."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:DiffuseRecharge a lulcw:Mechanism ;
+    skos:inScheme lulcw:MechanismScheme ;
+    skos:topConceptOf lulcw:MechanismScheme ;
+    skos:prefLabel "diffuse recharge"@en , "recharge diffuse"@fr ;
+    rdfs:label "diffuse recharge"@en , "recharge diffuse"@fr ;
+    skos:definition "Effective rainfall infiltrating where a unit is mapped at outcrop can raise its head; outcrop alone does not prove infiltration."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:DriverGroup a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "driver group"@en , "groupe de forçages"@fr ;
+    skos:definition "A group of drivers whose effects are reported together because the data cannot separate them."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:DriverGroupScheme a skos:ConceptScheme ;
+    rdfs:label "driver groups"@en , "groupes de forçages"@fr ;
+    skos:definition "Values of lulcw:DriverGroup (docs/analysis_plan.md §8)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:EffectiveRainfall a sosa:ObservableProperty ;
+    rdfs:label "effective rainfall"@en , "pluie efficace"@fr ;
+    skos:definition "SIM2 (SAFRAN-ISBA) daily effective rainfall (variable PE: rainfall minus actual evapotranspiration) summed over a week, in millimetres; negative in weeks when evapotranspiration exceeds rainfall. A recharge-related input, not a measured recharge."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:EligibleConstraint a lulcw:ConstraintEligibility ;
+    skos:inScheme lulcw:ConstraintEligibilityScheme ;
+    skos:topConceptOf lulcw:ConstraintEligibilityScheme ;
+    skos:prefLabel "eligible"@en , "éligible"@fr ;
+    rdfs:label "eligible"@en , "éligible"@fr ;
+    skos:definition "Every segment of the pathway is resolved at the resolution its mechanism requires (for pumping drawdown: the exact unit on both sides; for river exchange and canal return flow: a statement about the unit itself, not about an aggregate it belongs to), and the sign, variable and conditions are supported. The constraint is applied only under a policy that selects every segment and accepts its mechanism's constraint decision."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:ExportPolicy a owl:Class ;
+    rdfs:subClassOf prov:Plan ;
+    rdfs:label "export policy"@en , "politique d'export"@fr ;
+    skos:definition "A named, versioned selection policy deciding which qualified assertions become model inputs or graph edges, e.g. confident and probable pump-to-unit links for the main runs. Changing the policy changes the selection, never the stored evidence."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:GroundwaterRecharge a sosa:ObservableProperty ;
+    rdfs:label "groundwater recharge"@en , "recharge des nappes"@fr ;
+    skos:definition "Water reaching the saturated zone of a unit per unit of time, by any pathway (diffuse infiltration, lateral inflow, leakage, river or canal losses). Not observed in this graph: effective rainfall and soil drainage over a unit's outcrop stand in for one part of it."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:IneligibleConstraint a lulcw:ConstraintEligibility ;
+    skos:inScheme lulcw:ConstraintEligibilityScheme ;
+    skos:topConceptOf lulcw:ConstraintEligibilityScheme ;
+    skos:prefLabel "not eligible"@en , "non éligible"@fr ;
+    rdfs:label "not eligible"@en , "non éligible"@fr ;
+    skos:definition "A segment is missing or resolved more coarsely than its mechanism requires, or the sign is unknown or conditional; the influence may still be an unsigned graph edge."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:Influence a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "influence"@en , "influence"@fr ;
+    skos:definition "A qualified driver-to-head pathway: a mechanism by which a named driver variable can change the head at a target, with its conditions, evidence path, response sign (possibly unknown) and constraint eligibility. A response sign refers to an increase of the driver with the stated conditions held fixed; it is not a measured causal effect."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:LateralInflow a lulcw:Mechanism ;
+    skos:inScheme lulcw:MechanismScheme ;
+    skos:topConceptOf lulcw:MechanismScheme ;
+    skos:prefLabel "lateral inflow"@en , "apport latéral"@fr ;
+    rdfs:label "lateral inflow"@en , "apport latéral"@fr ;
+    skos:definition "Groundwater flowing into a unit from adjacent formations (e.g. the Corbières karst and the massifs bordering the Roussillon plain) or from parts of the unit beyond a reference extent. Named so that a local recharge proxy is never presented as the whole supply; not yet derived as an influence."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:Mechanism a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "mechanism"@en , "mécanisme"@fr ;
+    skos:definition "A physical process by which a driver can change groundwater head, stated as a conditional specification, not as a universal law about every instance."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:MechanismScheme a skos:ConceptScheme ;
+    rdfs:label "mechanisms"@en , "mécanismes"@fr ;
+    skos:definition "Values of lulcw:Mechanism: the four constraint families of the design (pumping drawdown, diffuse recharge, canal return flow, river exchange), and pathways named so that a proxy is never presented as the complete supply (lateral inflow, vertical leakage)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:NegativeResponse a lulcw:ResponseSign ;
+    skos:inScheme lulcw:ResponseSignScheme ;
+    skos:topConceptOf lulcw:ResponseSignScheme ;
+    skos:prefLabel "non-increasing"@en , "non croissante"@fr ;
+    rdfs:label "non-increasing"@en , "non croissante"@fr ;
+    skos:definition "More of the driver does not raise the head (e.g. abstraction from a connected unit)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:PositiveResponse a lulcw:ResponseSign ;
+    skos:inScheme lulcw:ResponseSignScheme ;
+    skos:topConceptOf lulcw:ResponseSignScheme ;
+    skos:prefLabel "non-decreasing"@en , "non décroissante"@fr ;
+    rdfs:label "non-decreasing"@en , "non décroissante"@fr ;
+    skos:definition "More of the driver does not lower the head (e.g. effective rainfall over an outcrop)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:PumpingDrawdown a lulcw:Mechanism ;
+    skos:inScheme lulcw:MechanismScheme ;
+    skos:topConceptOf lulcw:MechanismScheme ;
+    skos:prefLabel "pumping drawdown"@en , "rabattement par pompage"@fr ;
+    rdfs:label "pumping drawdown"@en , "rabattement par pompage"@fr ;
+    skos:definition "Abstraction from a unit lowers the head of that unit near the abstraction, under the stated connection and distance conditions."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:RechargeProxies a lulcw:DriverGroup ;
+    skos:inScheme lulcw:DriverGroupScheme ;
+    skos:topConceptOf lulcw:DriverGroupScheme ;
+    skos:prefLabel "recharge proxies"@en , "indicateurs de recharge"@fr ;
+    rdfs:label "recharge proxies"@en , "indicateurs de recharge"@fr ;
+    skos:definition "The recharge-proxy influences of one well, one per weather cell over the outcrop of its unit, reported together: neighbouring cells carry nearly the same weekly signal, so their separate contributions are not identifiable. In the irrigation season the proxy also moves with the climatic deficit of the summer-demand group (docs/analysis_plan.md §8)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:ReconstructedWeeklyVolume a sosa:ObservableProperty ;
+    rdfs:label "reconstructed weekly abstraction"@en , "prélèvement hebdomadaire reconstitué"@fr ;
+    skos:definition "Weekly volume obtained by spreading annual declarations with documented profiles, in cubic metres per week; a model driver, not an observation."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:ResponseSign a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "response sign"@en , "signe de la réponse"@fr ;
+    skos:definition "Direction of the head response to an increase of a driver variable, with the stated conditions held fixed; distinct from the sign of a model contribution relative to a baseline."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:ResponseSignScheme a skos:ConceptScheme ;
+    rdfs:label "response signs"@en , "signes de réponse"@fr ;
+    skos:definition "Values of lulcw:ResponseSign."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:RiverDischarge a sosa:ObservableProperty ;
+    rdfs:label "river discharge"@en , "débit de rivière"@fr ;
+    skos:definition "Weekly mean discharge at a gauge, in cubic metres per second; it represents its own site, not recharge to a whole unit."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:RiverDischargeGroup a lulcw:DriverGroup ;
+    skos:inScheme lulcw:DriverGroupScheme ;
+    skos:topConceptOf lulcw:DriverGroupScheme ;
+    skos:prefLabel "river stage proxies"@en , "indicateurs du niveau des cours d'eau"@fr ;
+    rdfs:label "river stage proxies"@en , "indicateurs du niveau des cours d'eau"@fr ;
+    skos:definition "The river influences of one well, reported together. A gauge's discharge rises with the storms that drive effective rainfall and, on the regulated Têt and Agly, with the summer dam releases for irrigation, so its separate contribution is read with the recharge proxies and the summer-demand group (docs/analysis_plan.md §8)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:RiverExchange a lulcw:Mechanism ;
+    skos:inScheme lulcw:MechanismScheme ;
+    skos:topConceptOf lulcw:MechanismScheme ;
+    skos:prefLabel "river exchange"@en , "échange nappe-rivière"@fr ;
+    rdfs:label "river exchange"@en , "échange nappe-rivière"@fr ;
+    skos:definition "Exchange between a river reach and a unit; its direction depends on hydraulic conditions and needs documented evidence before any sign is used."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:RiverStage a sosa:ObservableProperty ;
+    rdfs:label "river stage"@en , "hauteur d'eau de la rivière"@fr ;
+    skos:definition "Water level of a river at a reach. Not observed in this graph: the weekly discharge of a gauge stands in for it near the gauge, through the gauge's rating curve and up to the withdrawals and inflows between the gauge and the reach."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:SoilDrainage a sosa:ObservableProperty ;
+    rdfs:label "soil drainage"@en , "drainage du sol"@fr ;
+    skos:definition "SIM2 (SAFRAN-ISBA) daily drainage (variable DRAINC, 'Drainage' in Météo-France's parameter list) summed over a week, in millimetres: modelled water leaving the soil, a recharge-related input, not a measured recharge."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:SummerDemand a lulcw:DriverGroup ;
+    skos:inScheme lulcw:DriverGroupScheme ;
+    skos:topConceptOf lulcw:DriverGroupScheme ;
+    skos:prefLabel "summer demand"@en , "demande estivale"@fr ;
+    rdfs:label "summer demand"@en , "demande estivale"@fr ;
+    skos:definition "Reconstructed seasonal pumping, the canal diversion volumes and the climatic deficit, which move together within a year (r = 0.92 to 0.97: irrigation and canal volumes are spread with the deficit) and are attributed jointly."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:UnknownResponse a lulcw:ResponseSign ;
+    skos:inScheme lulcw:ResponseSignScheme ;
+    skos:topConceptOf lulcw:ResponseSignScheme ;
+    skos:prefLabel "unknown or conditional"@en , "inconnue ou conditionnelle"@fr ;
+    rdfs:label "unknown or conditional"@en , "inconnue ou conditionnelle"@fr ;
+    skos:definition "The direction is unknown or changes with conditions; never turned into a hard constraint."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:VerticalLeakage a lulcw:Mechanism ;
+    skos:inScheme lulcw:MechanismScheme ;
+    skos:topConceptOf lulcw:MechanismScheme ;
+    skos:prefLabel "vertical leakage"@en , "drainance verticale"@fr ;
+    rdfs:label "vertical leakage"@en , "drainance verticale"@fr ;
+    skos:definition "Exchange of water between superposed units through a semi-permeable bed or a direct contact (CQ3), e.g. the downward leakage from the Quaternary into the Pliocene that follows Pliocene pumping (BRGM/RP-71486-FR); its direction follows the head difference. Named so that a local recharge proxy is never presented as the whole supply; derived since 0.9.0 only as the overlying-leakage recharge proxy (effective rainfall over the outcrop of the unit in direct contact above the well's unit, lulcw:viaUnit), never as a head-difference exchange."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:admitsConfidence a owl:ObjectProperty ;
+    rdfs:domain lulcw:ExportPolicy ;
+    rdfs:range lulcw:ConfidenceLevel ;
+    rdfs:label "admits confidence level"@en , "admet le niveau de confiance"@fr ;
+    skos:definition "A confidence level whose unit attributions the export policy selects, at the resolution they were assessed. Selection does not raise their confidence."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:constraintApproval a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:domain lulcw:ConstraintDecision ;
+    rdfs:range lulcw:AssessmentStatus ;
+    rdfs:label "constraint approval"@en , "approbation de la contrainte"@fr ;
+    skos:definition "Whether the policy applies the eligible response signs of the mechanism as model constraints: candidate (pending), accepted or rejected."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:constraintDecision a owl:ObjectProperty ;
+    rdfs:domain lulcw:ExportPolicy ;
+    rdfs:range lulcw:ConstraintDecision ;
+    rdfs:label "has constraint decision"@en , "a pour décision de contrainte"@fr ;
+    skos:definition "A constraint decision of the policy, one per mechanism; a mechanism without one constrains nothing under the policy."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:constraintEligibility a owl:ObjectProperty ;
+    rdfs:domain lulcw:Influence ;
+    rdfs:range lulcw:ConstraintEligibility ;
+    rdfs:label "has constraint eligibility"@en , "a pour éligibilité à la contrainte"@fr ;
+    skos:definition "Whether the evidence of an influence allows its response sign to constrain a model: the evidence layer only. An eligible influence is constrained only under a policy that selects it (every segment of its pathway) and whose decision for its mechanism accepts both the driver as a proxy and the constraint (lulcw:ConstraintDecision)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:decisionMechanism a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:domain lulcw:ConstraintDecision ;
+    rdfs:range lulcw:Mechanism ;
+    rdfs:label "decision mechanism"@en , "mécanisme de la décision"@fr ;
+    skos:definition "The mechanism whose influences the constraint decision is about."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:driverEntity a owl:ObjectProperty ;
+    rdfs:domain lulcw:Influence ;
+    rdfs:label "driver entity"@en , "entité motrice"@fr ;
+    skos:definition "The entity whose driver variable an influence is about (e.g. an abstraction facility, an outcrop area, a weather cell)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:driverGroup a owl:ObjectProperty ;
+    rdfs:domain lulcw:Influence ;
+    rdfs:range lulcw:DriverGroup ;
+    rdfs:label "in driver group"@en , "dans le groupe de forçages"@fr ;
+    skos:definition "A group within which the influence's effect is reported jointly with others."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:driverVariable a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:domain lulcw:Influence ;
+    rdfs:range sosa:ObservableProperty ;
+    rdfs:label "driver variable"@en , "variable motrice"@fr ;
+    skos:definition "The variable whose increase the response sign of an influence refers to."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:mechanism a owl:ObjectProperty ;
+    rdfs:domain lulcw:Influence ;
+    rdfs:range lulcw:Mechanism ;
+    rdfs:label "has mechanism"@en , "a pour mécanisme"@fr ;
+    skos:definition "The physical mechanism an influence relies on."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:omitsPathway a owl:ObjectProperty ;
+    rdfs:domain lulcw:Influence ;
+    rdfs:range lulcw:Mechanism ;
+    rdfs:label "omits pathway"@en , "omet la voie"@fr ;
+    skos:definition "A mechanism that can also change the head at the target but that the influence does not represent: named so that an explanation never presents the influence as the complete pathway. It does not assert that the mechanism is active at the target."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:proxyFor a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:domain lulcw:Influence ;
+    rdfs:range sosa:ObservableProperty ;
+    rdfs:label "proxy for"@en , "indicateur de"@fr ;
+    skos:definition "The quantity that an influence's driver variable stands in for, when the driver is a proxy (effective rainfall over an outcrop for groundwater recharge). The response sign refers to the proxy, never to the quantity it stands in for."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:proxyReview a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:domain lulcw:ConstraintDecision ;
+    rdfs:range lulcw:AssessmentStatus ;
+    rdfs:label "proxy review"@en , "examen du substitut"@fr ;
+    skos:definition "Whether the driver of the mechanism's influences was reviewed as an adequate stand-in for what the mechanism responds to (e.g. a remote gauge's discharge for the river stage near a well, the plain's summed canal diversions for local canal seepage): candidate (not reviewed), accepted or rejected."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:responseSign a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:domain lulcw:Influence ;
+    rdfs:range lulcw:ResponseSign ;
+    rdfs:label "has response sign"@en , "a pour signe de réponse"@fr ;
+    skos:definition "The proposed direction of the head response to an increase of the driver variable."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:selectedUnder a owl:ObjectProperty ;
+    rdfs:range lulcw:ExportPolicy ;
+    rdfs:label "selected under"@en , "retenue par"@fr ;
+    skos:definition "An export policy that selects this qualified assertion as a model input or graph edge."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:targetEntity a owl:ObjectProperty ;
+    rdfs:domain lulcw:Influence ;
+    rdfs:range lulcw:Piezometer ;
+    rdfs:label "target entity"@en , "entité cible"@fr ;
+    skos:definition "The piezometer whose head an influence may change."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:underPolicy a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:range lulcw:ExportPolicy ;
+    rdfs:label "under policy"@en , "selon la politique"@fr ;
+    skos:definition "The policy a volume allocation or an accounting result was computed under."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .
+
+lulcw:viaUnit a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:domain lulcw:Influence ;
+    rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "via unit"@en , "via l'entité"@fr ;
+    skos:definition "The overlying hydrogeological unit in direct contact above the target well's monitored unit through whose outcrop an overlying-leakage recharge influence passes."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/causal> .

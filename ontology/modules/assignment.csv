@@ -1,0 +1,416 @@
+term,kind,module,rule
+AbstractionFacility,class,hydro,4
+AbstractionRole,individual,core,3
+AcceptedStatus,individual,core,3
+AccountingResult,class,hydro,4
+AlluvialAquifer,class,hydro,4
+AlongRiverPosition,class,hydro,4
+AlongRiverPositionScheme,concept scheme,hydro,3
+AlongZoneStretch,individual,hydro,3
+AnnualAbstractionRecord,class,hydro,4
+AnswerStatus,class,core,2
+AnswerStatusScheme,concept scheme,core,3
+AquiferToSurface,individual,med-causal,3
+AssessmentStatus,class,core,4
+AssessmentStatusScheme,concept scheme,core,3
+AssociationType,class,hydro,4
+AssociationTypeScheme,concept scheme,hydro,3
+AttributionRole,class,core,4
+AttributionRoleScheme,concept scheme,core,3
+BelowHighIrrigationDemand,individual,lulc,3
+CanalDiversionVolume,individual,causal,4
+CanalIntakeGroup,class,hydro,4
+CanalReach,class,hydro,4
+CanalReturnFlow,individual,causal,3
+CanalSupplyUse,individual,hydro,3
+CanalUnitAssociation,class,hydro,4
+CandidateStatus,individual,core,3
+CellWeight,class,hydro,4
+ClippedCropArea,individual,lulc,4
+ConfidenceLevel,class,core,4
+ConfidenceScheme,concept scheme,core,3
+Confident,individual,core,3
+ConfinedState,individual,hydro,3
+ConfinementAssessment,class,hydro,4
+ConfinementState,class,hydro,4
+ConfinementStateScheme,concept scheme,hydro,3
+ConfinementUnknown,individual,hydro,3
+ConfiningUnit,class,hydro,4
+Conflicting,individual,core,2
+ConstraintDecision,class,causal,4
+ConstraintEligibility,class,causal,4
+ConstraintEligibilityScheme,concept scheme,causal,3
+CoverStatus,class,hydro,4
+CoverStatusScheme,concept scheme,hydro,3
+CoverUnknown,individual,hydro,3
+Covered,individual,hydro,3
+CropAreaObservation,class,lulc,4
+CropClass,class,lulc,4
+CropClassArea,class,lulc,4
+CropCode,class,lulc,4
+CropDemandEstimate,class,lulc,4
+CropDemandZone,class,lulc,4
+DataRelease,class,core,4
+DeclaredAnnualVolume,individual,hydro,4
+DeclaredRecord,individual,hydro,3
+DemandCategory,class,lulc,4
+DemandCategoryScheme,concept scheme,lulc,3
+DerivationRule,class,core,4
+DerivedAssertion,individual,core,3
+DifferentialGauging,individual,med-causal,3
+DiffuseRecharge,individual,causal,3
+DirectContact,individual,hydro,3
+Document,class,med-causal,4
+DocumentPassage,class,med-causal,4
+DocumentedLateral,individual,hydro,3
+DownstreamOfZone,individual,hydro,3
+DrinkingWaterUse,individual,hydro,3
+DriverGroup,class,causal,4
+DriverGroupScheme,concept scheme,causal,3
+EffectiveRainfall,individual,causal,4
+ElementaryPolygon,class,hydro,4
+EligibleConstraint,individual,causal,3
+EnergyUse,individual,hydro,3
+EvidenceKind,class,core,4
+EvidenceKindScheme,concept scheme,core,3
+EvidenceMethod,class,med-causal,4
+EvidenceMethodScheme,concept scheme,med-causal,3
+ExactUnitResolution,individual,core,3
+ExchangeDirection,class,med-causal,4
+ExchangeDirectionScheme,concept scheme,med-causal,3
+ExchangeEquilibrium,individual,med-causal,3
+ExchangeStatement,class,med-causal,4
+ExpertHypothesis,individual,core,3
+ExportPolicy,class,causal,4
+GaugePool,class,hydro,4
+GaugeZoneRelation,class,hydro,4
+GeochemicalTracing,individual,med-causal,3
+GroundwaterBody,class,hydro,4
+GroundwaterHead,individual,hydro,4
+GroundwaterRecharge,individual,causal,4
+GroundwaterSource,individual,hydro,3
+HeadAboveReferenceCount,individual,hydro,4
+HeadAboveReferenceShare,individual,hydro,4
+HedgedFinding,individual,med-causal,3
+Hedging,class,med-causal,4
+HedgingScheme,concept scheme,med-causal,3
+HighIrrigationDemand,individual,lulc,3
+HydrogeologicalSetting,class,hydro,4
+HydrogeologicalUnit,class,hydro,4
+HydrogeologicalUnitGroup,class,hydro,4
+HydrographicReach,class,hydro,4
+ImputedRecord,individual,hydro,2
+IndirectOrdering,individual,hydro,3
+IndustryUse,individual,hydro,3
+IneligibleConstraint,individual,causal,3
+Influence,class,causal,4
+Intake,class,hydro,4
+IrrigationAssumption,class,lulc,4
+IrrigationAssumptionScheme,concept scheme,lulc,3
+IrrigationDemandAssessment,class,lulc,4
+IrrigationUse,individual,hydro,3
+KarstAquifer,class,hydro,4
+LateralInflow,individual,causal,3
+Mechanism,class,causal,4
+MechanismScheme,concept scheme,causal,3
+ModelResult,individual,core,2
+MonitoringRole,individual,core,3
+MonitoringStation,class,hydro,4
+MultilayerAquiferSystem,class,hydro,4
+NegativeResponse,individual,causal,3
+NoExchange,individual,med-causal,3
+NotApplicable,individual,core,2
+NotCropped,individual,lulc,3
+NotQualified,individual,med-causal,3
+ObservationSeries,class,hydro,4
+OffMainStem,individual,hydro,3
+OnOutcrop,individual,hydro,3
+OutcropCoverage,class,hydro,4
+OutcropSearchZone,class,hydro,4
+Outcropping,individual,hydro,3
+OverCover,individual,hydro,3
+Partial,individual,core,2
+PartlyIrrigated,individual,lulc,3
+Piezometer,class,hydro,4
+PolygonCellIntersection,class,hydro,4
+PositiveResponse,individual,causal,3
+Possible,individual,core,3
+PotentialIrrigationDemandMain,individual,lulc,4
+PotentialIrrigationDemandWide,individual,lulc,4
+PressureStateSummary,class,hydro,4
+Probable,individual,core,3
+PumpingDrawdown,individual,causal,3
+Rainfed,individual,lulc,3
+ReachPiece,class,hydro,4
+ReachSearchZone,class,hydro,4
+RechargeProxies,individual,causal,3
+ReconstructedRecord,individual,hydro,2
+ReconstructedWeeklyVolume,individual,causal,4
+RecordKind,class,hydro,4
+RecordKindScheme,concept scheme,hydro,3
+RejectedStatus,individual,core,3
+ReportedObservation,individual,core,3
+Resolution,class,core,4
+ResolutionScheme,concept scheme,core,3
+ResponseSign,class,causal,4
+ResponseSignScheme,concept scheme,causal,3
+RiverDischarge,individual,causal,4
+RiverDischargeGroup,individual,causal,3
+RiverExchange,individual,causal,3
+RiverGauge,class,hydro,4
+RiverReach,class,hydro,4
+RiverSection,class,hydro,4
+RiverStage,individual,causal,4
+RiverUnitAssociation,class,hydro,4
+RuleEvaluation,class,core,4
+RuleExecution,class,core,4
+SemiConfinedState,individual,hydro,3
+SoilDrainage,individual,causal,4
+SourceRecord,class,core,4
+StackLayer,class,hydro,4
+StatedFinding,individual,med-causal,3
+StratigraphicRelation,class,hydro,4
+StratigraphicRelationKind,class,hydro,4
+StratigraphicRelationKindScheme,concept scheme,hydro,3
+SummerDemand,individual,causal,3
+SupersededStatus,individual,core,2
+Supported,individual,core,2
+SurfaceToAquifer,individual,med-causal,3
+SurfaceWaterBody,class,hydro,4
+SurfaceWaterIntake,class,hydro,4
+SurfaceWaterSource,individual,hydro,3
+SynthesisStatement,individual,med-causal,3
+UnconfinedState,individual,hydro,3
+UnitAttribution,class,core,4
+UnitGroupResolution,individual,core,3
+UnitListedBySource,individual,med-causal,3
+UnitMappedByName,individual,med-causal,3
+UnitMapping,class,med-causal,4
+UnitMappingScheme,concept scheme,med-causal,3
+UnknownAnswer,individual,core,2
+UnknownResponse,individual,causal,3
+UpstreamOfZone,individual,hydro,3
+UsuallyIrrigated,individual,lulc,3
+VerticalLeakage,individual,causal,3
+VolumeAllocation,class,hydro,4
+WaterBalanceEstimate,individual,med-causal,3
+WaterSource,class,hydro,4
+WaterSourceScheme,concept scheme,hydro,3
+WaterUse,class,hydro,4
+WaterUseScheme,concept scheme,hydro,3
+Watercourse,class,hydro,4
+WeatherCell,class,hydro,4
+WellLink,class,core,4
+WellZone,class,hydro,4
+aboutGroundwaterBody,object property,med-causal,5
+aboutSection,object property,med-causal,5
+aboutUnit,object property,med-causal,5
+aboutWatercourse,object property,med-causal,5
+accountedFor,object property,hydro,2
+accountingYear,datatype property,hydro,2
+admitsConfidence,object property,causal,5
+aggregateMemberUnit,object property,med-causal,5
+allocatedTo,object property,hydro,2
+allocatedVolumeM3,datatype property,hydro,2
+allocatesRecord,object property,hydro,2
+allocationWeight,datatype property,hydro,2
+alongRiverDistanceM,datatype property,hydro,5
+alongRiverPosition,object property,hydro,5
+applicableStatement,object property,med-causal,5
+applicableUse,object property,hydro,5
+appliesInExtent,object property,core,5
+assessedSetting,object property,hydro,5
+assessmentReason,datatype property,core,5
+assessmentStatus,object property,core,5
+assessmentWindow,datatype property,core,5
+associationType,object property,hydro,5
+associationUnit,object property,hydro,5
+associationWatercourse,object property,hydro,5
+attributedEntity,object property,core,5
+bdCarthageCode,datatype property,profile/fr,1
+bdlisaCode,datatype property,profile/fr,1
+bdlisaMediumCode,datatype property,profile/fr,1
+bdlisaNatureCode,datatype property,profile/fr,1
+bdlisaThemeCode,datatype property,profile/fr,1
+bdtopoId,datatype property,profile/fr,1
+bnpeCode,datatype property,profile/fr,1
+bssCode,datatype property,profile/fr,1
+bssId,datatype property,profile/fr,1
+candidateGroup,object property,hydro,5
+candidateUnit,object property,hydro,5
+candidateWatercourse,object property,hydro,5
+cellWeight,datatype property,hydro,5
+chainageFromM,datatype property,core,5
+chainageM,datatype property,core,5
+chainageToM,datatype property,core,5
+codeVersion,datatype property,core,5
+conditions,datatype property,core,5
+confidence,object property,core,5
+confinementState,object property,hydro,5
+constraintApproval,object property,causal,5
+constraintDecision,object property,causal,5
+constraintEligibility,object property,causal,5
+coverStatus,object property,hydro,5
+coverUnit,object property,hydro,5
+coverageEnd,datatype property,core,5
+coverageStart,datatype property,core,5
+coverageUnit,object property,hydro,5
+coveredAreaM2,datatype property,core,5
+coveredFraction,datatype property,hydro,5
+coveringUnit,object property,hydro,5
+cropClass,object property,lulc,5
+cropCode,object property,lulc,5
+daysAboveReference,datatype property,hydro,5
+daysObserved,datatype property,hydro,5
+decisionBasis,datatype property,core,5
+decisionMechanism,object property,causal,5
+definedInModule,annotation property,core,5
+demandCategory,object property,lulc,5
+demandThresholdM3,datatype property,core,5
+derivationRule,object property,core,5
+developmentStageDays,datatype property,lulc,5
+driverEntity,object property,causal,5
+driverGroup,object property,causal,5
+driverVariable,object property,causal,5
+eligibilityReason,datatype property,core,5
+eligibleDeclaredVolumeM3,datatype property,hydro,2
+evaluatedRule,object property,core,5
+evidenceKind,object property,core,5
+evidenceMethod,object property,med-causal,5
+exchangeDirection,object property,med-causal,5
+excludedVolumeM3,datatype property,hydro,2
+facilityCount,datatype property,hydro,2
+fluxM3s,datatype property,med-causal,5
+fluxUncertaintyM3s,datatype property,med-causal,5
+gaugeCode,datatype property,hydro,5
+groundElevationM,datatype property,core,5
+groundwaterBodyCode,datatype property,core,5
+hasCellWeight,object property,hydro,5
+hasDischargeSeries,object property,hydro,5
+hasForcingSeries,object property,hydro,5
+hasIntake,object property,hydro,5
+hasMemberUnit,object property,hydro,5
+hasObservationSeries,object property,hydro,5
+hasStackLayer,object property,hydro,5
+hasVolumeSeries,object property,hydro,5
+hedging,object property,med-causal,5
+horizontalDistanceM,datatype property,core,5
+hostedBy,object property,hydro,5
+inDocument,object property,med-causal,5
+inGroundwaterBody,object property,hydro,5
+inRelease,object property,core,5
+inSection,object property,hydro,5
+initialStageDays,datatype property,lulc,5
+intakeMember,object property,hydro,5
+intersectedCell,object property,hydro,5
+intersectedPolygon,object property,hydro,5
+intersectionAreaM2,datatype property,hydro,5
+interveningUnit,object property,hydro,5
+investigationDepthDifferenceM,datatype property,core,5
+investigationDepthM,datatype property,core,5
+irrigationAssumption,object property,lulc,5
+kcEnd,datatype property,lulc,5
+kcInitial,datatype property,lulc,5
+kcMid,datatype property,lulc,5
+lateSeasonStageDays,datatype property,lulc,5
+layerOrder,datatype property,hydro,5
+layerUnit,object property,hydro,5
+lengthOnOutcropM,datatype property,core,5
+lengthOverCoverM,datatype property,hydro,5
+localInfluenceCode,datatype property,hydro,5
+localInfluenceComment,datatype property,hydro,5
+localizedStatement,object property,med-causal,5
+locatedInPolygon,object property,hydro,5
+lowerUnit,object property,hydro,5
+mainStemLengthM,datatype property,hydro,5
+mappedOutcropAreaM2,datatype property,hydro,5
+md5,datatype property,core,5
+measuredAt,object property,med-causal,5
+mechanism,object property,causal,5
+midSeasonStageDays,datatype property,lulc,5
+monitors,object property,hydro,5
+observedTrainingWeeks,datatype property,hydro,5
+offsetFromStemM,datatype property,core,5
+omitsPathway,object property,causal,5
+onMainNetwork,datatype property,hydro,5
+onMainStem,datatype property,hydro,5
+onWatercourse,object property,hydro,5
+outcropAreaM2,datatype property,hydro,5
+overlapsSection,object property,hydro,5
+overlies,object property,hydro,5
+overrideCode,datatype property,lulc,5
+pageLabel,datatype property,med-causal,5
+perennial,datatype property,lulc,5
+periodEnd,datatype property,core,5
+periodStart,datatype property,core,5
+persistence,datatype property,hydro,5
+pieceLengthM,datatype property,hydro,5
+pieceOfReach,object property,hydro,5
+piecePolygon,object property,hydro,5
+plantingMonth,datatype property,lulc,5
+polygonCode,datatype property,profile/fr,1
+poolMember,object property,hydro,5
+precision,datatype property,core,5
+proxyFor,object property,causal,5
+proxyReview,object property,causal,5
+pumpsFrom,object property,hydro,5
+qualityPolicy,datatype property,core,5
+quote,datatype property,med-causal,5
+rank,datatype property,core,5
+reachNature,datatype property,hydro,5
+reachOf,object property,hydro,5
+recordKind,object property,hydro,5
+registerCode,datatype property,core,5
+relatedGauge,object property,hydro,5
+relationKind,object property,hydro,5
+releaseDate,datatype property,core,5
+reportingExtent,object property,hydro,2
+resolution,object property,core,5
+responseSign,object property,causal,5
+retrievalDate,datatype property,core,5
+role,object property,core,5
+rpgEdition,datatype property,profile/fr,1
+rpgGroupCode,datatype property,profile/fr,1
+ruleVersion,datatype property,core,5
+safranGridXHm,datatype property,profile/fr,1
+safranGridYHm,datatype property,profile/fr,1
+sampleSize,datatype property,core,5
+screenBottomDepthM,datatype property,core,5
+screenTopDepthM,datatype property,core,5
+searchRadiusM,datatype property,core,5
+sectionOf,object property,hydro,5
+selectedUnder,object property,causal,5
+seriesVariable,object property,hydro,5
+settingAttribution,object property,hydro,5
+settingOf,object property,hydro,5
+settingPolygon,object property,hydro,5
+settingUnit,object property,hydro,5
+sharedUnit,object property,hydro,5
+sourceIdentifier,datatype property,core,5
+sourceUrl,datatype property,core,5
+stackPosition,datatype property,hydro,5
+stateDescription,datatype property,med-causal,5
+statedMechanism,object property,med-causal,5
+storedIn,datatype property,core,5
+targetEntity,object property,causal,5
+temporalResolution,datatype property,core,5
+trainingWeeks,datatype property,hydro,5
+underPolicy,object property,causal,5
+unitAsNamed,datatype property,med-causal,5
+unitMapping,object property,med-causal,5
+unknownReason,datatype property,core,5
+unresolvedVolumeM3,datatype property,hydro,2
+upperUnit,object property,hydro,5
+usesGaugePool,object property,hydro,5
+verticalDatum,datatype property,core,5
+viaUnit,object property,causal,5
+waterSource,object property,hydro,5
+waterUse,object property,hydro,5
+weightCell,object property,hydro,5
+wellA,object property,hydro,5
+wellB,object property,hydro,5
+wfdCode,datatype property,profile/eu,1
+withinExtent,object property,core,5
+witnessedBy,object property,hydro,5
+zoneOf,object property,hydro,5
+zoneRadiusM,datatype property,hydro,5

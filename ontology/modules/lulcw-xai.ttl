@@ -1,0 +1,22 @@
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# Generated from ontology/lulcw.ttl (version 0.10.0) by src.kg.ontology_modules.
+# Do not edit by hand: edit ontology/lulcw.ttl and re-run the generator.
+
+<https://w3id.org/lulcw/xai> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/lulcw/xai/0.10.0> ;
+    owl:versionInfo "0.10.0" ;
+    dcterms:title "LULC-Water explainable AI module"@en , "Module IA explicable LULC-Water"@fr ;
+    dcterms:description "Country-agnostic explainability module of the LULC-Water network. Starts empty at 0.10.0; model runs, driver contributions, explanation statements, and scenario terms (CQ10, CQ16) will be added in a subsequent step."@en ,
+        "Module d'explicabilité indépendant des pays du réseau LULC-Water. Initialement vide en version 0.10.0 ; les exécutions de modèles, contributions de forçages, énoncés d'explication et termes de scénarios (CQ10, CQ16) seront ajoutés dans une étape ultérieure."@fr ;
+    dcterms:creator "Assil Bouzaine" ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    dcterms:created "2026-11-26"^^xsd:date .
+
+dcterms:title a owl:AnnotationProperty .
+dcterms:description a owl:AnnotationProperty .
+dcterms:creator a owl:AnnotationProperty .
+dcterms:license a owl:AnnotationProperty .
+dcterms:created a owl:AnnotationProperty .

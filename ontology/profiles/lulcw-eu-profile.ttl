@@ -1,0 +1,34 @@
+@prefix lulcw:   <https://w3id.org/lulcw#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# Generated from ontology/lulcw.ttl (version 0.10.0) by src.kg.ontology_modules.
+# Do not edit by hand: edit ontology/lulcw.ttl and re-run the generator.
+
+<https://w3id.org/lulcw/profile/eu> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/lulcw/profile/eu/0.10.0> ;
+    owl:versionInfo "0.10.0" ;
+    dcterms:title "LULC-Water European Union profile"@en , "Profil Union européenne LULC-Water"@fr ;
+    dcterms:description "Optional European Union regional profile for the LULC-Water ontology network, declaring EU Water Framework Directive identifiers (such as lulcw:wfdCode) outside the pan-Mediterranean core."@en ,
+        "Profil régional optionnel Union européenne du réseau d'ontologies LULC-Water, déclarant les identifiants de la directive-cadre sur l'eau (tels que lulcw:wfdCode) hors du noyau pan-méditerranéen."@fr ;
+    dcterms:creator "Assil Bouzaine" ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    dcterms:created "2026-11-26"^^xsd:date ;
+    owl:imports <https://w3id.org/lulcw/core> , <https://w3id.org/lulcw/hydro> , <https://w3id.org/lulcw/imports/skos> .
+
+dcterms:title a owl:AnnotationProperty .
+dcterms:description a owl:AnnotationProperty .
+dcterms:creator a owl:AnnotationProperty .
+dcterms:license a owl:AnnotationProperty .
+dcterms:created a owl:AnnotationProperty .
+
+lulcw:wfdCode a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:subPropertyOf lulcw:registerCode ;
+    rdfs:domain lulcw:SurfaceWaterBody ;
+    rdfs:range xsd:string ;
+    rdfs:label "WFD water-body code"@en , "code européen de masse d'eau"@fr ;
+    skos:definition "European code of a WFD water body (CdEuMasseDEau), e.g. FRDR224."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/profile/eu> .

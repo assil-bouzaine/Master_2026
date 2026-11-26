@@ -4,6 +4,17 @@
 <catalog prefer="public" xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
     <uri name="https://w3id.org/lulcw" uri="lulcw.ttl"/>
     <uri name="https://w3id.org/lulcw/meta" uri="lulcw-meta.ttl"/>
+    <uri name="https://w3id.org/lulcw/modular" uri="lulcw-modular.ttl"/>
+    <uri name="https://w3id.org/lulcw/core" uri="modules/lulcw-core.ttl"/>
+    <uri name="https://w3id.org/lulcw/hydro" uri="modules/lulcw-hydro.ttl"/>
+    <uri name="https://w3id.org/lulcw/lulc" uri="modules/lulcw-lulc.ttl"/>
+    <uri name="https://w3id.org/lulcw/eo" uri="modules/lulcw-eo.ttl"/>
+    <uri name="https://w3id.org/lulcw/causal" uri="modules/lulcw-causal.ttl"/>
+    <uri name="https://w3id.org/lulcw/med-causal" uri="modules/lulcw-med-causal.ttl"/>
+    <uri name="https://w3id.org/lulcw/xai" uri="modules/lulcw-xai.ttl"/>
+    <uri name="https://w3id.org/lulcw/profile/eu" uri="profiles/lulcw-eu-profile.ttl"/>
+    <uri name="https://w3id.org/lulcw/profile/fr" uri="profiles/lulcw-fr-profile.ttl"/>
+    <uri name="https://w3id.org/lulcw/profile/tn" uri="profiles/lulcw-tn-profile.ttl"/>
     <uri name="https://w3id.org/lulcw/alignments/gwml2-hyfo" uri="alignments/lulcw-gwml2-hyfo.ttl"/>
     <uri name="https://w3id.org/lulcw/alignments/sweet" uri="alignments/lulcw-sweet.ttl"/>
     <uri name="https://w3id.org/lulcw/alignments/hyf" uri="alignments/lulcw-hyf.ttl"/>

@@ -1,0 +1,22 @@
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# Generated from ontology/lulcw.ttl (version 0.10.0) by src.kg.ontology_modules.
+# Do not edit by hand: edit ontology/lulcw.ttl and re-run the generator.
+
+<https://w3id.org/lulcw/eo> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/lulcw/eo/0.10.0> ;
+    owl:versionInfo "0.10.0" ;
+    dcterms:title "LULC-Water Earth-observation module"@en , "Module observation de la Terre LULC-Water"@fr ;
+    dcterms:description "Country-agnostic Earth-observation module of the LULC-Water network. Starts empty at 0.10.0; satellite spectral-index observations and probable-irrigation terms (CQ15) will be added in a subsequent step."@en ,
+        "Module d'observation de la Terre indépendant des pays du réseau LULC-Water. Initialement vide en version 0.10.0 ; les observations d'indices spectraux satellitaires et les termes d'irrigation probable (CQ15) seront ajoutés dans une étape ultérieure."@fr ;
+    dcterms:creator "Assil Bouzaine" ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    dcterms:created "2026-11-26"^^xsd:date .
+
+dcterms:title a owl:AnnotationProperty .
+dcterms:description a owl:AnnotationProperty .
+dcterms:creator a owl:AnnotationProperty .
+dcterms:license a owl:AnnotationProperty .
+dcterms:created a owl:AnnotationProperty .

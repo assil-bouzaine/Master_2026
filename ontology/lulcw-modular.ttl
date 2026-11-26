@@ -1,0 +1,36 @@
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# Generated from ontology/lulcw.ttl (version 0.10.0) by src.kg.ontology_modules.
+# Published modular entry point of the LULC-Water network: the seven pan-Mediterranean
+# core modules, the EU and France profiles, and the alignment modules.
+
+<https://w3id.org/lulcw/modular> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/lulcw/modular/0.10.0> ;
+    owl:versionInfo "0.10.0" ;
+    dcterms:title "LULC-Water modular meta-ontology"@en , "Méta-ontologie modulaire LULC-Water"@fr ;
+    dcterms:description "Published modular entry point of the LULC-Water ontology network: imports the seven pan-Mediterranean core modules, the EU and France profiles, and the alignment modules (GWML2/HyFO, SWEET, HY_Features, INSPIRE)."@en ,
+        "Point d'entrée modulaire publié du réseau d'ontologies LULC-Water : importe les sept modules noyaux pan-méditerranéens, les profils UE et France et les modules d'alignement (GWML2/HyFO, SWEET, HY_Features, INSPIRE)."@fr ;
+    dcterms:creator "Assil Bouzaine" ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    dcterms:created "2026-11-26"^^xsd:date ;
+    owl:imports <https://w3id.org/lulcw/core> ,
+        <https://w3id.org/lulcw/hydro> ,
+        <https://w3id.org/lulcw/lulc> ,
+        <https://w3id.org/lulcw/eo> ,
+        <https://w3id.org/lulcw/causal> ,
+        <https://w3id.org/lulcw/med-causal> ,
+        <https://w3id.org/lulcw/xai> ,
+        <https://w3id.org/lulcw/profile/eu> ,
+        <https://w3id.org/lulcw/profile/fr> ,
+        <https://w3id.org/lulcw/alignments/gwml2-hyfo> ,
+        <https://w3id.org/lulcw/alignments/sweet> ,
+        <https://w3id.org/lulcw/alignments/hyf> ,
+        <https://w3id.org/lulcw/alignments/inspire> .
+
+dcterms:title a owl:AnnotationProperty .
+dcterms:description a owl:AnnotationProperty .
+dcterms:creator a owl:AnnotationProperty .
+dcterms:license a owl:AnnotationProperty .
+dcterms:created a owl:AnnotationProperty .

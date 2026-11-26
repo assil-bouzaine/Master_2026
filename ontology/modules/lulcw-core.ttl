@@ -1,0 +1,613 @@
+@prefix lulcw:   <https://w3id.org/lulcw#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+@prefix geo:     <http://www.opengis.net/ont/geosparql#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# Generated from ontology/lulcw.ttl (version 0.10.0) by src.kg.ontology_modules.
+# Do not edit by hand: edit ontology/lulcw.ttl and re-run the generator.
+
+<https://w3id.org/lulcw/core> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/lulcw/core/0.10.0> ;
+    owl:versionInfo "0.10.0" ;
+    dcterms:title "LULC-Water core module"@en , "Module noyau LULC-Water"@fr ;
+    dcterms:description "Country-agnostic core vocabulary of the LULC-Water ontology network: provenance (data releases, source records, derivation rules), qualified assertions, shared answer-contract and evidence schemes, and generic register-code and measurement properties."@en ,
+        "Vocabulaire noyau indépendant des pays du réseau d'ontologies LULC-Water : provenance (versions de jeux de données, enregistrements sources, règles de dérivation), assertions qualifiées, schémas partagés du contrat de réponse et des preuves, et propriétés génériques de code de registre et de mesure."@fr ;
+    dcterms:creator "Assil Bouzaine" ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    dcterms:created "2026-11-26"^^xsd:date ;
+    owl:imports <https://w3id.org/lulcw/imports/geo> , <https://w3id.org/lulcw/imports/prov> , <https://w3id.org/lulcw/imports/skos> .
+
+dcterms:title a owl:AnnotationProperty .
+dcterms:description a owl:AnnotationProperty .
+dcterms:creator a owl:AnnotationProperty .
+dcterms:license a owl:AnnotationProperty .
+dcterms:created a owl:AnnotationProperty .
+
+lulcw:AbstractionRole a lulcw:AttributionRole ;
+    skos:inScheme lulcw:AttributionRoleScheme ;
+    skos:topConceptOf lulcw:AttributionRoleScheme ;
+    skos:prefLabel "abstraction"@en , "prélèvement"@fr ;
+    rdfs:label "abstraction"@en , "prélèvement"@fr ;
+    skos:definition "A facility abstracts water from the unit."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:AcceptedStatus a lulcw:AssessmentStatus ;
+    skos:inScheme lulcw:AssessmentStatusScheme ;
+    skos:topConceptOf lulcw:AssessmentStatusScheme ;
+    skos:prefLabel "accepted"@en , "acceptée"@fr ;
+    rdfs:label "accepted"@en , "acceptée"@fr ;
+    skos:definition "Accepted after a stated check; acceptance does not raise its confidence."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:AnswerStatus a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "answer status"@en , "statut de réponse"@fr ;
+    skos:definition "Status of an answer to a competency question: supported by the cited evidence, partial, unknown, conflicting or not applicable. Supported does not mean established physical truth."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:AnswerStatusScheme a skos:ConceptScheme ;
+    rdfs:label "answer statuses"@en , "statuts de réponse"@fr ;
+    skos:definition "Values of lulcw:AnswerStatus (docs/competency_questions.md §2)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:AssessmentStatus a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "assessment status"@en , "statut d'évaluation"@fr ;
+    skos:definition "Status of a qualified assertion: candidate, accepted, rejected or superseded."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:AssessmentStatusScheme a skos:ConceptScheme ;
+    rdfs:label "assessment statuses"@en , "statuts d'évaluation"@fr ;
+    skos:definition "Values of lulcw:AssessmentStatus."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:AttributionRole a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "attribution role"@en , "rôle de l'attribution"@fr ;
+    skos:definition "Why an entity is attributed to a unit: it monitors the unit, or it abstracts water from it."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:AttributionRoleScheme a skos:ConceptScheme ;
+    rdfs:label "attribution roles"@en , "rôles d'attribution"@fr ;
+    skos:definition "Values of lulcw:AttributionRole."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:CandidateStatus a lulcw:AssessmentStatus ;
+    skos:inScheme lulcw:AssessmentStatusScheme ;
+    skos:topConceptOf lulcw:AssessmentStatusScheme ;
+    skos:prefLabel "candidate"@en , "candidate"@fr ;
+    rdfs:label "candidate"@en , "candidate"@fr ;
+    skos:definition "Proposed by a rule or a record, not yet accepted or rejected."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:ConfidenceLevel a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "confidence level"@en , "niveau de confiance"@fr ;
+    skos:definition "Evidence-policy level of an assertion (confident, probable, possible). It is not a calibrated probability and is separate from answer status and from selection by an export policy. Unknown is not a confidence level: an unknown assignment has none."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:ConfidenceScheme a skos:ConceptScheme ;
+    rdfs:label "confidence levels"@en , "niveaux de confiance"@fr ;
+    skos:definition "Values of lulcw:ConfidenceLevel (src/kg/pump_attribution.py)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:Confident a lulcw:ConfidenceLevel ;
+    skos:inScheme lulcw:ConfidenceScheme ;
+    skos:topConceptOf lulcw:ConfidenceScheme ;
+    skos:prefLabel "confident"@en , "sûr"@fr ;
+    rdfs:label "confident"@en , "sûr"@fr ;
+    skos:definition "Supported by a direct record of the entity (e.g. the BSS record of the borehole, depth-checked)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:Conflicting a lulcw:AnswerStatus ;
+    skos:inScheme lulcw:AnswerStatusScheme ;
+    skos:topConceptOf lulcw:AnswerStatusScheme ;
+    skos:prefLabel "conflicting"@en , "contradictoire"@fr ;
+    rdfs:label "conflicting"@en , "contradictoire"@fr ;
+    skos:definition "Cited sources disagree; every alternative is returned with its source."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:DataRelease a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "data release"@en , "version de jeu de données"@fr ;
+    skos:definition "A versioned release or dated snapshot of a source dataset or of a derived table, e.g. BD LISA V3, the BNPE extract retrieved on 2026-10-20, or model-ready dataset v4."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:DerivationRule a owl:Class ;
+    rdfs:subClassOf prov:Plan ;
+    rdfs:label "derivation rule"@en , "règle de dérivation"@fr ;
+    skos:definition "A named, versioned procedure that derives assertions from source records, e.g. a pump-to-unit attribution rule or an influence-proposal rule."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:DerivedAssertion a lulcw:EvidenceKind ;
+    skos:inScheme lulcw:EvidenceKindScheme ;
+    skos:topConceptOf lulcw:EvidenceKindScheme ;
+    skos:prefLabel "derived assertion"@en , "assertion dérivée"@fr ;
+    rdfs:label "derived assertion"@en , "assertion dérivée"@fr ;
+    skos:definition "An assertion produced by a documented rule from source records."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:EvidenceKind a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "evidence kind"@en , "nature de la preuve"@fr ;
+    skos:definition "Kind of evidence behind an assertion: reported observation, derived assertion, literature or expert hypothesis, or model or scenario result."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:EvidenceKindScheme a skos:ConceptScheme ;
+    rdfs:label "evidence kinds"@en , "natures de preuve"@fr ;
+    skos:definition "Values of lulcw:EvidenceKind."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:ExactUnitResolution a lulcw:Resolution ;
+    skos:inScheme lulcw:ResolutionScheme ;
+    skos:topConceptOf lulcw:ResolutionScheme ;
+    skos:prefLabel "exact unit"@en , "entité exacte"@fr ;
+    rdfs:label "exact unit"@en , "entité exacte"@fr ;
+    skos:definition "Resolved to one hydrogeological unit."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:ExpertHypothesis a lulcw:EvidenceKind ;
+    skos:inScheme lulcw:EvidenceKindScheme ;
+    skos:topConceptOf lulcw:EvidenceKindScheme ;
+    skos:prefLabel "literature or expert hypothesis"@en , "hypothèse de la littérature ou d'expert"@fr ;
+    rdfs:label "literature or expert hypothesis"@en , "hypothèse de la littérature ou d'expert"@fr ;
+    skos:definition "A mechanism or relation stated in the literature or by an expert, with its passage and scope; unreviewed extracted text cannot enable a hard constraint."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:ModelResult a lulcw:EvidenceKind ;
+    skos:inScheme lulcw:EvidenceKindScheme ;
+    skos:topConceptOf lulcw:EvidenceKindScheme ;
+    skos:prefLabel "model or scenario result"@en , "résultat de modèle ou de scénario"@fr ;
+    rdfs:label "model or scenario result"@en , "résultat de modèle ou de scénario"@fr ;
+    skos:definition "An output of a model run or a scenario, kept distinct from observed facts."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:MonitoringRole a lulcw:AttributionRole ;
+    skos:inScheme lulcw:AttributionRoleScheme ;
+    skos:topConceptOf lulcw:AttributionRoleScheme ;
+    skos:prefLabel "monitoring"@en , "surveillance"@fr ;
+    rdfs:label "monitoring"@en , "surveillance"@fr ;
+    skos:definition "A piezometer monitors the unit."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:NotApplicable a lulcw:AnswerStatus ;
+    skos:inScheme lulcw:AnswerStatusScheme ;
+    skos:topConceptOf lulcw:AnswerStatusScheme ;
+    skos:prefLabel "not applicable"@en , "sans objet"@fr ;
+    rdfs:label "not applicable"@en , "sans objet"@fr ;
+    skos:definition "The question does not apply to the requested entity or period, with a stated reason."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:Partial a lulcw:AnswerStatus ;
+    skos:inScheme lulcw:AnswerStatusScheme ;
+    skos:topConceptOf lulcw:AnswerStatusScheme ;
+    skos:prefLabel "partial"@en , "partielle"@fr ;
+    rdfs:label "partial"@en , "partielle"@fr ;
+    skos:definition "Part of the requested scope is answered; the rest is reported as missing."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:Possible a lulcw:ConfidenceLevel ;
+    skos:inScheme lulcw:ConfidenceScheme ;
+    skos:topConceptOf lulcw:ConfidenceScheme ;
+    skos:prefLabel "possible"@en , "possible"@fr ;
+    rdfs:label "possible"@en , "possible"@fr ;
+    skos:definition "Produced by a rule not measured for this use or resolution, or below the probable threshold."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:Probable a lulcw:ConfidenceLevel ;
+    skos:inScheme lulcw:ConfidenceScheme ;
+    skos:topConceptOf lulcw:ConfidenceScheme ;
+    skos:prefLabel "probable"@en , "probable"@fr ;
+    rdfs:label "probable"@en , "probable"@fr ;
+    skos:definition "Produced by a rule whose precision was measured (at least 0.80 on at least 10 recorded cases) at the stated resolution and for the same water use."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:RejectedStatus a lulcw:AssessmentStatus ;
+    skos:inScheme lulcw:AssessmentStatusScheme ;
+    skos:topConceptOf lulcw:AssessmentStatusScheme ;
+    skos:prefLabel "rejected"@en , "rejetée"@fr ;
+    rdfs:label "rejected"@en , "rejetée"@fr ;
+    skos:definition "Rejected after a stated check; kept with its evidence."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:ReportedObservation a lulcw:EvidenceKind ;
+    skos:inScheme lulcw:EvidenceKindScheme ;
+    skos:topConceptOf lulcw:EvidenceKindScheme ;
+    skos:prefLabel "reported observation"@en , "observation déclarée"@fr ;
+    rdfs:label "reported observation"@en , "observation déclarée"@fr ;
+    skos:definition "A value or fact as recorded by its producer (e.g. a BSS record or a BNPE declaration)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:Resolution a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "assessment resolution"@en , "résolution de l'évaluation"@fr ;
+    skos:definition "The level at which an attribution or a rule evaluation is resolved: the exact hydrogeological unit, or only a unit group."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:ResolutionScheme a skos:ConceptScheme ;
+    rdfs:label "assessment resolutions"@en , "résolutions d'évaluation"@fr ;
+    skos:definition "Values of lulcw:Resolution."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:RuleEvaluation a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "rule evaluation"@en , "évaluation de règle"@fr ;
+    skos:definition "A measurement of how often a derivation rule agrees with reference records, at a stated resolution (exact unit or unit group) and for a stated water use. A rule's measured precision is not the probability that one of its assertions is true."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:RuleExecution a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "rule execution"@en , "exécution de règle"@fr ;
+    skos:definition "One execution of a derivation rule on given data releases, with its code version and date."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:SourceRecord a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "source record"@en , "enregistrement source"@fr ;
+    skos:definition "One record of a data release (a table row, a mapped feature or a document entry), identified by its original identifier; the evidence an assertion cites."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:SupersededStatus a lulcw:AssessmentStatus ;
+    skos:inScheme lulcw:AssessmentStatusScheme ;
+    skos:topConceptOf lulcw:AssessmentStatusScheme ;
+    skos:prefLabel "superseded"@en , "remplacée"@fr ;
+    rdfs:label "superseded"@en , "remplacée"@fr ;
+    skos:definition "Replaced by a later assertion from a newer release or rule version."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:Supported a lulcw:AnswerStatus ;
+    skos:inScheme lulcw:AnswerStatusScheme ;
+    skos:topConceptOf lulcw:AnswerStatusScheme ;
+    skos:prefLabel "supported"@en , "étayée"@fr ;
+    rdfs:label "supported"@en , "étayée"@fr ;
+    skos:definition "The answer is supported by the cited evidence within the declared scope."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:UnitAttribution a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "unit attribution"@en , "attribution à une entité hydrogéologique"@fr ;
+    skos:definition "A candidate assignment of a piezometer (monitoring role) or an abstraction facility (abstraction role) to a hydrogeological unit or unit group, with its evidence, rule, rank, confidence, resolution and assessment status. An explicit unknown assignment has a reason and no target; alternatives are competing assignments, not fractions of water."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:UnitGroupResolution a lulcw:Resolution ;
+    skos:inScheme lulcw:ResolutionScheme ;
+    skos:topConceptOf lulcw:ResolutionScheme ;
+    skos:prefLabel "unit group"@en , "groupe d'entités"@fr ;
+    rdfs:label "unit group"@en , "groupe d'entités"@fr ;
+    skos:definition "Resolved only to a hydrogeological unit group; cannot pass an exact-unit filter."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:UnknownAnswer a lulcw:AnswerStatus ;
+    skos:inScheme lulcw:AnswerStatusScheme ;
+    skos:topConceptOf lulcw:AnswerStatusScheme ;
+    skos:prefLabel "unknown"@en , "inconnue"@fr ;
+    rdfs:label "unknown"@en , "inconnue"@fr ;
+    skos:definition "The evidence needed to answer is missing; never read as false or zero."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:WellLink a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "well link"@en , "lien entre piézomètres"@fr ;
+    skos:definition "A qualified, unordered pair of piezometers that share a candidate hydrogeological unit, with their horizontal distance and, when both are known, their investigation-depth difference. A modelling descriptor: it does not show the same screened horizon or a direct hydraulic connection."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:appliesInExtent a owl:ObjectProperty ;
+    rdfs:domain lulcw:DerivationRule ;
+    rdfs:range geo:Feature ;
+    rdfs:label "applies in extent"@en , "s'applique dans l'emprise"@fr ;
+    skos:definition "A named reference extent in which a rule derives its assertions, besides any per-well zone it uses (e.g. the forcing extent of the unit-wide sensitivity of the recharge proxies)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:assessmentReason a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "reason"@en , "raison"@fr ;
+    skos:definition "Why a setting or a confinement assessment says what it says, in words, with the evidence it rests on and what it does not show."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:assessmentStatus a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:range lulcw:AssessmentStatus ;
+    rdfs:label "has assessment status"@en , "a pour statut d'évaluation"@fr ;
+    skos:definition "Candidate, accepted, rejected or superseded status of a qualified assertion."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:assessmentWindow a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "window"@en , "fenêtre"@fr ;
+    skos:definition "The training window a pressure summary or a confinement assessment belongs to: train (the model window to the end of training), f25 or f50 (the shorter windows of regime R3)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:attributedEntity a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:domain lulcw:UnitAttribution ;
+    rdfs:label "attributed entity"@en , "entité attribuée"@fr ;
+    skos:definition "The piezometer or abstraction facility that a unit attribution is about."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:chainageFromM a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:range xsd:double ;
+    rdfs:label "chainage from (m)"@en , "abscisse de début (m)"@fr ;
+    skos:definition "Distance in metres along the watercourse's main stem, from its upstream end, of the upstream end of a main-stem reach or of a river section."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:chainageM a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:range xsd:double ;
+    rdfs:label "chainage (m)"@en , "abscisse (m)"@fr ;
+    skos:definition "Distance in metres along the watercourse's main stem, from its upstream end, of the point of the stem nearest to a gauge."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:chainageToM a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:range xsd:double ;
+    rdfs:label "chainage to (m)"@en , "abscisse de fin (m)"@fr ;
+    skos:definition "Distance in metres along the watercourse's main stem, from its upstream end, of the downstream end of a main-stem reach or of a river section."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:codeVersion a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "code version"@en , "version du code"@fr ;
+    skos:definition "Version of the code of a rule execution (a git commit)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:conditions a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "conditions"@en , "conditions"@fr ;
+    skos:definition "The conditions under which an influence's response sign holds, stated in words (e.g. the facility pumps from the unit the well monitors, distance at most d)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:confidence a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:range lulcw:ConfidenceLevel ;
+    rdfs:label "has confidence level"@en , "a pour niveau de confiance"@fr ;
+    skos:definition "The evidence-policy confidence level of a qualified assertion."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:coverageEnd a owl:DatatypeProperty ;
+    rdfs:range xsd:date ;
+    rdfs:label "coverage end"@en , "fin de couverture"@fr ;
+    skos:definition "Last date covered by a series (an xsd:date literal)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:coverageStart a owl:DatatypeProperty ;
+    rdfs:range xsd:date ;
+    rdfs:label "coverage start"@en , "début de couverture"@fr ;
+    skos:definition "First date covered by a series (an xsd:date literal)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:coveredAreaM2 a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:range xsd:double ;
+    rdfs:label "covered area (m²)"@en , "surface couverte (m²)"@fr ;
+    skos:definition "Area, in square metres, of the unit's outcrop inside the reference extent that lies inside weather cells: in all of them for an outcrop coverage, in one cell for a cell weight."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:decisionBasis a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "decision basis"@en , "fondement de la décision"@fr ;
+    skos:definition "Who decided, when, and where the decision is recorded; or what a pending decision waits for."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:definedInModule a owl:AnnotationProperty ;
+    rdfs:range owl:Ontology ;
+    rdfs:label "defined in module"@en , "défini dans le module"@fr ;
+    skos:definition "The ontology module or country profile of the LULC-Water network that declares this term."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:demandThresholdM3 a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:DerivationRule ;
+    rdfs:range xsd:double ;
+    rdfs:label "demand threshold (m³)"@en , "seuil de demande (m³)"@fr ;
+    skos:definition "Annual potential irrigation demand of a zone, in cubic metres, at or above which an assessment rule gives the high category; frozen on the training years before any test evaluation."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:derivationRule a owl:ObjectProperty ;
+    rdfs:range lulcw:DerivationRule ;
+    rdfs:label "derived by rule"@en , "dérivée par la règle"@fr ;
+    skos:definition "The rule that produced a qualified assertion."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:eligibilityReason a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "eligibility reason"@en , "motif d'éligibilité"@fr ;
+    skos:definition "Why an influence is or is not eligible to constrain a model."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:evaluatedRule a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:domain lulcw:RuleEvaluation ;
+    rdfs:range lulcw:DerivationRule ;
+    rdfs:label "evaluated rule"@en , "règle évaluée"@fr ;
+    skos:definition "The rule a rule evaluation measures."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:evidenceKind a owl:ObjectProperty ;
+    rdfs:range lulcw:EvidenceKind ;
+    rdfs:label "has evidence kind"@en , "a pour nature de preuve"@fr ;
+    skos:definition "The kind of evidence behind a qualified assertion."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:groundElevationM a owl:DatatypeProperty ;
+    rdfs:range xsd:double ;
+    rdfs:label "ground elevation (m NGF)"@en , "altitude du sol (m NGF)"@fr ;
+    skos:definition "Elevation of the ground (or reference mark) at a station, in metres above the NGF-IGN69 datum."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:groundwaterBodyCode a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "groundwater body code"@en , "code de masse d'eau"@fr ;
+    skos:definition "Code of a Water Framework Directive groundwater body, e.g. DG243."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:horizontalDistanceM a owl:DatatypeProperty ;
+    rdfs:range xsd:double ;
+    rdfs:label "horizontal distance (m)"@en , "distance horizontale (m)"@fr ;
+    skos:definition "Projected horizontal distance in metres (Lambert-93) between the two entities of a well link or an influence; a selection descriptor, not hydraulic evidence."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:inRelease a owl:ObjectProperty ;
+    rdfs:range lulcw:DataRelease ;
+    rdfs:label "in release"@en , "dans la version"@fr ;
+    skos:definition "Links a source record, a series or a derived assertion to the data release it belongs to."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:investigationDepthDifferenceM a owl:DatatypeProperty ;
+    rdfs:range xsd:double ;
+    rdfs:label "investigation-depth difference (m)"@en , "écart de profondeur d'investigation (m)"@fr ;
+    skos:definition "Absolute difference of the investigation depths of the two wells of a link, in metres; absent when either depth is missing."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:investigationDepthM a owl:DatatypeProperty ;
+    rdfs:range xsd:double ;
+    rdfs:label "investigation depth (m)"@en , "profondeur d'investigation (m)"@fr ;
+    skos:definition "Investigation depth of a borehole below ground, in metres (Hub'Eau profondeur_investigation). It is not the screened interval, and a missing value is never zero."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:lengthOnOutcropM a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:range xsd:double ;
+    rdfs:label "length on outcrop (m)"@en , "longueur sur l'affleurement (m)"@fr ;
+    skos:definition "Total length in metres of the association's reach pieces that run on polygons where its unit is at outcrop."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:md5 a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "MD5 checksum"@en , "somme MD5"@fr ;
+    skos:definition "MD5 checksum of the local copy of a document, in hexadecimal."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:offsetFromStemM a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:range xsd:double ;
+    rdfs:label "offset from the main stem (m)"@en , "distance au cours principal (m)"@fr ;
+    skos:definition "Horizontal distance in metres from a gauge to its watercourse's main stem."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:periodEnd a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:range xsd:date ;
+    rdfs:label "period end"@en , "fin de la période"@fr ;
+    skos:definition "Last day of the period a dated statement observed (an xsd:date literal)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:periodStart a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:range xsd:date ;
+    rdfs:label "period start"@en , "début de la période"@fr ;
+    skos:definition "First day of the period a dated statement observed (an xsd:date literal); absent for a statement about a typical state."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:precision a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:range xsd:double ;
+    rdfs:label "precision"@en , "précision"@fr ;
+    skos:definition "Share of the cases where a rule fires that agree with the reference, at the evaluation's resolution."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:qualityPolicy a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "quality policy"@en , "politique qualité"@fr ;
+    skos:definition "The quality filter applied to a series (e.g. values qualified 'Incorrecte' dropped before the weekly mean)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:rank a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:range xsd:integer ;
+    rdfs:label "rank"@en , "rang"@fr ;
+    skos:definition "Rank of an attribution among the candidates for the same entity and role (1 = main candidate)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:registerCode a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "register code"@en , "code de registre"@fr ;
+    skos:definition "A code that identifies an entity in a national or agency register or reference dataset; country profiles declare their registers' codes as sub-properties of it."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:releaseDate a owl:DatatypeProperty ;
+    rdfs:range xsd:date ;
+    rdfs:label "release date"@en , "date de version"@fr ;
+    skos:definition "Publication or build date of a data release (an xsd:date literal); not the date its facts apply to."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:resolution a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:range lulcw:Resolution ;
+    rdfs:label "has resolution"@en , "a pour résolution"@fr ;
+    skos:definition "The level (exact unit or unit group) at which an attribution or a rule evaluation is resolved."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:retrievalDate a owl:DatatypeProperty ;
+    rdfs:range xsd:date ;
+    rdfs:label "retrieval date"@en , "date de récupération"@fr ;
+    skos:definition "Date a data release was retrieved from its source (an xsd:date literal)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:role a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:domain lulcw:UnitAttribution ;
+    rdfs:range lulcw:AttributionRole ;
+    rdfs:label "has role"@en , "a pour rôle"@fr ;
+    skos:definition "Whether a unit attribution concerns monitoring or abstraction."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:ruleVersion a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "rule version"@en , "version de la règle"@fr ;
+    skos:definition "Version of a derivation rule or of an export policy."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:sampleSize a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:range xsd:integer ;
+    rdfs:label "sample size"@en , "effectif"@fr ;
+    skos:definition "Number of reference cases a rule evaluation used."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:screenBottomDepthM a owl:DatatypeProperty ;
+    rdfs:range xsd:double ;
+    rdfs:label "screen bottom depth (m)"@en , "profondeur du bas de la crépine (m)"@fr ;
+    skos:definition "Depth below ground, in metres, of the bottom of a documented screened interval; only from a construction record."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:screenTopDepthM a owl:DatatypeProperty ;
+    rdfs:range xsd:double ;
+    rdfs:label "screen top depth (m)"@en , "profondeur du haut de la crépine (m)"@fr ;
+    skos:definition "Depth below ground, in metres, of the top of a documented screened interval; only from a construction record."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:searchRadiusM a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:DerivationRule ;
+    rdfs:range xsd:double ;
+    rdfs:label "search radius (m)"@en , "rayon de recherche (m)"@fr ;
+    skos:definition "Horizontal search radius in metres (Lambert-93, inclusive) that a spatial derivation rule applies: a named, reproducible reference query, not a hydraulic limit. A tighter threshold may be applied at export."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:sourceIdentifier a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "source identifier"@en , "identifiant source"@fr ;
+    skos:definition "The original identifier of a source record in its data release."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:sourceUrl a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:range xsd:anyURI ;
+    rdfs:label "source URL"@en , "URL de la source"@fr ;
+    skos:definition "The address a document or release was retrieved from."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:storedIn a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "stored in"@en , "stockée dans"@fr ;
+    skos:definition "Path of the table holding a series outside the graph, relative to the project root, with the key that selects it."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:temporalResolution a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "temporal resolution"@en , "pas de temps"@fr ;
+    skos:definition "Time step of a series, as an ISO 8601 duration (e.g. P7D)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:unknownReason a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "reason for unknown"@en , "raison de l'inconnu"@fr ;
+    skos:definition "Why an attribution has no target (e.g. no record, no measured rule for this stack)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:verticalDatum a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "vertical datum"@en , "référence altimétrique"@fr ;
+    skos:definition "The vertical datum of the head values of a series (e.g. NGF-IGN69)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+
+lulcw:withinExtent a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:range geo:Feature ;
+    rdfs:label "within extent"@en , "dans l'emprise"@fr ;
+    skos:definition "The reference extent (an outcrop search zone or a named extent) a polygon-cell intersection, an outcrop coverage or a recharge-proxy influence is computed in."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/core> .

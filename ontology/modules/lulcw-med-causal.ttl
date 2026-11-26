@@ -1,0 +1,332 @@
+@prefix lulcw:   <https://w3id.org/lulcw#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+@prefix geo:     <http://www.opengis.net/ont/geosparql#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# Generated from ontology/lulcw.ttl (version 0.10.0) by src.kg.ontology_modules.
+# Do not edit by hand: edit ontology/lulcw.ttl and re-run the generator.
+
+<https://w3id.org/lulcw/med-causal> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/lulcw/med-causal/0.10.0> ;
+    owl:versionInfo "0.10.0" ;
+    dcterms:title "LULC-Water Mediterranean literature causal-evidence module"@en , "Module preuves causales de la littérature méditerranéenne LULC-Water"@fr ;
+    dcterms:description "Country-agnostic documentary and literature-derived causal-evidence vocabulary: source documents, verbatim passages, exchange statements, exchange directions, hedging, evidence methods, and unit mappings, ready to hold extracted Mediterranean causal axioms (R2.1)."@en ,
+        "Vocabulaire documentaire et des preuves causales issues de la littérature indépendant des pays : documents sources, passages cités, énoncés d'échange, sens d'échange, modalités, méthodes de preuve et correspondances d'entités, prêt à accueillir les axiomes causaux méditerranéens extraits (R2.1)."@fr ;
+    dcterms:creator "Assil Bouzaine" ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    dcterms:created "2026-11-26"^^xsd:date ;
+    owl:imports <https://w3id.org/lulcw/causal> , <https://w3id.org/lulcw/core> , <https://w3id.org/lulcw/hydro> , <https://w3id.org/lulcw/imports/geo> , <https://w3id.org/lulcw/imports/prov> , <https://w3id.org/lulcw/imports/skos> .
+
+dcterms:title a owl:AnnotationProperty .
+dcterms:description a owl:AnnotationProperty .
+dcterms:creator a owl:AnnotationProperty .
+dcterms:license a owl:AnnotationProperty .
+dcterms:created a owl:AnnotationProperty .
+
+lulcw:AquiferToSurface a lulcw:ExchangeDirection ;
+    skos:inScheme lulcw:ExchangeDirectionScheme ;
+    skos:topConceptOf lulcw:ExchangeDirectionScheme ;
+    skos:prefLabel "from the aquifer to surface water"@en , "de la nappe vers les eaux de surface"@fr ;
+    rdfs:label "from the aquifer to surface water"@en , "de la nappe vers les eaux de surface"@fr ;
+    skos:definition "The surface water gains from the unit: a draining (gaining) river, 'drainant' in the groundwater-body sheets."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:DifferentialGauging a lulcw:EvidenceMethod ;
+    skos:inScheme lulcw:EvidenceMethodScheme ;
+    skos:topConceptOf lulcw:EvidenceMethodScheme ;
+    skos:prefLabel "differential gauging"@en , "jaugeages différentiels"@fr ;
+    rdfs:label "differential gauging"@en , "jaugeages différentiels"@fr ;
+    skos:definition "Discharge measured at successive points of a river or canal and differenced: the exchange is the measured gain or loss between them (a canal's loss also includes the water it delivers to parcels and secondary networks)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:Document a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "document"@en , "document"@fr ;
+    skos:definition "A published report or sheet that statements of the graph are read from, kept as a dated local copy with its checksum."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:DocumentPassage a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "document passage"@en , "passage de document"@fr ;
+    skos:definition "A located passage of a document: its printed page (or sheet page) and a short verbatim quote."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:EvidenceMethod a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "evidence method"@en , "méthode de la preuve"@fr ;
+    skos:definition "How the finding behind an exchange statement was obtained, as far as its source says. Separate from the hedging (how assertively the source words it) and from any confidence: assertive wording is not evidence calibration."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:EvidenceMethodScheme a skos:ConceptScheme ;
+    rdfs:label "evidence methods"@en , "méthodes de preuve"@fr ;
+    skos:definition "Values of lulcw:EvidenceMethod."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:ExchangeDirection a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "exchange direction"@en , "sens de l'échange"@fr ;
+    skos:definition "Direction of a documented exchange between surface water and a unit, at the state or period the source states; a state, not a timeless property, and not the sign of a head response."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:ExchangeDirectionScheme a skos:ConceptScheme ;
+    rdfs:label "exchange directions"@en , "sens d'échange"@fr ;
+    skos:definition "Values of lulcw:ExchangeDirection."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:ExchangeEquilibrium a lulcw:ExchangeDirection ;
+    skos:inScheme lulcw:ExchangeDirectionScheme ;
+    skos:topConceptOf lulcw:ExchangeDirectionScheme ;
+    skos:prefLabel "in equilibrium"@en , "en équilibre"@fr ;
+    rdfs:label "in equilibrium"@en , "en équilibre"@fr ;
+    skos:definition "River and unit are connected and their exchange is balanced at the stated scale ('en équilibre')."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:ExchangeStatement a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "exchange statement"@en , "énoncé d'échange"@fr ;
+    skos:definition "A statement read from a document about water exchange between surface water (a river section, a watercourse or the canals) and hydrogeological units: its mechanism, direction, state or period, quantity, hedging, method, how the source names its subject, and the passage it comes from. The subject is a unit itself (lulcw:aboutUnit) or an aggregate of units (lulcw:aggregateMemberUnit, and lulcw:aboutGroundwaterBody when the source states a WFD body). The graph records what the source says, at the scale the source says it; it is not a measured effect, and statements that disagree are kept side by side."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:GeochemicalTracing a lulcw:EvidenceMethod ;
+    skos:inScheme lulcw:EvidenceMethodScheme ;
+    skos:topConceptOf lulcw:EvidenceMethodScheme ;
+    skos:prefLabel "geochemical tracing"@en , "traçage géochimique"@fr ;
+    rdfs:label "geochemical tracing"@en , "traçage géochimique"@fr ;
+    skos:definition "Chemical or isotopic signatures of the waters and their mixing proportions between end-members, alone or combined with a measured discharge."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:HedgedFinding a lulcw:Hedging ;
+    skos:inScheme lulcw:HedgingScheme ;
+    skos:topConceptOf lulcw:HedgingScheme ;
+    skos:prefLabel "hedged"@en , "conditionnel"@fr ;
+    rdfs:label "hedged"@en , "conditionnel"@fr ;
+    skos:definition "The source hedges the finding (conditional, 'could', 'seems') or reports another study's result."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:Hedging a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "hedging"@en , "modalité"@fr ;
+    skos:definition "Whether a source states a finding or hedges it (conditional mood, 'could', 'seems', reported speech)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:HedgingScheme a skos:ConceptScheme ;
+    rdfs:label "hedging levels"@en , "modalités"@fr ;
+    skos:definition "Values of lulcw:Hedging."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:NoExchange a lulcw:ExchangeDirection ;
+    skos:inScheme lulcw:ExchangeDirectionScheme ;
+    skos:topConceptOf lulcw:ExchangeDirectionScheme ;
+    skos:prefLabel "no exchange"@en , "pas d'échange"@fr ;
+    rdfs:label "no exchange"@en , "pas d'échange"@fr ;
+    skos:definition "The source states that the surface water is independent of the unit, or that the unit does not seem influenced by it."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:NotQualified a lulcw:ExchangeDirection ;
+    skos:inScheme lulcw:ExchangeDirectionScheme ;
+    skos:topConceptOf lulcw:ExchangeDirectionScheme ;
+    skos:prefLabel "not qualified"@en , "non qualifié"@fr ;
+    rdfs:label "not qualified"@en , "non qualifié"@fr ;
+    skos:definition "The source names the section but gives no information on the exchange ('pas d'information / non qualifiable')."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:StatedFinding a lulcw:Hedging ;
+    skos:inScheme lulcw:HedgingScheme ;
+    skos:topConceptOf lulcw:HedgingScheme ;
+    skos:prefLabel "stated"@en , "affirmé"@fr ;
+    rdfs:label "stated"@en , "affirmé"@fr ;
+    skos:definition "The source states the finding without qualification."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:SurfaceToAquifer a lulcw:ExchangeDirection ;
+    skos:inScheme lulcw:ExchangeDirectionScheme ;
+    skos:topConceptOf lulcw:ExchangeDirectionScheme ;
+    skos:prefLabel "from surface water to the aquifer"@en , "des eaux de surface vers la nappe"@fr ;
+    rdfs:label "from surface water to the aquifer"@en , "des eaux de surface vers la nappe"@fr ;
+    skos:definition "The unit gains from the surface water: a losing river ('perdant'), canal seepage or irrigation return flow."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:SynthesisStatement a lulcw:EvidenceMethod ;
+    skos:inScheme lulcw:EvidenceMethodScheme ;
+    skos:topConceptOf lulcw:EvidenceMethodScheme ;
+    skos:prefLabel "synthesis"@en , "synthèse"@fr ;
+    rdfs:label "synthesis"@en , "synthèse"@fr ;
+    skos:definition "A qualification in a synthesis or characterisation document (an agency's groundwater-body sheet, a syndicate's description) that does not state the method behind it."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:UnitListedBySource a lulcw:UnitMapping ;
+    skos:inScheme lulcw:UnitMappingScheme ;
+    skos:topConceptOf lulcw:UnitMappingScheme ;
+    skos:prefLabel "listed by the source"@en , "listée par la source"@fr ;
+    rdfs:label "listed by the source"@en , "listée par la source"@fr ;
+    skos:definition "The source itself lists the BD LISA V3 codes (e.g. a groundwater-body sheet lists the units of its body)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:UnitMappedByName a lulcw:UnitMapping ;
+    skos:inScheme lulcw:UnitMappingScheme ;
+    skos:topConceptOf lulcw:UnitMappingScheme ;
+    skos:prefLabel "mapped by name"@en , "par le nom"@fr ;
+    rdfs:label "mapped by name"@en , "par le nom"@fr ;
+    skos:definition "The source names the unit in words or with a code absent from the release (e.g. 750PP02), and the graph maps it to BD LISA V3 units by that name; the mapping is a judgement, stated as such."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:UnitMapping a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "unit mapping"@en , "correspondance d'entité"@fr ;
+    skos:definition "How the units a statement is about were identified in the graph's BD LISA release."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:UnitMappingScheme a skos:ConceptScheme ;
+    rdfs:label "unit mappings"@en , "correspondances d'entité"@fr ;
+    skos:definition "Values of lulcw:UnitMapping."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:WaterBalanceEstimate a lulcw:EvidenceMethod ;
+    skos:inScheme lulcw:EvidenceMethodScheme ;
+    skos:topConceptOf lulcw:EvidenceMethodScheme ;
+    skos:prefLabel "water balance"@en , "bilan hydrologique"@fr ;
+    rdfs:label "water balance"@en , "bilan hydrologique"@fr ;
+    skos:definition "Inferred from a water balance or a volume study (inputs minus outputs), possibly as reported by another document."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:aboutGroundwaterBody a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:domain lulcw:ExchangeStatement ;
+    rdfs:range lulcw:GroundwaterBody ;
+    rdfs:label "about groundwater body"@en , "porte sur la masse d'eau souterraine"@fr ;
+    skos:definition "The WFD groundwater body an exchange statement is about, when the source states the exchange at that scale (e.g. a characterisation sheet's table of river exchanges)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:aboutSection a owl:ObjectProperty ;
+    rdfs:domain lulcw:ExchangeStatement ;
+    rdfs:range lulcw:RiverSection ;
+    rdfs:label "about section"@en , "porte sur le secteur"@fr ;
+    skos:definition "The river section an exchange statement is about, when the source delimits it."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:aboutUnit a owl:ObjectProperty ;
+    rdfs:domain lulcw:ExchangeStatement ;
+    rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "about unit"@en , "porte sur l'entité"@fr ;
+    skos:definition "A hydrogeological unit an exchange statement is about itself, as identified by lulcw:unitMapping: the source names this unit (a formation or a code mapped to exactly this unit, or a groundwater body made of this unit alone). A statement about an aggregate of several units uses lulcw:aggregateMemberUnit instead."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:aboutWatercourse a owl:ObjectProperty ;
+    rdfs:domain lulcw:ExchangeStatement ;
+    rdfs:range lulcw:Watercourse ;
+    rdfs:label "about watercourse"@en , "porte sur le cours d'eau"@fr ;
+    skos:definition "The watercourse an exchange statement is about. Without lulcw:aboutSection, the source does not delimit the stretch, and the statement is listed for the watercourse but never applied to a zone."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:aggregateMemberUnit a owl:ObjectProperty ;
+    rdfs:domain lulcw:ExchangeStatement ;
+    rdfs:range lulcw:HydrogeologicalUnit ;
+    rdfs:label "aggregate member unit"@en , "entité membre de l'agrégat"@fr ;
+    skos:definition "A unit that belongs to the aggregate an exchange statement is about (a groundwater body of several units, or a group the source names, such as 'the Quaternary formations'). Membership does not say that this unit takes part in the exchange: the statement is localised to the unit only by a separate, stated inference (lulcw:localizedStatement), never by membership alone."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:applicableStatement a owl:ObjectProperty ;
+    rdfs:range lulcw:ExchangeStatement ;
+    rdfs:label "applicable statement"@en , "énoncé applicable"@fr ;
+    skos:definition "An exchange statement about the association's unit itself (lulcw:aboutUnit) and about a section that holds reach pieces of the association's zone and watercourse (for a canal-unit association: a canal-return statement naming the unit). A statement measured at a site (lulcw:measuredAt) applies only to the associations of that site's zone. Statements about an aggregate are never applicable; see lulcw:localizedStatement."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:evidenceMethod a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:domain lulcw:ExchangeStatement ;
+    rdfs:range lulcw:EvidenceMethod ;
+    rdfs:label "has evidence method"@en , "a pour méthode de preuve"@fr ;
+    skos:definition "How the source obtained the finding (differential gauging, geochemical tracing, water balance, or a synthesis that does not say)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:exchangeDirection a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:domain lulcw:ExchangeStatement ;
+    rdfs:range lulcw:ExchangeDirection ;
+    rdfs:label "has exchange direction"@en , "a pour sens d'échange"@fr ;
+    skos:definition "The direction the statement gives, at its state or period."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:fluxM3s a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ExchangeStatement ;
+    rdfs:range xsd:double ;
+    rdfs:label "flux (m³/s)"@en , "flux (m³/s)"@fr ;
+    skos:definition "The exchange flux the statement gives, in cubic metres per second, positive in the stated direction."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:fluxUncertaintyM3s a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ExchangeStatement ;
+    rdfs:range xsd:double ;
+    rdfs:label "flux uncertainty (m³/s)"@en , "incertitude du flux (m³/s)"@fr ;
+    skos:definition "The plus-or-minus uncertainty the source gives for the flux, in cubic metres per second."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:hedging a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:domain lulcw:ExchangeStatement ;
+    rdfs:range lulcw:Hedging ;
+    rdfs:label "has hedging"@en , "a pour modalité"@fr ;
+    skos:definition "Whether the source states or hedges the finding."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:inDocument a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:domain lulcw:DocumentPassage ;
+    rdfs:range lulcw:Document ;
+    rdfs:label "in document"@en , "dans le document"@fr ;
+    skos:definition "The document a passage is taken from."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:localizedStatement a owl:ObjectProperty ;
+    rdfs:range lulcw:ExchangeStatement ;
+    rdfs:label "localised aggregate statement"@en , "énoncé d'agrégat localisé"@fr ;
+    skos:definition "Derived by a rule: a statement about an aggregate that the association's unit belongs to (lulcw:aggregateMemberUnit), localised to the unit because the association's river reaches (about a section that holds pieces of them in the zone) or canal reaches run on the unit's outcrop, where the unit is the member in contact with the surface water. A separate inference from lulcw:applicableStatement: it documents the exchange at the aggregate's scale and makes no response sign eligible until the localisation is reviewed (Gate 3)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:measuredAt a owl:ObjectProperty ;
+    rdfs:domain lulcw:ExchangeStatement ;
+    rdfs:range geo:Feature ;
+    rdfs:label "measured at"@en , "mesuré au point"@fr ;
+    skos:definition "The site (e.g. a piezometer) where the measurement behind an exchange statement was made, when the source names one. The statement is evidence at that site: it applies only to the associations of the site's own zone, and another well of the same unit does not inherit it."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:pageLabel a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:DocumentPassage ;
+    rdfs:range xsd:string ;
+    rdfs:label "page"@en , "page"@fr ;
+    skos:definition "The printed page (or sheet page) of a passage, as the document numbers it."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:quote a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:DocumentPassage ;
+    rdfs:range xsd:string ;
+    rdfs:label "quote"@en , "citation"@fr ;
+    skos:definition "A short verbatim quote of the passage, in the document's language."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:stateDescription a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ExchangeStatement ;
+    rdfs:range xsd:string ;
+    rdfs:label "state described"@en , "état décrit"@fr ;
+    skos:definition "The hydrological state or scale the statement holds for, in words (e.g. 'low flow, at the scale of the water body'; 'irrigation season, 11-13 September 2017')."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:statedMechanism a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:domain lulcw:ExchangeStatement ;
+    rdfs:range lulcw:Mechanism ;
+    rdfs:label "stated mechanism"@en , "mécanisme énoncé"@fr ;
+    skos:definition "The mechanism an exchange statement is about (river exchange, canal return flow, vertical leakage)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:unitAsNamed a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ExchangeStatement ;
+    rdfs:range xsd:string ;
+    rdfs:label "unit as named"@en , "entité telle que nommée"@fr ;
+    skos:definition "How the source names the unit or groundwater body the statement is about, verbatim."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
+
+lulcw:unitMapping a owl:FunctionalProperty , owl:ObjectProperty ;
+    rdfs:domain lulcw:ExchangeStatement ;
+    rdfs:range lulcw:UnitMapping ;
+    rdfs:label "has unit mapping"@en , "a pour correspondance d'entité"@fr ;
+    skos:definition "How the statement's units were identified in the BD LISA release."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .

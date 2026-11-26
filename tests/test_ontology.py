@@ -73,9 +73,12 @@ def test_modules_load(cat):
         assert (rdflib.URIRef(iri), RDF.type, OWL.Ontology) in g, f"{f.name}: not {iri}"
         missing = [str(o) for o in g.objects(None, OWL.imports) if str(o) not in cat]
         assert not missing, f"{f.name} imports IRIs outside the catalog: {missing}"
-    _, seen = closure("https://w3id.org/lulcw/meta", cat)
-    assert seen == set(cat), f"modules not reached from the meta-ontology: {set(cat) - seen}"
-    print(f"  1. {len(cat)} modules parse; the meta-ontology reaches all of them")
+    _, seen_meta = closure("https://w3id.org/lulcw/meta", cat)
+    _, seen_modular = closure("https://w3id.org/lulcw/modular", cat)
+    standalone_profiles = {i for i in cat if i.startswith("https://w3id.org/lulcw/profile/")}
+    reached = seen_meta | seen_modular | standalone_profiles
+    assert reached == set(cat), f"modules not reached from meta/modular: {set(cat) - reached}"
+    print(f"  1. {len(cat)} modules parse; meta ({len(seen_meta)}) + modular ({len(seen_modular)}) reach all of them")
 
 
 def test_metadata(cat):

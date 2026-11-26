@@ -204,6 +204,9 @@ values become "artesian, head unknown", or a corrected series replaces them.
 
 ## 7. E-mail to the supervisor for Gate 3 (content in plain words, draft of 2026-11-20)
 
+**Not sent (Assil, 2026-11-26): no e-mail to the professor for now; the public/private question waits until there is
+a demo.** Kept as a record.
+
 Read by Assil on 2026-11-20 evening; he edits it, then Claude writes the French version. Send it
 with `docs/gate3_decisions.md` (his answers), paper section 3 (`paper/sections/knowledge_graph.tex`,
 as PDF once built) and `docs/lu6_example.md`. Replaces the message of §4 (October, never sent).

@@ -104,6 +104,9 @@ e-mails, the AGROVOC gold set, the paywalled papers, the defence date.
   (nitrate stays future work; maybe a dashboard layer in R6); **one gold-set annotator for now**; the **four AGROVOC
   labelling rules** (the plant; one concept covering a mixture; "Autre" → group concept, broadMatch; ignore the
   paperwork part, none only when nothing is said about the land), written in `docs/notes/step12_ontology.md`.
+- Assil: **no e-mail to the professor** ("no need to send any email to my professor"); **public or private repository
+  decided later, once there is a demo** ("don't bother urself with this kinda questions"): do not ask again (Gate 3
+  point 17 and the professor's e-mail are off the waiting list).
 
 ### 2026-11-26 (Claude Opus 5.5, from ≈ 11:20 local time)
 - Assil: "there is a bug fix folder start with that if those are valid bugs then continue the work as planned";

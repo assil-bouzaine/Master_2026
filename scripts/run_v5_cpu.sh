@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Prepare v5 inputs or time Hybrid-GNN v2 on Colab (analysis plan v3, section 3).
-# The default only builds inputs. Run hgnn_smoke on remote compute, never the laptop.
+# Prepare v5 inputs, tune or time Hybrid-GNN v2 on Colab (analysis plan v3, section 3).
+# The default only builds inputs. Run hgnn_smoke and hgnn_tune on remote compute, never the laptop.
 set -u
 cd "$(dirname "$0")/.."
 export PFE_DATASET=v5 PYTHONIOENCODING=utf-8
@@ -33,6 +33,27 @@ hgnn_smoke() {
   return "$rc"
 }
 
+hgnn_tune() {
+  # Remote only: single-thread fits run side by side, and each main arm gets its own budget.
+  local arm pid rc=0
+  local -a pids=() arms=()
+  for arm in ${HGNN_TUNE_ARMS:-A B C D}; do
+    PFE_ALLOW_TRAIN=1 PFE_THREADS=1 "$PY" -m src.models.tune_hgnn \
+      --arm "$arm" --workers "${HGNN_TUNE_WORKERS:-6}" &
+    pids+=("$!")
+    arms+=("$arm")
+  done
+  for pid in "${!pids[@]}"; do
+    if wait "${pids[$pid]}"; then
+      echo "hgnn_tune arm ${arms[$pid]}: passed"
+    else
+      echo "hgnn_tune arm ${arms[$pid]}: failed"
+      rc=1
+    fi
+  done
+  return "$rc"
+}
+
 failed=()
 if [[ -n ${STATUS_FILE:-} ]]; then
   : > "$STATUS_FILE" || exit 1
@@ -45,12 +66,13 @@ for step in $STEPS; do
       "$PY" - <<'PY'
 from src.models import hybrid_gnn
 
-for arm in ("C", "D"):
+for arm in ("A", "B", "C", "D"):
     prep = hybrid_gnn.prepare(hybrid_gnn.build_parser().parse_args(["--arm", arm]))
     print(f"arm {arm}: pumping_record_start={prep['routed']['pumping_record_start']}", flush=True)
 PY
       ;;
     hgnn_smoke) hgnn_smoke ;;
+    hgnn_tune) hgnn_tune ;;
     *) echo "unknown step $step"; false ;;
   esac || {
     echo "!! step $step failed, continuing"

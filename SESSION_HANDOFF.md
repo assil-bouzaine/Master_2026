@@ -56,6 +56,15 @@ date.
 - R2.4 not started: Manouba from free data (GEE) + a sourced extent (Ferchichi et al. 2017 once downloaded), the TN
   KG, the reuse %, pyLODE, the persisted Oxigraph store; then OOPS! again and Gate R2.
 
+**VPN (installed 2026-11-26 ≈ 19:45 at Assil's request):** `openvpn` 2.7.9 + `networkmanager-openvpn` 1.12.5
+(pacman), NetworkManager profile **`Univ-Manouba`** imported from the university's `.ovpn` (certificate-based, server
+`vpn-21584.cck.rnu.tn:1194`; `data-ciphers-fallback=AES-256-CBC` added for the old server). Connect:
+`nmcli connection up Univ-Manouba`; disconnect: `nmcli connection down Univ-Manouba`. Use it only for Assil's
+browser downloads (publishers allow IP access for Springer and Wiley; Elsevier/ScienceDirect is **not** subscribed
+since 2017, so Chu 2026 and Jeong 2026 stay out of reach). The 23 open-access papers are blocked only for scripts,
+not by the network. Never connect it while a Colab job is being pulled. The sudo password Assil gave for this
+session is not stored anywhere (`sudo -k` run at the end).
+
 **Waiting for Assil:** the AGROVOC labels (`data/interim/agrovoc_gold_worksheet.xlsx`, dev codes first; `import`
 after each sitting); the 26 papers of `docs/papers_to_download.md`; later the Track 1 review and the alignment
 ledger review. The defence date when known.

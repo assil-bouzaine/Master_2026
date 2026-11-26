@@ -19,7 +19,10 @@ Checks:
    0, while gradient with respect to recharge gains is non-zero; post-2012 loss produces
    non-zero pumping gradients; a probe loss linear in the post-2012 predictions has the same
    pumping gradients when every imputed pumping week is multiplied by 100 (no path through the
-   centres or the kernel's memory: docs/v5_bugs_to_fix.md item 1); training values = inference values.
+   centres or the kernel's memory: docs/v5_bugs_to_fix.md item 1); training values = inference values;
+   the same with declared facility-year arrays (pump_gw_decl, pump_un_decl): scaling only their
+   imputed part moves no pumping gradient, and a well's weeks before its first declared week give
+   its delta no pumping gradient.
 4. Stage A has no delta parameter; stage B = the stage-A fit followed by a delta-only refinement
    (its first phase equals a stage-A run, every parameter but delta is unchanged after it, the
    held-out well's predictions equal stage A's: docs/v5_bugs_to_fix.md item 4); a held-out
@@ -466,10 +469,62 @@ def test_pumping_reliability():
     value_err = float((pred_train - pred_inf).abs().max())
     assert value_err < 1e-9, value_err
 
+    # 3e. Declared facility-years (Assil, 2026-11-26): the declared part comes from the routed arrays
+    # (pump_gw_decl, pump_un_decl), not from a date. Well 0: everything from 2012 declared; well 1: nothing
+    # declared before mid-2013 (a back-filled borehole); well 2: 85 % declared from 2012. Scaling only the
+    # imputed part (total - declared) by 100 must leave the pumping gradients unchanged, and a loss on
+    # well 1's weeks before its first declared week must give its delta no pumping gradient.
+    L = T + K - 1
+    stress_weeks = pd.date_range(end=weeks[-1], periods=L, freq="W-SUN")
+    share = np.zeros((N, L))
+    share[0, stress_weeks >= pd.Timestamp("2012-01-01")] = 1.0
+    share[1, stress_weeks >= pd.Timestamp("2013-06-30")] = 1.0
+    share[2, stress_weeks >= pd.Timestamp("2012-01-01")] = 0.85
+
+    def _with_declared(scale_imputed):
+        X = {k: torch.from_numpy(v.astype(np.float64)) for k, v in X_np.items()}
+        for key in ("pump_gw", "pump_un"):
+            decl = X[key] * torch.from_numpy(share)
+            X[key] = decl + (X[key] - decl) * scale_imputed
+            X[f"{key}_decl"] = decl
+        return X
+
+    def _grads(X, loss_fn):
+        net64.zero_grad()
+        pred_d, _, _, _ = net64.training_forward(X, obs_train, reliable_mask)
+        loss_fn(pred_d).backward()
+        return {(pn, ch, kind): prm.grad[:, sl].clone()
+                for pn, prm in (("theta_group", net64.theta_group), ("delta", net64.delta))
+                for ch in (p_idx, pu_idx)
+                for kind, sl in (("gain", slice(ch, ch + 1)), ("kernel", _kernel_slice(ch)))}, pred_d.detach()
+
+    probe_loss = lambda pr: (probe * pr).sum()  # noqa: E731
+    gd1, pd1 = _grads(_with_declared(1.0), probe_loss)
+    gd100, pd100 = _grads(_with_declared(100.0), probe_loss)
+    leak_d = max(float((gd1[k] - gd100[k]).abs().max()) for k in gd1)
+    size_d = max(float(gd1[k].abs().max()) for k in gd1)
+    assert size_d > 1e-6 and leak_d <= 1e-10 * max(1.0, size_d), (leak_d, size_d)
+    assert float((pd1 - pd100).abs().max()) > 1e-3
+    first_1 = int(np.argmax(np.asarray(weeks >= pd.Timestamp("2013-06-30"))))
+    well1_pre = torch.zeros((N, T), dtype=torch.float64)
+    well1_pre[1, :first_1] = 1.0
+    g_pre, _ = _grads(_with_declared(1.0), lambda pr: (well1_pre * (pr - y_target.double()) ** 2).sum())
+    pre_1 = max(float(g_pre[("delta", ch, kind)][1].abs().max())
+                for ch in (p_idx, pu_idx) for kind in ("gain", "kernel"))
+    assert pre_1 == 0.0, f"well 1's imputed weeks moved its pumping parameters: {pre_1}"
+    with torch.no_grad():
+        Xd = _with_declared(1.0)
+        pred_tr, _, _, _ = net64.training_forward(Xd, obs_train, reliable_mask)
+        net64.estimate_centres(Xd, obs_train)
+        value_err_d = float((pred_tr - net64(Xd)).abs().max())
+    assert value_err_d < 1e-9, value_err_d
+
     print(f"  3. pumping reliability ({H.RELIABLE_PUMPING_FROM}): pre-2012 pumping & pump_un gain/kernel "
           f"grads = 0.0 exactly, recharge grad = {pre_rch_grad:.3e}; post-2012 pumping grad = {post_pump_grad:.3e}; "
           f"imputed pumping x100 moves no pumping gradient (max change {leak:.1e} vs size {size:.2e}); "
-          f"training values = inference values ({value_err:.1e})")
+          f"training values = inference values ({value_err:.1e}); declared facility-years: imputed part x100 "
+          f"moves none ({leak_d:.1e} vs {size_d:.2e}), a back-filled well's early weeks give its delta "
+          f"pumping grad {pre_1:.1f}, values {value_err_d:.1e}")
 
 
 # ---------------------------------------------------------------------------
@@ -869,6 +924,21 @@ def test_encoder_never_sees_stress_and_v5_forward():
                         mean = arr[:, kw - 1:][:, train_w].mean(axis=1, keepdims=True)
                         assert np.allclose(pre, mean, rtol=1e-5, atol=1e-6), (arm, key)
                         assert (mean > 0).any(), (arm, key)
+                # Declared facility-years (plan v3 §3.6, Assil 2026-11-26): the declared part never exceeds
+                # the total, is 0 in the warm-up and before 2012, equals the total in 2019 (every groundwater
+                # volume declared that year) and falls short of it in 2012-2017 (the 2018-break back-fill).
+                wk = pd.DatetimeIndex(data["weeks"])
+                n_cut = int(np.sum(wk < pd.Timestamp(H.RELIABLE_PUMPING_FROM)))
+                y2019 = kw - 1 + np.flatnonzero(wk.year == 2019)
+                y1217 = kw - 1 + np.flatnonzero((wk.year >= 2012) & (wk.year <= 2017))
+                backfill = 0.0
+                for key in ("pump_gw", "pump_un"):
+                    tot, dec = data["X"][key], data["X"][f"{key}_decl"]
+                    assert (dec >= 0).all() and (dec <= tot + 1e-6).all(), (arm, key)
+                    assert float(np.abs(dec[:, : kw - 1 + n_cut]).max()) == 0.0, (arm, key)
+                    assert np.allclose(dec[:, y2019], tot[:, y2019], rtol=1e-5, atol=1e-6), (arm, key)
+                    backfill += float((tot[:, y1217] - dec[:, y1217]).sum())
+                assert backfill > 0.0, arm
                 summaries.append(
                     f"arm {arm}: {len(data['codes'])}x{len(data['weeks'])}, "
                     f"canal_mode={prep['routed']['canal_mode']}, max_centre_err={real_err:.2e}"

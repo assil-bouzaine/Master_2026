@@ -58,12 +58,16 @@ PyTorch module, keeping the exact additive decomposition and sign guarantees of
    spread ``enc + delta`` around the group mean with ``lam_shape`` on kernel and bucket raw
    parameters and ``lam_gain`` (< ``lam_shape``) on gain raw parameters.
 7. **Pumping reliability (§3.6):** pumping before ``RELIABLE_PUMPING_FROM`` (``"2012-01-01"``,
-   the first BNPE year) is imputed. In training each pumping stress is split into its declared
-   and imputed parts and the imputed part's response uses detached gains and kernels, so imputed
-   pumping trains no pumping parameter by any path: not on its own weeks, not through the
-   training-mean centres, and not through the eight-year kernel's memory at later weeks (fixed
-   2026-11-26, ``docs/v5_bugs_to_fix.md`` item 1: the first version detached only the pre-2012
-   weeks). Values are unchanged, and weather and the other drivers still learn from 2005–2011.
+   the first BNPE year) is imputed, and so are the facility-years the dataset flags ``imputed``
+   after it (BNPE's 2018 reporting break back-fills ≈ 15 % of the 2012-2017 groundwater volume;
+   Assil's decision of 2026-11-26). Each pumping stress is routed twice, total and declared part
+   (``pump_gw_decl``, ``pump_un_decl``). In training the imputed part's response uses detached
+   gains and kernels, and a well's pumping anomaly stays fixed in the loss until its first declared
+   week, so imputed pumping trains no pumping parameter by any path: not on its own weeks, not
+   through the training-mean centres, and not through the eight-year kernel's memory at later weeks
+   (fixed 2026-11-26, ``docs/v5_bugs_to_fix.md`` item 1: the first version detached only the
+   pre-2012 weeks). Values are unchanged, and weather and the other drivers still learn from
+   2005–2011.
    Weeks before the pumping record (2003 in v5, whose weather starts in 1990) are unknown, not
    zero: ``routed_v5_inputs`` leaves them NaN and ``hybrid_arrays`` fills them with the well's
    training mean, as it does for the canal series and the kernel's warm-up.
@@ -130,6 +134,9 @@ CHANNELS = RECHARGE_CHANNELS + NON_RECHARGE_CHANNELS
 N_RECHARGE = len(RECHARGE_CHANNELS)
 N_CHANNELS = len(CHANNELS)
 PUMPING_INDICES = tuple(CHANNELS.index(ch) for ch in PUMPING_CHANNELS)
+
+# The declared part of each pumping stress (plan v3 §3.6): only it may train a pumping parameter.
+DECLARED_INPUT = {"pumping": "pump_gw_decl", "pumping_unattributed": "pump_un_decl"}
 
 NON_RECHARGE_INPUT = {
     "pumping": "pump_gw",
@@ -497,59 +504,87 @@ class HybridGNN(nn.Module):
         S = torch.cat([R_scaled, other], dim=1)
         return S * mask[:, :, None]
 
-    def contributions(self, X, graph_data=None, *, theta=None, reliable_stress=None):
+    def contributions(self, X, graph_data=None, *, theta=None, declared=None):
         """Uncentred per-(well, channel) contributions ``c_ir(t)`` of shape ``(N, R, T)`` (m).
 
-        ``reliable_stress`` (training only, plan v3 §3.6): a boolean mask over the stress axis
-        ``(T + K - 1,)``, True on the weeks whose pumping is declared (from
-        ``RELIABLE_PUMPING_FROM``). See ``_declared_pumping_contributions``: the values are
-        unchanged, only the gradient paths from imputed pumping to the pumping parameters are cut.
+        ``declared`` (training only, plan v3 §3.6): the declared part ``(N, 2, T + K - 1)`` of the two
+        pumping stresses, from ``declared_pumping``. See ``_declared_pumping_contributions``: the
+        values are unchanged, only the gradient paths from imputed pumping to the pumping parameters
+        are cut.
         """
         params = self.parameters_physical(graph_data, theta=theta)
         S = self.stresses(X, params)
         k = self.kernels(params)
         gain = params.gain
-        if reliable_stress is None:
+        if declared is None:
             c = gain[..., None] * KN.causal_conv(S, k, method="fft")
         else:
-            c = self._declared_pumping_contributions(S, k, gain, reliable_stress)
+            c = self._declared_pumping_contributions(S, k, gain, declared)
         mask = self.channel_mask.to(dtype=c.dtype, device=c.device)
         return c * mask[:, :, None]
 
-    def _declared_pumping_contributions(self, S, k, gain, reliable_stress):
+    def declared_pumping(self, X, reliable_week_mask=None):
+        """Declared part ``(N, 2, T + K - 1)`` of the pumping stresses, or ``None`` (all declared).
+
+        Real data carry it as ``X["pump_gw_decl"]`` and ``X["pump_un_decl"]``: the volumes of the
+        facility-years the dataset does not flag ``imputed`` (``routed_v5_inputs``), zero in the
+        kernel's warm-up. ``reliable_week_mask`` (``(T,)``, True from ``RELIABLE_PUMPING_FROM``) also
+        zeroes every week before the cut; without declared arrays (synthetic tests) it alone defines
+        the declared part, from the total stresses.
+        """
+        idx = list(self.pumping_indices)
+        mask = self.channel_mask[:, idx].to(dtype=X["pump_gw"].dtype, device=X["pump_gw"].device)
+        if all(DECLARED_INPUT[ch] in X for ch in PUMPING_CHANNELS):
+            declared = torch.stack([X[DECLARED_INPUT[ch]] for ch in PUMPING_CHANNELS], dim=1)
+        elif reliable_week_mask is not None:
+            declared = torch.stack([X[NON_RECHARGE_INPUT[ch]] for ch in PUMPING_CHANNELS], dim=1)
+        else:
+            return None
+        if reliable_week_mask is not None:
+            rel = torch.as_tensor(reliable_week_mask, dtype=torch.bool, device=declared.device)
+            warm_up = torch.zeros(self.K - 1, dtype=torch.bool, device=rel.device)
+            declared = declared * torch.cat([warm_up, rel]).to(declared.dtype)
+        return declared * mask[:, :, None]
+
+    def declared_seen(self, declared):
+        """``(N, 2, T)``: True from the first output week whose kernel window holds declared pumping.
+
+        Before it the declared convolution is exactly zero, so the pumping term of that well and
+        channel is made of imputed pumping only."""
+        seen = torch.cumsum((declared != 0).to(torch.int64), dim=-1) > 0
+        return seen[..., self.K - 1:]
+
+    def _declared_pumping_contributions(self, S, k, gain, declared):
         """Contributions in which imputed pumping never trains a pumping parameter (plan v3 §3.6).
 
-        Each pumping channel's stress is split into its declared part (weeks where
-        ``reliable_stress`` is True) and its imputed part (the other weeks, including the kernel's
-        warm-up padding). The declared part is convolved with the trainable kernel and scaled by the
-        trainable gain; the imputed part is convolved with a detached kernel and scaled by a detached
-        gain. The convolution is linear, so the sum equals the plain contribution (up to FFT
-        round-off), but no gradient reaches a pumping gain or kernel from an imputed week by any
-        path: not on the imputed weeks themselves, not through the training-mean centres, and not
-        through the kernel's memory of imputed weeks at later, declared weeks (with an eight-year
-        kernel the 2012-2014 contributions still carry 2005-2011 pumping). The other channels are
-        untouched, so weather and rivers still learn from every training week.
+        Each pumping channel's stress is split into its declared part (``declared``) and its imputed
+        part (the rest, including the kernel's warm-up padding). The declared part is convolved with
+        the trainable kernel and scaled by the trainable gain; the imputed part is convolved with a
+        detached kernel and scaled by a detached gain. The convolution is linear, so the sum equals the
+        plain contribution (up to FFT round-off), but no gradient reaches a pumping gain or kernel from
+        imputed pumping by any path: not on its own weeks, not through the training-mean centres, and
+        not through the kernel's memory of it at later weeks (with an eight-year kernel the 2012-2014
+        contributions still carry 2005-2011 pumping). The other channels are untouched, so weather and
+        rivers still learn from every training week.
         """
-        rel = torch.as_tensor(reliable_stress, dtype=torch.bool, device=S.device)
-        if rel.shape != (S.shape[-1],):
-            raise ValueError(f"reliable_stress must have shape ({S.shape[-1]},), got {tuple(rel.shape)}")
-        R = S.shape[1]
         idx = torch.tensor(self.pumping_indices, dtype=torch.long, device=S.device)
-        is_pump = torch.zeros(R, dtype=torch.bool, device=S.device)
-        is_pump[idx] = True
-        declared = rel.to(S.dtype)
-        # Declared stress in the main batch (pumping channels keep only their declared weeks) and
-        # the imputed pumping stress as extra channels with detached kernels: one batched FFT.
-        keep = torch.where(is_pump[:, None], declared[None, :], torch.ones_like(declared)[None, :])
-        S_all = torch.cat([S * keep[None], S[:, idx] * (1.0 - declared)], dim=1)
+        if declared.shape != (S.shape[0], len(self.pumping_indices), S.shape[-1]):
+            raise ValueError(f"declared must have shape {(S.shape[0], len(self.pumping_indices), S.shape[-1])}, "
+                             f"got {tuple(declared.shape)}")
+        declared = declared.to(dtype=S.dtype)
+        # Declared stress in the main batch (the pumping channels keep only their declared part), the
+        # imputed pumping stress as extra channels with detached kernels: one batched FFT.
+        S_main = S.index_copy(1, idx, declared)
+        S_all = torch.cat([S_main, S[:, idx] - declared], dim=1)
         k_all = torch.cat([k, k[:, idx].detach()], dim=1)
         conv = KN.causal_conv(S_all, k_all, method="fft")
+        R = S.shape[1]
         conv_main, conv_imputed = conv[:, :R], conv[:, R:]
-        # Before the first declared stress week, the declared convolution is exactly zero; zero it
+        # Before a well's first declared week the declared convolution is exactly zero; zero it
         # explicitly so FFT round-off cannot carry a gradient from those weeks either.
-        seen = (torch.cumsum(rel.to(torch.int64), 0) > 0)[self.K - 1:].to(S.dtype)        # (T,)
-        scale = torch.where(is_pump[:, None], seen[None, :], torch.ones_like(seen)[None, :])
-        c = gain[..., None] * (conv_main * scale[None])
+        seen = self.declared_seen(declared).to(conv.dtype)                              # (N, 2, T)
+        conv_main = conv_main.index_copy(1, idx, conv_main[:, idx] * seen)
+        c = gain[..., None] * conv_main
         return c.index_add(1, idx, gain[:, idx].detach()[..., None] * conv_imputed)
 
     def residual(self, graph_data=None):
@@ -618,37 +653,28 @@ class HybridGNN(nn.Module):
     def training_forward(self, X, obs_train_mask, reliable_week_mask=None, graph_data=None):
         """Training forward pass with differentiable centring and declared-only pumping gradients.
 
-        Runs ``HeteroEncoder``, ``bucket``, and ``causal_conv`` once per epoch. ``reliable_week_mask``
-        (``(T,)``, True from ``RELIABLE_PUMPING_FROM``) marks the weeks with declared pumping; the
-        ``K - 1`` warm-up weeks before the panel are never declared. Two rules, plan v3 §3.6:
-        (1) on the weeks before the cut, the pumping anomaly (contribution minus its centre) enters
-        the loss as a fixed value, so those heads train no pumping parameter; (2) on the declared
-        weeks, the pumping contributions come from ``_declared_pumping_contributions``, so imputed
-        pumping reaches no pumping gain or kernel through the training-mean centre or through the
-        kernel's memory of the imputed weeks. Values are unchanged. ``None`` treats all pumping as
-        declared (a synthetic world whose pumping is known).
+        Runs ``HeteroEncoder``, ``bucket``, and ``causal_conv`` once per epoch. The declared part of
+        the pumping stresses (``declared_pumping``: facility-years not flagged ``imputed``, and nothing
+        before ``reliable_week_mask``'s cut) decides what may train a pumping parameter, plan v3 §3.6:
+        (1) until a well's first declared week, its pumping anomaly (contribution minus centre) enters
+        the loss as a fixed value, so those heads train no pumping parameter, not even through the
+        centre; (2) afterwards the pumping contributions come from ``_declared_pumping_contributions``,
+        so imputed pumping reaches no pumping gain or kernel through the training-mean centre or
+        through the kernel's memory. Values are unchanged. Without declared arrays and without a mask,
+        all pumping counts as declared (a synthetic world whose pumping is known).
 
         Returns ``(pred, c, dev, eff_delta)``.
         """
         theta, dev, eff_delta = self.raw_components(graph_data)
-        rel = None
-        reliable_stress = None
-        if reliable_week_mask is not None:
-            rel = torch.as_tensor(reliable_week_mask, dtype=torch.bool, device=self.centres.device)
-            warm_up = torch.zeros(self.K - 1, dtype=torch.bool, device=rel.device)
-            reliable_stress = torch.cat([warm_up, rel])
-        c = self.contributions(X, graph_data, theta=theta, reliable_stress=reliable_stress)
+        declared = self.declared_pumping(X, reliable_week_mask)
+        c = self.contributions(X, graph_data, theta=theta, declared=declared)
         m = self.centres_from_current(c, obs_train_mask)
         anomaly = c - m[:, :, None]
-        if rel is not None:
-            # On the weeks before the cut, the heads responded to imputed pumping: there the whole
-            # pumping anomaly (contribution minus centre) enters the loss as a fixed value, so those
-            # weeks move no pumping parameter, not even through the centre (plan v3 §3.6). On the
-            # declared weeks it trains through its declared part only (_declared_pumping_contributions).
-            is_pump = torch.zeros(anomaly.shape[1], dtype=torch.bool, device=anomaly.device)
-            is_pump[list(self.pumping_indices)] = True
-            frozen = is_pump[:, None] & ~rel[None, :]                                  # (R, T)
-            anomaly = torch.where(frozen[None], anomaly.detach(), anomaly)
+        if declared is not None:
+            idx = torch.tensor(self.pumping_indices, dtype=torch.long, device=anomaly.device)
+            frozen = torch.zeros(anomaly.shape, dtype=torch.bool, device=anomaly.device)
+            frozen = frozen.index_copy(1, idx, ~self.declared_seen(declared))
+            anomaly = torch.where(frozen, anomaly.detach(), anomaly)
         pred = anomaly.sum(dim=1)
         res = self.residual(graph_data)
         if res is not None:
@@ -756,7 +782,8 @@ def routed_v5_inputs(
 
     Produces:
     - ``rain_<ch>``, ``ETP_<ch>``, ``has_<ch>`` for each recharge channel in ``RECHARGE_CHANNELS``;
-    - ``pump_gw``, ``pump_un``, ``has_pumping``, ``has_pumping_unattributed``;
+    - ``pump_gw``, ``pump_un``, ``has_pumping``, ``has_pumping_unattributed``, and their declared parts
+      ``pump_gw_decl``, ``pump_un_decl`` (facility-years not flagged ``imputed``; plan v3 §3.6);
     - ``river``, ``has_river``;
     - ``canal``, ``has_canal`` using each canal-edge well's river-basin series from
       ``canal_basins_weekly.parquet`` (nearest main river via ``canal_edge_well_basins``),
@@ -831,15 +858,20 @@ def routed_v5_inputs(
     pts = pd.read_parquet(DATASET_DIR / "pumping_points.parquet")
     pe = edges[edges["relation"].isin(("pumping", "pumping_unattributed"))]
     fac = sorted(pe["src"].unique())
+    # The declared part of each volume (facility-years not flagged `imputed`) is routed the same way:
+    # only it may calibrate a pumping response (plan v3 §3.6); before the record it is 0, not unknown.
     if fac:
         table = RT.facility_volumes(weeks, fac, reconstruction)
         vol = table.reindex(index=weeks, columns=fac).fillna(0.0).to_numpy(dtype=float).T
         vol[:, np.asarray(weeks < record_start)] = np.nan
+        declared = RT.facility_volumes(weeks, fac, reconstruction, declared_only=True)
+        vol_decl = declared.reindex(index=weeks, columns=fac).fillna(0.0).to_numpy(dtype=float).T
     else:
-        vol = np.zeros((0, T), dtype=float)
+        vol = vol_decl = np.zeros((0, T), dtype=float)
     for name, rel in (("pump_gw", "pumping"), ("pump_un", "pumping_unattributed")):
         Wp = RT._matrix(edges, rel, codes, fac) if fac else np.zeros((N, 0), dtype=float)
         out[name] = Wp @ vol if fac else np.zeros((N, T), dtype=float)
+        out[f"{name}_decl"] = Wp @ vol_decl if fac else np.zeros((N, T), dtype=float)
         out[f"has_{rel}"] = Wp.sum(axis=1) > 0 if fac else np.zeros(N, dtype=bool)
 
     # 3. River exchange (weighted mean of log(1 + discharge)).
@@ -971,6 +1003,21 @@ def hybrid_arrays(
         np.asarray(routed["pump_un"])[idx] / STRESS_SCALE["pump_un"],
         has["pumping_unattributed"],
         non_negative=True,
+    )
+
+    def _pad_declared(arr, active, total):
+        """Declared part of a pumping stress: zero in the warm-up (nothing declared there), never above
+        the padded total (the same facilities' volumes minus the imputed ones)."""
+        arr = np.clip(np.nan_to_num(np.asarray(arr, dtype=np.float64), nan=0.0), 0.0, None)
+        padded = np.concatenate([np.zeros((arr.shape[0], kernel_weeks - 1)), arr], axis=1)
+        padded = np.where(active[:, None], padded, 0.0).astype(np.float32)
+        return np.minimum(padded, total)
+
+    X["pump_gw_decl"] = _pad_declared(
+        np.asarray(routed["pump_gw_decl"])[idx] / STRESS_SCALE["pump_gw"], has["pumping"], X["pump_gw"]
+    )
+    X["pump_un_decl"] = _pad_declared(
+        np.asarray(routed["pump_un_decl"])[idx] / STRESS_SCALE["pump_un"], has["pumping_unattributed"], X["pump_un"]
     )
 
     riv_raw = np.asarray(routed["river"])[idx] / STRESS_SCALE["river"]
@@ -1534,11 +1581,13 @@ def prepare(args, *, error=None, verbose=True):
         [f"rain_{ch}/1" for ch in RECHARGE_CHANNELS]
         + [f"ETP_{ch}/1" for ch in RECHARGE_CHANNELS]
         + [f"{k}/{STRESS_SCALE[k]:g}" for k in ("pump_gw", "pump_un", "river_c", "river", "canal_c", "canal")]
+        + [f"{k}_decl/{STRESS_SCALE[k]:g}" for k in ("pump_gw", "pump_un")]
     )
     fp_extra = {
         "model": "hybrid_gnn_v2",
         "reliable_pumping_from": RELIABLE_PUMPING_FROM,
         "pumping_record_start": routed["pumping_record_start"],
+        "pumping_declared": "facility-years not flagged imputed, from reliable_pumping_from",
         "canal_mode": routed["canal_mode"],
         "river_constrained_wells": sorted(set(data["codes"]) & river_c),
         "canal_constrained_wells": sorted(set(data["codes"]) & canal_c),

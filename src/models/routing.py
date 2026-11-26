@@ -136,11 +136,14 @@ def pumping_table(reconstruction=1):
     return pd.read_parquet(path)
 
 
-def facility_volumes(weeks, facilities=None, reconstruction=1):
+def facility_volumes(weeks, facilities=None, reconstruction=1, declared_only=False):
     """Weekly groundwater volumes (thousand m3/week), as a weeks x facility table.
 
     Reconstructions 1 and 3 re-spread drinking water seasonally; reconstruction 2 keeps the
     dataset's flat drinking-water profile. Pumping stresses are weighted sums of the columns.
+    `declared_only` keeps only the facility-weeks the dataset does not flag `imputed` (the others
+    count 0): the declared part of each volume, which alone may calibrate a pumping response in
+    Hybrid-GNN v2 (docs/analysis_plan_v3.md §3.6). The default leaves every earlier use unchanged.
     """
     pw = pumping_table(reconstruction)
     pts = pd.read_parquet(DATASET_DIR / "pumping_points.parquet")
@@ -148,6 +151,8 @@ def facility_volumes(weeks, facilities=None, reconstruction=1):
     if facilities is None:
         facilities = sorted(pts.loc[pts["source"] == "groundwater", "code_ouvrage"].unique())
     sp = sp[sp["code_ouvrage"].isin(facilities)]
+    if declared_only:
+        sp = sp[~sp["imputed"].astype(bool)]
     return (sp.groupby(["week", "code_ouvrage"])["volume_m3"].sum().unstack("code_ouvrage")
             .reindex(index=pd.DatetimeIndex(weeks), columns=list(facilities)).fillna(0.0) / 1e3)
 

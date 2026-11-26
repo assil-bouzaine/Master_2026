@@ -270,6 +270,34 @@ p4_wait
     print("  7. Phase 4 waits after four jobs by default and after two with a size-two batch.")
 
 
+def test_v5_pins(root):
+    """Install the v5 encoder dependency on Colab and fail before dispatch if it cannot import."""
+    code = root / "code"
+    code.mkdir(parents=True)
+    (code / "requirements.txt").write_text("numpy==1.0\ntorch_geometric==2.8.1\n")
+    output = [subprocess.CompletedProcess([], 0, "", ""),
+              subprocess.CompletedProcess([], 0, "numpy==1.0\ntorch_geometric==2.8.1\n", "")]
+    with (patch.dict(os.environ, {"PIP_ONLINE": "1"}),
+          patch.multiple(remote, CODE=code, PINS=root / "pins", DATASET="v5", CHECKED=["numpy"]),
+          patch.object(remote, "log"), patch.object(subprocess, "run", side_effect=output) as run):
+        remote.install()
+        install, check = run.call_args_list
+        assert install.args[0][-2:] == ["numpy==1.0", "torch_geometric==2.8.1"]
+        assert "import torch, torch_geometric, src.models.hybrid_gnn" in check.args[0][2]
+        assert check.kwargs["env"]["PFE_DATASET"] == "v5"
+    output[1] = subprocess.CompletedProcess([], 1, "numpy==1.0\n", "no torch_geometric")
+    with (patch.dict(os.environ, {"PIP_ONLINE": "1"}),
+          patch.multiple(remote, CODE=code, PINS=root / "pins", DATASET="v5", CHECKED=["numpy"]),
+          patch.object(remote, "log"), patch.object(subprocess, "run", side_effect=output)):
+        try:
+            remote.install()
+        except SystemExit as error:
+            assert "torch_geometric missing" in str(error) and "no torch_geometric" in str(error)
+        else:
+            raise AssertionError("v5 must fail before dispatch when PyG is missing")
+    print(" 10. v5 Colab installs the PyG pin and checks torch, PyG and Hybrid-GNN before dispatch.")
+
+
 def test_slim_bundle(root):
     full = local.bundle(root / "full") / "cpu_bundle.zip"
     slim = local.bundle(root / "slim", slim=True) / "cpu_bundle.zip"
@@ -373,6 +401,7 @@ def main():
         test_parallel_batches()
         test_slim_bundle(root / "bundles")
         test_gpu_bundle(root / "gpu")
+        test_v5_pins(root / "v5_pins")
     print("test_colab_cpu: all checks passed")
 
 

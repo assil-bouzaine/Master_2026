@@ -1,4 +1,7 @@
-"""Run the CPU baselines of dataset v4 as a Kaggle kernel (CPU only, no internet).
+"""Run dataset-selected CPU steps on Kaggle or Colab (analysis plans v2 §5 and v3 §3).
+
+PFE_DATASET selects the dispatcher, results and resume paths; unset means v4.
+The v5 path installs and checks PyG on Colab for the Hybrid-GNN smoke run.
 
 Pushed by scripts/kaggle_cpu.py (docs/gpu_howto.md, "Kaggle CPU"). On Kaggle it:
 1. unpacks the code + data bundle (dataset <user>/pfe-v4-cpu-bundle, cpu_bundle.zip) into
@@ -34,6 +37,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 KERNEL_ENV = {}
+DATASET = os.environ.get("PFE_DATASET", "v4")
+DISPATCHER = f"scripts/run_{DATASET}_cpu.sh"
 STEPS = os.environ.get("STEPS", "naive lgbm lgbm_final lgbm_regimes pastas wellmodel")
 BUDGET_H = float(os.environ.get("BUDGET_H", 11.0))
 SYNC_S = int(os.environ.get("SYNC_S", 600))
@@ -41,8 +46,8 @@ INPUT = Path(os.environ.get("KAGGLE_INPUT", "/kaggle/input"))
 WORK = Path(os.environ.get("KAGGLE_WORK", "/kaggle/working"))
 CODE = Path(os.environ.get("PFE_CODE", "/tmp/pfe"))
 PINS = Path(os.environ.get("PIN_TARGET", "/tmp/pins"))
-RESULTS = CODE / "results" / "v4"
-OUT = WORK / "results_cpu" / "v4"
+RESULTS = CODE / "results" / DATASET
+OUT = WORK / "results_cpu" / DATASET
 LOG = WORK / "run_kaggle_cpu.log"
 STATE = Path(os.environ.get("PFE_STATE", "/tmp/pfe_state"))   # earlier results, kept out of the output
 T0 = time.time()                                             # reset after restore(): see save()
@@ -72,7 +77,7 @@ def unpack():
         with zipfile.ZipFile(zips[0]) as z:
             z.extractall(CODE)
     else:
-        trees = [p.parents[1] for p in INPUT.rglob("scripts/run_v4_cpu.sh")]
+        trees = [p.parents[1] for p in INPUT.rglob(DISPATCHER)]
         if not trees:
             sys.exit(f"no bundle under {INPUT}")
         shutil.copytree(trees[0], CODE, dirs_exist_ok=True)
@@ -84,7 +89,8 @@ def restore():
     for z in INPUT.rglob("state.zip"):
         with zipfile.ZipFile(z) as f:
             f.extractall(STATE)
-    for d in [STATE / "results_cpu" / "v4", *INPUT.rglob("results_cpu/v4"), WORK / "results_cpu" / "v4"]:
+    for d in [STATE / "results_cpu" / DATASET, *INPUT.rglob(f"results_cpu/{DATASET}"),
+              WORK / "results_cpu" / DATASET]:
         if d.is_dir() and any(d.iterdir()):
             shutil.copytree(d, RESULTS, dirs_exist_ok=True)
             log(f"restored earlier results from {d}")
@@ -97,7 +103,7 @@ def pythonpath():
 def shell_env(status_file):
     """Apply the staged overrides to the dispatcher and set its runner-controlled values."""
     env = {**os.environ, **KERNEL_ENV}
-    return dict(env, PY=sys.executable, PYTHONPATH=pythonpath(), PYTHONIOENCODING="utf-8",
+    return dict(env, PFE_DATASET=DATASET, PY=sys.executable, PYTHONPATH=pythonpath(), PYTHONIOENCODING="utf-8",
                 PYTHONUNBUFFERED="1", JOBS=str(len(os.sched_getaffinity(0))), STATUS_FILE=str(status_file))
 
 
@@ -112,6 +118,9 @@ def install():
     if online:
         pins = read_pins()
         packages = [f"{name}=={pins[name]}" for name in PINNED if name in pins]
+        if DATASET == "v5":
+            # Colab supplies torch. Install PyG and its dependencies for the v3 parameter encoder.
+            packages.append(f"torch_geometric=={pins['torch_geometric']}")
         options = ["--target", str(PINS), "--upgrade", *packages]
         installed = f"{len(packages)} PyPI packages"
     else:
@@ -128,11 +137,15 @@ def install():
     code = "import importlib; " + "; ".join(
         f"print('{m}==' + importlib.import_module('{m}').__version__)" for m in CHECKED)
     code += "; import src.models.naive, src.models.lgbm, src.models.pastas_baseline"
+    if DATASET == "v5":
+        code += "; import torch, torch_geometric, src.models.hybrid_gnn; print('torch_geometric==' + torch_geometric.__version__)"
     r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, cwd=CODE,
-                       env=dict(os.environ, PYTHONPATH=pythonpath(), PFE_DATASET="v4"))
+                       env=dict(os.environ, PYTHONPATH=pythonpath(), PFE_DATASET=DATASET))
     got = dict(re.findall(r"^(\w+)==(\S+)$", r.stdout, flags=re.M))
     bad = [f"{m} {got.get(m, 'missing')} (pin {pins.get(m)})" for m in CHECKED
            if got.get(m) != pins.get(m)]
+    if DATASET == "v5" and got.get("torch_geometric") != pins["torch_geometric"]:
+        bad.append(f"torch_geometric {got.get('torch_geometric', 'missing')} (pin {pins['torch_geometric']})")
     if r.returncode or bad:
         sys.exit(f"pinned versions not in use: {', '.join(bad)}\n{r.stderr}")
     log(f"{installed} installed; versions = requirements.txt for {', '.join(CHECKED)}")
@@ -174,8 +187,8 @@ def sync_loop(stop):
 
 
 def run(steps, env):
-    """run_v4_cpu.sh in its own process group, output to stdout and LOG; stopped at DEADLINE."""
-    p = subprocess.Popen(["bash", "scripts/run_v4_cpu.sh"], cwd=CODE, env=dict(env, STEPS=steps),
+    """Run the dataset's dispatcher in its own process group; stop at DEADLINE."""
+    p = subprocess.Popen(["bash", DISPATCHER], cwd=CODE, env=dict(env, STEPS=steps),
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                          start_new_session=True)
     budget_stop = threading.Event()

@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import shlex
 import subprocess
 import tarfile
@@ -255,6 +256,36 @@ def test_push_gpu(root):
     print("  3. GPU rejects missing, stale and mismatched bundles and launches a verified bundle.")
 
 
+def test_v5_cpu(root):
+    """Carry the v5 choice from push to the launcher and back through CPU pull."""
+    fake = FakeColab()
+
+    def bundle_v5(stage, slim, dataset):
+        assert dataset == "v5" and slim
+        return tiny_bundle(stage, slim=False)
+
+    with (patch.object(cli, "run_colab", fake), patch.object(cli, "process_start", return_value=None),
+          patch.object(cli.kaggle_cpu, "bundle", side_effect=bundle_v5) as bundle):
+        run("push-cpu", "v5-smoke", "--dataset", "v5", "--steps", "hgnn_smoke", "--budget", "1")
+        stage = cli.STAGE / "v5-smoke"
+        bundle.assert_called_once_with(stage=stage, slim=True, dataset="v5")
+        launcher = (stage / "launch.py").read_text()
+        assert "'PFE_DATASET': 'v5'" in launcher and "'STEPS': 'hgnn_smoke'" in launcher
+        assert "'BUDGET_H': '1.0'" in launcher
+        compile(launcher, "v5-launcher", "exec")
+        job = json.loads((stage / "job.json").read_text())
+        assert job["env"]["PFE_DATASET"] == "v5"
+        fake.archive = make_tgz("work/run_kaggle_cpu.log")
+        with patch.object(cli.kaggle_cpu, "pull") as shared_pull:
+            run("pull", "v5-smoke")
+            assert shared_pull.call_args.kwargs["dataset"] == "v5"
+            assert shared_pull.call_args.kwargs["stage"] == stage
+    # Only inspect the smoke launcher's text. Never execute the smoke step locally.
+    pattern = cli.RUNNER_PATTERNS["cpu"]
+    assert all(re.search(pattern, f"bash scripts/run_{ds}_cpu.sh") for ds in ("v4", "v5"))
+    print("  6. v5 CPU push records dataset and steps; pull selects v5 and both dispatchers are recognised.")
+
+
 def make_tgz(member=None):
     stream = io.BytesIO()
     with tarfile.open(fileobj=stream, mode="w:gz") as archive:
@@ -352,6 +383,7 @@ def main():
         test_push_gpu(root / "gpu")
         test_pull_stop()
         test_wrapper(root)
+        test_v5_cpu(root / "v5")
     print("test_colab_cli: all checks passed")
 
 

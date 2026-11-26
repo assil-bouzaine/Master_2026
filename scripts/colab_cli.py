@@ -2,6 +2,7 @@
 
 Keep the VM active with one blocking Colab cell per job. Save the machine profile
 for the Phase 4 contrasts and pull the results before releasing the runtime.
+CPU jobs can select v5 for the Hybrid-GNN smoke run (analysis plan v3 §3).
 """
 import argparse
 import fcntl
@@ -39,7 +40,7 @@ PULL = {"cpu": ("/content", "work"), "gpu": ("/content/persist", "results_gpu")}
 # Bracket one letter so pgrep does not match the SSH shell carrying the pattern.
 RUNNER_PATTERNS = {
     "cpu": ("unzip -oq /content/input/[c]pu_bundle.zip|/content/pfe/scripts/[k]aggle_cpu_run.py"
-            "|bash scripts/[r]un_v4_cpu.sh"),
+            "|bash scripts/[r]un_v[45]_cpu.sh"),
     "gpu": ("unzip -oq /content/[g]pu_bundle.zip|/content/pfe/scripts/[c]olab_run.py"
             "|bash scripts/[r]un_gpu.sh"),
 }
@@ -276,14 +277,19 @@ def start_job(name, stage, kind, steps, env, bundle_md5, export_metadata=None):
     print(f"Started {kind} job for {name} (local PID {process.pid}).")
 
 
-def push_cpu(name, stage, steps, budget, assignments, full, export_override=None):
+def push_cpu(name, stage, steps, budget, assignments, full, export_override=None, dataset="v4"):
+    """Stage CPU inputs and the dataset selection for v4 or the v5 smoke run (§3)."""
+    if dataset == "v5" and export_override:
+        sys.exit("Export overrides are not supported for dataset v5 yet.")
     require_idle(name, stage)
     overrides = kaggle_cpu.parse_env(assignments)
     if "PIP_ONLINE" in overrides:
         sys.exit("--env cannot override PIP_ONLINE: the runner controls it")
     bundle_options = {"export_override": export_override} if export_override else {}
-    dataset = kaggle_cpu.bundle(stage=stage, slim=not full, **bundle_options)
-    bundle, state = dataset / "cpu_bundle.zip", dataset / "state.zip"
+    if dataset != "v4":
+        bundle_options["dataset"] = dataset
+    bundle_dir = kaggle_cpu.bundle(stage=stage, slim=not full, **bundle_options)
+    bundle, state = bundle_dir / "cpu_bundle.zip", bundle_dir / "state.zip"
     export_metadata = {}
     with zipfile.ZipFile(bundle, "a", zipfile.ZIP_DEFLATED) as archive:
         archive.write(ROOT / RUNNER, RUNNER)
@@ -302,7 +308,7 @@ def push_cpu(name, stage, steps, budget, assignments, full, export_override=None
     upload(name, state, "/content/input/state.zip")
     env = dict(KAGGLE_INPUT="/content/input", KAGGLE_WORK=CPU, PFE_CODE="/content/pfe",
                PIN_TARGET="/content/pins", PFE_STATE="/content/pfe_state", PIP_ONLINE="1",
-               BUDGET_H=str(budget), SYNC_S="300", **overrides)
+               PFE_DATASET=dataset, BUDGET_H=str(budget), SYNC_S="300", **overrides)
     start_job(name, stage, "cpu", steps, env, digest, export_metadata=export_metadata)
 
 
@@ -400,7 +406,10 @@ def pull(name, stage, exclude=()):
         captured = io.StringIO()
         try:
             with redirect_stdout(captured):
-                kaggle_cpu.pull(stage=stage, download=download)
+                # CPU imports do not use colab_pull.VERSIONS (the GPU importer is still v3/v4).
+                dataset = job["env"].get("PFE_DATASET", "v4")
+                options = {"dataset": dataset} if dataset != "v4" else {}
+                kaggle_cpu.pull(stage=stage, download=download, **options)
         except SystemExit as error:
             if error.code != 1:
                 raise
@@ -445,6 +454,7 @@ def main(argv=None):
         elif action in ("push-cpu", "push-gpu"):
             commands.add_argument("--steps", required=True)
             if action == "push-cpu":
+                commands.add_argument("--dataset", choices=("v4", "v5"), default="v4")
                 commands.add_argument("--env", metavar="KEY=VALUE", nargs="+", action="extend", default=[])
                 commands.add_argument("--export-override", action="append", default=[], metavar="POLICY=PATH",
                                       help="bundle a chosen graph export folder (repeatable)")
@@ -477,7 +487,7 @@ def main(argv=None):
             up(args.name, stage, args.runtime, args.require_cpu_model)
         elif args.action == "push-cpu":
             push_cpu(args.name, stage, args.steps, args.budget, args.env, args.full,
-                     export_override=kaggle_cpu.parse_export_overrides(args.export_override))
+                     export_override=kaggle_cpu.parse_export_overrides(args.export_override), dataset=args.dataset)
         elif args.action == "push-gpu":
             push_gpu(args.name, stage, args.steps, args.dataset)
         elif args.action == "pull":

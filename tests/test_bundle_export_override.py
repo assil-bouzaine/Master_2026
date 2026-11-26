@@ -92,6 +92,13 @@ def test_refusals(root, frozen):
     refuses(lambda: kaggle_cpu.bundle(stage, slim=True, export_override={"main": inside_stage}),
             "overlaps the bundle staging folder")
     assert (inside_stage / "manifest.json").read_bytes() == FROZEN["manifest.json"]
+    refuses(lambda: kaggle_cpu.bundle(stage, dataset="v5", export_override={"main": frozen}),
+            "Export overrides", "v5")
+    with patch.object(colab_cli, "require_idle") as idle:
+        refuses(lambda: colab_cli.push_cpu("v5", stage, "prepare_check", 1, [], False,
+                                          dataset="v5", export_override={"main": frozen}),
+                "Export overrides", "v5")
+        idle.assert_not_called()
     print("  2. Refused an unknown policy, each missing required file, and an input inside staging.")
 
 

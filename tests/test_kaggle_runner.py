@@ -268,6 +268,137 @@ def test_bundle(root):
     print("  6. bundle: routed inputs, facts, regime links and twin base loaded from the archive")
 
 
+def test_v5_bundle(root):
+    """Build only inputs from an unpacked v5 archive, without training permission."""
+    started = time.perf_counter()
+    archive = local.bundle(root / "stage", slim=True, dataset="v5") / "cpu_bundle.zip"
+    extracted = root / "extracted"
+    with zipfile.ZipFile(archive) as z:
+        names = z.namelist()
+        assert any(name.startswith("data/processed/dataset_v5/") for name in names)
+        assert "data/processed/kg/export_v5_main/controls/manifest.json" in names
+        assert "scripts/run_v5_cpu.sh" in names and "src/models/hybrid_gnn.py" in names
+        assert not any("dataset_v4" in name or name.startswith("results/v4/") for name in names)
+        assert not any(name.endswith("/best.json") for name in names)
+        z.extractall(extracted)
+    env = dict(os.environ, PY=sys.executable, STEPS="prepare_check", PFE_DATASET="v5",
+               PYTHONPATH=str(extracted), PYTHONNOUSERSITE="1")
+    for key in ("PFE_RESULTS", "PFE_ALLOW_TRAIN", "STATUS_FILE"):
+        env.pop(key, None)
+    result = subprocess.run(["bash", "scripts/run_v5_cpu.sh"], cwd=extracted, env=env,
+                            capture_output=True, text=True)
+    print(result.stdout + result.stderr, end="", flush=True)
+    assert result.returncode == 0
+    assert all(f"HybridGNN arm {arm}" in result.stdout and f"arm {arm}: pumping_record_start=" in result.stdout
+               for arm in ("C", "D"))
+    assert not list((extracted / "results/v5").rglob("seed_*"))
+    print(f"  7. v5 bundle: {len(names)} entries, {archive.stat().st_size} bytes; "
+          f"prepare_check passed in {time.perf_counter() - started:.2f}s (including bundle).")
+
+
+def test_dataset_paths(root):
+    """Use fresh interpreters so the environment is read before runner paths are set."""
+    root.mkdir(parents=True)
+    code = textwrap.dedent("""
+        import json
+        from pathlib import Path
+        from unittest.mock import patch
+        from scripts import kaggle_cpu_run as runner
+        with patch.object(runner.subprocess, "Popen") as spawn:
+            spawn.return_value.stdout.__enter__.return_value = []
+            spawn.return_value.wait.return_value = 0
+            runner.WORK.mkdir(parents=True, exist_ok=True)
+            assert runner.run("prepare_check", runner.shell_env(Path("failed.txt"))) == (0, False)
+            command = spawn.call_args.args[0]
+        print(json.dumps(dict(dataset=runner.DATASET, results=str(runner.RESULTS), out=str(runner.OUT),
+                              dispatcher=runner.DISPATCHER, command=command,
+                              shell_dataset=runner.shell_env(Path("failed.txt"))["PFE_DATASET"])))
+    """)
+    for dataset in (None, "v5"):
+        selected = dataset or "v4"
+        env = dict(os.environ, PFE_CODE=str(root / "code"), KAGGLE_WORK=str(root / selected),
+                   BUDGET_H="1")
+        env.pop("PFE_DATASET", None)
+        if dataset:
+            env["PFE_DATASET"] = dataset
+        result = subprocess.run([sys.executable, "-c", code], env=env, capture_output=True,
+                                text=True, check=True)
+        paths = json.loads(result.stdout)
+        assert paths == dict(dataset=selected, results=str(root / "code/results" / selected),
+                             out=str(root / selected / "results_cpu" / selected),
+                             dispatcher=f"scripts/run_{selected}_cpu.sh",
+                             command=["bash", f"scripts/run_{selected}_cpu.sh"], shell_dataset=selected)
+    with (patch.object(remote, "DATASET", "v5"), patch.object(remote, "DISPATCHER", "scripts/run_v5_cpu.sh"),
+          patch.multiple(remote, INPUT=root / "inputs", STATE=root / "state", WORK=root / "work",
+                         CODE=root / "unpacked", RESULTS=root / "restored"), patch.object(remote, "log")):
+        tree = remote.INPUT / "bundle"
+        dispatcher = tree / remote.DISPATCHER
+        dispatcher.parent.mkdir(parents=True)
+        dispatcher.write_text("# v5 dispatcher fixture\n")
+        remote.unpack()
+        assert (remote.CODE / remote.DISPATCHER).read_text() == dispatcher.read_text()
+        for base, value in ((remote.STATE, "state"), (tree, "input"), (remote.WORK, "work")):
+            path = base / "results_cpu/v5/run/seed_0.json"
+            path.parent.mkdir(parents=True)
+            path.write_text(value)
+        remote.restore()
+        assert (remote.RESULTS / "run/seed_0.json").read_text() == "work"
+    print("  8. Default paths stay v4; v5 selects its dispatcher, results, state and extracted input.")
+
+
+def test_v5_dispatcher(root):
+    """Check failure bookkeeping using prepare_check only; never execute the smoke branch."""
+    script = root / "scripts/run_v5_cpu.sh"
+    script.parent.mkdir(parents=True)
+    shutil.copy2(local.ROOT / "scripts/run_v5_cpu.sh", script)
+    status = root / "failed.txt"
+    cases = [("/bin/true", "prepare_check", []),
+             ("/bin/false", "prepare_check", ["prepare_check"]),
+             ("/bin/true", "unknown prepare_check", ["unknown"])]
+    for python, steps, failed in cases:
+        result = subprocess.run(["bash", str(script)], cwd=root, capture_output=True, text=True,
+                                env=dict(os.environ, PY=python, STEPS=steps, STATUS_FILE=str(status)))
+        assert result.returncode == int(bool(failed)), result.stdout + result.stderr
+        assert status.read_text().splitlines() == failed
+        assert "== prepare_check:" in result.stdout
+    print(" 10. v5 prepare-only dispatcher records failures, times steps and continues after an unknown step.")
+
+
+def test_v5_pull(root):
+    fixture, stage, results = (root / name for name in ("fixture", "stage", "results"))
+    checkpoint = fixture / "results_cpu/v5/_smoke/hgnn_C/seed_0.pt"
+    checkpoint.parent.mkdir(parents=True)
+    checkpoint.write_bytes(b"smoke checkpoint")
+    prediction = fixture / "results_cpu/v5/finished/predictions.parquet"
+    prediction.parent.mkdir(parents=True)
+    prediction.touch()
+    (fixture / "run_kaggle_cpu.log").write_text("v5 log\n")
+    with patch.object(local.subprocess, "run") as evaluate:
+        local.pull(stage=stage, results=results, dataset="v5",
+                   download=lambda dst: shutil.copytree(fixture, dst, dirs_exist_ok=True))
+        evaluate.assert_called_once()
+        assert evaluate.call_args.kwargs["env"]["PFE_DATASET"] == "v5"
+        assert evaluate.call_args.args[0][-1] == "finished"
+    assert (results / "_smoke/hgnn_C/seed_0.pt").read_bytes() == b"smoke checkpoint"
+    archive = root / "state.zip"
+    assert local.bundle_state(stage, archive, dataset="v5")
+    with zipfile.ZipFile(archive) as z:
+        assert "results_cpu/v5/_smoke/hgnn_C/seed_0.pt" in z.namelist()
+        assert not any("/v4/" in name for name in z.namelist())
+    with patch.object(local, "kg") as kg, patch.object(local, "user") as user:
+        for action in ("push", "pull"):
+            with redirect_stdout(io.StringIO()), patch.object(sys, "stderr", io.StringIO()):
+                try:
+                    local.main([action, "--dataset", "v5"])
+                except SystemExit as error:
+                    assert error.code == 2
+                else:
+                    raise AssertionError("v5 must not replace the configured v4 Kaggle resources")
+        kg.assert_not_called()
+        user.assert_not_called()
+    print("  9. v5 pull and resume keep smoke checkpoints; only finished predictions are scored.")
+
+
 if __name__ == "__main__":
     with TemporaryDirectory() as folder:
         root = Path(folder)
@@ -280,4 +411,8 @@ if __name__ == "__main__":
         test_pull_merge(root / "merge")
         test_pull_status(root / "status")
         test_bundle(root / "bundle")
+        test_dataset_paths(root / "dataset_paths")
+        test_v5_dispatcher(root / "v5_dispatcher")
+        test_v5_pull(root / "v5_pull")
+        test_v5_bundle(root / "v5_bundle")
     print("test_kaggle_runner: all checks passed")

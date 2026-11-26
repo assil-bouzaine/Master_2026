@@ -1,4 +1,4 @@
-"""Run the CPU baselines of dataset v4 on Kaggle from the laptop (docs/gpu_howto.md, Kaggle CPU).
+"""Bundle CPU inputs for v4/v5 and run v4 on Kaggle (docs/gpu_howto.md, Kaggle CPU).
 
     .venv/bin/python scripts/kaggle_cpu.py wheels     # once: pinned wheels -> private dataset
     .venv/bin/python scripts/kaggle_cpu.py push [--steps "lgbm_final pastas"] [--env KEY=VALUE]
@@ -32,6 +32,8 @@ pull: validates the download before merging it into cumulative state and rotatin
   Reports any failed steps after copying the results.
 The bundle also carries the export tables of arms C and D (data/processed/kg/export_v4_*), which
 the routed models and the twin read.
+For analysis plan v3 §3, bundle(dataset="v5") carries the v5 inputs and dispatcher.
+Colab CLI uses that archive; Kaggle v5 needs separate hosted resources first.
 """
 import argparse
 import json
@@ -127,12 +129,12 @@ def wheels():
     upload(download_wheels(), WHEELS)
 
 
-def bundle_state(stage, archive):
+def bundle_state(stage, archive, dataset="v4"):
     """Pack the cumulative pulled results for resume, or the latest output before the first merge."""
     source = stage / "state"
     if not source.exists():
         source = stage / "output"
-    runs = source / CPU_RESULTS
+    runs = source / "results_cpu" / dataset
     if not runs.is_dir():
         return False
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as z:
@@ -167,8 +169,12 @@ def parse_export_overrides(assignments):
     return validate_export_overrides(overrides)
 
 
-def bundle(stage=STAGE, slim=False, export_override=None):
-    """Build the CPU archive, with optional export replacements for the Phase 4 twin."""
+def bundle(stage=STAGE, slim=False, export_override=None, dataset="v4"):
+    """Build a v4 or v5 CPU archive (analysis plan v3 §3 for the v5 smoke run)."""
+    if dataset not in ("v4", "v5"):
+        sys.exit(f"Unsupported CPU dataset {dataset!r}. Choose v4 or v5.")
+    if dataset == "v5" and export_override:
+        sys.exit("Export overrides are not supported for dataset v5 yet.")
     overrides = validate_export_overrides(export_override)
     ds = stage / "dataset"
     target = ds.resolve()
@@ -177,7 +183,6 @@ def bundle(stage=STAGE, slim=False, export_override=None):
             sys.exit(f"Export override for {policy} at {folder} overlaps the bundle staging folder {target}.")
     sys.path.insert(0, str(ROOT))
     from src.config import INTERIM, PROCESSED, RAW
-    dataset = "v4"
     export_root = PROCESSED / "kg"
     export_prefix = f"export_{dataset}_"
     exports = sorted(path for path in export_root.glob(f"{export_prefix}*")
@@ -187,18 +192,20 @@ def bundle(stage=STAGE, slim=False, export_override=None):
     for path in routing_inputs:
         if not path.is_file():
             raise FileNotFoundError(f"required routing input is missing: {path}")
-    daily = [] if slim else sorted((RAW / "safran").glob("sim2_66_[0-9]*.parquet"))
-    panels = sorted(p for p in (V4 / "_cache").glob("panel*.parquet")
+    daily = [] if slim or dataset == "v5" else sorted((RAW / "safran").glob("sim2_66_[0-9]*.parquet"))
+    results = V4 if dataset == "v4" else ROOT / "results" / dataset
+    panels = sorted(p for p in (results / "_cache").glob("panel*.parquet")
                     if not slim or not p.match("panel_lu_*.parquet"))
     # scripts/p4_queue.py: the Phase 4 queue that the p4_queue step of run_v4_cpu.sh calls
-    include = [ROOT / "src", ROOT / "scripts" / "run_v4_cpu.sh", ROOT / "scripts" / "p4_queue.py",
+    include = [ROOT / "src", ROOT / "scripts" / f"run_{dataset}_cpu.sh", ROOT / "scripts" / "p4_queue.py",
                ROOT / "requirements.txt",
                ROOT / "tests" / "__init__.py", ROOT / "tests" / "test_ealstm.py",
                PROCESSED / f"dataset_{dataset}", *daily,
                *routing_inputs, *exports,
                *panels,
-               *sorted((V4 / "_cache").glob("panel*.json")),  # land-use identity records
-               *sorted(V4.glob("*_tuning/best.json")), *sorted(V4.glob("*_tuned/best.json"))]
+               *sorted((results / "_cache").glob("panel*.json"))]  # land-use identity records
+    if dataset == "v4":
+        include.extend([*sorted(V4.glob("*_tuning/best.json")), *sorted(V4.glob("*_tuned/best.json"))])
     shutil.rmtree(ds, ignore_errors=True)
     ds.mkdir(parents=True)
     with zipfile.ZipFile(ds / "cpu_bundle.zip", "w", zipfile.ZIP_DEFLATED) as z:
@@ -215,7 +222,7 @@ def bundle(stage=STAGE, slim=False, export_override=None):
             destination = export_root.relative_to(ROOT) / f"{export_prefix}{policy}"
             for path in files:
                 z.write(folder / path, destination / path)
-    with_state = bundle_state(stage, ds / "state.zip")
+    with_state = bundle_state(stage, ds / "state.zip", dataset=dataset)
     print(f"cpu_bundle.zip: {(ds / 'cpu_bundle.zip').stat().st_size / 1e6:.1f} MB"
           + (", with state.zip" if with_state else ""))
     return ds
@@ -294,11 +301,15 @@ def download_output(destination):
     kg("kernels", "output", f"{u}/{KERNEL}", "-p", str(destination), "-o")
 
 
-def pull(stage=STAGE, results=V4, download=None):
+def pull(stage=STAGE, results=V4, download=None, dataset="v4"):
+    """Merge CPU results for the selected dataset and score finished runs only."""
+    cpu_results = Path("results_cpu") / dataset
+    if dataset != "v4" and results == V4:
+        results = ROOT / "results" / dataset
     incoming = stage / "output_incoming"
     output = stage / "output"
     previous = stage / "output_prev"
-    state = stage / "state" / CPU_RESULTS
+    state = stage / "state" / cpu_results
     if incoming.exists():
         shutil.rmtree(incoming)
     incoming.mkdir(parents=True)
@@ -308,10 +319,10 @@ def pull(stage=STAGE, results=V4, download=None):
     if not (incoming / "run_kaggle_cpu.log").is_file():
         sys.exit(f"download is missing {incoming / 'run_kaggle_cpu.log'}")
 
-    if not state.exists() and (output / CPU_RESULTS).is_dir():
-        shutil.copytree(output / CPU_RESULTS, state)
-    if (incoming / CPU_RESULTS).is_dir():
-        shutil.copytree(incoming / CPU_RESULTS, state, dirs_exist_ok=True)
+    if not state.exists() and (output / cpu_results).is_dir():
+        shutil.copytree(output / cpu_results, state)
+    if (incoming / cpu_results).is_dir():
+        shutil.copytree(incoming / cpu_results, state, dirs_exist_ok=True)
     if previous.exists():
         shutil.rmtree(previous)
     if output.exists():
@@ -319,19 +330,23 @@ def pull(stage=STAGE, results=V4, download=None):
     incoming.rename(output)
 
     runs, twins = [], []
-    for d in sorted((output / CPU_RESULTS).glob("*")):
+    for d in sorted((output / cpu_results).glob("*")):
         if (d / "predictions.parquet").exists():
             shutil.copytree(d, results / d.name, dirs_exist_ok=True)
             runs.append(d.name)
         elif any(d.glob("*/world_*.json")):          # twin runs (src/models/twin.py): no rescoring
             shutil.copytree(d, results / d.name, dirs_exist_ok=True)
             twins.append(f"{d.name} ({len(list(d.glob('*/world_*.json')))} worlds)")
+        elif dataset == "v5" and d.name == "_smoke" and d.is_dir():
+            # PFE_NO_SCORE leaves checkpoints only; keep them without invoking evaluation.
+            shutil.copytree(d, results / d.name, dirs_exist_ok=True)
+            print("smoke checkpoints copied:", d.name)
     print("finished runs copied:", " ".join(runs) or "none")
     if twins:
         print("twin runs copied:", ", ".join(twins))
     if runs:
         subprocess.run([sys.executable, "-m", "src.models.evaluate", *runs], cwd=ROOT,
-                       env={**os.environ, "PFE_DATASET": "v4", "PFE_RESULTS": str(results.resolve())},
+                       env={**os.environ, "PFE_DATASET": dataset, "PFE_RESULTS": str(results.resolve())},
                        check=True)
     log = output / "run_kaggle_cpu.log"
     print("".join(log.read_text().splitlines(keepends=True)[-15:]))
@@ -354,7 +369,11 @@ def main(argv=None):
                     help="override a dispatcher environment setting on push (repeatable)")
     ap.add_argument("--export-override", action="append", default=[], metavar="POLICY=PATH",
                     help="bundle a chosen graph export folder on push (repeatable)")
+    ap.add_argument("--dataset", choices=("v4", "v5"), default="v4")
     a = ap.parse_args(argv)
+    if a.dataset == "v5":
+        ap.error("Kaggle v5 needs a separate kernel and bundle dataset; only the existing v4 slugs are configured. "
+                 "Use scripts.colab_cli push-cpu --dataset v5 for now.")
     if a.env and a.action != "push":
         ap.error("--env is only supported by push")
     if a.export_override and a.action != "push":

@@ -17,8 +17,13 @@ Checks:
 3. Pumping reliability (plan v3 §3.6): gradient of a loss restricted to weeks before
    RELIABLE_PUMPING_FROM ("2012-01-01") with respect to pumping gains and kernels is exactly
    0, while gradient with respect to recharge gains is non-zero; post-2012 loss produces
-   non-zero pumping gradients.
-4. Stage A has no delta parameter; stage B's delta of a held-out well stays identically 0.
+   non-zero pumping gradients; a probe loss linear in the post-2012 predictions has the same
+   pumping gradients when every imputed pumping week is multiplied by 100 (no path through the
+   centres or the kernel's memory: docs/v5_bugs_to_fix.md item 1); training values = inference values.
+4. Stage A has no delta parameter; stage B = the stage-A fit followed by a delta-only refinement
+   (its first phase equals a stage-A run, every parameter but delta is unchanged after it, the
+   held-out well's predictions equal stage A's: docs/v5_bugs_to_fix.md item 4); a held-out
+   well's delta stays identically 0.
 5. Replay: save checkpoint + outputs, reload into a fresh HybridGNN (restoring centres buffer
    without re-estimating), predict on observed and counterfactual forcings -> identical to
    < 1e-5 m; exact additive decomposition of saved centred contributions.
@@ -27,7 +32,8 @@ Checks:
 7. Encoder never sees a stress: forward pre-hook proves only static HeteroData tensors
    (x, edge_index, edge_attr) reach HeteroEncoder, and perturbing stresses leaves encoder
    output and physical parameters bit-for-bit unchanged; zero-training real v5 forward pass
-   (arms C and D, K = 416, basin canals) checks shapes, alignment, masking, and centring.
+   (arms C and D, K = 416, basin canals) checks shapes, alignment, masking, and centring, and that
+   pumping before the pumping record (1990-2002) is the well's training mean, not 0.
 """
 from __future__ import annotations
 
@@ -417,8 +423,53 @@ def test_pumping_reliability():
     post_pu_grad = float(net.theta_group.grad[:, pu_idx].abs().max())
     assert post_pump_grad > 1e-6 and post_pu_grad > 1e-6
 
+    # 3c. No path from imputed pumping to a pumping parameter (docs/v5_bugs_to_fix.md item 1). A probe
+    # loss that is linear in the predictions on declared weeks has a gradient that depends on imputed
+    # pumping only through gradient paths (no residual-value effect): multiplying every imputed
+    # pumping week (warm-up and pre-2012) by 100 must leave the pumping gradients unchanged. The first
+    # version leaked through the training-mean centres and through the kernel's memory after 2012.
+    net64 = net.double()
+    net64.graph_data = _graph_to_dtype(graph, torch.float64)
+    probe = torch.from_numpy(rng.normal(0.0, 1.0, (N, T))) * reliable_mask.to(torch.float64)[None, :]
+    first = int(np.argmax(reliable_mask.numpy()))
+
+    def _probe_grads(scale):
+        X = {k: torch.from_numpy(v.astype(np.float64)) for k, v in X_np.items()}
+        for key in ("pump_gw", "pump_un"):
+            X[key] = X[key].clone()
+            X[key][:, : K - 1 + first] *= scale
+        net64.zero_grad()
+        pred_p, _, _, _ = net64.training_forward(X, obs_train, reliable_mask)
+        (probe * pred_p).sum().backward()
+        grads = {}
+        for pname, param in (("theta_group", net64.theta_group), ("delta", net64.delta)):
+            for ch_idx in (p_idx, pu_idx):
+                grads[(pname, ch_idx, "gain")] = param.grad[:, ch_idx].clone()
+                grads[(pname, ch_idx, "kernel")] = param.grad[:, _kernel_slice(ch_idx)].clone()
+        enc_grad = torch.cat([q.grad.reshape(-1) for q in net64.encoder.head.parameters()])
+        return grads, enc_grad, pred_p.detach()
+
+    g1, enc1, pred1 = _probe_grads(1.0)
+    g100, enc100, pred100 = _probe_grads(100.0)
+    leak = max(float((g1[k] - g100[k]).abs().max()) for k in g1)
+    size = max(float(g1[k].abs().max()) for k in g1)
+    assert size > 1e-6, "declared pumping must still train the pumping parameters"
+    assert leak <= 1e-10 * max(1.0, size), f"imputed pumping reaches a pumping parameter: {leak:.3e}"
+    assert float((pred1 - pred100).abs().max()) > 1e-3, "the imputed values must still enter the predictions"
+
+    # 3d. Values unchanged: the training pass equals the inference pass (centres from estimate_centres).
+    X64 = {k: torch.from_numpy(v.astype(np.float64)) for k, v in X_np.items()}
+    with torch.no_grad():
+        pred_train, _, _, _ = net64.training_forward(X64, obs_train, reliable_mask)
+        net64.estimate_centres(X64, obs_train)
+        pred_inf = net64(X64)
+    value_err = float((pred_train - pred_inf).abs().max())
+    assert value_err < 1e-9, value_err
+
     print(f"  3. pumping reliability ({H.RELIABLE_PUMPING_FROM}): pre-2012 pumping & pump_un gain/kernel "
-          f"grads = 0.0 exactly, recharge grad = {pre_rch_grad:.3e}; post-2012 pumping grad = {post_pump_grad:.3e}")
+          f"grads = 0.0 exactly, recharge grad = {pre_rch_grad:.3e}; post-2012 pumping grad = {post_pump_grad:.3e}; "
+          f"imputed pumping x100 moves no pumping gradient (max change {leak:.1e} vs size {size:.2e}); "
+          f"training values = inference values ({value_err:.1e})")
 
 
 # ---------------------------------------------------------------------------
@@ -491,8 +542,7 @@ def test_stages_tiny_fit_and_guards():
     keep_wells = np.array([True, True, False], dtype=bool)
     train_mask = (split == "train") & keep_wells[:, None]
 
-    state_out = {}
-    net_b, _, n_ep, losses = H.train_seed(
+    fit_kwargs = dict(
         seed=0,
         data=toy_data,
         graph_data=graph,
@@ -501,24 +551,41 @@ def test_stages_tiny_fit_and_guards():
         lam_shape=0.05,
         lam_gain=0.01,
         lam_delta=0.05,
-        stage="B",
         signs="gate3",
         kernel_weeks=K,
         dropout=0.0,
         train_mask=train_mask,
         keep_wells=keep_wells,
         device="cpu",
-        state_out=state_out,
         verbose=False,
     )
-    assert n_ep == 5 and len(losses) == 5
-    assert losses[-1] < losses[0], f"loss did not decrease over 5 steps: {losses}"
+    state_out = {}
+    net_b, _, n_ep, losses = H.train_seed(stage="B", epochs_b=5, state_out=state_out, **fit_kwargs)
+    assert n_ep == 10 and len(losses) == 10, (n_ep, len(losses))
+    assert losses[-1] < losses[0], f"loss did not decrease over 5 + 5 steps: {losses}"
+    assert losses[-1] <= losses[4] + 1e-6, f"the delta-only refinement raised the loss: {losses}"
 
     # Stage B checks: delta exists; trained wells moved; held-out well 2 stayed identically 0.
     assert "delta" in dict(net_b.named_parameters())
     assert float(net_b.delta[:2].detach().abs().max()) > 1e-4, "trained wells' delta should update"
     assert torch.equal(net_b.delta[2], torch.zeros_like(net_b.delta[2])), "held-out delta must stay 0"
     assert torch.equal(net_b.effective_delta()[2], torch.zeros_like(net_b.delta[2]))
+
+    # 4c. Stage B refines stage A (docs/v5_bugs_to_fix.md item 4): its first phase is exactly a stage-A
+    # fit, and the refinement changes only delta. So every parameter but delta equals a stage-A run's
+    # bit for bit, and the held-out well's predictions are exactly stage A's.
+    net_a_fit, _, n_ep_a, losses_a = H.train_seed(stage="A", **fit_kwargs)
+    assert n_ep_a == 5 and losses_a == losses[:5], "stage B's first phase must be the stage-A fit"
+    params_a = dict(net_a_fit.named_parameters())
+    for name, param in net_b.named_parameters():
+        if name != "delta":
+            assert torch.equal(param, params_a[name]), f"stage B changed {name}"
+    X_toy = _to_torch(X_np)
+    with torch.no_grad():
+        y_a, y_b = net_a_fit(X_toy).numpy(), net_b(X_toy).numpy()
+    held_diff = float(np.abs(y_a[2] - y_b[2]).max())
+    assert held_diff < 1e-6, f"held-out well differs from stage A: {held_diff}"
+    assert float(np.abs(y_a[:2] - y_b[:2]).max()) > 1e-6, "the refinement must move the trained wells"
 
     # Held-out well centring after train_seed (eval mode): mean over its observed training weeks == 0.
     with torch.no_grad():
@@ -582,9 +649,10 @@ def test_stages_tiny_fit_and_guards():
             else:
                 raise AssertionError(f"CLI trained without {H.ALLOW_TRAIN_ENV}=1 (val={val!r})")
 
-    print(f"  4&6. stage A has no delta; 5-step 3-well stage B fit loss {losses[0]:.4f} -> {losses[-1]:.4f}, "
-          f"held-out delta = 0.0, held-out mean = {held_mean:.2e}; RQ2 soft penalty ok; "
-          f"CLI refuses without {H.ALLOW_TRAIN_ENV}=1")
+    print(f"  4&6. stage A has no delta; 3-well stage B fit (5 stage-A + 5 delta-only steps) loss "
+          f"{losses[0]:.4f} -> {losses[4]:.4f} -> {losses[-1]:.4f}; its first phase = the stage-A fit and only "
+          f"delta changes after it; held-out well = stage A (max diff {held_diff:.1e}), held-out delta = 0.0, "
+          f"held-out mean = {held_mean:.2e}; RQ2 soft penalty ok; CLI refuses without {H.ALLOW_TRAIN_ENV}=1")
 
 
 # ---------------------------------------------------------------------------
@@ -787,6 +855,20 @@ def test_encoder_never_sees_stress_and_v5_forward():
                     if obs_real[i].any()
                 )
                 assert real_err < 1e-5, (arm, real_err)
+                # Pumping before the pumping record is unknown, not zero: the warm-up and the weeks before
+                # the record's first week carry the well's training mean (no step from 0 in 2003).
+                rec = pd.Timestamp(prep["routed"]["pumping_record_start"])
+                n_pre = int(np.sum(pd.DatetimeIndex(data["weeks"]) < rec))
+                kw = prep["config_args"].kernel_weeks
+                train_w = data["split"][0] == "train"
+                for key, ch in (("pump_gw", "pumping"), ("pump_un", "pumping_unattributed")):
+                    active = data["channel_mask"][:, H.CHANNELS.index(ch)]
+                    arr = data["X"][key][active]
+                    if n_pre and arr.size:
+                        pre = arr[:, : kw - 1 + n_pre]
+                        mean = arr[:, kw - 1:][:, train_w].mean(axis=1, keepdims=True)
+                        assert np.allclose(pre, mean, rtol=1e-5, atol=1e-6), (arm, key)
+                        assert (mean > 0).any(), (arm, key)
                 summaries.append(
                     f"arm {arm}: {len(data['codes'])}x{len(data['weeks'])}, "
                     f"canal_mode={prep['routed']['canal_mode']}, max_centre_err={real_err:.2e}"

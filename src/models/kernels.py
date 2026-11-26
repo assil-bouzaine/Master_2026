@@ -14,6 +14,9 @@ from src.models.response import N_MIN, N_MAX
 KERNEL_WEEKS = 416          # eight years of weekly memory
 MEAN_FAST_MIN, MEAN_FAST_MAX = 0.5, 26.0
 MEAN_SLOW_MIN, MEAN_SLOW_MAX = 13.0, 104.0
+# Plan v3 §3.4: the slow component's shape is bounded below at n >= 1. With n = 0.5 and a
+# 104-week mean, truncating the kernel at 416 weeks removes about 22 weeks of mean lag (T64).
+N_SLOW_MIN = 1.0
 
 
 def gamma_weights(mean, n, K=KERNEL_WEEKS):
@@ -43,8 +46,9 @@ def mixture_weights(mean_fast, n_fast, mean_slow, n_slow, w_slow, K=KERNEL_WEEKS
 def raw_to_kernel_params(raw):
     """Map (..., 5) raw values to (mean_fast, n_fast, mean_slow, n_slow, w_slow).
 
-    Means span their bounds on a log scale; shapes span the response.py bounds
-    linearly. The slow fraction uses a sigmoid. All operations keep autograd.
+    Means span their bounds on a log scale; shapes span their bounds linearly:
+    the fast shape (N_MIN, N_MAX) of response.py, the slow shape (N_SLOW_MIN, N_MAX).
+    The slow fraction uses a sigmoid. All operations keep autograd.
     """
     if raw.ndim < 1 or raw.shape[-1] != 5:
         raise ValueError("raw must have shape (..., 5)")
@@ -54,7 +58,7 @@ def raw_to_kernel_params(raw):
     mean_slow = torch.exp(math.log(MEAN_SLOW_MIN)
                           + ms * math.log(MEAN_SLOW_MAX / MEAN_SLOW_MIN))
     n_fast = N_MIN + nf * (N_MAX - N_MIN)
-    n_slow = N_MIN + ns * (N_MAX - N_MIN)
+    n_slow = N_SLOW_MIN + ns * (N_MAX - N_SLOW_MIN)
     return mean_fast, n_fast, mean_slow, n_slow, w
 
 

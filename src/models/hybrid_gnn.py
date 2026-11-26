@@ -51,14 +51,22 @@ PyTorch module, keeping the exact additive decomposition and sign guarantees of
 6. **Graph parameter encoder and two stages (§3.5):** raw parameters
    ``theta_i = theta_group(i) + HeteroEncoder(data)_i + delta_i``. ``HeteroEncoder`` reads
    only the static ``HeteroData`` (never a stress). ``stage="A"`` omits ``delta`` (not a
-   parameter); ``stage="B"`` adds per-well ``delta`` with ridge penalty ``lam_delta`` while
-   always keeping ``delta_i = 0`` on held-out wells. Split regularisation penalises the
+   parameter). ``stage="B"`` refines stage A: ``train_seed`` first runs the stage-A epochs with
+   ``delta`` held at 0, then ``--epochs-b`` epochs in which only ``delta`` trains, with ridge
+   penalty ``lam_delta`` (fixed 2026-11-26, ``docs/v5_bugs_to_fix.md`` item 4). ``delta_i`` stays
+   0 on held-out wells, whose predictions are therefore exactly stage A's. Split regularisation penalises the
    spread ``enc + delta`` around the group mean with ``lam_shape`` on kernel and bucket raw
    parameters and ``lam_gain`` (< ``lam_shape``) on gain raw parameters.
-7. **Pumping reliability (§3.6):** on training weeks before ``RELIABLE_PUMPING_FROM``
-   (``"2012-01-01"``), the loss evaluates pumping contributions (and their centring terms)
-   with detached pumping parameters so pre-declaration imputed pumping never calibrates a
-   pumping gain or kernel while weather and other drivers still learn from 2005–2011.
+7. **Pumping reliability (§3.6):** pumping before ``RELIABLE_PUMPING_FROM`` (``"2012-01-01"``,
+   the first BNPE year) is imputed. In training each pumping stress is split into its declared
+   and imputed parts and the imputed part's response uses detached gains and kernels, so imputed
+   pumping trains no pumping parameter by any path: not on its own weeks, not through the
+   training-mean centres, and not through the eight-year kernel's memory at later weeks (fixed
+   2026-11-26, ``docs/v5_bugs_to_fix.md`` item 1: the first version detached only the pre-2012
+   weeks). Values are unchanged, and weather and the other drivers still learn from 2005–2011.
+   Weeks before the pumping record (2003 in v5, whose weather starts in 1990) are unknown, not
+   zero: ``routed_v5_inputs`` leaves them NaN and ``hybrid_arrays`` fills them with the well's
+   training mean, as it does for the canal series and the kernel's warm-up.
 8. **Optional bounded residual (§3.8):** ``residual="bounded"`` adds
    ``rho_i(t) = 0.2 * sd_i * tanh(MLP(day-of-year features, static facts))``, never seeing a
    stress; off by default.
@@ -144,8 +152,9 @@ STRESS_SCALE = {
 
 KERNEL_WEEKS = KN.KERNEL_WEEKS       # 416 weeks (8 years)
 N_FAST_MIN, N_FAST_MAX = KN.N_MIN, KN.N_MAX
-# Plan v3 §3.4: slow component shape bounded below at n >= 1 to limit 416-week tail truncation.
-N_SLOW_MIN, N_SLOW_MAX = 1.0, KN.N_MAX
+# Plan v3 §3.4: slow component shape bounded below at n >= 1 to limit 416-week tail truncation
+# (the bound lives in src.models.kernels, which decodes the kernel parameters).
+N_SLOW_MIN, N_SLOW_MAX = KN.N_SLOW_MIN, KN.N_MAX
 
 RELIABLE_PUMPING_FROM = "2012-01-01"
 SD_FLOOR = R.SD_FLOOR
@@ -208,27 +217,6 @@ def _logit(p):
 
 def _inv_softplus(y):
     return math.log(math.expm1(y))
-
-
-def raw_to_kernel_params_v2(raw):
-    """Map ``(..., 5)`` raw values to ``(mean_fast, n_fast, mean_slow, n_slow, w_slow)``.
-
-    Uses ``src.models.kernels`` bounds for means and fast shape, and enforces
-    ``n_slow in (1.0, N_MAX)`` per analysis plan v3 §3.4 (``kernels.raw_to_kernel_params``
-    currently keeps ``n_slow >= 0.5``).
-    """
-    if raw.ndim < 1 or raw.shape[-1] != N_KERNEL_PARAMS:
-        raise ValueError(f"Expected kernel raw shape (..., {N_KERNEL_PARAMS}), got {tuple(raw.shape)}")
-    mf, nf, ms, ns, w = torch.sigmoid(raw).unbind(-1)
-    mean_fast = torch.exp(
-        math.log(KN.MEAN_FAST_MIN) + mf * math.log(KN.MEAN_FAST_MAX / KN.MEAN_FAST_MIN)
-    )
-    mean_slow = torch.exp(
-        math.log(KN.MEAN_SLOW_MIN) + ms * math.log(KN.MEAN_SLOW_MAX / KN.MEAN_SLOW_MIN)
-    )
-    n_fast = N_FAST_MIN + nf * (N_FAST_MAX - N_FAST_MIN)
-    n_slow = N_SLOW_MIN + ns * (N_SLOW_MAX - N_SLOW_MIN)
-    return mean_fast, n_fast, mean_slow, n_slow, w
 
 
 def _initial_raw_base(signs):
@@ -472,7 +460,7 @@ class HybridGNN(nn.Module):
         sign = self.sign.to(dtype=p.dtype, device=p.device)
         g_scale = self.gain_scale.to(dtype=p.dtype, device=p.device)
         gain = torch.where(sign != 0.0, sign * F.softplus(g_raw), g_raw) * g_scale[:, None]
-        mean_fast, n_fast, mean_slow, n_slow, w_slow = raw_to_kernel_params_v2(k_raw)
+        mean_fast, n_fast, mean_slow, n_slow, w_slow = KN.raw_to_kernel_params(k_raw)
         s_max, kappa, beta = BK.raw_to_params(b_raw)
         return PhysicalParams(gain, mean_fast, n_fast, mean_slow, n_slow, w_slow, s_max, kappa, beta)
 
@@ -503,23 +491,60 @@ class HybridGNN(nn.Module):
         S = torch.cat([R_scaled, other], dim=1)
         return S * mask[:, :, None]
 
-    def contributions(self, X, graph_data=None, *, theta=None, detach_pumping=False):
-        """Uncentred per-(well, channel) contributions ``c_ir(t)`` of shape ``(N, R, T)`` (m)."""
+    def contributions(self, X, graph_data=None, *, theta=None, reliable_stress=None):
+        """Uncentred per-(well, channel) contributions ``c_ir(t)`` of shape ``(N, R, T)`` (m).
+
+        ``reliable_stress`` (training only, plan v3 §3.6): a boolean mask over the stress axis
+        ``(T + K - 1,)``, True on the weeks whose pumping is declared (from
+        ``RELIABLE_PUMPING_FROM``). See ``_declared_pumping_contributions``: the values are
+        unchanged, only the gradient paths from imputed pumping to the pumping parameters are cut.
+        """
         params = self.parameters_physical(graph_data, theta=theta)
         S = self.stresses(X, params)
         k = self.kernels(params)
         gain = params.gain
+        if reliable_stress is None:
+            c = gain[..., None] * KN.causal_conv(S, k, method="fft")
+        else:
+            c = self._declared_pumping_contributions(S, k, gain, reliable_stress)
+        mask = self.channel_mask.to(dtype=c.dtype, device=c.device)
+        return c * mask[:, :, None]
 
-        if detach_pumping:
-            k = k.clone()
-            gain = gain.clone()
-            for r in self.pumping_indices:
-                k[:, r, :] = k[:, r, :].detach()
-                gain[:, r] = gain[:, r].detach()
+    def _declared_pumping_contributions(self, S, k, gain, reliable_stress):
+        """Contributions in which imputed pumping never trains a pumping parameter (plan v3 §3.6).
 
-        conv = KN.causal_conv(S, k, method="fft")
-        mask = self.channel_mask.to(dtype=conv.dtype, device=conv.device)
-        return (gain[..., None] * conv) * mask[:, :, None]
+        Each pumping channel's stress is split into its declared part (weeks where
+        ``reliable_stress`` is True) and its imputed part (the other weeks, including the kernel's
+        warm-up padding). The declared part is convolved with the trainable kernel and scaled by the
+        trainable gain; the imputed part is convolved with a detached kernel and scaled by a detached
+        gain. The convolution is linear, so the sum equals the plain contribution (up to FFT
+        round-off), but no gradient reaches a pumping gain or kernel from an imputed week by any
+        path: not on the imputed weeks themselves, not through the training-mean centres, and not
+        through the kernel's memory of imputed weeks at later, declared weeks (with an eight-year
+        kernel the 2012-2014 contributions still carry 2005-2011 pumping). The other channels are
+        untouched, so weather and rivers still learn from every training week.
+        """
+        rel = torch.as_tensor(reliable_stress, dtype=torch.bool, device=S.device)
+        if rel.shape != (S.shape[-1],):
+            raise ValueError(f"reliable_stress must have shape ({S.shape[-1]},), got {tuple(rel.shape)}")
+        R = S.shape[1]
+        idx = torch.tensor(self.pumping_indices, dtype=torch.long, device=S.device)
+        is_pump = torch.zeros(R, dtype=torch.bool, device=S.device)
+        is_pump[idx] = True
+        declared = rel.to(S.dtype)
+        # Declared stress in the main batch (pumping channels keep only their declared weeks) and
+        # the imputed pumping stress as extra channels with detached kernels: one batched FFT.
+        keep = torch.where(is_pump[:, None], declared[None, :], torch.ones_like(declared)[None, :])
+        S_all = torch.cat([S * keep[None], S[:, idx] * (1.0 - declared)], dim=1)
+        k_all = torch.cat([k, k[:, idx].detach()], dim=1)
+        conv = KN.causal_conv(S_all, k_all, method="fft")
+        conv_main, conv_imputed = conv[:, :R], conv[:, R:]
+        # Before the first declared stress week, the declared convolution is exactly zero; zero it
+        # explicitly so FFT round-off cannot carry a gradient from those weeks either.
+        seen = (torch.cumsum(rel.to(torch.int64), 0) > 0)[self.K - 1:].to(S.dtype)        # (T,)
+        scale = torch.where(is_pump[:, None], seen[None, :], torch.ones_like(seen)[None, :])
+        c = gain[..., None] * (conv_main * scale[None])
+        return c.index_add(1, idx, gain[:, idx].detach()[..., None] * conv_imputed)
 
     def residual(self, graph_data=None):
         """Bounded residual ``rho_i(t)`` of shape ``(N, T)`` in metres, or ``None`` if off."""
@@ -585,38 +610,43 @@ class HybridGNN(nn.Module):
         return out
 
     def training_forward(self, X, obs_train_mask, reliable_week_mask=None, graph_data=None):
-        """Training forward pass with differentiable centring and pre-2012 pumping detachment.
+        """Training forward pass with differentiable centring and declared-only pumping gradients.
 
-        Runs ``HeteroEncoder``, ``bucket``, and ``causal_conv`` once per epoch. On weeks where
-        ``reliable_week_mask`` is False (before ``RELIABLE_PUMPING_FROM``), both the pumping
-        contributions and their centring means are detached from the autograd graph, so
-        pre-2012 imputed pumping never calibrates pumping parameters (plan v3 §3.6).
+        Runs ``HeteroEncoder``, ``bucket``, and ``causal_conv`` once per epoch. ``reliable_week_mask``
+        (``(T,)``, True from ``RELIABLE_PUMPING_FROM``) marks the weeks with declared pumping; the
+        ``K - 1`` warm-up weeks before the panel are never declared. Two rules, plan v3 §3.6:
+        (1) on the weeks before the cut, the pumping anomaly (contribution minus its centre) enters
+        the loss as a fixed value, so those heads train no pumping parameter; (2) on the declared
+        weeks, the pumping contributions come from ``_declared_pumping_contributions``, so imputed
+        pumping reaches no pumping gain or kernel through the training-mean centre or through the
+        kernel's memory of the imputed weeks. Values are unchanged. ``None`` treats all pumping as
+        declared (a synthetic world whose pumping is known).
 
         Returns ``(pred, c, dev, eff_delta)``.
         """
         theta, dev, eff_delta = self.raw_components(graph_data)
-        c = self.contributions(X, graph_data, theta=theta)
-        m_full = self.centres_from_current(c, obs_train_mask)
+        rel = None
+        reliable_stress = None
+        if reliable_week_mask is not None:
+            rel = torch.as_tensor(reliable_week_mask, dtype=torch.bool, device=self.centres.device)
+            warm_up = torch.zeros(self.K - 1, dtype=torch.bool, device=rel.device)
+            reliable_stress = torch.cat([warm_up, rel])
+        c = self.contributions(X, graph_data, theta=theta, reliable_stress=reliable_stress)
+        m = self.centres_from_current(c, obs_train_mask)
+        anomaly = c - m[:, :, None]
+        if rel is not None:
+            # On the weeks before the cut, the heads responded to imputed pumping: there the whole
+            # pumping anomaly (contribution minus centre) enters the loss as a fixed value, so those
+            # weeks move no pumping parameter, not even through the centre (plan v3 §3.6). On the
+            # declared weeks it trains through its declared part only (_declared_pumping_contributions).
+            is_pump = torch.zeros(anomaly.shape[1], dtype=torch.bool, device=anomaly.device)
+            is_pump[list(self.pumping_indices)] = True
+            frozen = is_pump[:, None] & ~rel[None, :]                                  # (R, T)
+            anomaly = torch.where(frozen[None], anomaly.detach(), anomaly)
+        pred = anomaly.sum(dim=1)
         res = self.residual(graph_data)
-
-        y_rel = (c - m_full[:, :, None]).sum(dim=1)
         if res is not None:
-            y_rel = y_rel + res
-
-        if reliable_week_mask is not None and not bool(reliable_week_mask.all()):
-            rel_mask = reliable_week_mask.to(device=c.device, dtype=torch.bool)
-            # Detach pumping contributions (and hence pumping parameters) on pre-2012 weeks.
-            c_pre = c.clone()
-            for r in self.pumping_indices:
-                c_pre[:, r, :] = c[:, r, :].detach()
-            m_pre = self._compute_centres(c_pre, obs_train_mask)
-            y_pre = (c_pre - m_pre[:, :, None]).sum(dim=1)
-            if res is not None:
-                y_pre = y_pre + res
-            pred = torch.where(rel_mask[None, :], y_rel, y_pre)
-        else:
-            pred = y_rel
-
+            pred = pred + res
         return pred, c, dev, eff_delta
 
     def shape_penalty(self, graph_data=None, *, dev=None):
@@ -784,14 +814,21 @@ def routed_v5_inputs(
             out[f"ETP_{ch}"] = np.zeros((N, T), dtype=float)
         out[f"has_{ch}"] = has
 
-    # 2. Pumping and unattributed pumping (thousand m3/week).
+    # 2. Pumping and unattributed pumping (thousand m3/week). Inside the pumping record a missing
+    # facility-week is 0, as in every arm; weeks before the record starts (1990-2002 in v5, whose
+    # weather starts in 1990) are unknown, not zero: NaN here, so hybrid_arrays fills them with the
+    # well's training mean instead of a step from 0 in 2003 that the eight-year kernels would carry
+    # into the training years.
     pw = RT.pumping_table(reconstruction)
+    record_start = pd.Timestamp(pw["week"].min())
+    out["pumping_record_start"] = str(record_start.date())
     pts = pd.read_parquet(DATASET_DIR / "pumping_points.parquet")
     pe = edges[edges["relation"].isin(("pumping", "pumping_unattributed"))]
     fac = sorted(pe["src"].unique())
     if fac:
         table = RT.facility_volumes(weeks, fac, reconstruction)
         vol = table.reindex(index=weeks, columns=fac).fillna(0.0).to_numpy(dtype=float).T
+        vol[:, np.asarray(weeks < record_start)] = np.nan
     else:
         vol = np.zeros((0, T), dtype=float)
     for name, rel in (("pump_gw", "pumping"), ("pump_un", "pumping_unattributed")):
@@ -991,6 +1028,7 @@ def train_seed(
     well_graph_idx=None,
     *,
     epochs=500,
+    epochs_b=200,
     lr=1e-2,
     weight_decay=1e-4,
     lam_shape=0.1,
@@ -1019,9 +1057,20 @@ def train_seed(
 ):
     """Train one seed of ``HybridGNN`` for a fixed number of epochs (no early stopping).
 
+    Stage A: ``epochs`` epochs of every parameter except the per-well ``delta`` (absent), so the
+    differences between wells must come from the static facts and the graph (plan v3 §3.5).
+    Stage B is a refinement of stage A, as the review designed it (fixed 2026-11-26,
+    ``docs/v5_bugs_to_fix.md`` item 4: the first version trained ``delta`` jointly from epoch 0,
+    which lets per-well ``delta`` absorb the well differences and starve the encoder, the v4
+    leave-wells-out failure): the same ``epochs`` epochs of stage A first, ``delta`` held at
+    exactly 0 and kept out of the optimiser, then ``epochs_b`` epochs in which only ``delta``
+    trains (group means, encoder and residual frozen, dropout off), with its ridge penalty. A
+    held-out well's ``delta`` stays 0, so its parameters, contributions and predictions are
+    exactly stage A's.
+
     Returns ``(net, val_median_nse, epochs, loss_history)`` with ``net`` in ``eval()`` mode
     and ``net.centres`` refreshed on CPU from the observed forcing over every well's observed
-    training weeks (including held-out wells in LWO).
+    training weeks (including held-out wells in LWO); ``epochs`` counts both phases.
     """
     torch.manual_seed(seed)
     torch.set_num_threads(int(os.environ.get("PFE_THREADS", 4)))
@@ -1098,16 +1147,9 @@ def train_seed(
     else:
         reliable_t = None
 
-    opt = torch.optim.AdamW(_optimiser_groups(net, weight_decay), lr=float(lr))
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        opt, T_max=max(int(epochs), 1), eta_min=float(lr) * 1e-2
-    )
     eff_lam_res = float(lam_shape) if lam_res is None else float(lam_res)
 
-    loss_history = []
-    t0 = time.time()
-    net.train()
-    for _ in range(int(epochs)):
+    def objective():
         pred, c, dev_raw, eff_delta = net.training_forward(X_t, obs_centres_t, reliable_t)
         loss = (wgt_t * (pred - y_t) ** 2).sum()
         if lam_shape > 0:
@@ -1121,12 +1163,37 @@ def train_seed(
             loss = loss + float(soft) * net.soft_penalty(c, loss_mask_t, sd_t, theta=theta_cur)
         if residual == "bounded" and eff_lam_res > 0:
             loss = loss + eff_lam_res * net.residual_penalty()
+        return loss
 
-        opt.zero_grad()
-        loss.backward()
-        opt.step()
-        scheduler.step()
-        loss_history.append(float(loss.detach().cpu().item()))
+    def run_phase(n_epochs, trainable):
+        """AdamW with a cosine-annealed rate over ``n_epochs`` on the named parameters only."""
+        for name, param in net.named_parameters():
+            param.requires_grad_(trainable(name))
+        opt = torch.optim.AdamW(_optimiser_groups(net, weight_decay), lr=float(lr))
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            opt, T_max=max(int(n_epochs), 1), eta_min=float(lr) * 1e-2
+        )
+        for _ in range(int(n_epochs)):
+            loss = objective()
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+            scheduler.step()
+            loss_history.append(float(loss.detach().cpu().item()))
+
+    loss_history = []
+    t0 = time.time()
+    # Stage A (alone, or as the first phase of stage B): delta, if present, stays exactly 0.
+    net.train()
+    run_phase(epochs, lambda name: name != "delta")
+    n_epochs = int(epochs)
+    if stage == "B":
+        # Stage B refinement: only delta trains; eval mode so the frozen encoder has no dropout noise.
+        net.eval()
+        run_phase(epochs_b, lambda name: name == "delta")
+        n_epochs += int(epochs_b)
+    for param in net.parameters():
+        param.requires_grad_(True)
 
     # Refresh centres in eval mode under observed forcing (no dropout) before saving/scoring.
     net.eval()
@@ -1145,11 +1212,11 @@ def train_seed(
     if verbose:
         last_loss = loss_history[-1] if loss_history else float("nan")
         print(
-            f"    seed {seed}: epochs {epochs}, loss {last_loss:.4f}, "
+            f"    seed {seed}: epochs {n_epochs}, loss {last_loss:.4f}, "
             f"val median NSE {val_score:.3f} ({time.time() - t0:.0f}s)",
             flush=True,
         )
-    return net, val_score, int(epochs), loss_history
+    return net, val_score, n_epochs, loss_history
 
 
 def _merge_constrained_slot(c_df, p_df, constrained_name, free_name, mask, flag_col):
@@ -1281,7 +1348,10 @@ def build_parser():
     ap.add_argument("--train-start", default=None, help="explicit R3 training start override")
     ap.add_argument("--run", default=None, help="results sub-folder name")
     ap.add_argument("--seeds", type=int, nargs="*", default=list(range(10)))
-    ap.add_argument("--epochs", type=int, default=500, help="fixed training epochs (no early stopping)")
+    ap.add_argument("--epochs", type=int, default=500,
+                    help="fixed stage-A epochs (no early stopping); stage B runs them first")
+    ap.add_argument("--epochs-b", type=int, default=200,
+                    help="stage B: epochs of the delta-only refinement after the stage-A epochs (ignored in stage A)")
     ap.add_argument("--lr", type=float, default=1e-2)
     ap.add_argument("--weight-decay", type=float, default=1e-4)
     ap.add_argument("--lam-shape", type=float, default=0.1, help="penalty on kernel/bucket spread")
@@ -1330,6 +1400,8 @@ def _canonicalize_args(args, error=None):
 
     if args.epochs < 1:
         fail("--epochs must be >= 1")
+    if args.epochs_b < 0:
+        fail("--epochs-b must be >= 0")
     for flag, val in (
         ("--lam-shape", args.lam_shape),
         ("--lam-gain", args.lam_gain),
@@ -1410,6 +1482,8 @@ def prepare(args, *, error=None, verbose=True):
 
     config_args = args_from_config(vars(args))
     opt = _canonicalize_args(config_args, error=error)
+    if opt["stage"] == "A":
+        config_args.epochs_b = 0      # no refinement phase: keep stage-A configs independent of it
     arm, policy = opt["arm"], opt["policy"]
     train_start = opt["train_start"]
 
@@ -1458,6 +1532,7 @@ def prepare(args, *, error=None, verbose=True):
     fp_extra = {
         "model": "hybrid_gnn_v2",
         "reliable_pumping_from": RELIABLE_PUMPING_FROM,
+        "pumping_record_start": routed["pumping_record_start"],
         "canal_mode": routed["canal_mode"],
         "river_constrained_wells": sorted(set(data["codes"]) & river_c),
         "canal_constrained_wells": sorted(set(data["codes"]) & canal_c),
@@ -1485,6 +1560,8 @@ def prepare(args, *, error=None, verbose=True):
         "stage": opt["stage"],
         "regime": opt["regime"],
         "reliable_pumping_from": RELIABLE_PUMPING_FROM,
+        "pumping_record_start": routed["pumping_record_start"],
+        "epochs_b": config_args.epochs_b,
         "canal_mode": routed["canal_mode"],
         "well_canal_basin": routed["well_canal_basin"],
         "groups": data["groups"],
@@ -1613,6 +1690,7 @@ def main():
             graph_data,
             prep["well_graph_idx"],
             epochs=args.epochs,
+            epochs_b=prep["config_args"].epochs_b,
             lr=args.lr,
             weight_decay=args.weight_decay,
             lam_shape=args.lam_shape,

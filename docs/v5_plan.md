@@ -28,6 +28,25 @@ first. Where a claim fails, the change stays, with expectations fixed accordingl
 | C5 | 49 terms of `lulcw.ttl` are tied to French agencies (§2.2.1) | T59 (`docs/ontology_country_terms.md`): 83 of 413 terms mention a French source; 16 in their name (e.g. `bdlisaCode`, `bnpeCode`, `bssCode`, `rpgEdition`), 67 only in their definition. | ⚠️ count differs (16 / 83, not 49) | The France profile (R2.2) moves the 16 name matches; the 67 keep their place, with definitions made country-neutral where the French source is only an example. |
 | C6 | 23 terms are unused (§2.2.2) | `docs/ontology_term_usage.md` says 23. Several are CQ answer-status individuals or placeholders for modules whose data come later (e.g. `ModelResult` for CQ10). | ✅ count; ⚠️ "prune all" | Review each: prune, or keep with a reason (R2.2). |
 
+## 1b. Checks of the bug audit of 2026-11-26 (`docs/v5_bugs_to_fix.md`)
+
+An audit of commit `720fb40` listed four bugs or gaps to fix before any Colab run of Hybrid-GNN v2 and five
+cleanups. Assil: fix the valid ones, then continue the plan. Each claim was checked against the code and data
+first (Claude, 2026-11-26); step note `docs/notes/step16_v5.md`.
+
+| # | Claim | Check | Verdict | Fix |
+|---|---|---|---|---|
+| 1 | Imputed 2005–2011 pumping still trains the pumping gain through the training-mean centre on post-2012 weeks | A probe loss linear in the post-2012 predictions isolates gradient paths: multiplying every imputed pumping week by 100 moved the pumping-gain gradient by 405 (toy model). The audit's fix (detach the pre-2012 slice of the centre) left 273: the eight-year kernel's memory carries imputed pumping into the 2012+ contributions, a second path the audit missed | ✅ real, larger than reported | Each pumping stress split into declared and imputed parts; the imputed part's response uses a detached gain and kernel at every week, and before 2012 the whole pumping anomaly is fixed in the loss. Values unchanged; probe change exactly 0 (`tests.test_hybrid_gnn` 3c) |
+| 1b | (found while checking 1) v5 pumping stress is **0 for 1990–2002** | The pumping table starts in 2003, v5's weather in 1990, and `routed_v5_inputs` filled the gap with 0: summed pumping 0.0 until 2002, 881.5 thousand m³/week from 2003, a step the kernels carry into 2005–2011 (frozen v4 had the same gap for 2000–2002, its weather starting in 2000: recorded as a v4 limitation, v4 unchanged) | ✅ real | Weeks before the pumping record are NaN, filled with the well's training mean like the canal series and the kernel warm-up (test 7 checks it on the real v5 export) |
+| 2 | The v5 export has no aquifer units, `monitors`, `overlies` or basin canal nodes promised by plan v3 §3.5 | `export_v5_main`: 5 node types, one plain canal node, no unit nodes | ✅ real gap | T71 (neon): 25 unit nodes typed by the written rule, `monitors` (well ← unit), `overlies` (direct contacts), basin canal nodes, pandas oracles |
+| 3 | Controls E/F omit `recharge_leakage` and `recharge_unitwide` | v5 controls: 181 local recharge edges only; D has 181 + 765 + 105 | ✅ real | T71: the controls rewire every relation of D |
+| 4 | Stage B trains from scratch, not as a refinement of stage A | `train_seed`: per-well δ trainable from epoch 0; the review (§5) designs B as a δ refinement after A, against the v4 failure where δ absorbed the well differences | ✅ real | Stage B = the stage-A epochs (δ = 0, out of the optimiser), then `--epochs-b` epochs of δ only; held-out wells equal stage A exactly (test 4c) |
+| 5.1 | `n_slow ≥ 1` duplicated in `hybrid_gnn.py` | `kernels.raw_to_kernel_params` kept n ≥ 0.5 | ✅ | `kernels.N_SLOW_MIN = 1`, duplicate removed |
+| 5.2 | Stale statuses in this plan | R0.2, R1.3, R1.5, R3.2 | ✅ | Updated below |
+| 5.3 | Stale note in `docs/bss_evidence.md` | Line 5 claimed paging duplicates in a snapshot without any | ✅ | T72 (sol): the generator reports the counts |
+| 5.4 | "Vertical leakage is not yet derived" in `lulcw:VerticalLeakage` and `cq08_status.rq` | Stale since T65 (leakage influences exist) | ✅ | **Deferred to R2.2**: editing `lulcw.ttl` changes the ontology hash and forces a graph-release rebuild, which the R2.2 module split does anyway |
+| 5.5 | `wfdCode` (EU Water Framework Directive) not among the France-profile candidates | A classification question, not a bug | ✅ note | Decided in R2.2 (EU/France profile or core) |
+
 ## 2. A rule for honest reporting: v5 was designed after seeing v4's test scores
 
 The v5 changes were chosen after reading v4's **drought-period (test)** scores (karst, the weather-blind
@@ -50,7 +69,7 @@ Owners: **C** = Claude (lead), **N** = neon (Gemini 4 Neon high), **S** = sol (G
 | Step | Task | Owner | Status |
 |---|---|---|---|
 | 0.1 | `arms_report` → `docs/results_arms_v4.md` | C | ✅ 2026-11-25: every family complete, 0 pending |
-| 0.2 | T58 Phase 4 figures; RQ1/RQ2 reading in `docs/notes/step14_phase4.md` | S (T58), C (reading) | 🔄 reading ✅ 2026-11-25 (facts: no effect of interest; structure: undecided; hard signs: no accuracy cost; D beats random graphs, ties distance rewires); T58 figures after T64 |
+| 0.2 | T58 Phase 4 figures; RQ1/RQ2 reading in `docs/notes/step14_phase4.md` | S (T58), C (reading) | ✅ reading 2026-11-25 (facts: no effect of interest; structure: undecided; hard signs: no accuracy cost; D beats random graphs, ties distance rewires); T58 figures committed 2026-11-25 (`reports/figures/phase4_*_v4.png`) |
 | 0.3 | commit, tag `phase4-v1-frozen` (push: ask A) | C | ✅ tag `phase4-v1-frozen`, pushed 2026-11-25 |
 
 ### R1 — dataset v5 (laptop + Earth Engine)
@@ -60,15 +79,15 @@ Owners: **C** = Claude (lead), **N** = neon (Gemini 4 Neon high), **S** = sol (G
 | 1.1b | Hub'Eau piezometer refresh (2024–25 validations); BNPE 2025 check | C | ✅ 2026-11-25: dated snapshots (piezometers: 6,574 records since 2024 now "Correcte"; rivers to Nov 2026, from 2005 only); BNPE 2025 not published (0 records) |
 | 1.1c | (optional) nitrate (`qualite_nappes`, parameter 1340); Aude (dept 11) feasibility | C | ⬜ |
 | 1.2 | canal intakes by basin (T60); Hub'Eau monthly re-check of the canal stations | N, C | ✅ 2026-11-25: `src/dataset/canal_basins.py`, `docs/canal_basins.md` (Têt 72 % of the volume, −33 % 2022→2023; annual totals unrelated to the deficit); no canal flow series exists. Open: the 2 large unknown intakes (override needs a documented reason) |
-| 1.3 | BRGM InfoTerre WFS (BSS) borehole depths → pump attribution re-run | C (API), N | 🔄 2026-11-25: `src/ingest/brgm_bss.py` (water points with depth and BD LISA entities, boreholes with depth reached); T62 measures the precision before any use |
+| 1.3 | BRGM InfoTerre WFS (BSS) borehole depths → pump attribution re-run | C (API), N | ✅ 2026-11-25: `src/ingest/brgm_bss.py` (tiled pull); T62 (`docs/bss_evidence.md`): BSS adds nothing usable for irrigation attribution (only 240 BNPE points carry a BSS code), so no re-run; whether it enters v5 at all is a plan v3 §8 point |
 | 1.4 | Earth Engine: Sentinel-2 NDVI/NDMI per RPG parcel (Roussillon); S2 + WorldCover + ERA5-Land (Manouba) | A (register), C | ⬜ unblocked 2026-11-25: Earth Engine works from the laptop (Assil's project; the three collections checked for both sites) |
-| 1.5 | build `dataset_v5` (`forcing_start` 1990, refreshed heads, basin canals, BSS attribution, S2 summaries); log pulls in `data/README.md`; Gate R1 | C | 🔄 2026-11-25: built without BSS and S2 (same wells, core and folds as v4; core test weeks not validated 41.5 % → 23.7 %); v5 graph building; Gate R1 checks (cold rebuild hashes, dataset tests) pending |
+| 1.5 | build `dataset_v5` (`forcing_start` 1990, refreshed heads, basin canals, BSS attribution, S2 summaries); log pulls in `data/README.md`; Gate R1 | C | 🔄 built 2026-11-25 without BSS and S2 (same wells, core and folds as v4; core test weeks not validated 41.5 % → 23.7 %); reproducible (T68: 13/13 files identical after a cold rebuild); ends at the last weather week 2026-11-22 (T69); v5 graph released; dataset tests pass on v5 (T72, 2026-11-26: pumping conservation, regime boundaries, folds, audit, canal basins, placeholders). **Gate R1 waits only for R1.4 (S2)** |
 
 ### R2 — ontology `lulcw` 1.0, alignments, text extraction (laptop + Colab GPU)
 | Step | Task | Owner | Status |
 |---|---|---|---|
 | 2.1 | Paper extraction: OpenAlex → 20–30 open-access Mediterranean papers; local open LLM on Colab (Track 1: causal axioms, reviewed by A; Track 2: P/R/F1 against the 32 statements of `configs/exchange_evidence.csv`). Model fixed before scoring (the review proposes Qwen2.5-7B-Instruct; compare a newer Apache-2.0 model on the dev statements first) | C, N | ⬜ |
-| 2.2 | Split `lulcw.ttl`: 7 core modules (core, hydro, lulc, eo, med-causal, causal, xai) + profiles `lulcw-fr`, `lulcw-tn`; prune/justify unused terms (C6); rules for `OverlyingLeakageInfluence`, `RegionalOutcropInfluence`, basin-split `CanalReturnInfluence` (hard ≥ 0 where measured), `ProbablyIrrigatedParcel` (CQ15); CQ10, CQ16 terms | C | 🔄 2026-11-25: overlying-leakage rule + `recharge_leakage` export done (T65; ontology 0.9.0; 32/33 core wells have a recharge path, CARRIE the named exception); France/Tunisia profiles, unused terms, CQ15/CQ16 still to do |
+| 2.2 | Split `lulcw.ttl`: 7 core modules (core, hydro, lulc, eo, med-causal, causal, xai) + profiles `lulcw-fr`, `lulcw-tn`; prune/justify unused terms (C6); rules for `OverlyingLeakageInfluence`, `RegionalOutcropInfluence`, basin-split `CanalReturnInfluence` (hard ≥ 0 where measured), `ProbablyIrrigatedParcel` (CQ15); CQ10, CQ16 terms | C | 🔄 2026-11-25: overlying-leakage rule + `recharge_leakage` export done (T65; ontology 0.9.0; 32/33 core wells have a recharge path, CARRIE the named exception); France/Tunisia profiles, unused terms, CQ15/CQ16 still to do; with the split, the audit's items 5.4 (stale "vertical leakage not yet derived" in `lulcw:VerticalLeakage` and `cq08_status.rq`) and 5.5 (`wfdCode`: EU or France profile) |
 | 2.3 | Alignments: SAREF4WATR, SAREF4AGRI, CORINE SKOS, ENVO, GEMET, deeper SWEET (each term checked at its source, ledger + HermiT); EuroCrops HCAT mapping; AGROVOC gold set (A) + OntoAligner (Colab) → P/R/F1 | C, N, A | ⬜ |
 | 2.4 | Roussillon v5 KG + Manouba KG in a persisted `pyoxigraph.Store`; France → Tunisia reuse %; pyLODE docs; export v5 (C, D, E, F + equivalence test); Gate R2 (0/33 core wells weather-blind) | C, N | ⬜ |
 
@@ -76,7 +95,7 @@ Owners: **C** = Claude (lead), **N** = neon (Gemini 4 Neon high), **S** = sol (G
 | Step | Task | Owner | Status |
 |---|---|---|---|
 | 3.1 | `analysis-plan-v3` (ladder, architecture, pumping-reliability rule, black box, §2 above); tag | C | ⬜ |
-| 3.2 | `src/models/hybrid_gnn.py`: centred contributions, gains in sd units, monotone soil bucket (FlexModel), fast + slow kernels (amax 104 wk), two-channel recharge, basin canals, PyG HeteroConv/GATv2 parameter encoder (stage A δ = 0, stage B regularised δ), 2005–2011 pumping-gradient mask, split regularisation, cosine LR, bounded monotone residual row; black box `Hetero-STGNN` on the same HeteroData | C (design, core), N (pieces) | 🔄 design in `docs/analysis_plan_v3.md` §3 (draft); pieces: ✅ `bucket.py` (T63), 🔄 `kernels.py` (T64, sol), 🔄 `hetero_graph.py` (T66, neon) |
+| 3.2 | `src/models/hybrid_gnn.py`: centred contributions, gains in sd units, monotone soil bucket (FlexModel), fast + slow kernels (amax 104 wk), two-channel recharge, basin canals, PyG HeteroConv/GATv2 parameter encoder (stage A δ = 0, stage B regularised δ), 2005–2011 pumping-gradient mask, split regularisation, cosine LR, bounded monotone residual row; black box `Hetero-STGNN` on the same HeteroData | C (design, core), N (pieces) | 🔄 design in `docs/analysis_plan_v3.md` §3 (draft); ✅ `bucket.py` (T63), `kernels.py` (T64), `hetero_graph.py` (T66), first assembly (T70), audit fixes 2026-11-26 (§1b: declared-only pumping gradients, pre-record pumping, stage B as a refinement, `n_slow ≥ 1` in `kernels.py`); 🔄 export with units, `overlies`, basin canals and complete controls (T71, neon); ⬜ Colab smoke run, black box |
 | 3.3 | Twin v2 (nonlinear recharge, leakage, basin canals, imputed pumping); Gate R3 (finite-difference 0 % sign violations, replay < 1e-5 m, centred LWO, twin) | C, N | ⬜ |
 
 ### R4 — v5 real-data runs (Colab v5e1 + Kaggle CPU in parallel; Colab L4 / Camber L4 for GPU)

@@ -1,6 +1,6 @@
 """Toy checks of the two-component kernels (analysis plan v3 §3.4).
 
-    PYTHONIOENCODING=utf-8 PFE_DATASET=v4 .venv/bin/python -m tests.test_kernels
+    PYTHONIOENCODING=utf-8 PFE_DATASET=v5 .venv/bin/python -m tests.test_kernels
 
 Check normalisation, mixture limits, mean-lag sampling and truncation errors,
 agreement with response.py, causal convolution, and all five raw gradients.
@@ -16,7 +16,7 @@ from src.models.kernels import (
     KERNEL_WEEKS,
     MEAN_FAST_MIN, MEAN_FAST_MAX,
     MEAN_SLOW_MIN, MEAN_SLOW_MAX,
-    N_MIN, N_MAX,
+    N_MIN, N_MAX, N_SLOW_MIN,
     causal_conv, gamma_weights, mixture_weights, raw_to_kernel_params,
 )
 
@@ -32,7 +32,7 @@ def test_weights_and_bounds():
         mf, nf, ms, ns, w = params
         for value, lo, hi in ((mf, MEAN_FAST_MIN, MEAN_FAST_MAX),
                               (ms, MEAN_SLOW_MIN, MEAN_SLOW_MAX),
-                              (nf, N_MIN, N_MAX), (ns, N_MIN, N_MAX), (w, 0, 1)):
+                              (nf, N_MIN, N_MAX), (ns, N_SLOW_MIN, N_MAX), (w, 0, 1)):
             assert ((value >= lo) & (value <= hi)).all()
         assert ((w > 0) & (w < 1)).all()
         for k in (gamma_weights(mf, nf), gamma_weights(ms, ns), mixture_weights(*params)):
@@ -45,7 +45,7 @@ def test_weights_and_bounds():
     # A zero raw value is the geometric midpoint for means and arithmetic for shapes.
     mid = raw_to_kernel_params(torch.zeros(5, dtype=torch.float64))
     expected = torch.tensor([math.sqrt(MEAN_FAST_MIN * MEAN_FAST_MAX), (N_MIN + N_MAX) / 2,
-                             math.sqrt(MEAN_SLOW_MIN * MEAN_SLOW_MAX), (N_MIN + N_MAX) / 2,
+                             math.sqrt(MEAN_SLOW_MIN * MEAN_SLOW_MAX), (N_SLOW_MIN + N_MAX) / 2,
                              0.5], dtype=torch.float64)
     torch.testing.assert_close(torch.stack(mid), expected)
     assert gamma_weights(mid[0], mid[1], K=1).shape == (1,)

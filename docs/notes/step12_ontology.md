@@ -872,6 +872,38 @@ ontology terms, facts or rules, shapes, a CQ query with fixtures and source-tabl
 - **Depth rule, small samples:** the 10 m variant may keep few pairs, and its median
   correlation is then noisy; the number of pairs per variant is reported beside the choice.
 
+### 12.9 gold-set decision rules (Assil, 2026-11-26, before any label)
+
+Decided by Assil with AskUserQuestion (each the recommended option; alternatives shown with examples). Applied to
+every code of `configs/lu_agrovoc_gold.csv`. Reading: "code <relation> concept" (broadMatch = the concept is broader
+than the code). Concept IRIs below were seen in the 2026-10-26 snapshot (`agrovoc_gold search`).
+1. **Target kind: the plant.** A register code records what grows on a parcel (and the plant is what the crop
+   water-demand table describes). Main answer: AGROVOC's common-name plant or crop concept when one exists (VRC →
+   grapevines, c_3360), otherwise the species or genus (PVT → *Prunus persica*, c_6289; LUZ → *Medicago sativa*,
+   c_4693). The product (peaches, c_5638), the land concept (vineyards, c_15203) and the taxon (when a plant concept
+   was chosen) go into `alternatives`. Codes naming a kind of land rather than a crop (orchard, fallow, grassland or
+   pasture, nursery, wood) get the land concept (VRG → orchards, c_5379; J5M → fallow, c_34007). Rejected: the
+   product first (forage, herb and flower codes have no product concept); the land use first (coarse).
+2. **Mixtures and lists** ("X, Y et Z", "Mélange …"; 49 codes): the narrowest concept covering every crop named (LBF →
+   salad crops, c_6742; MLG → feed crops, c_2829), broadMatch when it covers more than the code; each named crop's
+   own concept into `alternatives`. Rejected: the first-named crop (narrowMatch); none for every mixture.
+3. **Residual codes** ("Autre …"; 23 codes): the group's concept with broadMatch (VRG → orchards; LUZ → *Medicago
+   sativa*; TRE → *Trifolium*, c_7910); never exactMatch (a leftover category is narrower than its group).
+   Rejected: none; exactMatch.
+4. **Administrative qualifiers and "none"** (34 codes: ecological focus area, sown for harvest year N, aided,
+   imposed by the administration, eligibility): the paperwork part is ignored and the crop or land concept is the
+   answer, with broadMatch (J6S → fallow; LU7 → *Medicago sativa*). `none` only when the code says nothing about what
+   grows on or covers the land (SNE "Surface agricole temporairement non admissible"), or when the only fitting
+   concept is as vague as farmland (c_2808), land or plants. Rejected: none for every administrative code; always
+   the nearest concept.
+
+- **Annotators:** one (Assil) for now (2026-11-26); the `second` column stays, and `blind` writes the second sheet
+  if a second annotator is found later. Otherwise the thesis states a single annotator.
+- **The examples above were drafted by Claude to illustrate the options.** Assil labels every code himself, these
+  included, and may depart from an example after searching. Most examples are **eval** codes (VRC, PVT, LUZ, VRG,
+  LBF, MLG, TRE, LU7, SNE; only J5M and J6S are dev): no matcher prompt or setting may use them; few-shot examples
+  for the LLM matchers come from dev codes only.
+
 ## CQ4 design proposal (2026-10-26 evening, before any code; ❓ decided the same evening: (b), local 5 km)
 
 **Inputs checked.** SAFRAN grid points every 80 hm in both directions in Lambert II étendu

@@ -100,7 +100,10 @@ e-mails, the AGROVOC gold set, the paywalled papers, the defence date.
   review); retired from his list: the SHOULD/COULD CQ review (all 16 CQs are in the adopted v5 plan).
 - Camber CLI login done by Assil (`camber me` works, user `assil0723`).
 - Decided by Assil: **push only at the end of this session** (commit locally until then); **Manouba transfer from
-  free data only** (no local data: Sentinel-2, WorldCover, ERA5-Land, published aquifer maps).
+  free data only** (no local data: Sentinel-2, WorldCover, ERA5-Land, published aquifer maps); **R1.1c skipped**
+  (nitrate stays future work; maybe a dashboard layer in R6); **one gold-set annotator for now**; the **four AGROVOC
+  labelling rules** (the plant; one concept covering a mixture; "Autre" → group concept, broadMatch; ignore the
+  paperwork part, none only when nothing is said about the land), written in `docs/notes/step12_ontology.md`.
 
 ### 2026-11-26 (Claude Opus 5.5, from ≈ 11:20 local time)
 - Assil: "there is a bug fix folder start with that if those are valid bugs then continue the work as planned";

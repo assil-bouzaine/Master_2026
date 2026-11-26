@@ -528,6 +528,14 @@ Notes:
   ≈ 9 valid summer acquisitions per pixel after the cloud mask.
 - Observations only: the CQ15 rule (thresholds frozen on training years), its validation against the Agreste
   2020 census and the per-well irrigated share come after (`docs/analysis_plan_v3.md` §1).
+- **Derived (CQ15, T76, 2026-11-26):** `PFE_DATASET=v5 python -m src.dataset.irrigation_s2` (36 s) →
+  `interim/irrigation_s2_parcels_v5.parquet` (142,282 parcel-years with status positive / negative /
+  insufficient_data / not_applicable), `processed/dataset_v5/irrigation_s2_wells.parquet` (65 wells × 9 editions +
+  a "train" row: the 2017–2019 mean share of probably irrigated land in the 3 km zone, the static fact of CQ15's
+  with/without row) and `processed/dataset_v5/irrigation_s2_rule.json` (frozen threshold NDVI ≥ 0.485 = Otsu on
+  2017–2019; quality MIN_PX 4, MIN_OBS 3; dry SWI_JA ≤ 0.5; input hashes). Report `docs/irrigation_s2.md`:
+  verdict **heuristic** (2020 vs RA2020: orchards 0.71 in [0.65, 0.91], vines 0.13 above [0.04, 0.07], market
+  gardening 0.18 below ≥ 0.53).
 
 ### BNPE 2025 availability check (R1.1b, 2026-11-25)
 

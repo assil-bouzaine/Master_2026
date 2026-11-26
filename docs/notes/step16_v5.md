@@ -264,3 +264,14 @@ on 18 pages and, on the long web page, produced a runaway answer that hit the 4,
 string): it does not follow this extraction format zero-shot. The Qwen2.5 run did not record its commit
 (`resolved_revision` empty with transformers 5.19); its main branch has not changed since 2025-01-12, so it used
 `a09a354…`; later runs pass the commit explicitly (`EXTRACT_REVISION`).
+
+### R2.1 Track 1: amendment of the download rule (Assil, 2026-11-26 ≈ 19:40, before any model read a paper)
+
+The scripted download obtained only 12 of the 30 papers selected by the round-robin rule: MDPI, Springer, Wiley and
+Elsevier refuse scripted requests, so the replacement rule was filling the set with the next works from the few hosts
+that allow them (6 replacements downloaded, 11 more failed before the run was stopped). That would bias the set
+towards those publishers. **Decided by Assil:** the paper set is exactly the 30 works the rule selected (orders 1–30
+of `configs/track1_papers.csv`); he downloads the 18 the script could not, through his university's access, into
+`data/raw/openalex/2026-11-26/pdf/<OpenAlex id>.pdf`; the replacement rule is withdrawn. The replacement PDFs stay
+on disk, outside the set. The CSV is updated after his downloads (status, size and SHA-256 of every file; a reason
+"downloaded by hand, university access"). No model output existed at the time of this change.

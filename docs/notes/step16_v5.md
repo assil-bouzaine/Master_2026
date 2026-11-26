@@ -275,3 +275,17 @@ of `configs/track1_papers.csv`); he downloads the 18 the script could not, throu
 `data/raw/openalex/2026-11-26/pdf/<OpenAlex id>.pdf`; the replacement rule is withdrawn. The replacement PDFs stay
 on disk, outside the set. The CSV is updated after his downloads (status, size and SHA-256 of every file; a reason
 "downloaded by hand, university access"). No model output existed at the time of this change.
+
+### R2.1 Track 2: the eval result (2026-11-26 ≈ 19:46, scored once with the frozen prompt and model)
+
+Qwen3-8B (`b968826…`, thinking off) on the 47 eval passages (22 gold statements): 102 predictions, 0 parse
+failures; **statement precision 0.069, recall 0.318, F1 0.113; strict F1 0.065** (7 matched, 4 strict); matched-pair
+accuracy: mechanism 0.86, direction 0.57, hedging 0.71, method 0.71, subject 0.14 (`results/v5/extraction/
+qwen3_8b_eval/score_eval.md`). Far below dev (0.462): the model over-produces on the long BRGM pages and misses most
+rows of the FRDG351 water-body table (11 eval statements on one page).
+
+**Caveat to settle before reporting:** the 32 gold statements were curated as evidence for the knowledge graph, not
+as an exhaustive annotation of every page, so an unmatched prediction may be a true statement the gold lacks; the
+precision is then a lower bound. Next step: judge a fixed sample of the 95 unmatched predictions (e.g. every
+fifth, by index) against the source page and report the share that are true statements beside the scores. The
+scores above stay the pre-specified result.

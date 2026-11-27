@@ -358,3 +358,72 @@ quadratic); where the remaining +400 s of rule time goes is to measure with `scr
 bind a fresh variable and compare it in a FILTER, and write first the pattern that uses an outer variable (rule added
 to the T88 brief). Open ontology points from T85, assigned to T88: `lulcw:cropCode`'s domain (now used on parcels too)
 and the `eo` module's description.
+
+## 2026-11-27 — graph speed, the persisted store, the matchers' first run, CLC, reuse
+
+### What was done
+- **CQ15 validation fix applied** (`c7cf39a`): the completeness check of `IrrigationClassificationKeyShape` binds the
+  rule to `?rule` and compares it in a FILTER inside its NOT EXISTS. Checked end to end with pySHACL and the real
+  shapes file on a synthetic graph: the 3 planted gaps are found at 300 and at 3,000 parcel-seasons (2.2 s, 9.8 s).
+- **Rule profile** (`scripts/diag_profile_rules.py`, log `results/logs/diag_profile_rules_2026-11-27.log`): the
+  rules took 645 s, the CQ15 rule (order 70) 429 s of them. Timing the rule piece by piece on a 300-parcel-season
+  sample (`scripts/diag_cq15_rule_parts.py`) put 8.2 of its 8.7 s in the soil-wetness OPTIONAL. That block compared
+  fresh variables to the outer ones in a FILTER (`?scell = ?cell && ?syear = ?year`), so rdflib ran the nested
+  OPTIONAL and evaluated the FILTER for each of the 40 soil-wetness observations, for every parcel-season (27 ms
+  each). Rewriting it with a FILTER on the property instead was slower (74 s); folding the parcel's cell into the
+  same OPTIONAL and joining on `?cell` and `?year` inside the patterns let rdflib prune while matching: 1.5 s on the
+  sample. On the full v5 facts: **615 s → 89 s, the same 119,340 triples** (`scripts/diag_cq15_rule_rewrite.py`,
+  old rule from git HEAD, new from the working tree). A parcel without a matched cell still gets no soil wetness
+  (negative control on the sample: the same triples as the old rule).
+- **Persisted store** (`src/kg/store.py`, `tests/test_store.py`, 7 checks): the release's facts and rule outputs in a
+  disk-backed, read-only pyoxigraph store `data/processed/kg/store_<dataset>/`, rebuilt only when the release
+  manifest changes (its SHA-256 is recorded), swapped in atomically, locked against two builders. `kg_store()` now
+  returns it (same two files, same default graph, so the same answers); `persisted=False` keeps the old in-memory
+  path. **CQ timing** (`src/kg/cq_timing.py` → `docs/cq_timing_v5.md`): runs the CQ data checks of
+  `tests/test_cq.py` on the store with every `ask` timed by query file; exits 1 if a query's slowest call reaches
+  1 s (Gate R2). To run after the release rebuild.
+- **T92** (sol) reviewed and committed: the matchers. First Colab run (`hcat`, L4): all three steps failed at
+  import: OntoAligner imports pykeen, whose optimizer registry, built from the loaded classes, met bitsandbytes'
+  Adam and Adagrad next to torch's (`RegistrationNameConflict`). bitsandbytes is an OntoAligner dependency used only
+  by its 8-bit LLM loader, which `align_match` avoids: the step now uninstalls it in the session. Second run: fuzzy
+  done; retrieval refused by T92's own commit check, because sentence-transformers 5 leaves
+  `config._commit_hash` empty: BGE-M3 is now loaded from `huggingface_hub.snapshot_download` at the pinned commit
+  (the snapshot folder is named by the resolved commit). `scripts/colab_pull.py` now copies alignment runs.
+- **Fuzzy floor** (OntoAligner `SimpleFuzzySMLightweight`, RapidFuzz on the label strings, French source against
+  English HCAT names): strict P = R = F1 = **0.135 on dev** (5/37), **0.110 on eval** (16/146); area-weighted on
+  eval 0.248. As the brief expected, a floor.
+- **T93** (sol) reviewed and committed: `src/kg/reuse_report.py` → `docs/ontology_reuse_tn.md`. At ontology 0.12.0
+  (T88 in progress): 535 of 551 terms (97.1 %) are usable in Tunisia unchanged; the 16 others are French register
+  codes (14) and the EU water-body code (2). But only 65 of 82 validation shapes, 7 of 17 rule shapes and 14 of 40
+  CQ queries are reusable unchanged, because they match on `bdlisaCode`, `bssCode`, `bnpeCode`, `rpgEdition` or
+  `bdCarthageCode`.
+- **CORINE Land Cover** (R2.3): the Eionet CLC vocabulary has labels but no definitions, and `land.copernicus.eu`
+  refused every connection; the official guideline pages of the eight agricultural classes came from Internet
+  Archive copies (logged in `data/README.md`). From their definitions, `configs/lu_clc.csv`: vine and olive
+  closeMatch 221 and 223; orchards, citrus and nuts broadMatch 222 (CLC 222 lists orchards, citrus species and nut
+  crops); the annual classes relatedMatch 211, and also 212 when usually or partly irrigated; grassland relatedMatch
+  231; no_crop and unmapped none. sol → **T94** wires it into the graph like HILUCS.
+- **GEMET** candidates read in GEMET 4.2.3 (handoff, item 3 of "Next"); notably GEMET's "groundwater extraction"
+  (3781) is defined as over-extraction, so it is a rejected-row example, and "water abstraction" (15394) the target.
+- **Manouba**: besides Ferchichi et al. 2017, a search found an HAL record of a paper on the recharge areas of this
+  aquifer (Saidi et al. 2017, *Environmental Earth Sciences*; DOI given by the search as 10.1007/s12665-017-6840-1,
+  **not yet verified**); HAL blocks scripts (bot protection): on Assil's list.
+
+### Why it matters
+- The graph is rebuilt after every ontology change: rules went from about 11 to about 4 minutes and validation from
+  82 back to about 10, so a release costs about 20 minutes instead of 100.
+- Gate R2 asks every CQ query to answer in under 1 s on a persisted store; the store and the timing script make that
+  a measured number.
+- CLC classifies arable land by irrigation infrastructure, not by crop (drip-irrigated vegetables are 211, not
+  212). A crop class therefore cannot say "irrigated land" in CLC's sense: the relatedMatch rows say so honestly, and
+  this is one more reason CQ15 (irrigation from Sentinel-2) stays a separate, heuristic concept.
+- The reuse report shows where the ontology is still French in practice: not in its vocabulary, but in the rules
+  and queries that identify things by their French register codes.
+
+### What to keep in mind
+- In SPARQL for rdflib (rules and shapes): join on the outer variables **inside** the patterns of an OPTIONAL, not
+  through a FILTER over fresh variables (same lesson as the NOT EXISTS fix: rdflib evaluates such a block once per
+  outer row, and a FILTER only prunes after the block has run).
+- The country-neutral refactor of rules and queries (identify wells, units and facilities by node or by a generic
+  identifier, not by French codes) would raise the reuse numbers; it changes derived IRIs, so it needs the equality
+  tests and exports updated: a design decision for Assil, not done.

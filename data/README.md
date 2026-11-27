@@ -641,3 +641,22 @@ The French mapping gives an HCAT3 class for 183 of the 198 crop codes of the wel
 distinct HCAT3 classes, 3 codes `not_known_and_other`); the 15 others are codes added after 2018. It is the EuroCrops
 authors' mapping, used as the gold of the RPG → HCAT matching experiment (no labelling needed). Share-alike licence:
 it stays a separate resource, not copied into the CC BY 4.0 ontology.
+
+### CORINE Land Cover nomenclature guidelines, agricultural classes (R2.3, 2026-11-27)
+
+The Eionet CLC vocabulary (`clc_eionet.rdf`, above) has labels but empty definitions, and the Copernicus Land
+Monitoring Service site (`land.copernicus.eu`) refused or reset every connection on 2026-11-27. The official
+"CORINE Land Cover nomenclature guidelines" pages of the eight agricultural classes used by the crop-class mapping
+(`configs/lu_clc.csv`) were therefore taken from the Internet Archive's copies, as raw bytes (`id_` mode), into
+`data/raw/vocab/clc_guidelines_2025-10-17/` (read only for their definitions; not redistributed):
+
+| File | Original URL `https://land.copernicus.eu/content/corine-land-cover-nomenclature-guidelines/html/<file>` (archive snapshot, UTC) | Bytes | SHA-256 (first 16) |
+|---|---|---|---|
+| `index-clc-211.html` | 2025-10-17 19:07:55 | 19,763 | `9817be0608a070c0` |
+| `index-clc-212.html` | 2025-10-17 19:08:07 | 16,416 | `555a593f79326a39` |
+| `index-clc-221.html` | 2025-10-17 19:08:02 | 16,254 | `b3d1b954a409ee1a` |
+| `index-clc-222.html` | 2025-10-17 19:07:48 | 20,281 | `628ba1bb280efc5f` |
+| `index-clc-223.html` | 2024-05-03 08:56:38 | 15,259 | `1f70d78177489813` |
+| `index-clc-231.html` | 2025-10-17 14:32:44 | 25,129 | `8dc7f841a30b2e8a` |
+| `index-clc-241.html` | 2025-10-17 19:07:30 | 15,130 | `7b927e31c401aced` |
+| `index-clc-242.html` | 2024-09-23 17:22:11 | 17,331 | `6413a22ff786efce` |

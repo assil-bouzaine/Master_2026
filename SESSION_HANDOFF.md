@@ -31,54 +31,43 @@ date.
 
 ---
 
-## ▶ START HERE (state during the session of 2026-11-27, ≈ 15:50 local time; updated as tasks finish)
+## ▶ START HERE (state during the session of 2026-11-27, ≈ 17:10 local time; updated as tasks finish)
 
-**Running when this was written:** Colab session **`hcat`** (L4, 2.33 units/h, started ≈ 15:45 local): job
-`align:fuzzy align:retrieval align:llm` (T92's matchers on RPG → HCAT3). If this session ends: `.venv/bin/python -m
-scripts.colab_cli pull hcat`, then `stop hcat` (never leave it billing); outputs go to `results/v5/alignment/hcat_*`;
-score each with `python -m src.kg.align_eval score --gold hcat --pred results/v5/alignment/hcat_<m>/predictions.csv
---split dev|eval`. Workers: **neon → T88** (CQ10 + CQ16, running its tests), **sol → T93** (France → Tunisia reuse
-report; brief `.agents/briefs/T93_reuse_report.md`). Laptop: `scripts/diag_cq15_rule_rewrite.py` (old vs new CQ15
-rule on the full facts; log `results/logs/diag_cq15_rule_rewrite_2026-11-27.log`).
+**Running when this was written:** the **graph release rebuild** on the laptop (`bash scripts/rebuild_release.sh v5
+results/logs/rebuild_2026-11-27`: facts, rules + validation, persisted store, inventory/export/controls of the three
+policies, CQ timing; log `results/logs/rebuild_2026-11-27/rebuild.log`). **Never edit `ontology/`, rules or shapes
+while it runs.** If the session ended mid-run: rerun the same command. Worker **neon → T95** (Hetero-STGNN black box,
+model code only; brief `.agents/briefs/T95_hetero_stgnn.md`). Worker **sol**: idle (T96 done). Colab: no session
+(`hcat` pulled and stopped; balance 160.58 units).
 
-**Done this session (all committed locally, nothing pushed):** the CQ15 validation fix (`c7cf39a`); T92 reviewed and
-committed (`3ce73a8`); `align:<matcher>` GPU steps (`ac515ed`). **Uncommitted, lead's own (commit after the
-comparison):** the CQ15 *rule* speed-up in `ontology/rules/lulcw-rules.ttl` (the soil-wetness OPTIONAL folded with the
-parcel's cell; 429 s → 89 s on the full facts, same 119,340 triples for the new form; the sample check found identical
-triples incl. a parcel without a cell), `src/kg/store.py` + `tests/test_store.py` (persisted read-only pyoxigraph store
-bound to the release; `kg_store()` now uses it), `src/kg/cq_timing.py` (times every CQ call of test_cq's data checks
-on the store → `docs/cq_timing_v5.md`; Gate R2's "< 1 s"), diagnostics `scripts/diag_cq15_rule_*.py`.
+**Done this session (all committed locally, nothing pushed):** CQ15 validation fix; CQ15 rule 615 s → 89 s (same
+triples); persisted store (`src/kg/store.py`, `kg_store()` uses it) and `src/kg/cq_timing.py`; T92 matchers + three
+Colab fixes (bitsandbytes clash, BGE-M3 commit check, importer); **SO1 HCAT table** (`docs/alignment_hcat_v5.md`:
+eval strict F1 fuzzy 0.110, retrieval 0.151, Qwen3-8B 0.390 [0.304, 0.475]); T93 reuse report (97.1 % of terms, but
+41 % of rule shapes and 35 % of CQ queries reusable unchanged: French register codes); CLC correspondences
+(`configs/lu_clc.csv`, T94 in the graph); **T88** (CQ10 + CQ16, ontology 0.12.0); **GEMET** alignment (22 asserted,
+5 rejected) and **SAREF4AGRI** (`RegisteredParcel` closeMatch `s4agri:Parcel`); meta 0.5.0; step16 note updated.
 
 **Next, in order:**
-1. When T88's report arrives: review, commit. Then **rebuild the release** (lead): `PFE_DATASET=v5` `src.kg.build_kg`
-   (≈ 5.5 min), `src.kg.apply_rules` (rules should now take ≈ 4–5 min, validation ≈ 10 min), `src.kg.store` (build the
-   persisted store), `src.kg.cq_timing`, `src.kg.inventory` / `src.kg.export` / `src.kg.controls` for the three
-   policies (edges must be identical), the graph suites (test_ontology, test_modules, test_kg, test_kg_rules, test_cq,
-   test_release, test_inventory, test_export, test_controls, test_store) and `src.kg.ontology_docs` (regenerate;
-   `--check`). Then **neon → T91** (CQ9 + CQ13; brief ready).
-2. Pull `hcat`, score the three matchers (dev, eval), write the reading (step16 note) → the SO1 HCAT table.
-3. Lead, after T88: GEMET / CORINE / SAREF4AGRI alignments. Candidates checked in GEMET 4.2.3 (session of 2026-11-27):
-   aquifer 518, groundwater 3780, water abstraction 15394 (NOT 3781 "groundwater extraction": GEMET defines it as
-   over-extraction, a rejected-row example), irrigation 4505, irrigation canal 4507, drinking water supply 2343,
-   surface water 8229, watercourse 9161, well 9290, water level 9190, infiltration 4291, soil moisture 7874,
-   atmospheric precipitation 637, water demand 9164, drought 2347, land use 4678 (definitions in the TSV the lead
-   extracts from `data/raw/vocab/gemet.rdf.gz`). CLC level-3 classes only in the Eionet file (no level 1–2): crop
-   classes → CLC at data level like HILUCS (`configs/lu_clc.csv`, `src/kg/landuse.py`): vine → 221 closeMatch, olive →
-   223 closeMatch, orchards/citrus/nuts → 222 broadMatch; annual crops ambiguous between 211 and 212 (CLC mixes crop and
-   irrigation status): relatedMatch or none, decide with the definitions.
-4. Track 1: Assil reviews the pilot sheet; then the prompt/schema decision, then the main run (28 papers, ≈ 4 h L4).
-5. Then R2.4 (Manouba KG from free data, OOPS!), Gate R2; twin v2 (R3.3) and the Hetero-STGNN black box (R3.2) as code.
+1. When the rebuild finishes: check `rebuild.log`; compare the export edges with the fingerprints taken before
+   (`results/logs/rebuild_2026-11-27/export_*_before.sha256`; the CLC facts and the speed-ups should not move an
+   edge); read `docs/cq_timing_v5.md` (Gate R2: < 1 s per query). Then the graph suites: test_modules, test_kg
+   (check 11 data part now runs), test_kg_rules, test_cq, test_release, test_inventory, test_export, test_controls,
+   test_store; `src.kg.ontology_docs` (regenerate, `--check`); `src.kg.reuse_report` (regenerate). Commit.
+2. **neon → T91** (CQ9 + CQ13; brief ready) once T95 is reviewed, then another rebuild (`scripts/rebuild_release.sh`).
+3. sol: free; candidate tasks: none urgent (the country-neutral refactor of rules/queries is a decision for Assil).
+4. Track 1: Assil reviews the pilot sheet; then the main run (28 papers, ≈ 4 h L4).
+5. R2.4: Manouba KG (needs the aquifer extent: Ferchichi et al. 2017, or Saidi et al. 2017 on HAL, DOI to verify);
+   OOPS! scan on the 0.12 ontology; Gate R2. R3: twin v2 design (lead), black box (T95).
 
 **Where we are in `docs/v5_plan.md`:** R0 ✅ · R1 ✅ (Gate R1 passed 2026-11-26) · R2 in progress:
 - R2.1: Track 2 ✅ (eval F1 0.113; sample check: implied precision ≈ 0.17). Track 1: pilot ✅ (88 statements from the
   two pilot papers, `results/v5/extraction/track1_qwen3_pilot/`), review sheet for Assil ✅, main run ⬜.
-- R2.2: CQ15 ✅ (T85, ontology 0.11.0; validation fix ✅ 2026-11-27, rule speed-up ✅ uncommitted); CQ10, CQ16 (T88) 🔄;
-  CQ9, CQ13 (T91) ⬜.
-- R2.3: SAREF4WATR, ENVO, deeper SWEET ✅; HCAT gold + scorer ✅; GEMET/CLC files ✅, alignments ⬜; matchers (T92) ✅ code, 🔄 Colab run `hcat`;
-  AGROVOC labels (Assil) ⬜.
-- R2.4: pyLODE documentation ✅ (`docs/ontology/`, regenerate after each ontology change); persisted store ✅ code
-  (`src/kg/store.py`), CQ timing ✅ code (`src/kg/cq_timing.py`; run after the rebuild); reuse % (T93) 🔄; Manouba KG,
-  OOPS! ⬜.
+- R2.2: CQ15 ✅ (validation fix and rule speed-up ✅ 2026-11-27); CQ10, CQ16 ✅ (T88, ontology 0.12.0); CQ9, CQ13 (T91) ⬜.
+- R2.3: SAREF4WATR, ENVO, deeper SWEET ✅; GEMET ✅, SAREF4AGRI ✅, CLC (crop classes, data level) ✅; HCAT matchers ✅
+  (SO1 table `docs/alignment_hcat_v5.md`); AGROVOC labels (Assil) ⬜ then the same matchers on AGROVOC.
+- R2.4: pyLODE documentation ✅ (regenerate after the rebuild); persisted store ✅; CQ timing 🔄 (in the rebuild);
+  reuse report ✅ (`docs/ontology_reuse_tn.md`, regenerate); Manouba KG ⬜ (extent); OOPS! ⬜.
 
 **VPN (installed 2026-11-26 ≈ 19:45 at Assil's request):** `openvpn` 2.7.9 + `networkmanager-openvpn` 1.12.5
 (pacman), NetworkManager profile **`Univ-Manouba`** imported from the university's `.ovpn` (certificate-based, server
@@ -97,7 +86,9 @@ session is not stored anywhere (`sudo -k` run at the end).
    aquifers (Track 2's main confusion).
 2. The AGROVOC labels (`data/interim/agrovoc_gold_worksheet.xlsx`, dev codes first; `import` after each sitting).
 3. Papers: **Ferchichi et al. 2017** (Manouba aquifer, needed for R2.4's extent; doi:10.1007/s12517-017-3314-4, open
-   access but blocks scripts), Shapoori 2015 (VPN); `docs/papers_to_download.md`.
+   access but blocks scripts); also **Saidi et al. 2017**, *Environmental Earth Sciences*, recharge areas of the same
+   aquifer (HAL record hal-01591256; DOI given by a search as 10.1007/s12665-017-6840-1, unverified; HAL blocks
+   scripts); Shapoori 2015 (VPN); `docs/papers_to_download.md`.
 4. Later: the alignment ledger review; the defence date when known.
 
 ---
@@ -120,6 +111,14 @@ session is not stored anywhere (`sudo -k` run at the end).
 - New lead code: persisted store (`src/kg/store.py`, `tests/test_store.py`: 7 checks pass), `kg_store()` uses it;
   `src/kg/cq_timing.py`.
 - sol → T93 (reuse report).
+- T93 committed; CLC: guideline pages from the Internet Archive (`land.copernicus.eu` unreachable), `configs/lu_clc.csv`
+  decided, T94 (sol) wired it into the graph, committed.
+- Colab `hcat`: fuzzy done; retrieval refused by the BGE-M3 commit check (sentence-transformers 5 leaves
+  `_commit_hash` empty) → load from a pinned `snapshot_download`; importer copies alignment runs; LLM done; pulled,
+  stopped. SO1 table (T96, sol) committed.
+- T88 (neon) reviewed and committed (+ the generator's stale descriptions fixed by the lead); neon → T95.
+- GEMET and SAREF4AGRI alignments (lead), committed; all ontology gates pass.
+- Rebuild started (`scripts/rebuild_release.sh`, committed).
 
 
 ### 2026-11-26 (night, Claude Opus 5.5, from ≈ 22:50 local time)

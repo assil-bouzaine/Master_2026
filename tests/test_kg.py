@@ -33,17 +33,25 @@ from the source tables with pandas, not taken from the builder (docs/competency_
    (skos:broadMatch; none for the classes left unmapped), and every HILUCS value in the ontology
    network has the IRI, label, definition and parent of the pinned registry snapshot, read here
    from the stored JSON, status Valid.
+11. CLC (v5 plan R2.3): every correspondence in configs/lu_clc.csv is present, with no extra
+   CLC mapping, and its target belongs to the Eionet snapshot. The two releases record provenance.
+   The config checks always run, including unknown-code and missing-class negative controls;
+   facts built before CLC skip only the data part.
+12. CQ15 (v5): satellite irrigation rule, evaluations and parcel observations.
 """
 import json
 import re
 import xml.etree.ElementTree as ET
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
 import pyoxigraph as ox
 import rdflib
 import shapely
-from rdflib.namespace import OWL, RDF, RDFS
+from rdflib.namespace import OWL, RDF, RDFS, SKOS
 
 from src.config import DATASET, DATASET_DIR, INTERIM, PROCESSED, RAW, ROOT
 
@@ -338,7 +346,9 @@ def test_hilucs(store, net):
     base = "http://inspire.ec.europa.eu/codelist/HILUCSValue/"
     want = {c: (base + h if h else None) for c, h in zip(want["class"], want["hilucs"])}
     got = rows(store, """PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-        SELECT ?n ?h WHERE { ?c a lulcw:CropClass ; skos:notation ?n . OPTIONAL { ?c skos:broadMatch ?h } }""")
+        SELECT ?n ?h WHERE { ?c a lulcw:CropClass ; skos:notation ?n . OPTIONAL {
+            ?c skos:broadMatch ?h .
+            FILTER(STRSTARTS(STR(?h), "http://inspire.ec.europa.eu/codelist/HILUCSValue/")) } }""")
     assert got["n"].is_unique, "a crop class with two HILUCS values"
     got = dict(zip(got["n"], got["h"]))
     assert got == want, f"crop class -> HILUCS differs from the config: {got} vs {want}"
@@ -360,6 +370,68 @@ def test_hilucs(store, net):
         assert {str(x) for x in net.objects(rdflib.URIRef(h), SKOS.broader)} == ({r["parent"]} if r["parent"] else set()), h
     print(f"  10. HILUCS: {sum(v is not None for v in want.values())} of {len(want)} crop classes mapped as the "
           f"config says; {len(local)} local HILUCS values = the registry snapshot of {day} (label, definition, parent)")
+
+
+def test_clc_map():
+    """Check the config even when facts do not exist, without changing the real CSV."""
+    from src.dataset.crop_demand import load_classes
+    from src.kg import landuse
+
+    config = pd.read_csv(landuse.CLC_MAP, keep_default_na=False)
+    want = {name: [(SKOS[r.relation], rdflib.URIRef(landuse.CLC + r.clc))
+                   for r in group.itertuples(index=False) if r.clc]
+            for name, group in config.groupby("class", sort=False)}
+    got = landuse.clc_map()
+    assert set(got) == set(load_classes().index) | {landuse.UNMAPPED}, got
+    assert got == want, (got, want)
+    unknown = config.copy()
+    unknown.loc[unknown["clc"] != "", "clc"] = "unknown-clc-code"
+    missing = config.loc[config["class"] != config["class"].iloc[0]]
+    with TemporaryDirectory() as tmp:
+        for name, bad in (("unknown-code", unknown), ("missing-class", missing)):
+            path = Path(tmp) / f"{name}.csv"
+            bad.to_csv(path, index=False)
+            with patch.object(landuse, "CLC_MAP", path):
+                try:
+                    landuse.clc_map()
+                except AssertionError:
+                    pass
+                else:
+                    raise AssertionError(f"clc_map accepted {name}")
+    print(f"  11. CLC config: {sum(bool(v) for v in got.values())} of {len(got)} classes, "
+          f"{sum(map(len, got.values()))} correspondences; unknown code and missing class refused")
+
+
+def test_clc(store):
+    """Compare CLC facts with every CSV row; old releases lack these facts altogether."""
+    from src.kg import landuse
+
+    got = rows(store, f"""PREFIX skos: <{SKOS}>
+        SELECT ?n ?p ?h WHERE {{ ?c a lulcw:CropClass ; skos:notation ?n ; ?p ?h .
+            FILTER(isIRI(?h) && STRSTARTS(STR(?h), "{landuse.CLC}")) }}""")
+    if got.empty:
+        print("  11. CLC: facts built before CLC: data part skipped")
+        return
+    config = pd.read_csv(landuse.CLC_MAP, keep_default_na=False)
+    want = {(r._0, str(SKOS[r.relation]), landuse.CLC + r.clc)
+            for r in config.itertuples(index=False) if r.clc}
+    actual = set(got.itertuples(index=False, name=None))
+    assert actual == want, f"crop class -> CLC differs from the config: {actual} vs {want}"
+    classes = rows(store, f"""PREFIX skos: <{SKOS}>
+        SELECT ?n WHERE {{ ?c a lulcw:CropClass ; skos:notation ?n }}""")
+    assert set(classes["n"]) == set(config["class"]), classes
+    concepts = {str(s) for s in rdflib.Graph().parse(landuse.CLC_FILE).subjects(RDF.type, SKOS.Concept)}
+    assert set(got["h"]) <= concepts, "a CLC target is absent from the Eionet snapshot"
+    for key in ("eionet-clc", "crop-class-clc"):
+        assert bool(store.query(PRE + f"ASK {{ <release/{key}> a lulcw:DataRelease }}")), key
+    assert bool(store.query(PRE + """PREFIX prov: <http://www.w3.org/ns/prov#>
+        ASK { <release/crop-class-clc> prov:wasDerivedFrom <release/eionet-clc> }"""))
+    derived = rows(store, f"""PREFIX skos: <{SKOS}> PREFIX prov: <http://www.w3.org/ns/prov#>
+        SELECT ?n WHERE {{ ?c a lulcw:CropClass ; skos:notation ?n ;
+            prov:wasDerivedFrom <release/crop-class-clc> }}""")
+    assert set(derived["n"]) == {n for n, _, _ in want}, derived
+    print(f"  11. CLC facts: {len(actual)} correspondences = config; all targets in Eionet; "
+          "both releases and provenance present")
 
 
 def test_irrigation_s2(store):
@@ -427,12 +499,13 @@ def test_irrigation_s2(store):
     bad_supply = rows(store, """SELECT ?p ?s WHERE { ?p a lulcw:RegisteredParcel ; ?pred ?s .
         ?s a ?c . VALUES ?c { lulcw:AbstractionFacility lulcw:Intake lulcw:CanalReach lulcw:SurfaceWaterIntake } }""")
     assert bad_supply.empty, f"parcel linked directly to a supply entity: {bad_supply}"
-    print(f"  11. CQ15 (v5): rule {row['ver']} ({want_val}), {len(ev)} census evaluations, {len(sh)} zone shares = "
+    print(f"  12. CQ15 (v5): rule {row['ver']} ({want_val}), {len(ev)} census evaluations, {len(sh)} zone shares = "
           f"irrigation_s2_wells.parquet, {n_parcels} LU-6 parcels ({n_ov} overlaps, {n_ndvi} NDVI, {n_swi} SWI); "
           "no parcel-to-source link")
 
 
 def main():
+    test_clc_map()
     if not KG_FILE.exists():
         print(f"{KG_FILE.relative_to(ROOT)} not built here, skipped (python -m src.kg.build_kg)")
         return
@@ -450,6 +523,7 @@ def main():
     test_negative_controls(store, net)
     test_text(store)
     test_hilucs(store, net)
+    test_clc(store)
     test_irrigation_s2(store)
     summary = json.loads((KG_FILE.parent / f"lulcw_kg_{DATASET}_summary.json").read_text())
     print(f"test_kg: all checks passed ({summary['triples']} triples, built {summary['built']}, "

@@ -10,7 +10,9 @@ From the land-use thread of step 12d (docs/notes/step12d_land_use.md, src/datase
                 stated here; and their INSPIRE HILUCS land-use value (skos:broadMatch, from
                 configs/lu_hilucs.csv; the values are checked against the pinned registry
                 snapshot data/raw/inspire_hilucs/<date>, local copies in
-                ontology/imports/inspire_terms.ttl)
+                ontology/imports/inspire_terms.ttl); and their CORINE Land Cover
+                correspondences (configs/lu_clc.csv), checked against the Eionet snapshot
+                data/raw/vocab/clc_eionet.rdf (v5 plan R2.3)
   zones         one crop demand zone per piezometer (radius BUFFER_M)
   crop areas    the clipped area of every crop code in every zone and RPG edition 2015-2025, one
                 SOSA observation each, for its own year
@@ -22,8 +24,10 @@ From the land-use thread of step 12d (docs/notes/step12d_land_use.md, src/datase
 The high-demand threshold is a parameter of its rule, computed by src.kg.apply_rules from these
 estimates (training years only).
 """
+import json
+
 import pandas as pd
-from rdflib import Literal, URIRef
+from rdflib import Graph, Literal, URIRef
 from rdflib.namespace import RDF, RDFS, SKOS, XSD
 
 from src.config import DATASET, INTERIM, RAW, ROOT
@@ -59,6 +63,9 @@ ASSUMPTION = {"usually": "UsuallyIrrigated", "partly": "PartlyIrrigated", "rainf
 UNMAPPED = "unmapped"
 HILUCS = "http://inspire.ec.europa.eu/codelist/HILUCSValue/"
 HILUCS_MAP = ROOT / "configs" / "lu_hilucs.csv"
+CLC = "http://dd.eionet.europa.eu/vocabulary/landcover/clc/"
+CLC_MAP = ROOT / "configs" / "lu_clc.csv"
+CLC_FILE = RAW / "vocab" / "clc_eionet.rdf"
 
 
 def hilucs_map():
@@ -77,6 +84,31 @@ def hilucs_map():
             out[r._1] = iri
         else:
             out[r._1] = None
+    return out
+
+
+def clc_map():
+    """Crop class -> list of (SKOS relation IRI, CLC target IRI), empty when unmapped.
+
+    Several targets are allowed because CLC separates some crops by irrigation infrastructure.
+    Check the local Eionet snapshot so a mistyped code cannot enter the graph.
+    """
+    m = pd.read_csv(CLC_MAP, keep_default_na=False)
+    known = set(load_classes().index) | {UNMAPPED}
+    assert set(m["class"]) == known, f"{CLC_MAP} lists {sorted(set(m['class']))}, not {sorted(known)}"
+    concepts = set(Graph().parse(CLC_FILE).subjects(RDF.type, SKOS.Concept))
+    out = {}
+    for name, group in m.groupby("class", sort=False):
+        out[name] = []
+        for r in group.itertuples(index=False):
+            if not r.clc:
+                assert not r.relation and len(group) == 1, f"unmapped class must have one empty row: {r}"
+                continue
+            assert r.relation in {"closeMatch", "broadMatch", "relatedMatch"}, r
+            target = URIRef(CLC + r.clc)
+            assert target in concepts, f"{target} is not a skos:Concept in {CLC_FILE}"
+            assert all(t != target for _, t in out[name]), f"repeated CLC target for {name}: {target}"
+            out[name].append((SKOS[r.relation], target))
     return out
 
 
@@ -137,6 +169,20 @@ def add(kg, rel, wells, versions):
     kg.add(r, RDFS.comment, Literal(f"Stored in {HILUCS_MAP.relative_to(ROOT)}", lang="en"))
     kg.add(r, PROV.wasDerivedFrom, rel["inspire-hilucs"])
     rel["crop-class-hilucs"] = r
+    source = json.loads((RAW / "vocab" / "sources.json").read_text(encoding="utf-8"))[CLC_FILE.name]
+    r = kg.node(iri("release", "eionet-clc"), L.DataRelease,
+                "CORINE Land Cover nomenclature, Eionet data dictionary vocabulary", "en")
+    kg.add(r, L.retrievalDate, Literal(source["retrieved"], datatype=XSD.date))
+    kg.add(r, RDFS.comment, Literal(
+        f"Source: {source['url']}; archive snapshot: {source['archive_snapshot']} "
+        f"({source['final_url']}); stored in {CLC_FILE.relative_to(ROOT)}", lang="en"))
+    rel["eionet-clc"] = r
+    r = kg.node(iri("release", "crop-class-clc"), L.DataRelease,
+                "CORINE Land Cover correspondence of each crop class (configs/lu_clc.csv)", "en")
+    kg.add(r, L.releaseDate, Literal(file_date(CLC_MAP), datatype=XSD.date))
+    kg.add(r, RDFS.comment, Literal(f"Stored in {CLC_MAP.relative_to(ROOT)}", lang="en"))
+    kg.add(r, PROV.wasDerivedFrom, rel["eionet-clc"])
+    rel["crop-class-clc"] = r
     r = kg.node(iri("release", "fao-56"), L.DataRelease, FAO56[0], "en")
     kg.add(r, RDFS.comment, Literal(f"Source: {FAO56[1]} (checked 2026-10-25)", lang="en"))
     rel["fao-56"] = r
@@ -216,6 +262,12 @@ def add(kg, rel, wells, versions):
     kg.add(u, SKOS.prefLabel, Literal("unmapped", lang="en"))
     kg.add(u, RDFS.comment, Literal("The crop codes that the class-mapping rule assigns to no class: "
                                     "their area stays in every total as unmapped area.", lang="en"))
+    for name, matches in clc_map().items():
+        c = iri("crop-class", name)
+        for relation, target in matches:
+            kg.add(c, relation, target)
+        if matches:
+            kg.add(c, PROV.wasDerivedFrom, rel["crop-class-clc"])
 
     # zones, year intervals, procedures
     zone = {}

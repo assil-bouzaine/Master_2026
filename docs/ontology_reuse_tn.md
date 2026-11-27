@@ -20,7 +20,7 @@ Each term row in `ontology/modules/assignment.csv` counts once. The seven core m
 
 | artefacts | total | reusable unchanged | reusable % |
 |---|---:|---:|---:|
-| shapes | 82 | 65 | 79.27% |
+| shapes | 83 | 66 | 79.52% |
 | rules | 17 | 7 | 41.18% |
 | queries | 40 | 14 | 35.00% |
 

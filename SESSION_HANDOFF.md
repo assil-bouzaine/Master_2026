@@ -31,34 +31,34 @@ date.
 
 ---
 
-## ▶ START HERE (state during the session of 2026-11-27, ≈ 17:10 local time; updated as tasks finish)
+## ▶ START HERE (state at the end of the session of 2026-11-27, ≈ 17:30 local time)
 
-**Running when this was written:** the **graph release rebuild** on the laptop (`bash scripts/rebuild_release.sh v5
-results/logs/rebuild_2026-11-27`: facts, rules + validation, persisted store, inventory/export/controls of the three
-policies, CQ timing; log `results/logs/rebuild_2026-11-27/rebuild.log`). **Never edit `ontology/`, rules or shapes
-while it runs.** If the session ended mid-run: rerun the same command. Worker **neon → T95** (Hetero-STGNN black box,
-model code only; brief `.agents/briefs/T95_hetero_stgnn.md`). Worker **sol**: idle (T96 done). Colab: no session
-(`hcat` pulled and stopped; balance 160.58 units).
+**Running or pending when this was written:** nothing on Colab (`hcat` pulled and stopped; balance 160.58 units).
+Workers `neon` and `sol` closed (their tasks reviewed and committed). Laptop: see "End-of-session checks" in the
+session log below for the last test results. Everything is committed and **pushed** (Assil: "commit and push").
 
-**Done this session (all committed locally, nothing pushed):** CQ15 validation fix; CQ15 rule 615 s → 89 s (same
-triples); persisted store (`src/kg/store.py`, `kg_store()` uses it) and `src/kg/cq_timing.py`; T92 matchers + three
-Colab fixes (bitsandbytes clash, BGE-M3 commit check, importer); **SO1 HCAT table** (`docs/alignment_hcat_v5.md`:
-eval strict F1 fuzzy 0.110, retrieval 0.151, Qwen3-8B 0.390 [0.304, 0.475]); T93 reuse report (97.1 % of terms, but
-41 % of rule shapes and 35 % of CQ queries reusable unchanged: French register codes); CLC correspondences
-(`configs/lu_clc.csv`, T94 in the graph); **T88** (CQ10 + CQ16, ontology 0.12.0); **GEMET** alignment (22 asserted,
-5 rejected) and **SAREF4AGRI** (`RegisteredParcel` closeMatch `s4agri:Parcel`); meta 0.5.0; step16 note updated.
-
-**Next, in order:**
-1. When the rebuild finishes: check `rebuild.log`; compare the export edges with the fingerprints taken before
-   (`results/logs/rebuild_2026-11-27/export_*_before.sha256`; the CLC facts and the speed-ups should not move an
-   edge); read `docs/cq_timing_v5.md` (Gate R2: < 1 s per query). Then the graph suites: test_modules, test_kg
-   (check 11 data part now runs), test_kg_rules, test_cq, test_release, test_inventory, test_export, test_controls,
-   test_store; `src.kg.ontology_docs` (regenerate, `--check`); `src.kg.reuse_report` (regenerate). Commit.
-2. **neon → T91** (CQ9 + CQ13; brief ready) once T95 is reviewed, then another rebuild (`scripts/rebuild_release.sh`).
-3. sol: free; candidate tasks: none urgent (the country-neutral refactor of rules/queries is a decision for Assil).
-4. Track 1: Assil reviews the pilot sheet; then the main run (28 papers, ≈ 4 h L4).
-5. R2.4: Manouba KG (needs the aquifer extent: Ferchichi et al. 2017, or Saidi et al. 2017 on HAL, DOI to verify);
-   OOPS! scan on the 0.12 ontology; Gate R2. R3: twin v2 design (lead), black box (T95).
+**Do first, in this order:**
+1. **Assil's two decisions** (asked at the end of the session, not yet answered; ask with AskUserQuestion,
+   recommendation first):
+   - **A. Split Gate R2** (recommended): R3 (tuning, twin v2, black box) starts once the Roussillon items pass; the
+     Manouba graph and Track 1 finish in parallel (neither changes the Roussillon model). Checklist:
+     `docs/gate_r2_checklist.md`.
+   - **B. Country-neutral rules and queries** (recommended): one generic identifier per entity (same values as the
+     French codes, so no derived IRI or answer changes), the French-code checks moved into an FR-profile shapes file;
+     reuse of rule shapes and CQ queries would go from 7/17 and 14/40 towards all; ≈ half a day of worker time + one
+     rebuild. Note: `lulcw:registerCode` alone is not enough (an entity can carry several register codes): a single,
+     functional identifier is needed.
+2. **neon → T91** (CQ9 + CQ13; brief `.agents/briefs/T91_cq09_cq13.md`, still valid at ontology 0.12.0), then
+   rebuild (`bash scripts/rebuild_release.sh v5 results/logs/rebuild_<date>`, ≈ 35 min; **keep a copy of the export
+   folders before**, to compare contents, not only bytes) and the graph suites.
+3. **neon or sol → T98** (twin v2 code; brief ready, design in `docs/analysis_plan_v3.md` §7.1). No twin run before
+   Gate R2 (or its Roussillon part, if Assil splits it).
+4. **AGROVOC matchers on Colab, blind** (before Assil's labels): rebuild the GPU bundle, then
+   `colab_cli up agv --runtime l4`, `push-gpu agv --dataset v5 --steps "align:retrieval align:llm" --env
+   ALIGN_TARGET=agrovoc` (outputs `results/v5/alignment/agrovoc_*`); pull, stop. Scoring waits for the labels.
+5. **OOPS!** rescan (`python -m src.kg.oops_scan`; the service answered 503 twice on 2026-11-27).
+6. Track 1: Assil reviews the pilot sheet; then the main run (28 papers, ≈ 4 h L4). Manouba: when the outline paper
+   is downloaded, follow the proposal in `docs/notes/step16_v5.md` (R2.4, Manouba).
 
 **Where we are in `docs/v5_plan.md`:** R0 ✅ · R1 ✅ (Gate R1 passed 2026-11-26) · R2 in progress:
 - R2.1: Track 2 ✅ (eval F1 0.113; sample check: implied precision ≈ 0.17). Track 1: pilot ✅ (88 statements from the
@@ -66,8 +66,10 @@ eval strict F1 fuzzy 0.110, retrieval 0.151, Qwen3-8B 0.390 [0.304, 0.475]); T93
 - R2.2: CQ15 ✅ (validation fix and rule speed-up ✅ 2026-11-27); CQ10, CQ16 ✅ (T88, ontology 0.12.0); CQ9, CQ13 (T91) ⬜.
 - R2.3: SAREF4WATR, ENVO, deeper SWEET ✅; GEMET ✅, SAREF4AGRI ✅, CLC (crop classes, data level) ✅; HCAT matchers ✅
   (SO1 table `docs/alignment_hcat_v5.md`); AGROVOC labels (Assil) ⬜ then the same matchers on AGROVOC.
-- R2.4: pyLODE documentation ✅ (regenerate after the rebuild); persisted store ✅; CQ timing 🔄 (in the rebuild);
-  reuse report ✅ (`docs/ontology_reuse_tn.md`, regenerate); Manouba KG ⬜ (extent); OOPS! ⬜.
+- R2.4: pyLODE documentation ✅ (regenerated for 0.12.0); persisted store ✅; CQ timing ✅ (`docs/cq_timing_v5.md`);
+  reuse report ✅ (regenerated); release rebuilt ✅ (2026-11-27T15:51:51Z, no violation); Manouba KG ⬜ (outline);
+  OOPS! ⬜ (service down).
+- R3: twin v2 design ✅ (plan v3 §7.1), code ⬜ (T98); black box ✅ code (T95); tuning ⬜ (after the tag).
 
 **VPN (installed 2026-11-26 ≈ 19:45 at Assil's request):** `openvpn` 2.7.9 + `networkmanager-openvpn` 1.12.5
 (pacman), NetworkManager profile **`Univ-Manouba`** imported from the university's `.ovpn` (certificate-based, server
@@ -119,6 +121,17 @@ session is not stored anywhere (`sudo -k` run at the end).
 - T88 (neon) reviewed and committed (+ the generator's stale descriptions fixed by the lead); neon → T95.
 - GEMET and SAREF4AGRI alignments (lead), committed; all ontology gates pass.
 - Rebuild started (`scripts/rebuild_release.sh`, committed).
+- Assil at ≈ 17:05: "if u finished in this session update handoff and close the workers, commit and push". T95 (neon,
+  Hetero-STGNN) and T97 (sol, AGROVOC matcher inputs) reviewed (tests rerun) and committed; workers closed.
+- **End-of-session checks:** release rebuilt (2026-11-27T15:51:51Z, no violation; rule outputs = previous release's up to
+  8.6e-16 summation differences and version stamps; `edges_D` bytes changed in the three exports, contents checked by
+  test_export). Suites passing: test_ontology, test_modules, test_kg (incl. the CLC data check), test_kg_rules,
+  test_release, test_store, test_export, test_inventory, test_controls, the CQ data checks (inside the timing run),
+  test_align_match, test_align_report, test_hetero_stgnn, test_gpu_steps, test_colab_gpu_v5. pyLODE docs and the reuse
+  report regenerated. **Found:** the persisted (RocksDB) store is 2.5–6× slower on heavy CQ queries, so `kg_store()`
+  is back to in-memory by default (`persisted=True` for the dashboard); `cq_timing --store memory|disk`. In memory,
+  `cq04_status` (max 3.7 s) and `cq07_status` (1.1 s) exceed 1 s: next Gate R2 work (optimise; also time the 9 query
+  files the data checks do not call). OOPS! rescan still pending (service 503).
 
 
 ### 2026-11-26 (night, Claude Opus 5.5, from ≈ 22:50 local time)

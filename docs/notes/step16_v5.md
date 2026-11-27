@@ -452,3 +452,23 @@ of Tunis). Proposed minimal Manouba graph, all from the same ontology:
    published): every well-level CQ answers `unknown` for Manouba, as the answer contract requires.
 7. **Reuse:** `python -m src.kg.reuse_report --kg <manouba graph>` gives the share of the terms the Manouba graph uses
    that come unchanged from the core.
+
+### 2026-11-27 (end of session): the rebuild, and why the disk store is not the default
+
+- **Release rebuilt** (`bash scripts/rebuild_release.sh v5 results/logs/rebuild_2026-11-27`): facts 771,701 triples
+  (+39: the CLC correspondences), rules 421 s (288,075 triples added; the workers' tests competed for the CPU),
+  validation 690 s (82 minutes before the CQ15 fix), no violation; release 2026-11-27T15:51:51Z. Against the previous
+  release's rule outputs: the same 288,189 triples except 1,206 numbers that differ by at most 8.6e-16 (relative;
+  SPARQL summation order: crop-class areas, cell weights, outcrop areas and lengths) and 20 version stamps; no CQ15
+  classification differs (`results/logs/rebuild_2026-11-27/rule_outputs_vs_previous.txt`). Exports: nodes and arm C
+  byte-identical for the three policies; `edges_D.parquet` changed bytes in all three (the recharge weights come from
+  those sums); its content is checked by `tests.test_export` (D's edges = pandas rules on the source tables).
+  **Lesson:** copy the export folders before a rebuild, to compare contents and not only bytes.
+- **Disk store vs memory** (measured on the release above, one well, NYLS-1): most CQ queries take milliseconds on
+  both, but `cq02_candidates` 3.47 s on the read-only RocksDB store against 0.56 s in memory, `cq08_status` 2.51 s
+  against 0.96 s, `cq08_influences` 0.76 s against 0.34 s. With `kg_store()` returning the disk store, the CQ data
+  checks ran for more than 12 minutes without finishing their first block, so `kg_store()` is back to an in-memory
+  store by default (parsing costs ≈ 12 s); `persisted_store()` stays for interactive use (the dashboard's console
+  opens it at once), and `src.kg.cq_timing --store memory|disk` measures either. Gate R2's "< 1 s per query" is
+  therefore a query-optimisation task for `cq02_candidates` and `cq08_status` (already near or above 1 s in memory),
+  not a storage choice.

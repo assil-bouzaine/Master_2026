@@ -618,14 +618,14 @@
               <a class="hover_property" href="http://www.w3.org/2002/07/owl#versionIRI" title="The property that identifies the version IRI of an ontology. Defined in The OWL 2 Schema vocabulary (OWL 2)">Version Iri</a>
             </dt>
             <dd>
-              <a href="https://w3id.org/lulcw/core/0.11.0">https://w3id.org/lulcw/core/0.11.0</a>
+              <a href="https://w3id.org/lulcw/core/0.12.0">https://w3id.org/lulcw/core/0.12.0</a>
             </dd>
           </div>
           <div>
             <dt>
               <a class="hover_property" href="http://www.w3.org/2002/07/owl#versionInfo" title="The annotation property that provides version information for an ontology or another OWL construct. Defined in The OWL 2 Schema vocabulary (OWL 2)">Version Info</a>
             </dt>
-            <dd><p>0.11.0</p></dd>
+            <dd><p>0.12.0</p></dd>
           </div>
           <div>
             <dt>
@@ -2428,7 +2428,7 @@
               <th>
                 <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
               </th>
-              <td><p>Why an influence is or is not eligible to constrain a model.</p></td>
+              <td><p>Why an influence is or is not eligible to constrain a model, or why a crop-change scenario is or is not supported in its zone (e.g. 'irrigation status heuristic only', 'no supply evidence').</p></td>
             </tr>
             <tr>
               <th>
@@ -2471,41 +2471,6 @@
               </th>
               <td>
                 <a href="http://www.w3.org/2001/XMLSchema#double">xsd:double</a>
-              </td>
-            </tr>
-            <tr>
-              <th>
-                <a class="hover_property" href="https://w3id.org/lulcw#definedInModule" title="The ontology module or country profile of the LULC-Water network that declares this term. Defined in None">Defined In Module / Défini Dans Le Module</a>
-              </th>
-              <td>
-                <a href="https://w3id.org/lulcw/core">LULC-Water core module</a>
-              </td>
-            </tr>
-          </table>
-        </div>
-        <div class="property entity" id="groundwaterbodycode">
-          <h3>groundwater body codecode de masse d'eau
-            <sup class="sup-dp" title="OWL Datatype Property">dp</sup>
-          </h3>
-          <table>
-            <tr>
-              <th>IRI</th>
-              <td>
-                <code>https://w3id.org/lulcw#groundwaterBodyCode</code>
-              </td>
-            </tr>
-            <tr>
-              <th>
-                <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
-              </th>
-              <td><p>Code of a Water Framework Directive groundwater body, e.g. DG243.</p></td>
-            </tr>
-            <tr>
-              <th>
-                <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
-              </th>
-              <td>
-                <a href="http://www.w3.org/2001/XMLSchema#string">xsd:string</a>
               </td>
             </tr>
             <tr>
@@ -2743,7 +2708,7 @@
               <th>
                 <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
               </th>
-              <td><p>Last day of the period a dated statement observed (an xsd:date literal).</p></td>
+              <td><p>Last day of the period a dated statement, model run, simulated head, scenario or scenario result covers (an xsd:date literal).</p></td>
             </tr>
             <tr>
               <th>
@@ -2778,7 +2743,7 @@
               <th>
                 <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
               </th>
-              <td><p>First day of the period a dated statement observed (an xsd:date literal); absent for a statement about a typical state.</p></td>
+              <td><p>First day of the period a dated statement, model run, simulated head, scenario or scenario result covers (an xsd:date literal); absent for a statement about a typical state.</p></td>
             </tr>
             <tr>
               <th>
@@ -2883,7 +2848,7 @@
               <th>
                 <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
               </th>
-              <td><p>Rank of an attribution among the candidates for the same entity and role (1 = main candidate).</p></td>
+              <td><p>Rank of an attribution among the candidates for the same entity and role (1 = main candidate), or rank of a scenario result among results compared under the same ranking metric (1 = highest-ranked).</p></td>
             </tr>
             <tr>
               <th>
@@ -2918,14 +2883,14 @@
               <th>
                 <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
               </th>
-              <td><p>A code that identifies an entity in a national or agency register or reference dataset; country profiles declare their registers' codes as sub-properties of it.</p></td>
+              <td><p>A code that identifies an entity in a national or agency register or reference dataset (any literal value, string or integer, so both textual and numeric register codes sit under it); regional and country profiles declare their registers' codes as sub-properties of it.</p></td>
             </tr>
             <tr>
               <th>
                 <a class="hover_property" href="http://www.w3.org/2000/01/rdf-schema#range" title="A range of the subject property. Defined in The RDF Schema vocabulary (RDFS)">Range</a>
               </th>
               <td>
-                <a href="http://www.w3.org/2001/XMLSchema#string">xsd:string</a>
+                <a href="http://www.w3.org/2000/01/rdf-schema#Literal">Literal</a>
               </td>
             </tr>
             <tr>
@@ -4017,7 +3982,7 @@
               <th>
                 <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
               </th>
-              <td><p>Last day of the period a dated statement observed (an xsd:date literal).</p></td>
+              <td><p>Last day of the period a dated statement, model run, simulated head, scenario or scenario result covers (an xsd:date literal).</p></td>
             </tr>
             <tr>
               <th>
@@ -4052,7 +4017,7 @@
               <th>
                 <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
               </th>
-              <td><p>First day of the period a dated statement observed (an xsd:date literal); absent for a statement about a typical state.</p></td>
+              <td><p>First day of the period a dated statement, model run, simulated head, scenario or scenario result covers (an xsd:date literal); absent for a statement about a typical state.</p></td>
             </tr>
             <tr>
               <th>
@@ -4122,7 +4087,7 @@
               <th>
                 <a class="hover_property" href="http://purl.org/dc/terms/description" title="An account of the resource. Defined in DCMI Metadata Terms">Description</a>
               </th>
-              <td><p>Rank of an attribution among the candidates for the same entity and role (1 = main candidate).</p></td>
+              <td><p>Rank of an attribution among the candidates for the same entity and role (1 = main candidate), or rank of a scenario result among results compared under the same ranking metric (1 = highest-ranked).</p></td>
             </tr>
             <tr>
               <th>
@@ -4622,9 +4587,6 @@
               <a href="#groundelevation(mNGF)">ground elevation (m NGF)altitude du sol (m NGF)</a>
             </li>
             <li>
-              <a href="#groundwaterbodycode">groundwater body codecode de masse d'eau</a>
-            </li>
-            <li>
               <a href="#horizontaldistance(m)">horizontal distance (m)distance horizontale (m)</a>
             </li>
             <li>
@@ -4850,7 +4812,7 @@
   
 <section>
 <h2>Terms not rendered by pyLODE</h2>
-<p>pyLODE 3.6.1's ontology profile does not render SKOS concepts, concept schemes or observable-property individuals, so these entries are listed directly from <code>lulcw-core.ttl</code> (SHA-256 <code>76c82abac326</code>).</p>
+<p>pyLODE 3.6.1's ontology profile does not render SKOS concepts, concept schemes or observable-property individuals, so these entries are listed directly from <code>lulcw-core.ttl</code> (SHA-256 <code>59bc9f68ea37</code>).</p>
 <div class="property entity" id="AnswerStatusScheme">
 <h3>AnswerStatusScheme</h3>
 <table>

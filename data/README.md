@@ -660,3 +660,8 @@ Monitoring Service site (`land.copernicus.eu`) refused or reset every connection
 | `index-clc-231.html` | 2025-10-17 14:32:44 | 25,129 | `8dc7f841a30b2e8a` |
 | `index-clc-241.html` | 2025-10-17 19:07:30 | 15,130 | `7b927e31c401aced` |
 | `index-clc-242.html` | 2024-09-23 17:22:11 | 17,331 | `6413a22ff786efce` |
+
+**SAREF4AGRI v2.1.1 (R2.3, 2026-11-27).** `data/raw/vocab/saref4agri.ttl` from
+`https://saref.etsi.org/saref4agri/v2.1.1/saref4agri.ttl` (ETSI, BSD-3-Clause), 21,016 bytes, SHA-256 (first 16)
+`43ea2a978ba43d7b`, downloaded by `src/kg/build_imports.py --only saref` (logged in `data/raw/vocab/sources.json`);
+only `s4agri:Parcel` is copied into `ontology/imports/saref_terms.ttl`.

@@ -86,10 +86,13 @@ SOURCES = {
     # SAREF4WATR v2.1.1 (ETSI, BSD-3-Clause, https://forge.etsi.org/etsi-software-license);
     # ENVO release 2026-10-23 (CC0 1.0). Terms: the asserted correspondences of
     # ontology/alignments/lulcw-saref.ttl and lulcw-envo.ttl (individuals keep label and comment).
-    "saref": ([("saref4watr.ttl", "https://saref.etsi.org/saref4watr/v2.1.1/saref4watr.ttl", "text/turtle")],
+    "saref": ([("saref4watr.ttl", "https://saref.etsi.org/saref4watr/v2.1.1/saref4watr.ttl", "text/turtle"),
+               # added 2026-11-27: SAREF4AGRI v2.1.1 (same licence), for lulcw:RegisteredParcel's close match
+               ("saref4agri.ttl", "https://saref.etsi.org/saref4agri/v2.1.1/saref4agri.ttl", "text/turtle")],
               [S4WATR + t for t in ("MonitoringInfrastructure", "GaugingStation", "Intake", "Channel",
                                     "River", "Aquifer", "WaterUse", "Domestic", "Agriculture",
-                                    "Industry", "FlowRate")]),
+                                    "Industry", "FlowRate")]
+              + ["https://saref.etsi.org/saref4agri/Parcel"]),
     "envo": ([("envo.owl", "http://purl.obolibrary.org/obo/envo/releases/2026-10-23/envo.owl",
                "application/rdf+xml")],
              [OBO + t for t in ("ENVO_00012408", "ENVO_01000002", "ENVO_00000022", "ENVO_00000014",

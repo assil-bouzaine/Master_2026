@@ -31,45 +31,54 @@ date.
 
 ---
 
-## ▶ START HERE (state at the end of the session of 2026-11-26 night, ≈ 23:55 local time)
+## ▶ START HERE (state during the session of 2026-11-27, ≈ 15:50 local time; updated as tasks finish)
 
-**Running or pending when this was written:** nothing. Colab: no session (`t1pilot` pulled and stopped; balance
-161.94 units). Workers `sol` and `neon` closed. No laptop job. Nothing pushed this session (commits are local: push
-only when Assil says so).
+**Running when this was written:** Colab session **`hcat`** (L4, 2.33 units/h, started ≈ 15:45 local): job
+`align:fuzzy align:retrieval align:llm` (T92's matchers on RPG → HCAT3). If this session ends: `.venv/bin/python -m
+scripts.colab_cli pull hcat`, then `stop hcat` (never leave it billing); outputs go to `results/v5/alignment/hcat_*`;
+score each with `python -m src.kg.align_eval score --gold hcat --pred results/v5/alignment/hcat_<m>/predictions.csv
+--split dev|eval`. Workers: **neon → T88** (CQ10 + CQ16, running its tests), **sol → T93** (France → Tunisia reuse
+report; brief `.agents/briefs/T93_reuse_report.md`). Laptop: `scripts/diag_cq15_rule_rewrite.py` (old vs new CQ15
+rule on the full facts; log `results/logs/diag_cq15_rule_rewrite_2026-11-27.log`).
 
-**Do first, in this order:**
-1. **Apply the CQ15 validation fix** (`docs/notes/step16_v5.md`, section "R2.2: CQ15 in the graph (T85) and why
-   validation went from 9 to 82 minutes"): in `ontology/shapes/lulcw-shapes.ttl`, `lulcwsh:IrrigationClassificationKeyShape`,
-   first constraint, replace `?c lulcw:classifiedParcel ?p ; lulcw:seasonYear ?y ; lulcw:derivationRule $this .` by
-   `?c lulcw:classifiedParcel ?p ; lulcw:seasonYear ?y ; lulcw:derivationRule ?rule . FILTER (?rule = $this)`, with a
-   comment saying why (`scripts/diag_bench_not_exists.py`: quadratic before, 13,260 parcel-seasons in 9 s after).
-   Commit it before any worker edits the shapes file.
-2. Open the two workers. **neon → T88** (CQ10 + CQ16 + register codes + T85's follow-ups; brief updated: no release
-   rebuild, the SPARQL-in-shapes rule). **sol → T92** (alignment matchers: fuzzy, bge-m3 retrieval, Qwen3-8B, a Colab
-   step; brief ready).
-3. After T88: **rebuild the release** (lead): `PFE_DATASET=v5` `src.kg.build_kg` (≈ 5.5 min), `src.kg.apply_rules`
-   (rules were 648 s: profile them with `scripts/diag_profile_rules.py`; validation should drop back to ≈ 10 min),
-   `src.kg.inventory` / `src.kg.export` / `src.kg.controls` for the three policies (edges must be identical), then
-   the graph suites (test_ontology, test_modules, test_kg, test_kg_rules, test_cq, test_release, test_inventory,
-   test_export, test_controls) and `src.kg.ontology_docs` (regenerate; `--check`). Then **neon → T91** (CQ9 + CQ13;
-   brief ready; CQ9 data `data/interim/vigieau_communes_66.parquet` built).
-4. Lead, after T88: the GEMET / CORINE / SAREF4AGRI alignments (vocabularies in `data/raw/vocab/`, logged;
-   SAREF4AGRI v2.1.1 to fetch again through `build_imports`; `s4agri:Parcel ⊑ geo:sfContains some s4agri:Crop`, so
-   `lulcw:RegisteredParcel` gets a close match, not a subclass: fallow and non-cropped codes hold no crop).
-5. Track 1: Assil reviews the pilot sheet; then the prompt/schema decision (the pilot rule allows changes after the
-   two pilot papers only), then the main run (28 papers, ≈ 4 h on an L4: the pilot took ≈ 27 min for 30 pages) with
-   the command in T89's report (`EXTRACT_SPLIT=main`, `EXTRACT_RUN=track1_qwen3_main`).
-6. Then R2.4 (Manouba KG from free data, reuse %, persisted store, OOPS!), Gate R2; design of twin v2 (R3.3) and the
-   Hetero-STGNN black box (R3.2) can start as code (no runs before the gates).
+**Done this session (all committed locally, nothing pushed):** the CQ15 validation fix (`c7cf39a`); T92 reviewed and
+committed (`3ce73a8`); `align:<matcher>` GPU steps (`ac515ed`). **Uncommitted, lead's own (commit after the
+comparison):** the CQ15 *rule* speed-up in `ontology/rules/lulcw-rules.ttl` (the soil-wetness OPTIONAL folded with the
+parcel's cell; 429 s → 89 s on the full facts, same 119,340 triples for the new form; the sample check found identical
+triples incl. a parcel without a cell), `src/kg/store.py` + `tests/test_store.py` (persisted read-only pyoxigraph store
+bound to the release; `kg_store()` now uses it), `src/kg/cq_timing.py` (times every CQ call of test_cq's data checks
+on the store → `docs/cq_timing_v5.md`; Gate R2's "< 1 s"), diagnostics `scripts/diag_cq15_rule_*.py`.
+
+**Next, in order:**
+1. When T88's report arrives: review, commit. Then **rebuild the release** (lead): `PFE_DATASET=v5` `src.kg.build_kg`
+   (≈ 5.5 min), `src.kg.apply_rules` (rules should now take ≈ 4–5 min, validation ≈ 10 min), `src.kg.store` (build the
+   persisted store), `src.kg.cq_timing`, `src.kg.inventory` / `src.kg.export` / `src.kg.controls` for the three
+   policies (edges must be identical), the graph suites (test_ontology, test_modules, test_kg, test_kg_rules, test_cq,
+   test_release, test_inventory, test_export, test_controls, test_store) and `src.kg.ontology_docs` (regenerate;
+   `--check`). Then **neon → T91** (CQ9 + CQ13; brief ready).
+2. Pull `hcat`, score the three matchers (dev, eval), write the reading (step16 note) → the SO1 HCAT table.
+3. Lead, after T88: GEMET / CORINE / SAREF4AGRI alignments. Candidates checked in GEMET 4.2.3 (session of 2026-11-27):
+   aquifer 518, groundwater 3780, water abstraction 15394 (NOT 3781 "groundwater extraction": GEMET defines it as
+   over-extraction, a rejected-row example), irrigation 4505, irrigation canal 4507, drinking water supply 2343,
+   surface water 8229, watercourse 9161, well 9290, water level 9190, infiltration 4291, soil moisture 7874,
+   atmospheric precipitation 637, water demand 9164, drought 2347, land use 4678 (definitions in the TSV the lead
+   extracts from `data/raw/vocab/gemet.rdf.gz`). CLC level-3 classes only in the Eionet file (no level 1–2): crop
+   classes → CLC at data level like HILUCS (`configs/lu_clc.csv`, `src/kg/landuse.py`): vine → 221 closeMatch, olive →
+   223 closeMatch, orchards/citrus/nuts → 222 broadMatch; annual crops ambiguous between 211 and 212 (CLC mixes crop and
+   irrigation status): relatedMatch or none, decide with the definitions.
+4. Track 1: Assil reviews the pilot sheet; then the prompt/schema decision, then the main run (28 papers, ≈ 4 h L4).
+5. Then R2.4 (Manouba KG from free data, OOPS!), Gate R2; twin v2 (R3.3) and the Hetero-STGNN black box (R3.2) as code.
 
 **Where we are in `docs/v5_plan.md`:** R0 ✅ · R1 ✅ (Gate R1 passed 2026-11-26) · R2 in progress:
 - R2.1: Track 2 ✅ (eval F1 0.113; sample check: implied precision ≈ 0.17). Track 1: pilot ✅ (88 statements from the
   two pilot papers, `results/v5/extraction/track1_qwen3_pilot/`), review sheet for Assil ✅, main run ⬜.
-- R2.2: CQ15 ✅ (T85, ontology 0.11.0; validation fix to apply); CQ10, CQ16 (T88) ⬜; CQ9, CQ13 (T91) ⬜.
-- R2.3: SAREF4WATR, ENVO, deeper SWEET ✅; HCAT gold + scorer ✅; GEMET/CLC files ✅, alignments ⬜; matchers (T92) ⬜;
+- R2.2: CQ15 ✅ (T85, ontology 0.11.0; validation fix ✅ 2026-11-27, rule speed-up ✅ uncommitted); CQ10, CQ16 (T88) 🔄;
+  CQ9, CQ13 (T91) ⬜.
+- R2.3: SAREF4WATR, ENVO, deeper SWEET ✅; HCAT gold + scorer ✅; GEMET/CLC files ✅, alignments ⬜; matchers (T92) ✅ code, 🔄 Colab run `hcat`;
   AGROVOC labels (Assil) ⬜.
-- R2.4: pyLODE documentation ✅ (`docs/ontology/`, regenerate after each ontology change); Manouba KG, reuse %,
-  persisted store, OOPS! ⬜.
+- R2.4: pyLODE documentation ✅ (`docs/ontology/`, regenerate after each ontology change); persisted store ✅ code
+  (`src/kg/store.py`), CQ timing ✅ code (`src/kg/cq_timing.py`; run after the rebuild); reuse % (T93) 🔄; Manouba KG,
+  OOPS! ⬜.
 
 **VPN (installed 2026-11-26 ≈ 19:45 at Assil's request):** `openvpn` 2.7.9 + `networkmanager-openvpn` 1.12.5
 (pacman), NetworkManager profile **`Univ-Manouba`** imported from the university's `.ovpn` (certificate-based, server
@@ -94,6 +103,24 @@ session is not stored anywhere (`sudo -k` run at the end).
 ---
 
 ## Session log
+
+### 2026-11-27 (Claude Opus 5.5, from ≈ 15:10 local time)
+- CQ15 validation fix applied and checked end to end (pySHACL with the real shapes file: the 3 planted gaps found at
+  300 and 3,000 parcel-seasons in 2.2 s and 9.8 s); committed `c7cf39a` before any worker touched the shapes.
+- Workers opened (space `sp9be5d05c0e222699a49c7ecee89e333e`): neon → T88, sol → T92 (GPT-6.1-Sol high checked).
+  Sol asked whether it may create `configs/align_prompt_hcat.md` (named in the brief's design, missing from its file
+  list): yes.
+- Rule profile (`results/logs/diag_profile_rules_2026-11-27.log`): rules 645 s, of which the CQ15 rule 429 s. Cause
+  (cProfile + piece-by-piece timing on samples, `scripts/diag_cq15_rule_{cprofile,parts}.py`): the soil-wetness
+  OPTIONAL compared fresh variables in a FILTER, so rdflib ran the nested OPTIONAL and the FILTER for each of the 40
+  candidate observations per parcel-season (27 ms each). A FILTER-based rewrite was slower (74 s vs 8.5 s on 300);
+  the fix folds the cell lookup into the same OPTIONAL and joins on ?cell/?year in the patterns (1.5 s on 300, same
+  triples, also for a parcel without a cell).
+- T92 reviewed (tests rerun, hashes match) and committed; `align:<matcher>` steps; Colab `hcat` started.
+- New lead code: persisted store (`src/kg/store.py`, `tests/test_store.py`: 7 checks pass), `kg_store()` uses it;
+  `src/kg/cq_timing.py`.
+- sol → T93 (reuse report).
+
 
 ### 2026-11-26 (night, Claude Opus 5.5, from ≈ 22:50 local time)
 - T89 (sol) reviewed and committed (`9b6269b`); Track 1 passages rebuilt on the complete 30-paper set (453 passages;

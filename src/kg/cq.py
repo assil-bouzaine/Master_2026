@@ -102,11 +102,17 @@ def local(iri):
     return iri.rsplit("/", 1)[-1].rsplit("#", 1)[-1] if iri else iri
 
 
-def kg_store(dataset=DATASET):
+def kg_store(dataset=DATASET, persisted=True):
     """pyoxigraph store of the facts and the rule outputs (src.kg.build_kg, src.kg.apply_rules),
     only when they form a validated release (src.kg.release.check raises StaleRelease otherwise:
-    a stale pair would read a link not yet derived as a negative answer)."""
+    a stale pair would read a link not yet derived as a negative answer).
+    persisted (default since 2026-11-27): the read-only disk store of src.kg.store, loaded once per
+    release (same two files, same default graph, same answers); persisted=False: a new in-memory
+    store, parsed at each call (the behaviour before)."""
     release.check(dataset)
+    if persisted:
+        from src.kg.store import persisted_store
+        return persisted_store(dataset)
     s = ox.Store()
     for f in (KG / f"lulcw_kg_{dataset}.ttl", KG / f"lulcw_kg_{dataset}_rules.ttl"):
         s.bulk_load(path=str(f), format=ox.RdfFormat.TURTLE)

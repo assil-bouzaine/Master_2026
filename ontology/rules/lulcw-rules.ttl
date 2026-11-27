@@ -1517,13 +1517,18 @@ WHERE {
     OPTIONAL { ?obs lulcw:validPixelCount ?npx . }
     OPTIONAL { ?obs sosa:hasSimpleResult ?ndvi . }
     OPTIONAL { ?obs lulcw:meanClearAcquisitions ?nobs . }
-    OPTIONAL { ?parcel lulcw:matchedWeatherCell ?cell . }
+    # The parcel's weather cell and its summer soil wetness in one OPTIONAL, joined on ?cell and ?year
+    # inside the patterns: a parcel without a matched cell gets no soil wetness (the whole block fails),
+    # and rdflib prunes the 40 candidate observations while matching. The earlier form (cell in its own
+    # OPTIONAL, then FILTER (BOUND(?cell) && ?scell = ?cell && ?syear = ?year) over fresh variables) ran
+    # the nested OPTIONAL and the FILTER for every candidate: 429 of the rules' 645 s. Same triples
+    # (scripts/diag_cq15_rule_rewrite.py; step16 note, 2026-11-27).
     OPTIONAL {
-        ?swiObs sosa:observedProperty lulcw:SummerSoilWetness ;
-                sosa:hasFeatureOfInterest ?scell ;
-                lulcw:seasonYear ?syear .
+        ?parcel lulcw:matchedWeatherCell ?cell .
+        ?swiObs sosa:hasFeatureOfInterest ?cell ;
+                lulcw:seasonYear ?year ;
+                sosa:observedProperty lulcw:SummerSoilWetness .
         OPTIONAL { ?swiObs sosa:hasSimpleResult ?swi . }
-        FILTER (BOUND(?cell) && ?scell = ?cell && ?syear = ?year)
     }
     BIND (IF(BOUND(?npx) && BOUND(?ndvi) && BOUND(?nobs) && BOUND(?swi),
              ?npx >= ?minPx && ?nobs >= ?minObs,

@@ -176,6 +176,46 @@ fidelity+/− and deletion curves; a randomisation sanity check (trained D vs we
   (Assil, 2026-11-26): the main model's pumping-contribution error is lower than arm C's in a majority of worlds,
   by a sign test over worlds at 5 %; the seed spread of that error is reported beside it.
 
+### 7.1 Twin v2: design (written 2026-11-27, before any twin v2 world; R3.3)
+
+Twin v1 (`src/models/twin.py`, plan v2 §14 items 19 and 23) is kept as it is; twin v2 reuses its machinery (truth
+graph, dials, random streams per world and purpose, AR(1) noise, scores) on **v5** inputs and with **Hybrid-GNN v2**
+as the learner. What a world keeps from reality: the 65 wells, the v5 weeks, weather, facility volumes (with their
+`imputed` flags), river and basin-canal series, which weeks have a head, the splits.
+
+1. **Truth graph:** arm D's v5 edges of the main policy (three recharge channels, pumping, river, basin canals), with
+   v1's dials: ε, the share of D's attributed pumping pairs that are false, and u, the share of a well's true pumping
+   carried by pairs D does not attribute (v1's construction, nested across cells). Arms C and D are the export's
+   tables, unchanged (v1 amendment of 2026-11-16 point 2). Slice G: the truth's recharge, river and canal edges are
+   arm C's.
+2. **Truth contributions** (metres; each well's training-period variance shared out as in v1):
+   - recharge, for each channel the well has in the truth: rain and ETP of the channel's cells through the learner's
+     own bucket family (§3.3; S_max 20–200 mm, κ 0.05–0.5, β 0–0.3, log-uniform for S_max and κ, per well and
+     channel), then a fast + slow Gamma mixture (fast mean lag 2–12 weeks, slow 20–104, slow weight 0.2–0.8); the
+     channels share the recharge variance equally;
+   - pumping: the truth graph's facility volumes through one Gamma kernel (mean lag 2–12 weeks, as v1); **imputed
+     facility-years carry hidden year-to-year variation** (v1's variant I, always on in twin v2): the learner sees the
+     dataset's imputed values, the truth does not follow them;
+   - river (the truth's river edges) and canal (the well's basin series), one Gamma kernel each (4–20 weeks), as v1;
+   - shares of the training variance: pumping π, river 0.1, canal 0.1, recharge the rest (at least 0.2); AR(1) noise
+     with variance ν × the clean signal's, φ 0.8–0.97 per well.
+3. **Base cell:** ε 0.1, u 0.3, π 0.3, ν 0.25, reconstructed timing (v1's base). **30 worlds** (seeds 0–29).
+   Descriptive slices, 10 worlds each: π 0.1, π 0.5, independent timing, G.
+4. **Learner:** Hybrid-GNN v2, regime R1, stage B, signs as the main model, arms **C**, **D** and **T** (the truth's
+   own edges: the oracle), **3 seeds** each, with each arm's settings tuned on the real validation period (§3.7). A
+   run before the tuning exists is a **pilot** (code defaults of `hybrid_gnn.build_parser`), reported as such and never
+   used for the criterion.
+5. **Primary score (the Gate R3 criterion, decided 2026-11-26):** per world and arm, the pumping-contribution error =
+   per core well with true pumping, the RMSE between the fitted pumping contribution (mean of the 3 seeds; centred on
+   the training weeks) and the true one, over the drought weeks, divided by the sd of the well's clean training head;
+   then the median over those wells. **Criterion:** D's error < C's in a majority of the 30 base worlds, one-sided
+   sign test at 5 % (that is, at least 20 of 30). Reported beside it: the seed spread (per well, the sd over seeds of
+   that error, median over wells), T's error (what routing could gain at most), the drought log RMSE ratios D/C and
+   T/C, the sign-violation rate (0 by construction: a non-zero value is a bug), and v1's intervention score (−20 %
+   pumping on the true facilities in the drought) for D and C.
+6. **Cost:** 30 worlds × 3 arms × 3 seeds × ≈ 5 min on one thread ≈ 22 CPU-hours: about one hour on a 24-vCPU Colab
+   runtime (≈ 3–4 units), plus the slices (≈ 1.5 hours).
+
 ## 8. Decisions and open points before the tag
 
 Decided by Assil on 2026-11-26 (AskUserQuestion, recommendation first; each the recommended option):

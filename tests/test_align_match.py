@@ -43,6 +43,14 @@ def _fixture(folder, target="hcat"):
                         for code in "ABC"],
             "targets": [{"id": str(i), "label": f"Target {i}", "ancestors": ["Crops"]}
                         for i in range(10, 22)]}
+    if target == "agrovoc":
+        # Use IRIs actually present in the local snapshot, without reading gold judgements.
+        import pandas as pd
+        from src.ingest.agrovoc import LABELS
+
+        ids = sorted(pd.read_parquet(LABELS, columns=["concept"])["concept"].unique())[:12]
+        for row, ident in zip(data["targets"], ids):
+            row.update(id=ident, label_en=row["label"], alt=[])
     path = folder / f"inputs_{target}.json"
     path.write_text(align_match._json(data), encoding="utf-8")
     prompt = folder / "prompt.md"
@@ -90,6 +98,208 @@ def test_inputs():
         assert targets["3000000000"]["ancestors"] == []
         assert "_" not in targets["3301010101"]["label"]
         print("  inputs: 198 sources, 384 targets; deterministic, gold-independent, hashes and ancestors pass")
+
+
+def test_agrovoc_inputs():
+    """Only the real gold's code column is read; every other test cell is synthetic."""
+    import pandas as pd
+    from src.ingest.agrovoc import BROADER, LABELS
+
+    with tempfile.TemporaryDirectory() as tmp:
+        folder = Path(tmp)
+        first, second = folder / "first.json", folder / "second.json"
+        data = align_match.write_inputs(first, target="agrovoc")
+        align_match.write_inputs(second, target="agrovoc")
+        assert first.read_bytes() == second.read_bytes()
+        # Inspect the header only; do not read any real non-code gold cells.
+        with align_eval.AGROVOC_GOLD.open(encoding="utf-8", newline="") as stream:
+            fields = next(csv.reader(stream))
+        codes = pd.read_csv(align_eval.AGROVOC_GOLD, usecols=["code"], dtype=str)["code"].tolist()
+        synthetic = [{field: code if field == "code" else f"synthetic {field} {index}"
+                      for field in fields} for index, code in enumerate(codes)]
+        changed = folder / "gold.csv"
+        with changed.open("w", encoding="utf-8", newline="") as stream:
+            writer = csv.DictWriter(stream, fieldnames=fields)
+            writer.writeheader()
+            writer.writerows(synthetic)
+        align_match.write_inputs(second, target="agrovoc", codes_path=changed)
+        assert first.read_bytes() == second.read_bytes()
+        for index, row in enumerate(synthetic):
+            for field in fields:
+                if field != "code":
+                    row[field] = f"shuffled {field} {len(codes) - index}"
+        with changed.open("w", encoding="utf-8", newline="") as stream:
+            writer = csv.DictWriter(stream, fieldnames=fields)
+            writer.writeheader()
+            writer.writerows(reversed(synthetic))
+        align_match.write_inputs(second, target="agrovoc", codes_path=changed)
+        assert first.read_bytes() == second.read_bytes()
+        labels = pd.read_parquet(LABELS)
+        deprecated = set(labels.loc[labels["deprecated"], "concept"])
+        ids = [row["id"] for row in data["targets"]]
+        assert len(ids) == len(set(ids))
+        assert set(ids) == set(labels["concept"]) - deprecated
+        assert all(set(row) == {"id", "label", "label_en", "alt", "ancestors"}
+                   and len(row["alt"]) <= 5 and len(row["ancestors"]) <= 3 for row in data["targets"])
+        assert data["sources"] == align_match.build_inputs()["sources"]
+        assert data["release"] == "2026-10-26"
+        for path in (LABELS, BROADER):
+            assert data["sha256"][align_match._path_name(path)] == align_match._sha256_file(path)
+        print(f"  AGROVOC inputs: {len(data['sources'])} sources, {len(ids)} live concepts; "
+              "deterministic, code-only gold, release and both table hashes pass")
+
+
+def test_agrovoc_target_fixture():
+    """Two live concepts expose language fallback, alias limits and direct-parent text."""
+    import pandas as pd
+    from src.ingest.agrovoc import LABELS
+
+    real = pd.read_parquet(LABELS)
+    child, parent = real.loc[~real["deprecated"], "concept"].drop_duplicates().iloc[:2]
+    dead = real.loc[real["deprecated"], "concept"].iloc[0]
+    rows = [(child, "Culture", "fr", "pref"), (child, "Crop", "en", "pref"),
+            (parent, "Parent", "en", "pref"), (dead, "Deprecated", "en", "pref")]
+    rows += [(child, label, "fr", "alt") for label in ("Z", "A", "C", "B")]
+    rows += [(child, label, "en", "alt") for label in ("Y", "E", "D", "A")]
+    rows += [(child, "Culture", "fr", "pref")]  # Duplicate SKOS/SKOS-XL label.
+    table = pd.DataFrame(rows, columns=["concept", "label", "lang", "kind"])
+    table["vocab"], table["release"] = "skos", "2026-10-26"
+    table["deprecated"] = table["concept"].eq(dead)
+    edges = pd.DataFrame([(child, parent, "2026-10-26")], columns=["concept", "broader", "release"])
+    with tempfile.TemporaryDirectory() as tmp:
+        labels, broader = Path(tmp) / "labels.parquet", Path(tmp) / "broader.parquet"
+        table.to_parquet(labels, index=False)
+        edges.to_parquet(broader, index=False)
+        targets, release = align_match._agrovoc_targets(labels, broader)
+        lookup = {row["id"]: row for row in targets}
+        assert set(lookup) == {child, parent} and release == "2026-10-26"
+        assert lookup[child] == {"id": child, "label": "Culture", "label_en": "Crop",
+                                 "alt": ["A", "B", "C", "Z", "D"], "ancestors": ["Parent"]}
+        assert lookup[parent] == {"id": parent, "label": "Parent", "label_en": "Parent",
+                                  "alt": [], "ancestors": []}
+        data = {"target": "agrovoc", "sources": [{"code": "A", "label": "Culture",
+                "group_label": "Groupe"}], "targets": [lookup[child], lookup[parent]]}
+        encoded = align_match._encoded(data, context=True)
+        assert encoded[1][0]["text"] == "Culture; en: Crop; also: A; B; C; Z; D; broader: Parent"
+        assert encoded[1][1]["text"] == "Parent; en: Parent"
+        assert align_match._encoded(data, context=False)[1][0]["text"] == "Culture"
+        data["targets"][0] = {**lookup[child], "label_en": "", "alt": [], "ancestors": []}
+        assert align_match._encoded(data, context=True)[1][0]["text"] == "Culture"
+        table.sample(frac=1, random_state=97).to_parquet(labels, index=False)
+        assert align_match._agrovoc_targets(labels, broader) == (targets, release)
+        print("  AGROVOC two-concept fixture: French/English fallback, deduplication, "
+              "five sorted aliases, direct broader text and empty-part omission pass")
+
+
+def test_agrovoc_parsing_and_score():
+    with tempfile.TemporaryDirectory() as tmp:
+        folder = Path(tmp)
+        data, path, _ = _fixture(folder, "agrovoc")
+        ident = data["targets"][0]["id"]
+        candidates = [{"target": ident}]
+        for relation in align_match.RELATIONS:
+            raw = json.dumps({"target": ident, "relation": relation})
+            assert align_match.parse_answer(raw, candidates, "agrovoc") == (ident, relation, None)
+        raw = '<think>reason</think>\n```json\n' + raw + '\n```'
+        assert align_match.parse_answer(raw, candidates, "agrovoc") == (ident, "narrowMatch", None)
+        assert align_match.parse_answer('{"target":"none","relation":"exactMatch"}',
+                                         candidates, "agrovoc") == ("", "", None)
+        for raw in ('{"target":"none"}', '{"target":"none","relation":"none"}',
+                    '{"target":"none","relation":null}', '[]', 'garbage',
+                    json.dumps({"target": ident, "relation": "unknown"}),
+                    json.dumps({"target": ident, "relation": "exactMatch", "extra": "x"}),
+                    '{"target":"outside","relation":"exactMatch"}'):
+            target, relation, error = align_match.parse_answer(raw, candidates, "agrovoc")
+            assert target == relation == "" and error
+        answers = iter([json.dumps({"target": ident, "relation": "broadMatch"}),
+                        json.dumps({"target": ident, "relation": "unknown"}),
+                        '{"target":"none","relation":"exactMatch"}'])
+        calls = []
+
+        def generate(messages):
+            calls.append(messages)
+            return next(answers)
+
+        out = folder / "llm"
+        pred, meta = align_match.run_alignment("llm", "agrovoc", out, inputs_path=path,
+                                               matcher_stub=_rankings, generator=generate)
+        assert meta["sha256"]["prompt"] == align_match._sha256_file(align_match.AGROVOC_PROMPT)
+        assert meta["parse_failures"] == [{"code": "B", "error": "Unknown AGROVOC relation"}]
+        assert json.loads((out / "run.json").read_text())["parse_failures"] == meta["parse_failures"]
+        supplied = json.loads(calls[0][1]["content"].split("Candidate targets:\n", 1)[1])
+        assert set(supplied[0]) == {"id", "label", "label_en", "alt", "ancestors", "rank"}
+        loaded = align_eval.load_predictions(pred, "agrovoc")
+        assert loaded["A"][0]["relation"] == "broadMatch"
+        assert loaded["B"][0]["target"] == loaded["B"][0]["relation"] == ""
+        assert loaded["C"][0]["target"] == loaded["C"][0]["relation"] == ""
+        gold_path = folder / "fake_gold.csv"
+        # This is hand-made fake gold, never Assil's pending judgements.
+        with gold_path.open("w", encoding="utf-8", newline="") as stream:
+            writer = csv.DictWriter(stream, fieldnames=("code", "split", "area_ha", "relation",
+                                                       "concept", "alternatives"))
+            writer.writeheader()
+            for code, relation, concept in (("A", "broadMatch", ident), ("B", "exactMatch", ident),
+                                             ("C", "none", "")):
+                writer.writerow(dict(code=code, split="eval", area_ha=1, relation=relation,
+                                     concept=concept, alternatives=""))
+        with patch.object(align_eval, "AGROVOC_GOLD", gold_path):
+            score = align_eval.score(align_eval.load_gold("agrovoc", "eval"), loaded, "agrovoc", "eval")
+        assert score["relation_accuracy"] == {"value": 1.0, "numerator": 1, "denominator": 1}
+        assert score["scores"]["strict"]["f1"]["value"] == 2 / 3
+        assert score["counts"]["abstentions"] == 2
+        before = pred.read_bytes()
+
+        def forbidden(*args):
+            raise AssertionError("A resumed run must reuse raw results")
+
+        align_match.run_alignment("llm", "agrovoc", out, inputs_path=path,
+                                  matcher_stub=forbidden, generator=forbidden)
+        assert pred.read_bytes() == before
+        retrieval, _ = align_match.run_alignment("retrieval", "agrovoc", folder / "retrieval",
+                                                  inputs_path=path, matcher_stub=_rankings)
+        assert len(align_eval.load_predictions(retrieval, "agrovoc")["A"]) == 10
+        print("  AGROVOC answers: four relations, strict schema, unknown-relation abstention, "
+              "run.json failure, default prompt, resumed CSV and unchanged scorer pass "
+              "(fake gold strict F1=2/3, relation accuracy=1/1)")
+
+
+def test_hcat_byte_compatibility():
+    """Hashes captured before T97 protect historical inputs, prompts and all three configs."""
+    expected = {
+        "fuzzy": "e49f7a886996ed0df6208ffaa170806762470294bdbc25e87640bbda52457a9b",
+        "retrieval": "6c5ef3d3a3344cd9c08185f3128a843f8996b7590cc6192f3bf6b75caede8888",
+        "llm": "6897bca947d6838865283f58f6400f392f92cd8ea14c995e94977ca2c183f3a1",
+    }
+    assert align_match._sha256_file(align_match.INPUTS) == (
+        "efb866b1e8d5bc5e028ced81a950303959b7b6c185f3a088e86c5223cb949937")
+    assert align_match._sha256_file(align_match.PROMPT) == (
+        "dddeef7db55743db01bc47afdb78d1711dad12f63d575380e1448447d1e95fea")
+    assert align_match._json(align_match.build_inputs()).encode("utf-8") == align_match.INPUTS.read_bytes()
+    paths = sorted((ROOT / "results" / "v5" / "alignment").glob("hcat_*/config.json"))
+    before = {path: align_match._sha256_file(path) for path in paths}
+    with tempfile.TemporaryDirectory() as tmp:
+        for matcher in expected:
+            def rankings(data):
+                return {s["code"]: [{"target": t["id"], "score": 1.0}
+                        for t in data["targets"][:1 if matcher == "fuzzy" else 10]]
+                        for s in data["sources"]}
+
+            kwargs = {"matcher_stub": rankings}
+            if matcher == "llm":
+                kwargs["generator"] = lambda msgs: '{"target":"none"}'
+            out = Path(tmp) / matcher
+            with patch.object(align_match, "_package_version", return_value="stub"):
+                align_match.run_alignment(matcher, "hcat", out, **kwargs)
+            assert align_match._sha256_file(out / "config.json") == expected[matcher]
+            # Also compare with actual GPU configurations when their outputs are present.
+            for path in paths:
+                previous = json.loads(path.read_text(encoding="utf-8"))
+                if previous["matcher"] == matcher:
+                    previous.update(matcher_stub=True, generator_stub=matcher == "llm")
+                    assert (out / "config.json").read_text(encoding="utf-8") == align_match._json(previous)
+    assert before == {path: align_match._sha256_file(path) for path in paths}
+    print("  HCAT compatibility: original input/prompt hashes, regenerated input bytes and "
+          "all three pre-T97 config hashes pass; existing GPU configs unchanged")
 
 
 def test_stub_runner_and_score():
@@ -313,28 +523,52 @@ def test_gpu_step_and_bundle():
             assert calls[2] == ["-m", "src.kg.align_match", "run", "--matcher", "llm", "--target",
                                target or "hcat", "--out",
                                f"{override or 'results/v5'}/alignment/test run"]
+        # Run the actual multi-step case arm with ALIGN_TARGET=agrovoc, without pip or a GPU.
+        multi = script.read_text(encoding="utf-8").split("    align:*)", 1)[1].split("    align)", 1)[0]
+        log.write_text("", encoding="utf-8")
+        env = {**os.environ, "T92_LOG": str(log), "PY": str(shim), "PFE_DATASET": "v5",
+               "ALIGN_TARGET": "agrovoc", "STEPS": "align:retrieval align:llm"}
+        env.pop("PFE_RESULTS", None)
+        result = subprocess.run(["bash", "-uc", 'for s in $STEPS; do\ncase "$s" in\n align:*)'
+                                 + multi + "\nesac\ndone"], env=env, capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        calls = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
+        assert len(calls) == 6
+        for index, matcher in enumerate(("retrieval", "llm")):
+            assert calls[index * 3 + 2] == ["-m", "src.kg.align_match", "run", "--matcher", matcher,
+                "--target", "agrovoc", "--out", f"results/v5/alignment/agrovoc_{matcher}"]
         from scripts.make_gpu_bundle import bundle_files
         files = set(bundle_files())
         assert align_match.INPUTS in files
         assert align_match.PROMPT in files
+        assert align_match.AGROVOC_INPUTS in files
+        assert align_match.AGROVOC_PROMPT in files
         # Test the actual archive writer without generating a large project artifact.
         import zipfile
         from scripts import make_gpu_bundle
         archive = folder / "bundle.zip"
-        archive_sources = [align_match.INPUTS, align_match.PROMPT]
+        archive_sources = [align_match.INPUTS, align_match.PROMPT,
+                           align_match.AGROVOC_INPUTS, align_match.AGROVOC_PROMPT]
         with patch.object(make_gpu_bundle, "OUT", archive), patch.object(
                 make_gpu_bundle, "bundle_files", return_value=iter(archive_sources)):
             make_gpu_bundle.main()
         with zipfile.ZipFile(archive) as zipped:
             assert "data/interim/align_inputs_hcat.json" in zipped.namelist()
             assert zipped.read("configs/align_prompt_hcat.md") == align_match.PROMPT.read_bytes()
+            assert zipped.read("data/interim/align_inputs_agrovoc.json") == align_match.AGROVOC_INPUTS.read_bytes()
+            assert zipped.read("configs/align_prompt_agrovoc.md") == align_match.AGROVOC_PROMPT.read_bytes()
         assert align_match.HCAT_GOLD not in files
+        assert align_eval.AGROVOC_GOLD not in files
         print("  bash -n, session-only install, ALIGN variables, output override and bundle membership pass")
 
 
 if __name__ == "__main__":
     started = time.perf_counter()
     test_inputs()
+    test_agrovoc_inputs()
+    test_agrovoc_target_fixture()
+    test_agrovoc_parsing_and_score()
+    test_hcat_byte_compatibility()
     test_stub_runner_and_score()
     test_config_lock()
     test_component_adapters()

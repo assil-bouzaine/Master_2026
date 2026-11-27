@@ -9,6 +9,7 @@ and the selected configurations and refit epoch records (analysis plan sections 
 The SAFRAN grid table supplies Taccari's weather nodes. The arm D edge table and its export
 manifest supply the black-box comparison (Gate 3 point 21). The Track 1 and 2 extraction inputs
 (passages, prompt, split, schema and gold CSV) supply the `extract` GPU step (v5 plan R2.1).
+The label-only alignment inputs and prompt supply the `align` step (v5 plan R2.3).
 See docs/gpu_howto.md.
 """
 import sys
@@ -39,7 +40,9 @@ def bundle_files():
                ROOT / "configs" / "extraction_prompt_track1.md",
                ROOT / "configs" / "extraction_split_track1.json",
                ROOT / "configs" / "extraction_schema_track1.json",
-               ROOT / "configs" / "exchange_evidence.csv"]
+               ROOT / "configs" / "exchange_evidence.csv",
+               INTERIM / "align_inputs_hcat.json",
+               ROOT / "configs" / "align_prompt_hcat.md"]
     include += sorted(p for p in (results / "_cache").glob("panel*.parquet")
                       if not p.match("panel_lu_*"))
     for pattern in ("*_tuning/best.json", "*_tuned/best.json", "*_tuned/seed_*.json"):

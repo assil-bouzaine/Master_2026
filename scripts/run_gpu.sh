@@ -120,6 +120,14 @@ os.execvp(python, cmd)
     regimes:*:*) m=${s#regimes:}                               # one regime: regimes:<model>:<lwo|f25|f50|refit>
                  $PY -m src.models.regimes --model "${m%%:*}" --only "${m#*:}" ;;
     regimes:*)   $PY -m src.models.regimes --model "${s#regimes:}" ;;
+    align)       # R2.3: install only in this GPU session, never in the laptop environment.
+                 align_args=(
+                   -m src.kg.align_match run
+                   --matcher "${ALIGN_MATCHER:?set ALIGN_MATCHER}"
+                   --target "${ALIGN_TARGET:-hcat}"
+                   --out "${PFE_RESULTS:-results/$PFE_DATASET}/alignment/${ALIGN_RUN:?set ALIGN_RUN}"
+                 )
+                 $PY -m pip install ontoaligner==1.9.4 && $PY "${align_args[@]}" ;;
     extract)     extract_args=(
                    -m src.kg.extract_llm run
                    --track "${EXTRACT_TRACK:-2}"

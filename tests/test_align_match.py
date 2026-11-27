@@ -306,7 +306,9 @@ def test_gpu_step_and_bundle():
             assert result.returncode == 0, result.stderr
             calls = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
             assert calls[0] == ["-m", "pip", "install", "ontoaligner==1.9.4"]
-            assert calls[1] == ["-m", "src.kg.align_match", "run", "--matcher", "llm", "--target",
+            # bitsandbytes is removed before OntoAligner is imported (run_gpu.sh: optimizer-name clash)
+            assert calls[1] == ["-m", "pip", "uninstall", "-y", "-q", "bitsandbytes"]
+            assert calls[2] == ["-m", "src.kg.align_match", "run", "--matcher", "llm", "--target",
                                target or "hcat", "--out",
                                f"{override or 'results/v5'}/alignment/test run"]
         from scripts.make_gpu_bundle import bundle_files

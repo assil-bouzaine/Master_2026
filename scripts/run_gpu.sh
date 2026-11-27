@@ -122,8 +122,12 @@ os.execvp(python, cmd)
     regimes:*)   $PY -m src.models.regimes --model "${s#regimes:}" ;;
     align:*)     # R2.3: align:<fuzzy|retrieval|llm>, several in one job (STEPS="align:fuzzy align:retrieval
                  # align:llm"); output alignment/<ALIGN_TARGET>_<matcher>; install only in this GPU session.
+                 # bitsandbytes (an OntoAligner dependency, needed only by its 8-bit LLM loader, which align_match
+                 # does not use) is removed: once imported, its Adam/Adagrad clash with torch's in the optimizer
+                 # registry pykeen builds when OntoAligner is imported (Colab, 2026-11-27: RegistrationNameConflict).
                  m=${s#align:}
-                 $PY -m pip install -q ontoaligner==1.9.4 && $PY -m src.kg.align_match run --matcher "$m" \
+                 $PY -m pip install -q ontoaligner==1.9.4 && $PY -m pip uninstall -y -q bitsandbytes \
+                   && $PY -m src.kg.align_match run --matcher "$m" \
                    --target "${ALIGN_TARGET:-hcat}" \
                    --out "${PFE_RESULTS:-results/$PFE_DATASET}/alignment/${ALIGN_TARGET:-hcat}_$m" ;;
     align)       # R2.3: install only in this GPU session, never in the laptop environment.
@@ -133,7 +137,8 @@ os.execvp(python, cmd)
                    --target "${ALIGN_TARGET:-hcat}"
                    --out "${PFE_RESULTS:-results/$PFE_DATASET}/alignment/${ALIGN_RUN:?set ALIGN_RUN}"
                  )
-                 $PY -m pip install ontoaligner==1.9.4 && $PY "${align_args[@]}" ;;
+                 $PY -m pip install ontoaligner==1.9.4 && $PY -m pip uninstall -y -q bitsandbytes \
+                   && $PY "${align_args[@]}" ;;       # bitsandbytes: see align:* above
     extract)     extract_args=(
                    -m src.kg.extract_llm run
                    --track "${EXTRACT_TRACK:-2}"

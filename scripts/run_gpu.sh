@@ -120,6 +120,12 @@ os.execvp(python, cmd)
     regimes:*:*) m=${s#regimes:}                               # one regime: regimes:<model>:<lwo|f25|f50|refit>
                  $PY -m src.models.regimes --model "${m%%:*}" --only "${m#*:}" ;;
     regimes:*)   $PY -m src.models.regimes --model "${s#regimes:}" ;;
+    align:*)     # R2.3: align:<fuzzy|retrieval|llm>, several in one job (STEPS="align:fuzzy align:retrieval
+                 # align:llm"); output alignment/<ALIGN_TARGET>_<matcher>; install only in this GPU session.
+                 m=${s#align:}
+                 $PY -m pip install -q ontoaligner==1.9.4 && $PY -m src.kg.align_match run --matcher "$m" \
+                   --target "${ALIGN_TARGET:-hcat}" \
+                   --out "${PFE_RESULTS:-results/$PFE_DATASET}/alignment/${ALIGN_TARGET:-hcat}_$m" ;;
     align)       # R2.3: install only in this GPU session, never in the laptop environment.
                  align_args=(
                    -m src.kg.align_match run

@@ -30,8 +30,11 @@ def bundle_files():
     include = [ROOT / "src", ROOT / "scripts" / "run_gpu.sh", ROOT / "scripts" / "colab_run.py",
                ROOT / "requirements.txt", ROOT / "tests" / "__init__.py",
                ROOT / "tests" / "test_ealstm.py", ROOT / "tests" / "test_taccari.py",
+               ROOT / "tests" / "test_hetero_stgnn.py",
                DATASET_DIR, RAW / "safran" / "grid_cells_66.parquet",
+               export / "nodes.parquet", export / "edges_C.parquet",
                export / "edges_D.parquet", export / "manifest.json",
+               export / "controls",
                INTERIM / "extraction_passages_track2.jsonl",
                ROOT / "configs" / "extraction_prompt_track2.md",
                ROOT / "configs" / "extraction_split_track2.json",
@@ -42,7 +45,9 @@ def bundle_files():
                ROOT / "configs" / "extraction_schema_track1.json",
                ROOT / "configs" / "exchange_evidence.csv",
                INTERIM / "align_inputs_hcat.json",
-               ROOT / "configs" / "align_prompt_hcat.md"]
+               ROOT / "configs" / "align_prompt_hcat.md",
+               INTERIM / "align_inputs_agrovoc.json",
+               ROOT / "configs" / "align_prompt_agrovoc.md"]
     include += sorted(p for p in (results / "_cache").glob("panel*.parquet")
                       if not p.match("panel_lu_*"))
     for pattern in ("*_tuning/best.json", "*_tuned/best.json", "*_tuned/seed_*.json"):

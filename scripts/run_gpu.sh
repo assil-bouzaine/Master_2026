@@ -151,6 +151,96 @@ os.execvp(python, cmd)
                  [ -n "${EXTRACT_MAX_NEW_TOKENS:-}" ] && extract_args+=(--max-new-tokens "$EXTRACT_MAX_NEW_TOKENS")
                  [ -n "${EXTRACT_TEMPLATE_KWARGS:-}" ] && extract_args+=(--chat-template-kwargs "$EXTRACT_TEMPLATE_KWARGS")
                  $PY "${extract_args[@]}" ;;
+    hstgnn_tune:*)
+                 # R3.2 (plan v3 §6): equal-budget validation-only tuning of Hetero-STGNN (C or D).
+                 # torch_geometric starts with "torch" so EXCL above skips it; install --no-deps if absent.
+                 $PY -c "import torch_geometric" 2>/dev/null || {
+                   if [ -n "${PIN_TARGET:-}" ]; then
+                     $PY -m pip install -q --no-deps --target "$PIN_TARGET" torch_geometric==2.8.1
+                   else
+                     $PY -m pip install -q --no-deps torch_geometric==2.8.1
+                   fi
+                 }
+                 PFE_ALLOW_TRAIN=1 $PY -m src.models.tune_hstgnn \
+                   --arm "${s#hstgnn_tune:}" --trials "${HSTGNN_TRIALS:-24}" \
+                   --policy "${HSTGNN_POLICY:-main}" ;;
+    hstgnn:*)    # R3.2 (plan v3 §6): hstgnn:<arm>[:<regime>], seeds from HSTGNN_SEEDS or HSTGNN_N_SEEDS (default 10).
+                 $PY -c "import torch_geometric" 2>/dev/null || {
+                   if [ -n "${PIN_TARGET:-}" ]; then
+                     $PY -m pip install -q --no-deps --target "$PIN_TARGET" torch_geometric==2.8.1
+                   else
+                     $PY -m pip install -q --no-deps torch_geometric==2.8.1
+                   fi
+                 }
+                 PFE_ALLOW_TRAIN=1 python3 -c '
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+python, spec, dataset = sys.argv[1:]
+results_root = Path(os.environ.get("PFE_RESULTS") or f"results/{dataset}")
+policy = os.environ.get("HSTGNN_POLICY", "main")
+regime_aliases = {
+    "R1": "R1", "R2": "R2", "lwo": "R2",
+    "R3_f25": "R3_f25", "f25": "R3_f25",
+    "R3_f50": "R3_f50", "f50": "R3_f50",
+    "refit": "refit",
+}
+parts = spec.split(":")
+if len(parts) >= 2 and parts[-1] in regime_aliases:
+    arm = ":".join(parts[:-1])
+    regime = regime_aliases[parts[-1]]
+else:
+    arm = spec
+    regime = "R1"
+
+tune_arm = "C" if arm == "C" else "D"
+best_candidates = [
+    results_root / f"hstgnn_{tune_arm}_tuning" / "best.json",
+    Path(f"results/{dataset}") / f"hstgnn_{tune_arm}_tuning" / "best.json",
+]
+best_path = next((p for p in best_candidates if p.is_file()), None)
+if best_path is None:
+    raise SystemExit(f"Missing tuning selection for arm {tune_arm}: checked {best_candidates}")
+params = json.loads(best_path.read_text(encoding="utf-8"))["params"]
+
+seeds_env = os.environ.get("HSTGNN_SEEDS", "").strip()
+if seeds_env:
+    seeds = [str(int(tok)) for tok in seeds_env.split()]
+else:
+    n_seeds = int(os.environ.get("HSTGNN_N_SEEDS", "10"))
+    seeds = [str(i) for i in range(n_seeds)]
+
+slug = arm.replace(":", "_")
+suffix = {"R1": "", "R2": "_lwo", "R3_f25": "_f25", "R3_f50": "_f50", "refit": "_refit"}[regime]
+run = f"hstgnn_{slug}{suffix}"
+
+base_cmd = [
+    python, "-m", "src.models.hetero_stgnn",
+    "--arm", arm, "--policy", policy, "--regime", regime, "--run", run,
+    "--hidden", str(params["hidden"]),
+    "--receptive-field", str(params["receptive_field"]),
+    "--lr", str(params["lr"]),
+    "--weight-decay", str(params["weight_decay"]),
+    "--dropout", str(params["dropout"]),
+    "--epochs", str(params["epochs"]),
+    "--seeds", *seeds,
+]
+if regime == "R2":
+    for fold in range(5):
+        subprocess.run(base_cmd + ["--fold", str(fold)], check=True)
+    subprocess.run(
+        [python, "-c",
+         "import sys; from src.models.hetero_stgnn import assemble_lwo; "
+         "assemble_lwo(sys.argv[1], [int(s) for s in sys.argv[2:]])",
+         run, *seeds],
+        check=True,
+    )
+else:
+    subprocess.run(base_cmd, check=True)
+' "$PY" "${s#hstgnn:}" "$PFE_DATASET" ;;
     *)           echo "unknown step $s" ;;
   esac || echo "!! step $s failed, continuing"
 done

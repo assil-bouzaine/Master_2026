@@ -82,7 +82,8 @@ from src.kg.apply_rules import RULES, SHAPES, check, ontology_network, rule_reco
 from src.kg.build_kg import BNPE_SNAPSHOT, PLAIN_MARGIN_DEG
 from src.kg import release
 from src.kg.cq import ask, iris, local, one
-from tests.test_kg_rules import (GEO, KG, L, PROV, RADIUS, SOSA, TIME, build_cq15_fixture, build_fixture,
+from tests.test_kg_rules import (GEO, KG, L, PROV, RADIUS, SOSA, TIME, build_cq10_fixture,
+                                 build_cq15_fixture, build_cq16_fixture, build_fixture,
                                  build_leakage_fixture, d, l93, oracle_coverage, oracle_mapped_outcrop,
                                  oracle_relations, oracle_rivers, store_of, violations)
 
@@ -1369,6 +1370,155 @@ def test_cq15_fixture():
           "never creates a parcel link, threshold change flips outcome, statuses supported/partial(heuristic)/unknown/not_applicable")
 
 
+def test_cq10_fixture():
+    """CQ10 acceptance cases on synthetic fixtures:
+      - less pumping than usual raises the head (contributionM > 0, statedDirection RaisedHead,
+        text says 'raised', never confused with response polarity)
+      - cited influence outside the run's export policy is excluded by cq10_explanation and rejected
+        by SHACL
+      - pumping statement over imputed weeks (2009, 100% imputed) is WithheldStatement
+      - exact IPS SGI boundary (-1.28155... -> LowLevel, -1.50 -> VeryLowLevel)
+      - cq10_status: supported (all accepted), partial (qualified/withheld), unknown (no result),
+        not_applicable (mismatched period outside run, or non-well).
+    """
+    net = ontology_network()
+    rules_g, shapes_g = rdflib.Graph().parse(RULES), rdflib.Graph().parse(SHAPES)
+    g, r = build_cq10_fixture(rules_g)
+    conforms, _, res = check(g, shapes_g, net)
+    assert conforms and violations(res) == 0, res
+    s = to_store(g + net)
+
+    # Summer 2024: positive pumping contribution -> RaisedHead & "raised"; main-selected F1->W1 cited
+    rows24 = {local(row["stress"]): row for row in ask(
+        s, "cq10_explanation", run=r["run"], W=r["w1"],
+        periodStart=DATE("2024-06-02"), periodEnd=DATE("2024-08-25"))}
+    assert set(rows24) == {"AttributedPumpingStress", "LocalRechargeStress", "UnattributedPumpingStress"}, rows24
+    pump = rows24["AttributedPumpingStress"]
+    assert pump["contributionM"] == 0.35 and local(pump["statedDirection"]) == "RaisedHead", pump
+    assert local(pump["statementStatus"]) == "AcceptedStatement" and "raised" in pump["statementTextEn"].lower(), pump
+    assert pump["simulatedHeadM"] == 12.40 and local(pump["sgiClass"]) == "VeryLowLevel", pump
+    assert pump["citedInfluenceCount"] == 1 and str(r["inf_f1_w1"]) in pump["citedInfluences"], pump
+    assert str(r["inf_f4_w1"]) not in (pump["citedInfluences"] or ""), pump
+    assert local(pump["driverGroup"]) == "SummerDemand" and pump["stressNotation"] == "pumping", pump
+
+    rech = rows24["LocalRechargeStress"]
+    assert rech["contributionM"] == -0.80 and local(rech["statedDirection"]) == "LoweredHead", rech
+    assert local(rech["driverGroup"]) == "RechargeProxies" and rech["stressNotation"] == "recharge_local", rech
+    assert rech["citedInfluenceCount"] == 1 and str(r["inf_c1_w1"]) in rech["citedInfluences"], rech
+
+    qual = rows24["UnattributedPumpingStress"]
+    assert local(qual["statementStatus"]) == "QualifiedStatement" and qual["imputedPumpingShare"] == 0.05, qual
+    assert local(qual["referenceCondition"]) == "ReferenceWindow", qual
+
+    # Summer 2009: 100% imputed pumping -> WithheldStatement; exact SGI boundary -> LowLevel
+    rows09 = ask(s, "cq10_explanation", run=r["run"], W=r["w1"],
+                 periodStart=DATE("2009-06-07"), periodEnd=DATE("2009-08-30"))
+    assert len(rows09) == 1, rows09
+    assert local(rows09[0]["statementStatus"]) == "WithheldStatement" and rows09[0]["imputedPumpingShare"] == 1.0
+    assert local(rows09[0]["sgiClass"]) == "LowLevel", rows09[0]
+
+    # Status checks: supported (2023), partial (2024 & 2009), unknown (no result), not_applicable (period / non-well)
+    st23 = one(s, "cq10_status", run=r["run"], W=r["w1"],
+               periodStart=DATE("2023-06-04"), periodEnd=DATE("2023-08-27"))
+    assert st23["status"] == "supported" and st23["nAccepted"] == 1 and st23["nWithheld"] == 0, st23
+    st24 = one(s, "cq10_status", run=r["run"], W=r["w1"],
+               periodStart=DATE("2024-06-02"), periodEnd=DATE("2024-08-25"))
+    assert st24["status"] == "partial" and (st24["nAccepted"], st24["nQualified"], st24["nWithheld"]) == (2, 1, 0), st24
+    st09 = one(s, "cq10_status", run=r["run"], W=r["w1"],
+               periodStart=DATE("2009-06-07"), periodEnd=DATE("2009-08-30"))
+    assert st09["status"] == "partial" and st09["nWithheld"] == 1, st09
+    st_unk = one(s, "cq10_status", run=r["run"], W=r["w1"],
+                 periodStart=DATE("2022-06-05"), periodEnd=DATE("2022-08-28"))
+    assert st_unk["status"] == "unknown", st_unk
+    st_oob = one(s, "cq10_status", run=r["run"], W=r["w1"],
+                 periodStart=DATE("2027-01-01"), periodEnd=DATE("2027-03-01"))
+    assert st_oob["status"] == "not_applicable" and "outside" in st_oob["reason"], st_oob
+    st_nw = one(s, "cq10_status", run=r["run"], W=d("facility/F1"),
+                periodStart=DATE("2024-06-02"), periodEnd=DATE("2024-08-25"))
+    assert st_nw["status"] == "not_applicable", st_nw
+
+    # Policy exclusion check: attaching excluded F4->W1 influence fails SHACL and is excluded by query
+    g_bad = rdflib.Graph()
+    for t in g:
+        g_bad.add(t)
+    g_bad.add((r["st_pump24"], L.citesInfluence, r["inf_f4_w1"]))
+    _, _, bad_res = check(g_bad, shapes_g, net)
+    assert violations(bad_res, "ExplanationStatementShape", "not selected under the run's export policy") > 0, bad_res
+    s_bad = to_store(g_bad + net)
+    row_bad = next(row for row in ask(s_bad, "cq10_explanation", run=r["run"], W=r["w1"],
+                                      periodStart=DATE("2024-06-02"), periodEnd=DATE("2024-08-25"))
+                   if local(row["stress"]) == "AttributedPumpingStress")
+    assert str(r["inf_f4_w1"]) not in (row_bad["citedInfluences"] or ""), row_bad
+    print("  11c. CQ10 fixtures: less pumping raises head (RaisedHead, text says 'raised'), excluded "
+          "policy influence rejected by SHACL and filtered by query, imputed-week pumping withheld, "
+          "exact IPS boundary, statuses supported/partial/unknown/not_applicable")
+
+
+def test_cq16_fixture():
+    """CQ16 acceptance cases on synthetic fixtures:
+      - lower crop demand with both less abstraction and less return flow reports both pathways, not
+        an a-priori net sign
+      - surface-supplied scenario (WaterSourceShare = 0) produces zero groundwater pumping reduction
+      - no-change scenario gives zero forcing changes and zero head change
+      - missing WaterSourceShare/ReturnFlowFraction reported explicitly as unsupported assumptions
+      - ineligible zone (heuristic only / no supply evidence) reported as not_applicable with reason
+      - no ranking across metrics (TotalHeadChange vs HeadChangePerHectare stay strictly separate).
+    """
+    net = ontology_network()
+    rules_g, shapes_g = rdflib.Graph().parse(RULES), rdflib.Graph().parse(SHAPES)
+    g, r = build_cq16_fixture(rules_g)
+    conforms, _, res = check(g, shapes_g, net)
+    assert conforms and violations(res) == 0, res
+    s = to_store(g)
+
+    # Opposing pathways: both abstraction and return flow reported, not a sign
+    opp = one(s, "cq16_scenario", scenario=r["sc_opp"])
+    assert opp["abstractionChangeM3"] == -60000.0 and opp["returnFlowChangeM3"] == -25000.0, opp
+    assert "less groundwater abstraction" in opp["pathwayReport"] and "less return flow" in opp["pathwayReport"], opp
+    assert "net sign undetermined" in opp["pathwayReport"] and opp["missingAssumptions"] == "", opp
+    assert opp["headChangeLowM"] <= opp["headChangeM"] <= opp["headChangeHighM"], opp
+    st_opp = one(s, "cq16_status", scenario=r["sc_opp"])
+    assert st_opp["status"] == "partial" and "spans zero" in st_opp["reason"], st_opp
+
+    # Surface-supplied: zero groundwater abstraction change; return-flow pathway only
+    surf = one(s, "cq16_scenario", scenario=r["sc_surf"])
+    assert surf["abstractionChangeM3"] == 0.0 and surf["returnFlowChangeM3"] == -8000.0, surf
+    assert "surface-supplied" in surf["pathwayReport"], surf
+    assert one(s, "cq16_status", scenario=r["sc_surf"])["status"] == "supported"
+
+    # No-change control: zero forcing changes and zero deterministic head change
+    zero = one(s, "cq16_scenario", scenario=r["sc_zero"])
+    assert (zero["abstractionChangeM3"], zero["returnFlowChangeM3"], zero["headChangeM"],
+            zero["headChangeLowM"], zero["headChangeHighM"]) == (0.0, 0.0, 0.0, 0.0, 0.0), zero
+
+    # Missing assumptions reported as unsupported
+    miss = one(s, "cq16_scenario", scenario=r["sc_miss"])
+    assert miss["missingAssumptions"] == "WaterSourceShare ReturnFlowFraction" and miss["result"] is None, miss
+    st_miss = one(s, "cq16_status", scenario=r["sc_miss"])
+    assert st_miss["status"] == "unknown" and "WaterSourceShare" in st_miss["reason"] and "ReturnFlowFraction" in st_miss["reason"], st_miss
+
+    # Ineligible zone: heuristic only + no supply evidence
+    inel = one(s, "cq16_scenario", scenario=r["sc_inel"])
+    assert inel["eligible"] is False and "heuristic" in inel["eligibilityReason"] and inel["result"] is None, inel
+    st_inel = one(s, "cq16_status", scenario=r["sc_inel"])
+    assert st_inel["status"] == "not_applicable" and "heuristic" in st_inel["reason"], st_inel
+
+    # No ranking across metrics: querying by rankingMetric returns only that metric's ranked results
+    by_tot = [row for row in ask(s, "cq16_scenario", rankingMetric=L.TotalHeadChange) if row["result"] is not None]
+    assert [(local(row["scenario"]), row["rank"], local(row["rankingMetric"])) for row in by_tot] == [
+        ("opposing-pathways", 1, "TotalHeadChange"),
+        ("surface-supplied", 2, "TotalHeadChange"),
+    ], by_tot
+    by_ha = [row for row in ask(s, "cq16_scenario", rankingMetric=L.HeadChangePerHectare) if row["result"] is not None]
+    assert [(local(row["scenario"]), row["rank"], local(row["rankingMetric"])) for row in by_ha] == [
+        ("per-hectare", 1, "HeadChangePerHectare"),
+    ], by_ha
+    assert one(s, "cq16_status", scenario=r["w1"])["status"] == "not_applicable"
+    print("  11d. CQ16 fixtures: lower demand reports both abstraction and return-flow pathways (not a sign), "
+          "surface-supplied leaves groundwater pumping unchanged, no-change gives zero, missing assumptions "
+          "reported, ineligible zone rejected, rankings stay strictly within one metric")
+
+
 def test_data_cq15(store, facts_file):
     """CQ15 on v5 real data: LU-6 parcel outcomes = irrigation_s2_parcels_v5.parquet, all 65 wells'
     zone shares = irrigation_s2_wells.parquet, recomputed LU-6 zone shares from graph overlaps and
@@ -1481,6 +1631,8 @@ def main():
     test_cq6_fixture(s, u)
     test_cq8_rivers_fixture(s, g)
     test_cq15_fixture()
+    test_cq10_fixture()
+    test_cq16_fixture()
     facts, derived = KG / f"lulcw_kg_{DATASET}.ttl", KG / f"lulcw_kg_{DATASET}_rules.ttl"
     if facts.exists() and derived.exists():
         release.check()            # the files must form a validated release (src.kg.release)

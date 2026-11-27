@@ -1,6 +1,7 @@
 term,kind,module,rule
 AbstractionFacility,class,hydro,4
 AbstractionRole,individual,core,3
+AcceptedStatement,individual,xai,3
 AcceptedStatus,individual,core,3
 AccountingResult,class,hydro,4
 AlluvialAquifer,class,hydro,4
@@ -15,6 +16,9 @@ AssessmentStatus,class,core,4
 AssessmentStatusScheme,concept scheme,core,3
 AssociationType,class,hydro,4
 AssociationTypeScheme,concept scheme,hydro,3
+AssumptionKind,class,xai,4
+AssumptionKindScheme,concept scheme,xai,3
+AttributedPumpingStress,individual,xai,3
 AttributionRole,class,core,4
 AttributionRoleScheme,concept scheme,core,3
 BelowHighIrrigationDemand,individual,lulc,3
@@ -22,10 +26,12 @@ CanalDiversionVolume,individual,causal,4
 CanalIntakeGroup,class,hydro,4
 CanalReach,class,hydro,4
 CanalReturnFlow,individual,causal,3
+CanalStress,individual,xai,3
 CanalSupplyUse,individual,hydro,3
 CanalUnitAssociation,class,hydro,4
 CandidateStatus,individual,core,3
 CellWeight,class,hydro,4
+ClimateCase,individual,xai,3
 ClippedCropArea,individual,lulc,4
 ConfidenceLevel,class,core,4
 ConfidenceScheme,concept scheme,core,3
@@ -40,11 +46,14 @@ Conflicting,individual,core,2
 ConstraintDecision,class,causal,4
 ConstraintEligibility,class,causal,4
 ConstraintEligibilityScheme,concept scheme,causal,3
+ContributionDirection,class,xai,4
+ContributionDirectionScheme,concept scheme,xai,3
 CoverStatus,class,hydro,4
 CoverStatusScheme,concept scheme,hydro,3
 CoverUnknown,individual,hydro,3
 Covered,individual,hydro,3
 CropAreaObservation,class,lulc,4
+CropChangeScenario,class,xai,4
 CropClass,class,lulc,4
 CropClassArea,class,lulc,4
 CropCode,class,lulc,4
@@ -65,6 +74,7 @@ DocumentPassage,class,med-causal,4
 DocumentedLateral,individual,hydro,3
 DownstreamOfZone,individual,hydro,3
 DrinkingWaterUse,individual,hydro,3
+DriverContribution,class,xai,4
 DriverGroup,class,causal,4
 DriverGroupScheme,concept scheme,causal,3
 EffectiveRainfall,individual,causal,4
@@ -81,6 +91,7 @@ ExchangeDirectionScheme,concept scheme,med-causal,3
 ExchangeEquilibrium,individual,med-causal,3
 ExchangeStatement,class,med-causal,4
 ExpertHypothesis,individual,core,3
+ExplanationStatement,class,xai,4
 ExportPolicy,class,causal,4
 GaugePool,class,hydro,4
 GaugeZoneRelation,class,hydro,4
@@ -91,11 +102,14 @@ GroundwaterRecharge,individual,causal,4
 GroundwaterSource,individual,hydro,3
 HeadAboveReferenceCount,individual,hydro,4
 HeadAboveReferenceShare,individual,hydro,4
+HeadChangeAtWell,individual,xai,3
+HeadChangePerHectare,individual,xai,3
 HedgedFinding,individual,med-causal,3
 Hedging,class,med-causal,4
 HedgingScheme,concept scheme,med-causal,3
 HeuristicRule,individual,eo,3
 HighIrrigationDemand,individual,lulc,3
+HighLevel,individual,xai,3
 HydrogeologicalSetting,class,hydro,4
 HydrogeologicalUnit,class,hydro,4
 HydrogeologicalUnitGroup,class,hydro,4
@@ -111,19 +125,31 @@ IrrigationAssumption,class,lulc,4
 IrrigationAssumptionScheme,concept scheme,lulc,3
 IrrigationClassification,class,eo,4
 IrrigationDemandAssessment,class,lulc,4
+IrrigationDemandChange,individual,xai,3
 IrrigationOutcome,class,eo,4
 IrrigationOutcomeScheme,concept scheme,eo,3
 IrrigationUse,individual,hydro,3
 KarstAquifer,class,hydro,4
 LateralInflow,individual,causal,3
+LeakageRechargeStress,individual,xai,3
+LocalRechargeStress,individual,xai,3
+LowLevel,individual,xai,3
+LoweredHead,individual,xai,3
 Mechanism,class,causal,4
 MechanismScheme,concept scheme,causal,3
 ModelResult,individual,core,2
+ModelRun,class,xai,4
+ModelStress,class,xai,4
+ModelStressScheme,concept scheme,xai,3
+ModeratelyHighLevel,individual,xai,3
+ModeratelyLowLevel,individual,xai,3
 MonitoringRole,individual,core,3
 MonitoringStation,class,hydro,4
 MultilayerAquiferSystem,class,hydro,4
+NearAverageLevel,individual,xai,3
 NegativeResponse,individual,causal,3
 NoExchange,individual,med-causal,3
+NoNetChange,individual,xai,3
 NotApplicable,individual,core,2
 NotCropped,individual,lulc,3
 NotProbablyIrrigated,individual,eo,3
@@ -149,14 +175,23 @@ Probable,individual,core,3
 ProbablyIrrigated,individual,eo,3
 ProbablyIrrigatedShare,individual,eo,4
 PumpingDrawdown,individual,causal,3
+QualifiedStatement,individual,xai,3
 Rainfed,individual,lulc,3
+RaisedHead,individual,xai,3
+RankingMetric,class,xai,4
+RankingMetricScheme,concept scheme,xai,3
 ReachPiece,class,hydro,4
 ReachSearchZone,class,hydro,4
 RechargeProxies,individual,causal,3
+RechargeStress,individual,xai,3
 ReconstructedRecord,individual,hydro,2
 ReconstructedWeeklyVolume,individual,causal,4
 RecordKind,class,hydro,4
 RecordKindScheme,concept scheme,hydro,3
+ReferenceCondition,class,xai,4
+ReferenceConditionScheme,concept scheme,xai,3
+ReferenceWindow,individual,xai,3
+RegionalRechargeStress,individual,xai,3
 RegisteredParcel,class,lulc,4
 RejectedStatus,individual,core,3
 ReportedObservation,individual,core,3
@@ -164,6 +199,7 @@ Resolution,class,core,4
 ResolutionScheme,concept scheme,core,3
 ResponseSign,class,causal,4
 ResponseSignScheme,concept scheme,causal,3
+ReturnFlowFraction,individual,xai,3
 RiverDischarge,individual,causal,4
 RiverDischargeGroup,individual,causal,3
 RiverExchange,individual,causal,3
@@ -171,17 +207,27 @@ RiverGauge,class,hydro,4
 RiverReach,class,hydro,4
 RiverSection,class,hydro,4
 RiverStage,individual,causal,4
+RiverStress,individual,xai,3
 RiverUnitAssociation,class,hydro,4
 RuleEvaluation,class,core,4
 RuleExecution,class,core,4
 RuleValidity,class,eo,4
 RuleValidityScheme,concept scheme,eo,3
 SatelliteIndexObservation,class,eo,4
+ScenarioAssumption,class,xai,4
+ScenarioEligibility,class,xai,4
+ScenarioResult,class,xai,4
+SeasonalResidual,individual,xai,3
 SemiConfinedState,individual,hydro,3
+SgiClass,class,xai,4
+SgiClassScheme,concept scheme,xai,3
+SimulatedHead,class,xai,4
 SoilDrainage,individual,causal,4
 SourceRecord,class,core,4
 StackLayer,class,hydro,4
 StatedFinding,individual,med-causal,3
+StatementStatus,class,xai,4
+StatementStatusScheme,concept scheme,xai,3
 StratigraphicRelation,class,hydro,4
 StratigraphicRelationKind,class,hydro,4
 StratigraphicRelationKindScheme,concept scheme,hydro,3
@@ -195,6 +241,10 @@ SurfaceWaterBody,class,hydro,4
 SurfaceWaterIntake,class,hydro,4
 SurfaceWaterSource,individual,hydro,3
 SynthesisStatement,individual,med-causal,3
+TotalHeadChange,individual,xai,3
+TrainingMean,individual,xai,3
+TrainingSeasonalMean,individual,xai,3
+UnattributedPumpingStress,individual,xai,3
 UnconfinedState,individual,hydro,3
 UnitAttribution,class,core,4
 UnitGroupResolution,individual,core,3
@@ -208,10 +258,13 @@ UpstreamOfZone,individual,hydro,3
 UsuallyIrrigated,individual,lulc,3
 ValidatedRule,individual,eo,3
 VerticalLeakage,individual,causal,3
+VeryHighLevel,individual,xai,3
+VeryLowLevel,individual,xai,3
 VolumeAllocation,class,hydro,4
 WaterBalanceEstimate,individual,med-causal,3
 WaterSource,class,hydro,4
 WaterSourceScheme,concept scheme,hydro,3
+WaterSourceShare,individual,xai,3
 WaterUse,class,hydro,4
 WaterUseScheme,concept scheme,hydro,3
 Watercourse,class,hydro,4
@@ -219,6 +272,7 @@ WeatherCell,class,hydro,4
 WellLink,class,core,4
 WellZone,class,hydro,4
 WetSeason,individual,eo,3
+WithheldStatement,individual,xai,3
 aboutGroundwaterBody,object property,med-causal,5
 aboutSection,object property,med-causal,5
 aboutUnit,object property,med-causal,5
@@ -233,6 +287,7 @@ allocatesRecord,object property,hydro,2
 allocationWeight,datatype property,hydro,2
 alongRiverDistanceM,datatype property,hydro,5
 alongRiverPosition,object property,hydro,5
+alternativeCropClass,object property,xai,5
 applicableStatement,object property,med-causal,5
 applicableUse,object property,hydro,5
 appliesInExtent,object property,core,5
@@ -243,7 +298,11 @@ assessmentWindow,datatype property,core,5
 associationType,object property,hydro,5
 associationUnit,object property,hydro,5
 associationWatercourse,object property,hydro,5
+assumptionKind,object property,xai,5
+assumptionUnit,datatype property,xai,5
+assumptionValue,datatype property,xai,5
 attributedEntity,object property,core,5
+baselineCropClass,object property,xai,5
 bdCarthageCode,datatype property,profile/fr,1
 bdlisaCode,datatype property,profile/fr,1
 bdlisaMediumCode,datatype property,profile/fr,1
@@ -260,6 +319,8 @@ cellWeight,datatype property,hydro,5
 chainageFromM,datatype property,core,5
 chainageM,datatype property,core,5
 chainageToM,datatype property,core,5
+citesContribution,object property,xai,5
+citesInfluence,object property,xai,5
 classifiedAreaM2,datatype property,eo,5
 classifiedFraction,datatype property,eo,5
 classifiedParcel,object property,eo,5
@@ -270,6 +331,9 @@ confinementState,object property,hydro,5
 constraintApproval,object property,causal,5
 constraintDecision,object property,causal,5
 constraintEligibility,object property,causal,5
+contributionM,datatype property,xai,5
+contributionStress,object property,xai,5
+contributionTo,object property,xai,5
 coverStatus,object property,hydro,5
 coverUnit,object property,hydro,5
 coverageEnd,datatype property,core,5
@@ -300,12 +364,15 @@ evidenceKind,object property,core,5
 evidenceMethod,object property,med-causal,5
 exchangeDirection,object property,med-causal,5
 excludedVolumeM3,datatype property,hydro,2
+explains,object property,xai,5
 facilityCount,datatype property,hydro,2
+fittingProtocol,datatype property,xai,5
 fluxM3s,datatype property,med-causal,5
 fluxUncertaintyM3s,datatype property,med-causal,5
 gaugeCode,datatype property,hydro,5
 groundElevationM,datatype property,core,5
-groundwaterBodyCode,datatype property,core,5
+groundwaterBodyCode,datatype property,profile/eu,1
+hasAssumption,object property,xai,5
 hasCellWeight,object property,hydro,5
 hasDischargeSeries,object property,hydro,5
 hasForcingSeries,object property,hydro,5
@@ -314,9 +381,13 @@ hasMemberUnit,object property,hydro,5
 hasObservationSeries,object property,hydro,5
 hasStackLayer,object property,hydro,5
 hasVolumeSeries,object property,hydro,5
+headChangeHighM,datatype property,xai,5
+headChangeLowM,datatype property,xai,5
+headChangeM,datatype property,xai,5
 hedging,object property,med-causal,5
 horizontalDistanceM,datatype property,core,5
 hostedBy,object property,hydro,5
+imputedPumpingShare,datatype property,xai,5
 inDocument,object property,med-causal,5
 inGroundwaterBody,object property,hydro,5
 inRelease,object property,core,5
@@ -385,15 +456,21 @@ poolMember,object property,hydro,5
 precision,datatype property,core,5
 proxyFor,object property,causal,5
 proxyReview,object property,causal,5
+pumpingReconstruction,datatype property,xai,5
 pumpsFrom,object property,hydro,5
 qualityPolicy,datatype property,core,5
 quote,datatype property,med-causal,5
 rank,datatype property,core,5
+rankingMetric,object property,xai,5
 reachNature,datatype property,hydro,5
 reachOf,object property,hydro,5
 recordKind,object property,hydro,5
+referenceCondition,object property,xai,5
+referenceEnd,datatype property,xai,5
 referenceRangeHigh,datatype property,eo,5
 referenceRangeLow,datatype property,eo,5
+referenceStart,datatype property,xai,5
+regime,datatype property,xai,5
 registerCode,datatype property,core,5
 relatedGauge,object property,hydro,5
 relationKind,object property,hydro,5
@@ -407,9 +484,13 @@ rpgEdition,datatype property,profile/fr,1
 rpgGroupCode,datatype property,profile/fr,1
 ruleValidity,object property,eo,5
 ruleVersion,datatype property,core,5
+runIdentifier,datatype property,xai,5
 safranGridXHm,datatype property,profile/fr,1
 safranGridYHm,datatype property,profile/fr,1
 sampleSize,datatype property,core,5
+scenarioEligible,datatype property,xai,5
+scenarioOf,object property,xai,5
+scenarioZone,object property,xai,5
 screenBottomDepthM,datatype property,core,5
 screenTopDepthM,datatype property,core,5
 searchRadiusM,datatype property,core,5
@@ -421,13 +502,28 @@ settingAttribution,object property,hydro,5
 settingOf,object property,hydro,5
 settingPolygon,object property,hydro,5
 settingUnit,object property,hydro,5
+sgiClass,object property,xai,5
+sgiReferenceEnd,datatype property,xai,5
+sgiUpperBound,datatype property,xai,5
+sgiValue,datatype property,xai,5
 sharedUnit,object property,hydro,5
+simulatedAt,object property,xai,5
+simulatedHeadM,datatype property,xai,5
 sourceIdentifier,datatype property,core,5
 sourceUrl,datatype property,core,5
 stackPosition,datatype property,hydro,5
+startCount,datatype property,xai,5
+startSdM,datatype property,xai,5
+startSignAgreement,datatype property,xai,5
 stateDescription,datatype property,med-causal,5
+statedDirection,object property,xai,5
 statedMechanism,object property,med-causal,5
+statementReason,datatype property,xai,5
+statementStatus,object property,xai,5
+statementText,datatype property,xai,5
 storedIn,datatype property,core,5
+stressDriverGroup,object property,xai,5
+substitutedAreaM2,datatype property,xai,5
 targetEntity,object property,causal,5
 temporalResolution,datatype property,core,5
 trainingEdition,datatype property,eo,5
@@ -438,6 +534,7 @@ unitMapping,object property,med-causal,5
 unknownReason,datatype property,core,5
 unresolvedVolumeM3,datatype property,hydro,2
 upperUnit,object property,hydro,5
+usesExportPolicy,object property,xai,5
 usesGaugePool,object property,hydro,5
 validPixelCount,datatype property,eo,5
 verticalDatum,datatype property,core,5

@@ -5,15 +5,15 @@
 @prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 
-# Generated from ontology/lulcw.ttl (version 0.11.0) by src.kg.ontology_modules.
+# Generated from ontology/lulcw.ttl (version 0.12.0) by src.kg.ontology_modules.
 # Do not edit by hand: edit ontology/lulcw.ttl and re-run the generator.
 
 <https://w3id.org/lulcw/profile/eu> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/profile/eu/0.11.0> ;
-    owl:versionInfo "0.11.0" ;
+    owl:versionIRI <https://w3id.org/lulcw/profile/eu/0.12.0> ;
+    owl:versionInfo "0.12.0" ;
     dcterms:title "LULC-Water European Union profile"@en , "Profil Union européenne LULC-Water"@fr ;
-    dcterms:description "Optional European Union regional profile for the LULC-Water ontology network, declaring EU Water Framework Directive identifiers (such as lulcw:wfdCode) outside the pan-Mediterranean core."@en ,
-        "Profil régional optionnel Union européenne du réseau d'ontologies LULC-Water, déclarant les identifiants de la directive-cadre sur l'eau (tels que lulcw:wfdCode) hors du noyau pan-méditerranéen."@fr ;
+    dcterms:description "Optional European Union regional profile for the LULC-Water ontology network, declaring EU Water Framework Directive identifiers (lulcw:wfdCode, lulcw:groundwaterBodyCode) outside the pan-Mediterranean core."@en ,
+        "Profil régional optionnel Union européenne du réseau d'ontologies LULC-Water, déclarant les identifiants de la directive-cadre sur l'eau (lulcw:wfdCode, lulcw:groundwaterBodyCode) hors du noyau pan-méditerranéen."@fr ;
     dcterms:creator "Assil Bouzaine" ;
     dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
     dcterms:created "2026-11-26"^^xsd:date ;
@@ -24,6 +24,13 @@ dcterms:description a owl:AnnotationProperty .
 dcterms:creator a owl:AnnotationProperty .
 dcterms:license a owl:AnnotationProperty .
 dcterms:created a owl:AnnotationProperty .
+
+lulcw:groundwaterBodyCode a owl:DatatypeProperty ;
+    rdfs:subPropertyOf lulcw:registerCode ;
+    rdfs:range xsd:string ;
+    rdfs:label "groundwater body code"@en , "code de masse d'eau"@fr ;
+    skos:definition "Code of a Water Framework Directive groundwater body, e.g. DG243."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/profile/eu> .
 
 lulcw:wfdCode a owl:DatatypeProperty , owl:FunctionalProperty ;
     rdfs:subPropertyOf lulcw:registerCode ;

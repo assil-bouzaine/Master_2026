@@ -7,12 +7,12 @@
 @prefix geo:     <http://www.opengis.net/ont/geosparql#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 
-# Generated from ontology/lulcw.ttl (version 0.11.0) by src.kg.ontology_modules.
+# Generated from ontology/lulcw.ttl (version 0.12.0) by src.kg.ontology_modules.
 # Do not edit by hand: edit ontology/lulcw.ttl and re-run the generator.
 
 <https://w3id.org/lulcw/core> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/core/0.11.0> ;
-    owl:versionInfo "0.11.0" ;
+    owl:versionIRI <https://w3id.org/lulcw/core/0.12.0> ;
+    owl:versionInfo "0.12.0" ;
     dcterms:title "LULC-Water core module"@en , "Module noyau LULC-Water"@fr ;
     dcterms:description "Country-agnostic core vocabulary of the LULC-Water ontology network: provenance (data releases, source records, derivation rules), qualified assertions, shared answer-contract and evidence schemes, and generic register-code and measurement properties."@en ,
         "Vocabulaire noyau indépendant des pays du réseau d'ontologies LULC-Water : provenance (versions de jeux de données, enregistrements sources, règles de dérivation), assertions qualifiées, schémas partagés du contrat de réponse et des preuves, et propriétés génériques de code de registre et de mesure."@fr ;
@@ -408,7 +408,7 @@ lulcw:derivationRule a owl:ObjectProperty ;
 lulcw:eligibilityReason a owl:DatatypeProperty ;
     rdfs:range xsd:string ;
     rdfs:label "eligibility reason"@en , "motif d'éligibilité"@fr ;
-    skos:definition "Why an influence is or is not eligible to constrain a model."@en ;
+    skos:definition "Why an influence is or is not eligible to constrain a model, or why a crop-change scenario is or is not supported in its zone (e.g. 'irrigation status heuristic only', 'no supply evidence')."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/core> .
 
 lulcw:evaluatedRule a owl:FunctionalProperty , owl:ObjectProperty ;
@@ -428,12 +428,6 @@ lulcw:groundElevationM a owl:DatatypeProperty ;
     rdfs:range xsd:double ;
     rdfs:label "ground elevation (m NGF)"@en , "altitude du sol (m NGF)"@fr ;
     skos:definition "Elevation of the ground (or reference mark) at a station, in metres above the NGF-IGN69 datum."@en ;
-    lulcw:definedInModule <https://w3id.org/lulcw/core> .
-
-lulcw:groundwaterBodyCode a owl:DatatypeProperty ;
-    rdfs:range xsd:string ;
-    rdfs:label "groundwater body code"@en , "code de masse d'eau"@fr ;
-    skos:definition "Code of a Water Framework Directive groundwater body, e.g. DG243."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/core> .
 
 lulcw:horizontalDistanceM a owl:DatatypeProperty ;
@@ -481,13 +475,13 @@ lulcw:offsetFromStemM a owl:DatatypeProperty , owl:FunctionalProperty ;
 lulcw:periodEnd a owl:DatatypeProperty , owl:FunctionalProperty ;
     rdfs:range xsd:date ;
     rdfs:label "period end"@en , "fin de la période"@fr ;
-    skos:definition "Last day of the period a dated statement observed (an xsd:date literal)."@en ;
+    skos:definition "Last day of the period a dated statement, model run, simulated head, scenario or scenario result covers (an xsd:date literal)."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/core> .
 
 lulcw:periodStart a owl:DatatypeProperty , owl:FunctionalProperty ;
     rdfs:range xsd:date ;
     rdfs:label "period start"@en , "début de la période"@fr ;
-    skos:definition "First day of the period a dated statement observed (an xsd:date literal); absent for a statement about a typical state."@en ;
+    skos:definition "First day of the period a dated statement, model run, simulated head, scenario or scenario result covers (an xsd:date literal); absent for a statement about a typical state."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/core> .
 
 lulcw:precision a owl:DatatypeProperty , owl:FunctionalProperty ;
@@ -505,13 +499,13 @@ lulcw:qualityPolicy a owl:DatatypeProperty ;
 lulcw:rank a owl:DatatypeProperty , owl:FunctionalProperty ;
     rdfs:range xsd:integer ;
     rdfs:label "rank"@en , "rang"@fr ;
-    skos:definition "Rank of an attribution among the candidates for the same entity and role (1 = main candidate)."@en ;
+    skos:definition "Rank of an attribution among the candidates for the same entity and role (1 = main candidate), or rank of a scenario result among results compared under the same ranking metric (1 = highest-ranked)."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/core> .
 
 lulcw:registerCode a owl:DatatypeProperty ;
-    rdfs:range xsd:string ;
+    rdfs:range rdfs:Literal ;
     rdfs:label "register code"@en , "code de registre"@fr ;
-    skos:definition "A code that identifies an entity in a national or agency register or reference dataset; country profiles declare their registers' codes as sub-properties of it."@en ;
+    skos:definition "A code that identifies an entity in a national or agency register or reference dataset (any literal value, string or integer, so both textual and numeric register codes sit under it); regional and country profiles declare their registers' codes as sub-properties of it."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/core> .
 
 lulcw:releaseDate a owl:DatatypeProperty ;

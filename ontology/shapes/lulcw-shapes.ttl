@@ -2,6 +2,7 @@
 @prefix lulcwsh: <https://w3id.org/lulcw/shapes#> .
 @prefix sh:      <http://www.w3.org/ns/shacl#> .
 @prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
 @prefix prov:    <http://www.w3.org/ns/prov#> .
@@ -1663,4 +1664,320 @@ SELECT $this ?value WHERE {
     ?value sosa:observedProperty lulcw:ProbablyIrrigatedShare .
     FILTER (NOT EXISTS { ?value lulcw:classifiedFraction ?f }
             || NOT EXISTS { ?value lulcw:classifiedAreaM2 ?a })
+}""" ] .
+
+
+#################################################################
+# CQ10: evidence-backed model explanations (0.12.0, 2026-11-27)
+#################################################################
+
+lulcwsh:ModelRunShape a sh:NodeShape ;
+    sh:targetClass lulcw:ModelRun ;
+    sh:property [ sh:path lulcw:runIdentifier ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ,
+        [ sh:path lulcw:usesExportPolicy ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:ExportPolicy ] ,
+        [ sh:path prov:used ; sh:minCount 1 ; sh:class lulcw:DataRelease ] ,
+        [ sh:path lulcw:regime ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ,
+        [ sh:path lulcw:pumpingReconstruction ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ;
+          sh:in ( 1 2 3 ) ] ,
+        [ sh:path lulcw:fittingProtocol ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ,
+        [ sh:path lulcw:startCount ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ;
+          sh:minInclusive 1 ] ,
+        [ sh:path lulcw:periodStart ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:date ] ,
+        [ sh:path lulcw:periodEnd ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:date ] ;
+    sh:sparql [
+        sh:message "a model run's period ends before it starts" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:periodStart ?a ; lulcw:periodEnd ?b .
+    FILTER (?a > ?b)
+}""" ] .
+
+lulcwsh:SimulatedHeadShape a sh:NodeShape ;
+    sh:targetClass lulcw:SimulatedHead ;
+    sh:property [ sh:path prov:wasGeneratedBy ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:ModelRun ] ,
+        [ sh:path lulcw:simulatedAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:Piezometer ] ,
+        [ sh:path lulcw:periodStart ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:date ] ,
+        [ sh:path lulcw:periodEnd ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:date ] ,
+        [ sh:path lulcw:simulatedHeadM ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ] ,
+        [ sh:path lulcw:sgiValue ; sh:maxCount 1 ; sh:datatype xsd:double ] ,
+        [ sh:path lulcw:sgiClass ; sh:maxCount 1 ; sh:class lulcw:SgiClass ] ,
+        [ sh:path lulcw:sgiReferenceEnd ; sh:maxCount 1 ; sh:datatype xsd:date ] ;
+    # CQ10 check 5 (period): window must lie inside the run's covered period
+    sh:sparql [
+        sh:message "simulated head window runs backwards or lies outside its model run's period" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:periodStart ?a ; lulcw:periodEnd ?b ; prov:wasGeneratedBy ?run .
+    ?run lulcw:periodStart ?ra ; lulcw:periodEnd ?rb .
+    FILTER (?a > ?b || ?a < ?ra || ?b > ?rb)
+}""" ] , [
+        sh:message "simulated head states sgiValue without sgiClass or sgiClass without sgiValue" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    OPTIONAL { $this lulcw:sgiValue ?z . }
+    OPTIONAL { $this lulcw:sgiClass ?cls . }
+    FILTER (BOUND(?z) != BOUND(?cls))
+}""" ] , [
+    # CQ10 check 5 (SGI bounds): SGI class matches SGI value under the BRGM IPS quantiles
+    # (strict `<` on lulcw:sgiUpperBound, matching src/dataset/build.py ips_class)
+        sh:message "the SGI class does not match the SGI value under the BRGM IPS bounds" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:sgiValue ?z ; lulcw:sgiClass ?value .
+    OPTIONAL { ?value lulcw:sgiUpperBound ?hi . }
+    FILTER (
+        (BOUND(?hi) && ?z >= ?hi)
+        || EXISTS {
+            ?other lulcw:sgiUpperBound ?ob .
+            FILTER (?other != ?value && (!BOUND(?hi) || ?ob < ?hi) && ?z < ?ob)
+        }
+    )
+}""" ] .
+
+lulcwsh:DriverContributionShape a sh:NodeShape ;
+    sh:targetClass lulcw:DriverContribution ;
+    sh:property [ sh:path lulcw:contributionTo ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:SimulatedHead ] ,
+        [ sh:path lulcw:contributionStress ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:ModelStress ] ,
+        [ sh:path lulcw:referenceCondition ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:ReferenceCondition ] ,
+        [ sh:path lulcw:referenceStart ; sh:maxCount 1 ; sh:datatype xsd:date ] ,
+        [ sh:path lulcw:referenceEnd ; sh:maxCount 1 ; sh:datatype xsd:date ] ,
+        [ sh:path lulcw:contributionM ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ] ,
+        [ sh:path lulcw:startSdM ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ; sh:minInclusive 0.0 ] ,
+        [ sh:path lulcw:startSignAgreement ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minInclusive 0.0 ; sh:maxInclusive 1.0 ] ,
+        [ sh:path lulcw:imputedPumpingShare ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minInclusive 0.0 ; sh:maxInclusive 1.0 ] ;
+    sh:sparql [
+        sh:message "a ReferenceWindow contribution lacks valid referenceStart/referenceEnd dates" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:referenceCondition lulcw:ReferenceWindow .
+    OPTIONAL { $this lulcw:referenceStart ?a . }
+    OPTIONAL { $this lulcw:referenceEnd ?b . }
+    FILTER (!BOUND(?a) || !BOUND(?b) || ?a > ?b)
+}""" ] .
+
+lulcwsh:ExplanationStatementShape a sh:NodeShape ;
+    sh:targetClass lulcw:ExplanationStatement ;
+    sh:property [ sh:path lulcw:explains ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:SimulatedHead ] ,
+        [ sh:path lulcw:citesContribution ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:DriverContribution ] ,
+        [ sh:path lulcw:citesInfluence ; sh:class lulcw:Influence ;
+          sh:message "every cited influence must exist as a lulcw:Influence in the graph" ] ,
+        [ sh:path lulcw:statedDirection ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:ContributionDirection ] ,
+        [ sh:path lulcw:statementStatus ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:StatementStatus ] ,
+        [ sh:path lulcw:statementReason ; sh:maxCount 1 ; sh:datatype xsd:string ] ,
+        [ sh:path lulcw:statementText ; sh:minCount 1 ; sh:datatype rdf:langString ] ;
+    sh:sparql [
+        sh:message "the cited driver contribution does not belong to the simulated head the statement explains" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:explains ?sh ; lulcw:citesContribution ?value .
+    FILTER NOT EXISTS { ?value lulcw:contributionTo ?sh . }
+}""" ] , [
+    # CQ10 check 1: every cited influence targets the statement's well and is selected under the run's export policy
+        sh:message "a cited influence does not target the statement's well or is not selected under the run's export policy" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:citesInfluence ?value ; lulcw:explains ?sh .
+    ?sh lulcw:simulatedAt ?w ; prov:wasGeneratedBy ?run .
+    ?run lulcw:usesExportPolicy ?pol .
+    FILTER (
+        NOT EXISTS { ?value lulcw:targetEntity ?w . }
+        || NOT EXISTS { ?value lulcw:selectedUnder ?pol . }
+    )
+}""" ] , [
+    # CQ10 check 2: the influence's driver group matches the contribution stress's driver group
+        sh:message "a cited influence's driver group disagrees with the contribution's driver group" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:citesInfluence ?value ; lulcw:citesContribution ?c .
+    ?c lulcw:contributionStress ?st .
+    FILTER NOT EXISTS {
+        ?st lulcw:stressDriverGroup ?grp .
+        ?value lulcw:driverGroup ?grp .
+    }
+}""" ] , [
+    # CQ10 check 3: stated direction agrees with the sign of contributionM (never confused with responseSign)
+        sh:message "the stated direction disagrees with the sign of contributionM (direction is the contribution sign, never the response sign)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:statedDirection ?value ; lulcw:citesContribution ?c .
+    ?c lulcw:contributionM ?m .
+    FILTER (
+        (?value = lulcw:RaisedHead && ?m <= 0)
+        || (?value = lulcw:LoweredHead && ?m >= 0)
+        || (?value = lulcw:NoNetChange && ABS(?m) >= 0.05)
+    )
+}""" ] , [
+    # CQ10 check 4: a pumping statement over imputed weeks (> 10%) is withheld (0-10% is qualified)
+        sh:message "a pumping statement over imputed weeks (> 10% imputed) must be withheld (and 0-10% imputed cannot be accepted unqualified)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:statementStatus ?value ; lulcw:citesContribution ?c .
+    ?c lulcw:contributionStress ?st ; lulcw:imputedPumpingShare ?imp .
+    FILTER (?st = lulcw:AttributedPumpingStress || ?st = lulcw:UnattributedPumpingStress)
+    FILTER (
+        (?imp > 0.10 && ?value != lulcw:WithheldStatement)
+        || (?imp > 0.0 && ?imp <= 0.10 && ?value = lulcw:AcceptedStatement)
+    )
+}""" ] , [
+    # CQ10 check 6: an accepted (or qualified) statement requires across-start sign agreement >= 0.8
+        sh:message "a non-withheld explanation statement requires start sign agreement at least 0.8" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:statementStatus ?st ; lulcw:citesContribution ?c .
+    FILTER (?st != lulcw:WithheldStatement)
+    ?c lulcw:startSignAgreement ?value .
+    FILTER (?value < 0.8)
+}""" ] .
+
+
+#################################################################
+# CQ16: explicit crop-change scenarios (0.12.0, 2026-11-27)
+#################################################################
+
+lulcwsh:CropChangeScenarioShape a sh:NodeShape ;
+    sh:targetClass lulcw:CropChangeScenario ;
+    sh:property [ sh:path lulcw:baselineCropClass ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:class lulcw:CropClass ; sh:disjoint lulcw:alternativeCropClass ;
+          sh:message "a crop-change scenario requires two different crop classes (baselineCropClass != alternativeCropClass)" ] ,
+        [ sh:path lulcw:alternativeCropClass ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:CropClass ] ,
+        [ sh:path lulcw:substitutedAreaM2 ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ;
+          sh:minInclusive 0.0 ] ,
+        [ sh:path lulcw:scenarioZone ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:CropDemandZone ] ,
+        [ sh:path lulcw:periodStart ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:date ] ,
+        [ sh:path lulcw:periodEnd ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:date ] ,
+        [ sh:path lulcw:rankingMetric ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:RankingMetric ] ,
+        [ sh:path lulcw:hasAssumption ; sh:class lulcw:ScenarioAssumption ] ;
+    sh:sparql [
+        sh:message "a crop-change scenario's period ends before it starts" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:periodStart ?a ; lulcw:periodEnd ?b .
+    FILTER (?a > ?b)
+}""" ] .
+
+# Incomplete assumptions warn on the scenario itself (separate NodeShape so sh:severity sh:Warning
+# applies in pySHACL) so CQ16 queries can report the missing kinds as unsupported assumptions;
+# ScenarioResultShape rejects any result attached to such a scenario as a sh:Violation.
+lulcwsh:CropChangeScenarioAssumptionsShape a sh:NodeShape ;
+    sh:targetClass lulcw:CropChangeScenario ;
+    sh:severity sh:Warning ;
+    sh:sparql [
+        sh:message "scenario lacks a WaterSourceShare or ReturnFlowFraction assumption (reported by CQ16 as unsupported assumptions)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this a lulcw:CropChangeScenario .
+    FILTER (
+        NOT EXISTS { $this lulcw:hasAssumption ?a1 . ?a1 lulcw:assumptionKind ?k1 . FILTER (?k1 = lulcw:WaterSourceShare) }
+        || NOT EXISTS { $this lulcw:hasAssumption ?a2 . ?a2 lulcw:assumptionKind ?k2 . FILTER (?k2 = lulcw:ReturnFlowFraction) }
+    )
+}""" ] .
+
+lulcwsh:ScenarioAssumptionShape a sh:NodeShape ;
+    sh:targetClass lulcw:ScenarioAssumption ;
+    sh:property [ sh:path lulcw:assumptionKind ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:AssumptionKind ] ,
+        [ sh:path lulcw:assumptionValue ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ] ,
+        [ sh:path lulcw:assumptionUnit ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:sparql [
+        sh:message "a scenario assumption must cite its source (prov:wasDerivedFrom) or state lulcw:evidenceKind lulcw:ExpertHypothesis" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this a lulcw:ScenarioAssumption .
+    FILTER (
+        NOT EXISTS { $this prov:wasDerivedFrom ?src . }
+        && NOT EXISTS { $this lulcw:evidenceKind ?ek . FILTER (?ek = lulcw:ExpertHypothesis) }
+    )
+}""" ] .
+
+lulcwsh:ScenarioEligibilityShape a sh:NodeShape ;
+    sh:targetClass lulcw:ScenarioEligibility ;
+    sh:property [ sh:path lulcw:scenarioZone ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:CropDemandZone ] ,
+        [ sh:path lulcw:scenarioOf ; sh:maxCount 1 ; sh:class lulcw:CropChangeScenario ] ,
+        [ sh:path lulcw:scenarioEligible ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:boolean ] ,
+        [ sh:path lulcw:eligibilityReason ; sh:minCount 1 ; sh:datatype xsd:string ] .
+
+lulcwsh:ScenarioResultShape a sh:NodeShape ;
+    sh:targetClass lulcw:ScenarioResult ;
+    sh:property [ sh:path lulcw:scenarioOf ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:CropChangeScenario ] ,
+        [ sh:path prov:wasGeneratedBy ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:ModelRun ] ,
+        [ sh:path lulcw:simulatedAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:class lulcw:Piezometer ] ,
+        [ sh:path lulcw:periodStart ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:date ] ,
+        [ sh:path lulcw:periodEnd ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:date ] ,
+        [ sh:path lulcw:headChangeM ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ] ,
+        [ sh:path lulcw:headChangeLowM ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ] ,
+        [ sh:path lulcw:headChangeHighM ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ] ,
+        [ sh:path lulcw:rank ; sh:maxCount 1 ; sh:datatype xsd:integer ; sh:minInclusive 1 ] ,
+        [ sh:path lulcw:rankingMetric ; sh:maxCount 1 ; sh:class lulcw:RankingMetric ] ;
+    sh:sparql [
+        sh:message "scenario result period runs backwards" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:periodStart ?a ; lulcw:periodEnd ?b .
+    FILTER (?a > ?b)
+}""" ] , [
+        sh:message "scenario result headChangeM lies outside [headChangeLowM, headChangeHighM]" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this WHERE {
+    $this lulcw:headChangeLowM ?lo ; lulcw:headChangeM ?v ; lulcw:headChangeHighM ?hi .
+    FILTER (?lo > ?v || ?v > ?hi)
+}""" ] , [
+        sh:message "scenario result produced for a zone whose scenario eligibility is false" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:scenarioOf ?sc .
+    ?sc lulcw:scenarioZone ?z .
+    ?value lulcw:scenarioZone ?z ; lulcw:scenarioEligible ?flag .
+    FILTER (?flag = false)
+    OPTIONAL { ?value lulcw:scenarioOf ?elSc . }
+    FILTER (!BOUND(?elSc) || ?elSc = ?sc)
+}""" ] , [
+        sh:message "scenario result cites a scenario missing a WaterSourceShare or ReturnFlowFraction assumption" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:scenarioOf ?value .
+    FILTER (
+        NOT EXISTS { ?value lulcw:hasAssumption ?a1 . ?a1 lulcw:assumptionKind ?k1 . FILTER (?k1 = lulcw:WaterSourceShare) }
+        || NOT EXISTS { ?value lulcw:hasAssumption ?a2 . ?a2 lulcw:assumptionKind ?k2 . FILTER (?k2 = lulcw:ReturnFlowFraction) }
+    )
+}""" ] , [
+        sh:message "scenario result ranking metric disagrees with its scenario's ranking metric" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:rankingMetric ?value ; lulcw:scenarioOf ?sc .
+    ?sc lulcw:rankingMetric ?sm .
+    FILTER (?value != ?sm)
+}""" ] , [
+        sh:message "ranks must compare only results with the same ranking metric (rank > 1 without rank - 1 under the same run and metric)" ;
+        sh:prefixes <https://w3id.org/lulcw/shapes> ;
+        sh:select """
+SELECT $this ?value WHERE {
+    $this lulcw:rank ?value ; lulcw:scenarioOf ?sc ; prov:wasGeneratedBy ?run .
+    ?sc lulcw:rankingMetric ?m .
+    FILTER (?value > 1)
+    BIND (?value - 1 AS ?prevRank)
+    FILTER NOT EXISTS {
+        ?other lulcw:rank ?prevRank ; prov:wasGeneratedBy ?orun ; lulcw:scenarioOf ?osc .
+        ?osc lulcw:rankingMetric ?om .
+        FILTER (?orun = ?run && ?om = ?m)
+    }
 }""" ] .

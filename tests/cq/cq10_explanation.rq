@@ -1,0 +1,59 @@
+# CQ10 · Evidence-backed model explanation for one run, well and window
+# (docs/competency_questions.md §4, CQ10; docs/notes/step15_explanations.md)
+#
+# Parameters  ?run          a lulcw:ModelRun
+#             ?W            a lulcw:Piezometer
+#             ?periodStart  xsd:date (start of explained window)
+#             ?periodEnd    xsd:date (end of explained window)
+# Reads       asserted model-result and explanation facts (lulcw:ModelRun, lulcw:SimulatedHead,
+#             lulcw:DriverContribution, lulcw:ExplanationStatement) and KG influences selected
+#             under the run's export policy; no OWL reasoning.
+# Returns     one row per explanation statement for (?run, ?W, ?periodStart, ?periodEnd), ordered
+#             by descending absolute contribution magnitude: simulated head (distinct from any
+#             observed head), SGI value, SGI class and French IPS label, stress, driver group,
+#             reference condition (and window dates if ReferenceWindow), contributionM, startSdM,
+#             startSignAgreement, imputedPumpingShare, statedDirection (contribution sign, never
+#             response polarity), statementStatus (AcceptedStatement / QualifiedStatement /
+#             WithheldStatement), statementReason, EN/FR statement texts, and space-separated
+#             cited KG influences selected under the run's policy.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT ?run ?W ?periodStart ?periodEnd ?runId ?policy ?simulatedHeadM ?sgiValue ?sgiClass
+       ?sgiReferenceEnd ?stress ?stressNotation ?driverGroup ?referenceCondition
+       ?referenceStart ?referenceEnd ?contributionM ?startSdM ?startSignAgreement
+       ?imputedPumpingShare ?statement ?statedDirection ?statementStatus ?statementReason
+       ?statementTextEn ?statementTextFr ?citedInfluences ?citedInfluenceCount
+WHERE {
+    ?run a lulcw:ModelRun ; lulcw:runIdentifier ?runId ; lulcw:usesExportPolicy ?policy .
+    ?sh a lulcw:SimulatedHead ; prov:wasGeneratedBy ?run ; lulcw:simulatedAt ?W ;
+        lulcw:periodStart ?periodStart ; lulcw:periodEnd ?periodEnd ;
+        lulcw:simulatedHeadM ?simulatedHeadM .
+    ?c a lulcw:DriverContribution ; lulcw:contributionTo ?sh ; lulcw:contributionStress ?stress ;
+       lulcw:referenceCondition ?referenceCondition ; lulcw:contributionM ?contributionM ;
+       lulcw:startSdM ?startSdM ; lulcw:startSignAgreement ?startSignAgreement .
+    ?statement a lulcw:ExplanationStatement ; lulcw:explains ?sh ; lulcw:citesContribution ?c ;
+               lulcw:statedDirection ?statedDirection ; lulcw:statementStatus ?statementStatus .
+    OPTIONAL { ?sh lulcw:sgiValue ?sgiValue ; lulcw:sgiClass ?sgiClass . }
+    OPTIONAL { ?sh lulcw:sgiReferenceEnd ?sgiReferenceEnd . }
+    OPTIONAL { ?stress skos:notation ?stressNotation . }
+    OPTIONAL { ?stress lulcw:stressDriverGroup ?driverGroup . }
+    OPTIONAL { ?c lulcw:referenceStart ?referenceStart ; lulcw:referenceEnd ?referenceEnd . }
+    OPTIONAL { ?c lulcw:imputedPumpingShare ?imputedPumpingShare . }
+    OPTIONAL { ?statement lulcw:statementReason ?statementReason . }
+    OPTIONAL { ?statement lulcw:statementText ?statementTextEn . FILTER (LANG(?statementTextEn) = "en") }
+    OPTIONAL { ?statement lulcw:statementText ?statementTextFr . FILTER (LANG(?statementTextFr) = "fr") }
+    OPTIONAL {
+        SELECT ?statement (GROUP_CONCAT(STR(?inf); separator=" ") AS ?citedInfluences)
+               (COUNT(DISTINCT ?inf) AS ?citedInfluenceCount) WHERE {
+            #bind-parameters
+            ?sh2 a lulcw:SimulatedHead ; prov:wasGeneratedBy ?run ; lulcw:simulatedAt ?W ;
+                 lulcw:periodStart ?periodStart ; lulcw:periodEnd ?periodEnd .
+            ?run lulcw:usesExportPolicy ?pol2 .
+            ?statement lulcw:explains ?sh2 ; lulcw:citesInfluence ?inf .
+            ?inf lulcw:targetEntity ?W ; lulcw:selectedUnder ?pol2 .
+        }
+        GROUP BY ?statement
+    }
+}
+ORDER BY DESC(ABS(?contributionM)) ?stress

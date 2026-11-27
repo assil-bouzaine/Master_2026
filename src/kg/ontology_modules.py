@@ -108,14 +108,16 @@ MODULE_META = {
         "title_en": "LULC-Water Earth-observation module",
         "title_fr": "Module observation de la Terre LULC-Water",
         "desc_en": (
-            "Country-agnostic Earth-observation module of the LULC-Water network. Starts empty at "
-            "0.10.0; satellite spectral-index observations and probable-irrigation terms (CQ15) will "
-            "be added in a subsequent step."
+            "Country-agnostic Earth-observation vocabulary (CQ15): satellite spectral-index "
+            "observations (summer NDVI, summer soil wetness), per-zone probably-irrigated shares, "
+            "parcel-season irrigation classifications, probable-irrigation rule thresholds and "
+            "validity, and aggregate reference evaluations."
         ),
         "desc_fr": (
-            "Module d'observation de la Terre indépendant des pays du réseau LULC-Water. Initialement "
-            "vide en version 0.10.0 ; les observations d'indices spectraux satellitaires et les termes "
-            "d'irrigation probable (CQ15) seront ajoutés dans une étape ultérieure."
+            "Vocabulaire d'observation de la Terre indépendant des pays (CQ15) : observations "
+            "d'indices spectraux satellitaires (NDVI estival, humidité estivale du sol), parts "
+            "probablement irriguées par zone, classifications d'irrigation parcelle-saison, seuils "
+            "et validité des règles d'irrigation probable, et évaluations agrégées de référence."
         ),
     },
     "causal": {
@@ -158,14 +160,16 @@ MODULE_META = {
         "title_en": "LULC-Water explainable AI module",
         "title_fr": "Module IA explicable LULC-Water",
         "desc_en": (
-            "Country-agnostic explainability module of the LULC-Water network. Starts empty at 0.10.0; "
-            "model runs, driver contributions, explanation statements, and scenario terms (CQ10, CQ16) "
-            "will be added in a subsequent step."
+            "Country-agnostic explainability module of the LULC-Water network (since 0.12.0): model runs, "
+            "simulated heads and their SGI classes, driver contributions, explanation statements with their "
+            "status (CQ10), and explicit crop-change scenarios with their assumptions, eligibility and "
+            "results (CQ16)."
         ),
         "desc_fr": (
-            "Module d'explicabilité indépendant des pays du réseau LULC-Water. Initialement vide en "
-            "version 0.10.0 ; les exécutions de modèles, contributions de forçages, énoncés d'explication "
-            "et termes de scénarios (CQ10, CQ16) seront ajoutés dans une étape ultérieure."
+            "Module d'explicabilité indépendant des pays du réseau LULC-Water (depuis 0.12.0) : exécutions "
+            "de modèles, niveaux simulés et leurs classes IPS, contributions des forçages, énoncés "
+            "d'explication et leur statut (CQ10), et scénarios explicites de changement de culture avec "
+            "leurs hypothèses, leur éligibilité et leurs résultats (CQ16)."
         ),
     },
     "profile/eu": {
@@ -175,12 +179,13 @@ MODULE_META = {
         "title_fr": "Profil Union européenne LULC-Water",
         "desc_en": (
             "Optional European Union regional profile for the LULC-Water ontology network, declaring "
-            "EU Water Framework Directive identifiers (such as lulcw:wfdCode) outside the pan-Mediterranean core."
+            "EU Water Framework Directive identifiers (lulcw:wfdCode, lulcw:groundwaterBodyCode) outside the "
+            "pan-Mediterranean core."
         ),
         "desc_fr": (
             "Profil régional optionnel Union européenne du réseau d'ontologies LULC-Water, déclarant "
-            "les identifiants de la directive-cadre sur l'eau (tels que lulcw:wfdCode) hors du noyau "
-            "pan-méditerranéen."
+            "les identifiants de la directive-cadre sur l'eau (lulcw:wfdCode, lulcw:groundwaterBodyCode) "
+            "hors du noyau pan-méditerranéen."
         ),
     },
     "profile/fr": {
@@ -270,7 +275,7 @@ RULE1_TERMS = frozenset({
     "bdCarthageCode", "bdlisaCode", "bdlisaMediumCode", "bdlisaNatureCode",
     "bdlisaThemeCode", "bdtopoId", "bnpeCode", "bssCode", "bssId",
     "polygonCode", "rpgEdition", "rpgGroupCode", "safranGridXHm", "safranGridYHm",
-    "wfdCode",
+    "wfdCode", "groundwaterBodyCode",
 })
 RULE2_TERMS = frozenset({
     "AnswerStatus", "Conflicting", "NotApplicable", "Partial",
@@ -481,7 +486,7 @@ def _fmt_term(node, graph=None):
         if (node, RDF.first, None) in graph:
             items = [_fmt_term(x, graph) for x in Collection(graph, node)]
             return "( " + " ".join(items) + " )"
-        return _fmt_bnode_block(graph, node)
+        return _fmt_bnode_block(graph, node, inline=True)
     raise TypeError(f"Unsupported RDF term: {node!r}")
 
 
@@ -497,8 +502,8 @@ def _obj_sort_key(obj, graph=None):
     return (2, "", "", _fmt_term(obj, graph))
 
 
-def _fmt_bnode_block(graph, bnode):
-    """Format a blank node (such as owl:AllDisjointClasses) as deterministic Turtle."""
+def _fmt_bnode_block(graph, bnode, inline=False):
+    """Format a blank node (root axiom such as owl:AllDisjointClasses, or inline class expression) as deterministic Turtle."""
     by_pred = defaultdict(list)
     for p, o in graph.predicate_objects(bnode):
         by_pred[p].append(o)
@@ -508,6 +513,8 @@ def _fmt_bnode_block(graph, bnode):
         objs = sorted(by_pred[p], key=lambda o: _obj_sort_key(o, graph))
         o_txt = " , ".join(_fmt_term(o, graph) for o in objs)
         parts.append(f"{p_txt} {o_txt}")
+    if inline:
+        return "[ " + " ; ".join(parts) + " ]"
     return "[] " + " ;\n    ".join(parts) + " ."
 
 

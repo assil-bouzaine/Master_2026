@@ -1,0 +1,87 @@
+# CQ16 · Explicit crop-change scenario, its assumptions, pathways, eligibility and modelled results
+# (docs/competency_questions.md §4, CQ16; conditional demonstration, never a land-use recommendation)
+#
+# Parameters  any subset of:
+#             ?scenario       a lulcw:CropChangeScenario
+#             ?rankingMetric  a lulcw:RankingMetric (filters results to one metric; ranks never cross metrics)
+#             ?zone           a lulcw:CropDemandZone
+# Reads       asserted scenario, assumption, eligibility and scenario-result facts; no OWL reasoning.
+# Returns     one row per (scenario, result) (or one row per scenario when no result exists),
+#             ordered strictly within ?rankingMetric by ?rank: baseline and alternative crop classes,
+#             substituted area (m²), period, eligibility flag and reason, stated assumptions
+#             (WaterSourceShare, ReturnFlowFraction, IrrigationDemandChange, ClimateCase), any
+#             missing required assumption kinds (?missingAssumptions), separate abstraction and
+#             return-flow pathway forcing changes (?abstractionChangeM3, ?returnFlowChangeM3,
+#             ?pathwayReport — reporting both pathways rather than an a-priori net sign when lower
+#             crop demand reduces both abstraction and return flow), and optional modelled head
+#             change with [low, high] range and rank.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT ?scenario ?zone ?baselineCrop ?alternativeCrop ?substitutedAreaM2 ?periodStart ?periodEnd
+       ?rankingMetric ?eligible ?eligibilityReason
+       ?waterSourceShare ?returnFlowFraction ?demandChangeM3 ?climateCase
+       ?missingAssumptions ?abstractionChangeM3 ?returnFlowChangeM3 ?pathwayReport
+       ?result ?run ?well ?headChangeM ?headChangeLowM ?headChangeHighM ?rank
+WHERE {
+    ?scenario a lulcw:CropChangeScenario ;
+              lulcw:baselineCropClass ?baselineCrop ;
+              lulcw:alternativeCropClass ?alternativeCrop ;
+              lulcw:substitutedAreaM2 ?substitutedAreaM2 ;
+              lulcw:scenarioZone ?zone ;
+              lulcw:periodStart ?periodStart ;
+              lulcw:periodEnd ?periodEnd ;
+              lulcw:rankingMetric ?rankingMetric .
+    OPTIONAL {
+        ?el a lulcw:ScenarioEligibility ; lulcw:scenarioZone ?zone ;
+            lulcw:scenarioEligible ?eligible ; lulcw:eligibilityReason ?eligibilityReason .
+        OPTIONAL { ?el lulcw:scenarioOf ?elSc . }
+        FILTER (!BOUND(?elSc) || ?elSc = ?scenario)
+    }
+    OPTIONAL {
+        ?scenario lulcw:hasAssumption ?aWs .
+        ?aWs lulcw:assumptionKind lulcw:WaterSourceShare ; lulcw:assumptionValue ?waterSourceShare .
+    }
+    OPTIONAL {
+        ?scenario lulcw:hasAssumption ?aRf .
+        ?aRf lulcw:assumptionKind lulcw:ReturnFlowFraction ; lulcw:assumptionValue ?returnFlowFraction .
+    }
+    OPTIONAL {
+        ?scenario lulcw:hasAssumption ?aId .
+        ?aId lulcw:assumptionKind lulcw:IrrigationDemandChange ; lulcw:assumptionValue ?demandChangeM3 .
+    }
+    OPTIONAL {
+        ?scenario lulcw:hasAssumption ?aCl .
+        ?aCl lulcw:assumptionKind lulcw:ClimateCase ; lulcw:assumptionValue ?climateCase .
+    }
+    OPTIONAL {
+        ?result a lulcw:ScenarioResult ; lulcw:scenarioOf ?scenario ; prov:wasGeneratedBy ?run ;
+                lulcw:simulatedAt ?well ; lulcw:headChangeM ?headChangeM ;
+                lulcw:headChangeLowM ?headChangeLowM ; lulcw:headChangeHighM ?headChangeHighM .
+        OPTIONAL { ?result lulcw:rank ?rank . }
+    }
+    BIND (IF(!BOUND(?waterSourceShare) && !BOUND(?returnFlowFraction),
+             "WaterSourceShare ReturnFlowFraction",
+          IF(!BOUND(?waterSourceShare), "WaterSourceShare",
+          IF(!BOUND(?returnFlowFraction), "ReturnFlowFraction", ""))) AS ?missingAssumptions)
+    BIND (IF(BOUND(?demandChangeM3) && BOUND(?waterSourceShare),
+             ?demandChangeM3 * ?waterSourceShare, ?u1) AS ?abstractionChangeM3)
+    BIND (IF(BOUND(?demandChangeM3) && BOUND(?returnFlowFraction),
+             ?demandChangeM3 * ?returnFlowFraction, ?u2) AS ?returnFlowChangeM3)
+    BIND (IF(?missingAssumptions != "",
+             CONCAT("unsupported assumptions: missing ", ?missingAssumptions),
+          IF(!BOUND(?demandChangeM3),
+             "irrigation-demand change assumption not stated",
+          IF(?abstractionChangeM3 < 0 && ?returnFlowChangeM3 < 0,
+             "opposing pathways: less groundwater abstraction (reduces drawdown) and less return flow (reduces recharge); net sign undetermined from crop demand alone",
+          IF(?abstractionChangeM3 > 0 && ?returnFlowChangeM3 > 0,
+             "opposing pathways: more groundwater abstraction (increases drawdown) and more return flow (increases recharge); net sign undetermined from crop demand alone",
+          IF(?abstractionChangeM3 = 0 && ?returnFlowChangeM3 = 0,
+             "no forcing change (zero groundwater abstraction change and zero return-flow change)",
+          IF(?abstractionChangeM3 = 0 && ?returnFlowChangeM3 != 0,
+             "surface-supplied: zero groundwater abstraction change; return-flow pathway only",
+          IF(?abstractionChangeM3 != 0 && ?returnFlowChangeM3 = 0,
+             "groundwater abstraction pathway only (zero return-flow fraction)",
+             "single active pathway"))))))) AS ?pathwayReport)
+}
+ORDER BY ?rankingMetric ?rank ?scenario ?well

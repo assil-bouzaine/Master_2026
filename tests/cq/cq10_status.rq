@@ -1,0 +1,68 @@
+# CQ10 · Answer status for a model explanation at one run, well and window
+# (common answer contract, docs/competency_questions.md §2 and §4 CQ10)
+#
+# Parameters  ?run          any IRI
+#             ?W            any IRI
+#             ?periodStart  xsd:date
+#             ?periodEnd    xsd:date
+# Reads       asserted model-result and explanation facts; no OWL reasoning.
+# Returns     one row: ?status in {not_applicable, unknown, partial, supported},
+#             ?nContributions, ?nAccepted, ?nQualified, ?nWithheld, and ?reason in words.
+#             Supported means supported by the model's decomposition and cited KG paths under the
+#             run's export policy, never physical causal proof.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+SELECT ?run ?W ?periodStart ?periodEnd ?status ?nContributions ?nAccepted ?nQualified ?nWithheld ?reason
+WHERE {
+    {
+        SELECT ?run ?W ?periodStart ?periodEnd
+               (COUNT(DISTINCT ?r) AS ?isRun) (SAMPLE(?ra) AS ?runStart) (SAMPLE(?rb) AS ?runEnd)
+               (COUNT(DISTINCT ?w) AS ?isWell) WHERE {
+            #bind-parameters
+            OPTIONAL { ?run a lulcw:ModelRun ; lulcw:periodStart ?ra ; lulcw:periodEnd ?rb . BIND (?run AS ?r) }
+            OPTIONAL { ?W a lulcw:Piezometer . BIND (?W AS ?w) }
+        }
+        GROUP BY ?run ?W ?periodStart ?periodEnd
+    }
+    {
+        SELECT ?run ?W ?periodStart ?periodEnd
+               (COUNT(DISTINCT ?sh) AS ?nHead) (COUNT(DISTINCT ?sgi) AS ?nSgi)
+               (COUNT(DISTINCT ?c) AS ?nContributions)
+               (COUNT(DISTINCT ?stAcc) AS ?nAccepted)
+               (COUNT(DISTINCT ?stQual) AS ?nQualified)
+               (COUNT(DISTINCT ?stWith) AS ?nWithheld) WHERE {
+            #bind-parameters
+            OPTIONAL {
+                ?sh a lulcw:SimulatedHead ; prov:wasGeneratedBy ?run ; lulcw:simulatedAt ?W ;
+                    lulcw:periodStart ?periodStart ; lulcw:periodEnd ?periodEnd .
+                OPTIONAL { ?sh lulcw:sgiClass ?sgi . }
+                OPTIONAL { ?c a lulcw:DriverContribution ; lulcw:contributionTo ?sh . }
+                OPTIONAL {
+                    ?stmt a lulcw:ExplanationStatement ; lulcw:explains ?sh ; lulcw:statementStatus ?ss .
+                    BIND (IF(?ss = lulcw:AcceptedStatement, ?stmt, ?u1) AS ?stAcc)
+                    BIND (IF(?ss = lulcw:QualifiedStatement, ?stmt, ?u2) AS ?stQual)
+                    BIND (IF(?ss = lulcw:WithheldStatement, ?stmt, ?u3) AS ?stWith)
+                }
+            }
+        }
+        GROUP BY ?run ?W ?periodStart ?periodEnd
+    }
+    BIND ((?periodStart > ?periodEnd)
+          || (BOUND(?runStart) && (?periodStart < ?runStart || ?periodEnd > ?runEnd)) AS ?periodOutside)
+    BIND (IF(?isRun = 0 || ?isWell = 0 || ?periodOutside, "not_applicable",
+          IF(?nHead = 0 || ?nContributions = 0 || (?nAccepted + ?nQualified + ?nWithheld) = 0, "unknown",
+          IF(?nWithheld > 0 || ?nQualified > 0 || ?nSgi = 0, "partial", "supported"))) AS ?status)
+    BIND (IF(?isRun = 0, "not a model run of the graph",
+          IF(?isWell = 0, "not a piezometer of the graph",
+          IF(?periodOutside, "requested window runs backwards or lies outside the model run's period",
+          IF(?nHead = 0, "no simulated head recorded for this run, well and window",
+          IF(?nContributions = 0 || (?nAccepted + ?nQualified + ?nWithheld) = 0,
+             "simulated head present without driver contributions or explanation statements",
+          IF(?nWithheld > 0 || ?nQualified > 0,
+             CONCAT("model attribution partially qualified or withheld (",
+                    STR(?nAccepted), " accepted, ", STR(?nQualified), " qualified, ",
+                    STR(?nWithheld), " withheld)"),
+          IF(?nSgi = 0,
+             "all explanation statements accepted, but SGI classification is missing",
+             "all explanation statements accepted with SGI class and KG paths under the run's export policy (model attribution, not causal proof)"))))))) AS ?reason)
+}

@@ -1,0 +1,68 @@
+# CQ16 · Answer status for a crop-change scenario
+# (common answer contract, docs/competency_questions.md §2 and §4 CQ16)
+#
+# Parameters  ?scenario  any IRI
+# Reads       asserted scenario, assumption, eligibility and scenario-result facts; no OWL reasoning.
+# Returns     one row: ?status in {not_applicable, unknown, partial, supported}, ?eligible,
+#             ?missingAssumptions, ?resultCount, and ?reason in words.
+#             Supported means conditional model demonstration under stated assumptions, never a
+#             land-use recommendation or validated real-world intervention effect.
+PREFIX lulcw: <https://w3id.org/lulcw#>
+SELECT ?scenario ?status ?eligible ?missingAssumptions ?resultCount ?reason
+WHERE {
+    {
+        SELECT ?scenario (COUNT(DISTINCT ?s) AS ?isScenario)
+               (COUNT(DISTINCT ?aWs) AS ?hasWs) (COUNT(DISTINCT ?aRf) AS ?hasRf) WHERE {
+            #bind-parameters
+            OPTIONAL {
+                ?scenario a lulcw:CropChangeScenario .
+                BIND (?scenario AS ?s)
+                OPTIONAL { ?scenario lulcw:hasAssumption ?aWs . ?aWs lulcw:assumptionKind lulcw:WaterSourceShare . }
+                OPTIONAL { ?scenario lulcw:hasAssumption ?aRf . ?aRf lulcw:assumptionKind lulcw:ReturnFlowFraction . }
+            }
+        }
+        GROUP BY ?scenario
+    }
+    {
+        SELECT ?scenario (SAMPLE(?elFlag) AS ?eligible) (SAMPLE(?elReason) AS ?elWhy)
+               (COUNT(DISTINCT ?el) AS ?hasEl) WHERE {
+            #bind-parameters
+            OPTIONAL {
+                ?scenario lulcw:scenarioZone ?z .
+                ?el a lulcw:ScenarioEligibility ; lulcw:scenarioZone ?z ;
+                    lulcw:scenarioEligible ?elFlag ; lulcw:eligibilityReason ?elReason .
+                OPTIONAL { ?el lulcw:scenarioOf ?elSc . }
+                FILTER (!BOUND(?elSc) || ?elSc = ?scenario)
+            }
+        }
+        GROUP BY ?scenario
+    }
+    {
+        SELECT ?scenario (COUNT(DISTINCT ?r) AS ?resultCount)
+               (COUNT(DISTINCT ?rAmb) AS ?ambiguousCount) WHERE {
+            #bind-parameters
+            OPTIONAL {
+                ?r a lulcw:ScenarioResult ; lulcw:scenarioOf ?scenario ;
+                   lulcw:headChangeLowM ?lo ; lulcw:headChangeHighM ?hi .
+                BIND (IF(?lo < 0 && ?hi > 0, ?r, ?u) AS ?rAmb)
+            }
+        }
+        GROUP BY ?scenario
+    }
+    BIND (IF(?hasWs = 0 && ?hasRf = 0, "WaterSourceShare ReturnFlowFraction",
+          IF(?hasWs = 0, "WaterSourceShare",
+          IF(?hasRf = 0, "ReturnFlowFraction", ""))) AS ?missingAssumptions)
+    BIND (IF(?isScenario = 0 || (BOUND(?eligible) && ?eligible = false), "not_applicable",
+          IF(?missingAssumptions != "" || ?hasEl = 0, "unknown",
+          IF(?resultCount = 0 || ?ambiguousCount > 0, "partial", "supported"))) AS ?status)
+    BIND (IF(?isScenario = 0, "not a crop-change scenario of the graph",
+          IF(BOUND(?eligible) && ?eligible = false,
+             CONCAT("zone ineligible for crop-change scenario: ", ?elWhy),
+          IF(?missingAssumptions != "",
+             CONCAT("unsupported assumptions: missing ", ?missingAssumptions),
+          IF(?hasEl = 0, "no scenario eligibility assessment recorded for the scenario's zone",
+          IF(?resultCount = 0, "eligible scenario with assumptions stated, but no modelled scenario result yet",
+          IF(?ambiguousCount > 0,
+             "conditional scenario result whose uncertainty interval spans zero (net sign uncertain across variants)",
+             "conditional scenario demonstration under stated assumptions (not a land-use recommendation)")))))) AS ?reason)
+}

@@ -2,13 +2,13 @@
 @prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 
-# Generated from ontology/lulcw.ttl (version 0.11.0) by src.kg.ontology_modules.
+# Generated from ontology/lulcw.ttl (version 0.12.0) by src.kg.ontology_modules.
 # Published modular entry point of the LULC-Water network: the seven pan-Mediterranean
 # core modules, the EU and France profiles, and the alignment modules.
 
 <https://w3id.org/lulcw/modular> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/modular/0.11.0> ;
-    owl:versionInfo "0.11.0" ;
+    owl:versionIRI <https://w3id.org/lulcw/modular/0.12.0> ;
+    owl:versionInfo "0.12.0" ;
     dcterms:title "LULC-Water modular meta-ontology"@en , "Méta-ontologie modulaire LULC-Water"@fr ;
     dcterms:description "Published modular entry point of the LULC-Water ontology network: imports the seven pan-Mediterranean core modules, the EU and France profiles, and the alignment modules (GWML2/HyFO, SWEET, HY_Features, INSPIRE)."@en ,
         "Point d'entrée modulaire publié du réseau d'ontologies LULC-Water : importe les sept modules noyaux pan-méditerranéens, les profils UE et France et les modules d'alignement (GWML2/HyFO, SWEET, HY_Features, INSPIRE)."@fr ;

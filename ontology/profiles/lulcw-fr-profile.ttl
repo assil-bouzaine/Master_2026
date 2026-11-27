@@ -5,12 +5,12 @@
 @prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 
-# Generated from ontology/lulcw.ttl (version 0.11.0) by src.kg.ontology_modules.
+# Generated from ontology/lulcw.ttl (version 0.12.0) by src.kg.ontology_modules.
 # Do not edit by hand: edit ontology/lulcw.ttl and re-run the generator.
 
 <https://w3id.org/lulcw/profile/fr> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/profile/fr/0.11.0> ;
-    owl:versionInfo "0.11.0" ;
+    owl:versionIRI <https://w3id.org/lulcw/profile/fr/0.12.0> ;
+    owl:versionInfo "0.12.0" ;
     dcterms:title "LULC-Water France profile"@en , "Profil France LULC-Water"@fr ;
     dcterms:description "Thin French country adapter profile for the LULC-Water ontology network, declaring French national agency register codes and reference dataset attributes (BD LISA, BNPE, BSS, BD Carthage, BD TOPO, RPG, SAFRAN) outside the pan-Mediterranean core."@en ,
         "Profil adaptateur France du réseau d'ontologies LULC-Water, déclarant les codes de registres nationaux et attributs de jeux de données français (BD LISA, BNPE, BSS, BD Carthage, BD TOPO, RPG, SAFRAN) hors du noyau pan-méditerranéen."@fr ;
@@ -40,18 +40,21 @@ lulcw:bdlisaCode a owl:DatatypeProperty ;
     lulcw:definedInModule <https://w3id.org/lulcw/profile/fr> .
 
 lulcw:bdlisaMediumCode a owl:DatatypeProperty ;
+    rdfs:subPropertyOf lulcw:registerCode ;
     rdfs:range xsd:integer ;
     rdfs:label "BD LISA medium code"@en , "code milieu BD LISA"@fr ;
     skos:definition "BD LISA medium (milieueh, SANDRE nomenclature 353): 1 porous, 2 fissured, 3 karstic, 4 to 10 mixed porosity, 11 fractured."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/profile/fr> .
 
 lulcw:bdlisaNatureCode a owl:DatatypeProperty ;
+    rdfs:subPropertyOf lulcw:registerCode ;
     rdfs:range xsd:integer ;
     rdfs:label "BD LISA nature code"@en , "code nature BD LISA"@fr ;
     skos:definition "BD LISA nature of an entity at level 3 (natureeh): 5 aquifer unit, 6 semi-permeable unit, 7 impermeable unit. It describes the BD LISA entity, not the hydraulic type of the unit in this ontology."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/profile/fr> .
 
 lulcw:bdlisaThemeCode a owl:DatatypeProperty ;
+    rdfs:subPropertyOf lulcw:registerCode ;
     rdfs:range xsd:integer ;
     rdfs:label "BD LISA theme code"@en , "code thème BD LISA"@fr ;
     skos:definition "BD LISA theme (themeeh): 1 alluvial, 2 sedimentary, 3 basement, 4 intensely folded, 5 volcanic."@en ;
@@ -86,6 +89,7 @@ lulcw:bssId a owl:DatatypeProperty ;
     lulcw:definedInModule <https://w3id.org/lulcw/profile/fr> .
 
 lulcw:polygonCode a owl:DatatypeProperty ;
+    rdfs:subPropertyOf lulcw:registerCode ;
     rdfs:range xsd:integer ;
     rdfs:label "BD LISA polygon code"@en , "code de polygone BD LISA"@fr ;
     skos:definition "Code of a BD LISA elementary polygon (CodePoly)."@en ;
@@ -98,6 +102,7 @@ lulcw:rpgEdition a owl:DatatypeProperty , owl:FunctionalProperty ;
     lulcw:definedInModule <https://w3id.org/lulcw/profile/fr> .
 
 lulcw:rpgGroupCode a owl:DatatypeProperty ;
+    rdfs:subPropertyOf lulcw:registerCode ;
     rdfs:range xsd:integer ;
     rdfs:label "RPG crop group code"@en , "code du groupe de cultures RPG"@fr ;
     skos:definition "Number of an RPG crop group (CODE_GROUP): the group of a crop code, or a group a crop class takes by the mapping rule."@en ;

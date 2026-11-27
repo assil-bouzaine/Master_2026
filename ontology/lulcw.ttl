@@ -19,9 +19,9 @@
 # M2 = square metre, M3 = cubic metre) and are stated in each definition.
 
 <https://w3id.org/lulcw> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/0.11.0> ;
-    owl:versionInfo "0.11.0" ;
-    owl:priorVersion <https://w3id.org/lulcw/0.10.0> ;
+    owl:versionIRI <https://w3id.org/lulcw/0.12.0> ;
+    owl:versionInfo "0.12.0" ;
+    owl:priorVersion <https://w3id.org/lulcw/0.11.0> ;
     dcterms:title "LULC-Water bridging module"@en , "Module de liaison LULC-Water"@fr ;
     dcterms:description "Bridging module of the LULC-Water network of ontologies (SAVE Water, PRIMA): wells, abstraction facilities, hydrogeological units and the qualified, evidence-carrying assertions (unit attributions, stratigraphic relations, well links, influences, annual abstraction accounting) that structure, constrain and explain a groundwater-level model of the Roussillon multilayer aquifer."@en ,
         "Module de liaison du réseau d'ontologies LULC-Water (SAVE Water, PRIMA) : piézomètres, ouvrages de prélèvement, entités hydrogéologiques et assertions qualifiées, porteuses de preuves (attributions à une entité, relations stratigraphiques, liens entre piézomètres, influences, bilans annuels des prélèvements), qui structurent, contraignent et expliquent un modèle des niveaux piézométriques de l'aquifère multicouche du Roussillon."@fr ;
@@ -44,7 +44,8 @@
         "0.9.0 (2026-11-25, v5 plan R2.2): overlying-leakage recharge influences: viaUnit"@en ,
         "0.9.1 (2026-11-26, bug audit item 5.4): updated lulcw:VerticalLeakage definition to state that it is derived since 0.9.0 only as the overlying-leakage recharge proxy (lulcw:viaUnit), never as a head-difference exchange."@en ,
         "0.10.0 (2026-11-26, v5 plan R2.2): tagged every lulcw term with lulcw:definedInModule for the seven pan-Mediterranean modules and EU/FR/TN profiles; added lulcw:registerCode (super-property of string register-code properties in profiles); pruned unused lulcw:witnessAreaM2; made CropCode and ElementaryPolygon labels and definitions country-neutral."@en ,
-        "0.11.0 (2026-11-26, CQ15, v5 plan R2.2): added registered parcels and parcel-zone overlaps in the lulc module, and Sentinel-2 satellite index observations, summer NDVI and soil wetness observable properties, probably-irrigated zone shares, parcel-season irrigation classifications, rule thresholds, rule validity and aggregate census evaluation properties in the eo module."@en ;
+        "0.11.0 (2026-11-26, CQ15, v5 plan R2.2): added registered parcels and parcel-zone overlaps in the lulc module, and Sentinel-2 satellite index observations, summer NDVI and soil wetness observable properties, probably-irrigated zone shares, parcel-season irrigation classifications, rule thresholds, rule validity and aggregate census evaluation properties in the eo module."@en ,
+        "0.12.0 (2026-11-27, CQ10, CQ16 and T78/T85 follow-ups, v5 plan R2.2): added model-result explanation terms (CQ10: ModelRun, SimulatedHead, DriverContribution, ExplanationStatement, v5 recharge-channel ModelStress concepts, ReferenceCondition with TrainingMean, ContributionDirection with NoNetChange, StatementStatus, the seven BRGM IPS SgiClass members with sgiUpperBound) and crop-change scenario terms (CQ16: CropChangeScenario, ScenarioAssumption, ScenarioEligibility, ScenarioResult, RankingMetric, AssumptionKind) in the xai module; widened lulcw:registerCode to rdfs:Literal and placed integer register codes (polygonCode, bdlisaNatureCode, bdlisaThemeCode, bdlisaMediumCode, rpgGroupCode) and lulcw:groundwaterBodyCode (moved to profile/eu) under it; widened lulcw:cropCode domain to the union of CropAreaObservation and RegisteredParcel."@en ;
     owl:imports <https://w3id.org/lulcw/imports/sosa> , <https://w3id.org/lulcw/imports/prov> ,
         <https://w3id.org/lulcw/imports/time> , <https://w3id.org/lulcw/imports/skos> ,
         <https://w3id.org/lulcw/imports/geo> .
@@ -958,9 +959,9 @@ lulcw:reportingExtent a owl:ObjectProperty ;
 # Datatype properties (units in the names, stated in the definitions)
 #################################################################
 
-lulcw:registerCode a owl:DatatypeProperty ; rdfs:range xsd:string ;
+lulcw:registerCode a owl:DatatypeProperty ; rdfs:range rdfs:Literal ;
     rdfs:label "register code"@en , "code de registre"@fr ;
-    skos:definition "A code that identifies an entity in a national or agency register or reference dataset; country profiles declare their registers' codes as sub-properties of it."@en ;
+    skos:definition "A code that identifies an entity in a national or agency register or reference dataset (any literal value, string or integer, so both textual and numeric register codes sit under it); regional and country profiles declare their registers' codes as sub-properties of it."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/core> .
 lulcw:bssCode a owl:DatatypeProperty ; rdfs:subPropertyOf lulcw:registerCode ; rdfs:range xsd:string ;
     rdfs:label "BSS code"@en , "code BSS"@fr ;
@@ -978,27 +979,27 @@ lulcw:bdlisaCode a owl:DatatypeProperty ; rdfs:subPropertyOf lulcw:registerCode 
     rdfs:label "BD LISA code"@en , "code BD LISA"@fr ;
     skos:definition "Code of a BD LISA hydrogeological entity (CodeEH), e.g. 671AA00."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/profile/fr> .
-lulcw:polygonCode a owl:DatatypeProperty ; rdfs:range xsd:integer ;
+lulcw:polygonCode a owl:DatatypeProperty ; rdfs:subPropertyOf lulcw:registerCode ; rdfs:range xsd:integer ;
     rdfs:label "BD LISA polygon code"@en , "code de polygone BD LISA"@fr ;
     skos:definition "Code of a BD LISA elementary polygon (CodePoly)."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/profile/fr> .
-lulcw:groundwaterBodyCode a owl:DatatypeProperty ; rdfs:range xsd:string ;
+lulcw:groundwaterBodyCode a owl:DatatypeProperty ; rdfs:subPropertyOf lulcw:registerCode ; rdfs:range xsd:string ;
     rdfs:label "groundwater body code"@en , "code de masse d'eau"@fr ;
     skos:definition "Code of a Water Framework Directive groundwater body, e.g. DG243."@en ;
-    lulcw:definedInModule <https://w3id.org/lulcw/core> .
+    lulcw:definedInModule <https://w3id.org/lulcw/profile/eu> .
 lulcw:sourceIdentifier a owl:DatatypeProperty ; rdfs:range xsd:string ;
     rdfs:label "source identifier"@en , "identifiant source"@fr ;
     skos:definition "The original identifier of a source record in its data release."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/core> .
-lulcw:bdlisaNatureCode a owl:DatatypeProperty ; rdfs:range xsd:integer ;
+lulcw:bdlisaNatureCode a owl:DatatypeProperty ; rdfs:subPropertyOf lulcw:registerCode ; rdfs:range xsd:integer ;
     rdfs:label "BD LISA nature code"@en , "code nature BD LISA"@fr ;
     skos:definition "BD LISA nature of an entity at level 3 (natureeh): 5 aquifer unit, 6 semi-permeable unit, 7 impermeable unit. It describes the BD LISA entity, not the hydraulic type of the unit in this ontology."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/profile/fr> .
-lulcw:bdlisaThemeCode a owl:DatatypeProperty ; rdfs:range xsd:integer ;
+lulcw:bdlisaThemeCode a owl:DatatypeProperty ; rdfs:subPropertyOf lulcw:registerCode ; rdfs:range xsd:integer ;
     rdfs:label "BD LISA theme code"@en , "code thème BD LISA"@fr ;
     skos:definition "BD LISA theme (themeeh): 1 alluvial, 2 sedimentary, 3 basement, 4 intensely folded, 5 volcanic."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/profile/fr> .
-lulcw:bdlisaMediumCode a owl:DatatypeProperty ; rdfs:range xsd:integer ;
+lulcw:bdlisaMediumCode a owl:DatatypeProperty ; rdfs:subPropertyOf lulcw:registerCode ; rdfs:range xsd:integer ;
     rdfs:label "BD LISA medium code"@en , "code milieu BD LISA"@fr ;
     skos:definition "BD LISA medium (milieueh, SANDRE nomenclature 353): 1 porous, 2 fissured, 3 karstic, 4 to 10 mixed porosity, 11 fractured."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/profile/fr> .
@@ -1065,7 +1066,7 @@ lulcw:ruleVersion a owl:DatatypeProperty ; rdfs:range xsd:string ;
     lulcw:definedInModule <https://w3id.org/lulcw/core> .
 lulcw:rank a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:integer ;
     rdfs:label "rank"@en , "rang"@fr ;
-    skos:definition "Rank of an attribution among the candidates for the same entity and role (1 = main candidate)."@en ;
+    skos:definition "Rank of an attribution among the candidates for the same entity and role (1 = main candidate), or rank of a scenario result among results compared under the same ranking metric (1 = highest-ranked)."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/core> .
 lulcw:unknownReason a owl:DatatypeProperty ; rdfs:range xsd:string ;
     rdfs:label "reason for unknown"@en , "raison de l'inconnu"@fr ;
@@ -1097,7 +1098,7 @@ lulcw:conditions a owl:DatatypeProperty ; rdfs:range xsd:string ;
     lulcw:definedInModule <https://w3id.org/lulcw/core> .
 lulcw:eligibilityReason a owl:DatatypeProperty ; rdfs:range xsd:string ;
     rdfs:label "eligibility reason"@en , "motif d'éligibilité"@fr ;
-    skos:definition "Why an influence is or is not eligible to constrain a model."@en ;
+    skos:definition "Why an influence is or is not eligible to constrain a model, or why a crop-change scenario is or is not supported in its zone (e.g. 'irrigation status heuristic only', 'no supply evidence')."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/core> .
 lulcw:constraintDecision a owl:ObjectProperty ;
     rdfs:domain lulcw:ExportPolicy ; rdfs:range lulcw:ConstraintDecision ;
@@ -1267,9 +1268,9 @@ lulcw:PotentialIrrigationDemandWide a sosa:ObservableProperty ;
     lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
 
 lulcw:cropCode a owl:ObjectProperty , owl:FunctionalProperty ;
-    rdfs:domain lulcw:CropAreaObservation ; rdfs:range lulcw:CropCode ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( lulcw:CropAreaObservation lulcw:RegisteredParcel ) ] ; rdfs:range lulcw:CropCode ;
     rdfs:label "has crop code"@en , "a pour code culture"@fr ;
-    skos:definition "The RPG crop code whose parcels a crop area observation measures."@en ;
+    skos:definition "The crop code of a land-parcel register (e.g. RPG CODE_CULTU) whose parcels a crop area observation measures, or that is declared on a registered parcel."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
 lulcw:cropClass a owl:ObjectProperty , owl:FunctionalProperty ;
     rdfs:range lulcw:CropClass ;
@@ -1292,7 +1293,7 @@ lulcw:demandCategory a owl:ObjectProperty , owl:FunctionalProperty ;
     skos:definition "The category an irrigation demand assessment gives the zone for its year."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
 
-lulcw:rpgGroupCode a owl:DatatypeProperty ; rdfs:range xsd:integer ;
+lulcw:rpgGroupCode a owl:DatatypeProperty ; rdfs:subPropertyOf lulcw:registerCode ; rdfs:range xsd:integer ;
     rdfs:label "RPG crop group code"@en , "code du groupe de cultures RPG"@fr ;
     skos:definition "Number of an RPG crop group (CODE_GROUP): the group of a crop code, or a group a crop class takes by the mapping rule."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/profile/fr> .
@@ -1994,11 +1995,11 @@ lulcw:stateDescription a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:do
     lulcw:definedInModule <https://w3id.org/lulcw/med-causal> .
 lulcw:periodStart a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:date ;
     rdfs:label "period start"@en , "début de la période"@fr ;
-    skos:definition "First day of the period a dated statement observed (an xsd:date literal); absent for a statement about a typical state."@en ;
+    skos:definition "First day of the period a dated statement, model run, simulated head, scenario or scenario result covers (an xsd:date literal); absent for a statement about a typical state."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/core> .
 lulcw:periodEnd a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:range xsd:date ;
     rdfs:label "period end"@en , "fin de la période"@fr ;
-    skos:definition "Last day of the period a dated statement observed (an xsd:date literal)."@en ;
+    skos:definition "Last day of the period a dated statement, model run, simulated head, scenario or scenario result covers (an xsd:date literal)."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/core> .
 lulcw:fluxM3s a owl:DatatypeProperty , owl:FunctionalProperty ; rdfs:domain lulcw:ExchangeStatement ; rdfs:range xsd:double ;
     rdfs:label "flux (m³/s)"@en , "flux (m³/s)"@fr ;
@@ -2390,3 +2391,586 @@ lulcw:withinReferenceRange a owl:DatatypeProperty , owl:FunctionalProperty ;
     rdfs:label "within reference range"@en , "dans la plage de référence"@fr ;
     skos:definition "Whether the rule's evaluated positive share falls inside the independent reference plausible range."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/eo> .
+
+
+# ----------------------------------------------------------------------------- CQ10 (0.12.0, 2026-11-27)
+# Explanations of model results (docs/competency_questions.md §4, CQ10; docs/notes/step15_explanations.md;
+# decided by Assil on 2026-11-24; updated to v5 Hybrid-GNN v2 channels and training-mean centring).
+# All terms live in the xai module.
+
+lulcw:ModelRun a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "model run"@en , "exécution de modèle"@fr ;
+    skos:definition "One fitted run of a groundwater-level model (a results/<dataset>/<run> folder) with its starts: its export policy, the graph release its inputs came from, its regime, pumping reconstruction, fitting protocol and covered period. A run computes simulated heads; it observes nothing."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:SimulatedHead a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "simulated head"@en , "niveau simulé"@fr ;
+    skos:definition "The mean groundwater head that a model run simulates at one monitoring point over one window (metres above the NGF datum, averaged over the run's starts), with its SGI value and class against the point's frozen training reference. A model result, never an observation of the station."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:DriverContribution a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "driver contribution"@en , "contribution d'un forçage"@fr ;
+    skos:definition "The part of a simulated head's departure from a reference condition that a model run attributes to one of its stresses, in metres, averaged over the run's starts, with its spread and the share of starts that agree on its sign. An exact decomposition of the model's computation (the hybrid is a sum of per-stress responses), not a measured physical effect (docs/analysis_plan.md §12)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:ExplanationStatement a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "explanation statement"@en , "énoncé d'explication"@fr ;
+    skos:definition "One sentence, in French and English from a fixed template, that reports one driver contribution of a simulated head together with the influences of the graph that let the driver reach the point, its status and, when it is qualified or withheld, the reason. It states what the model attributes, never what caused the head."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:ModelStress a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "model stress"@en , "sollicitation du modèle"@fr ;
+    skos:definition "An input series of the hybrid model whose response is one term of the simulated head (configs/explain_groups.csv and src/models/hybrid_gnn.py CHANNELS)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:ModelStressScheme a skos:ConceptScheme ;
+    rdfs:label "model stresses"@en , "sollicitations du modèle"@fr ;
+    skos:definition "Values of lulcw:ModelStress, covering both the aggregated v4 stresses and the v5 Hybrid-GNN v2 channels."@en ;
+    rdfs:comment "Mapping of every entry in src.models.hybrid_gnn.CHANNELS: recharge_local -> lulcw:LocalRechargeStress, recharge_regional -> lulcw:RegionalRechargeStress, recharge_leakage -> lulcw:LeakageRechargeStress (all skos:broader lulcw:RechargeStress, driver group lulcw:RechargeProxies); pumping -> lulcw:AttributedPumpingStress, pumping_unattributed -> lulcw:UnattributedPumpingStress (lulcw:SummerDemand); river_c and river -> lulcw:RiverStress (lulcw:RiverDischargeGroup); canal_c and canal -> lulcw:CanalStress (lulcw:SummerDemand). Optional bounded residual maps to lulcw:SeasonalResidual (no driver group)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:RechargeStress a lulcw:ModelStress ; skos:inScheme lulcw:ModelStressScheme ; skos:topConceptOf lulcw:ModelStressScheme ;
+    skos:prefLabel "recharge proxy"@en , "indicateur de recharge"@fr ;
+    rdfs:label "recharge proxy"@en , "indicateur de recharge"@fr ;
+    skos:notation "recharge" ;
+    lulcw:stressDriverGroup lulcw:RechargeProxies ;
+    skos:definition "Effective rainfall or nonlinear bucket recharge averaged over the weather cells of the point's recharge influences; broader concept covering local, regional and overlying-leakage recharge channels in v5."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:LocalRechargeStress a lulcw:ModelStress ; skos:inScheme lulcw:ModelStressScheme ; skos:broader lulcw:RechargeStress ;
+    skos:prefLabel "local recharge proxy"@en , "indicateur de recharge locale"@fr ;
+    rdfs:label "local recharge proxy"@en , "indicateur de recharge locale"@fr ;
+    skos:notation "recharge_local" ;
+    lulcw:stressDriverGroup lulcw:RechargeProxies ;
+    skos:definition "Hybrid-GNN v2 channel recharge_local: bucket recharge from weighted rainfall and evapotranspiration over the monitored unit's outcrop inside the well's 5 km search zone (export relation recharge)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:RegionalRechargeStress a lulcw:ModelStress ; skos:inScheme lulcw:ModelStressScheme ; skos:broader lulcw:RechargeStress ;
+    skos:prefLabel "regional recharge proxy"@en , "indicateur de recharge régionale"@fr ;
+    rdfs:label "regional recharge proxy"@en , "indicateur de recharge régionale"@fr ;
+    skos:notation "recharge_regional" ;
+    lulcw:stressDriverGroup lulcw:RechargeProxies ;
+    skos:definition "Hybrid-GNN v2 channel recharge_regional: bucket recharge from weighted rainfall and evapotranspiration over the monitored unit's unit-wide mapped outcrop across the forcing extent (export relation recharge_unitwide)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:LeakageRechargeStress a lulcw:ModelStress ; skos:inScheme lulcw:ModelStressScheme ; skos:broader lulcw:RechargeStress ;
+    skos:prefLabel "overlying-leakage recharge proxy"@en , "indicateur de recharge par drainance sus-jacente"@fr ;
+    rdfs:label "overlying-leakage recharge proxy"@en , "indicateur de recharge par drainance sus-jacente"@fr ;
+    skos:notation "recharge_leakage" ;
+    lulcw:stressDriverGroup lulcw:RechargeProxies ;
+    skos:definition "Hybrid-GNN v2 channel recharge_leakage: bucket recharge from weighted rainfall and evapotranspiration over the outcrop of the hydrogeological unit lying directly above the monitored unit at the well (export relation recharge_leakage, lulcw:viaUnit)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:AttributedPumpingStress a lulcw:ModelStress ; skos:inScheme lulcw:ModelStressScheme ; skos:topConceptOf lulcw:ModelStressScheme ;
+    skos:prefLabel "pumping on the graph's links"@en , "prélèvements reliés par le graphe"@fr ;
+    rdfs:label "pumping on the graph's links"@en , "prélèvements reliés par le graphe"@fr ;
+    skos:notation "pumping" ;
+    lulcw:stressDriverGroup lulcw:SummerDemand ;
+    skos:definition "The weekly volumes of the abstraction facilities whose pumping influences on the point the run's export policy selects (Hybrid-GNN v2 channel pumping)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:UnattributedPumpingStress a lulcw:ModelStress ; skos:inScheme lulcw:ModelStressScheme ; skos:topConceptOf lulcw:ModelStressScheme ;
+    skos:prefLabel "unattributed pumping nearby"@en , "prélèvements voisins non attribués"@fr ;
+    rdfs:label "unattributed pumping nearby"@en , "prélèvements voisins non attribués"@fr ;
+    skos:notation "pumping_unattributed" ;
+    lulcw:stressDriverGroup lulcw:SummerDemand ;
+    skos:definition "The weekly volumes of the nearby groundwater facilities whose link to the point's unit the run's export policy does not select (possible or unknown attributions): an explicit input, never zero by omission (docs/analysis_plan.md §8; Hybrid-GNN v2 channel pumping_unattributed)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:CanalStress a lulcw:ModelStress ; skos:inScheme lulcw:ModelStressScheme ; skos:topConceptOf lulcw:ModelStressScheme ;
+    skos:prefLabel "canal diversions"@en , "dérivations des canaux"@fr ;
+    rdfs:label "canal diversions"@en , "dérivations des canaux"@fr ;
+    skos:notation "canal" ;
+    lulcw:stressDriverGroup lulcw:SummerDemand ;
+    skos:definition "Weekly canal diversion volume (by river basin in v5 or plain-wide baseline), a proxy for irrigation return flow, at points with a canal influence (Hybrid-GNN v2 channels canal_c and canal)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:RiverStress a lulcw:ModelStress ; skos:inScheme lulcw:ModelStressScheme ; skos:topConceptOf lulcw:ModelStressScheme ;
+    skos:prefLabel "river stage proxy"@en , "indicateur du niveau du cours d'eau"@fr ;
+    rdfs:label "river stage proxy"@en , "indicateur du niveau du cours d'eau"@fr ;
+    skos:notation "river" ;
+    lulcw:stressDriverGroup lulcw:RiverDischargeGroup ;
+    skos:definition "The logarithm of the weekly discharge at the pool gauge of the point's river influences (Hybrid-GNN v2 channels river_c and river)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:SeasonalResidual a lulcw:ModelStress ; skos:inScheme lulcw:ModelStressScheme ; skos:topConceptOf lulcw:ModelStressScheme ;
+    skos:prefLabel "fixed seasonal residual"@en , "résidu saisonnier fixe"@fr ;
+    rdfs:label "fixed seasonal residual"@en , "résidu saisonnier fixe"@fr ;
+    skos:notation "residual" ;
+    skos:definition "A bounded seasonal term with no forcing input (Gate 3 point 20; Hybrid-GNN v2 optional residual): no driver and no influence stand behind it."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:ReferenceCondition a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "reference condition"@en , "condition de référence"@fr ;
+    skos:definition "What a driver contribution is measured against."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:ReferenceConditionScheme a skos:ConceptScheme ;
+    rdfs:label "reference conditions"@en , "conditions de référence"@fr ;
+    skos:definition "Values of lulcw:ReferenceCondition."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:TrainingMean a lulcw:ReferenceCondition ; skos:inScheme lulcw:ReferenceConditionScheme ; skos:topConceptOf lulcw:ReferenceConditionScheme ;
+    skos:prefLabel "training-period mean"@en , "moyenne de la période d'apprentissage"@fr ;
+    rdfs:label "training-period mean"@en , "moyenne de la période d'apprentissage"@fr ;
+    skos:definition "Hybrid-GNN v2's own fixed centring (m_ir): the contribution's mean over the well's observed training weeks under the observed forcing (src/models/hybrid_gnn.py, analysis plan v3 §3.1)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:TrainingSeasonalMean a lulcw:ReferenceCondition ; skos:inScheme lulcw:ReferenceConditionScheme ; skos:topConceptOf lulcw:ReferenceConditionScheme ;
+    skos:prefLabel "an average year at the same time"@en , "une année moyenne à la même époque"@fr ;
+    rdfs:label "an average year at the same time"@en , "une année moyenne à la même époque"@fr ;
+    skos:definition "The run's own mean of the contribution over its training weeks at the same ISO week of the year (week 53 merged into 52), so that only between-year variation remains."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:ReferenceWindow a lulcw:ReferenceCondition ; skos:inScheme lulcw:ReferenceConditionScheme ; skos:topConceptOf lulcw:ReferenceConditionScheme ;
+    skos:prefLabel "another period"@en , "une autre période"@fr ;
+    rdfs:label "another period"@en , "une autre période"@fr ;
+    skos:definition "The mean of the contribution over an explicit earlier window (lulcw:referenceStart to lulcw:referenceEnd), e.g. the same months of the previous year."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:ContributionDirection a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "contribution direction"@en , "sens de la contribution"@fr ;
+    skos:definition "Whether a contribution raised, lowered or left unchanged the simulated head relative to its reference condition. Not the response sign: less pumping than usual raises the head although pumping lowers heads."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:ContributionDirectionScheme a skos:ConceptScheme ;
+    rdfs:label "contribution directions"@en , "sens des contributions"@fr ;
+    skos:definition "Values of lulcw:ContributionDirection."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:RaisedHead a lulcw:ContributionDirection ; skos:inScheme lulcw:ContributionDirectionScheme ; skos:topConceptOf lulcw:ContributionDirectionScheme ;
+    skos:prefLabel "raised the head"@en , "a relevé le niveau"@fr ;
+    rdfs:label "raised the head"@en , "a relevé le niveau"@fr ;
+    skos:definition "The contribution is above its reference (a positive value)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:LoweredHead a lulcw:ContributionDirection ; skos:inScheme lulcw:ContributionDirectionScheme ; skos:topConceptOf lulcw:ContributionDirectionScheme ;
+    skos:prefLabel "lowered the head"@en , "a abaissé le niveau"@fr ;
+    rdfs:label "lowered the head"@en , "a abaissé le niveau"@fr ;
+    skos:definition "The contribution is below its reference (a negative value)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:NoNetChange a lulcw:ContributionDirection ; skos:inScheme lulcw:ContributionDirectionScheme ; skos:topConceptOf lulcw:ContributionDirectionScheme ;
+    skos:prefLabel "no net head change"@en , "aucun effet net sur le niveau"@fr ;
+    rdfs:label "no net head change"@en , "aucun effet net sur le niveau"@fr ;
+    skos:definition "The contribution is at its reference (zero, or within the stated neutrality tolerance below 0.05 m)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:StatementStatus a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "statement status"@en , "statut de l'énoncé"@fr ;
+    skos:definition "Whether an explanation statement is shown as is, shown with its caveat, or not shown (docs/notes/step15_explanations.md, statement rules)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:StatementStatusScheme a skos:ConceptScheme ;
+    rdfs:label "statement statuses"@en , "statuts des énoncés"@fr ;
+    skos:definition "Values of lulcw:StatementStatus."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:AcceptedStatement a lulcw:StatementStatus ; skos:inScheme lulcw:StatementStatusScheme ; skos:topConceptOf lulcw:StatementStatusScheme ;
+    skos:prefLabel "accepted statement"@en , "énoncé retenu"@fr ;
+    rdfs:label "accepted statement"@en , "énoncé retenu"@fr ;
+    skos:definition "Every check passed: the explanation statement is shown as written."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:QualifiedStatement a lulcw:StatementStatus ; skos:inScheme lulcw:StatementStatusScheme ; skos:topConceptOf lulcw:StatementStatusScheme ;
+    skos:prefLabel "qualified statement"@en , "énoncé nuancé"@fr ;
+    rdfs:label "qualified statement"@en , "énoncé nuancé"@fr ;
+    skos:definition "The explanation statement is shown with its caveat (unvalidated observations, a small 0-10% imputed share of pumping, or probable links only)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:WithheldStatement a lulcw:StatementStatus ; skos:inScheme lulcw:StatementStatusScheme ; skos:topConceptOf lulcw:StatementStatusScheme ;
+    skos:prefLabel "withheld statement"@en , "énoncé non retenu"@fr ;
+    rdfs:label "withheld statement"@en , "énoncé non retenu"@fr ;
+    skos:definition "The explanation statement is not shown, with its reason (imputed pumping above 10%, starts or pumping reconstructions that disagree on its sign, or a size below 0.05 m)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:SgiClass a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "groundwater level class"@en , "classe d'indicateur piézométrique"@fr ;
+    skos:definition "One of the seven classes of the BRGM IPS indicator, bounded by the 10, 20, 40, 60, 80 and 90% quantiles of the standard normal SGI (src/dataset/build.py, IPS_CLASSES)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:SgiClassScheme a skos:ConceptScheme ;
+    rdfs:label "groundwater level classes"@en , "classes d'indicateur piézométrique"@fr ;
+    skos:definition "Values of lulcw:SgiClass, ordered from very low (notation 1) to very high (notation 7)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:VeryLowLevel a lulcw:SgiClass ; skos:inScheme lulcw:SgiClassScheme ; skos:topConceptOf lulcw:SgiClassScheme ;
+    skos:prefLabel "very low"@en , "très bas"@fr ;
+    rdfs:label "very low"@en , "très bas"@fr ;
+    skos:notation "1" ;
+    lulcw:sgiUpperBound "-1.2815515655446008"^^xsd:double ;
+    skos:definition "BRGM IPS class 1 (très bas): SGI strictly below the 10th percentile of the standard normal distribution (-1.2815515655446008)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:LowLevel a lulcw:SgiClass ; skos:inScheme lulcw:SgiClassScheme ; skos:topConceptOf lulcw:SgiClassScheme ;
+    skos:prefLabel "low"@en , "bas"@fr ;
+    rdfs:label "low"@en , "bas"@fr ;
+    skos:notation "2" ;
+    lulcw:sgiUpperBound "-0.8416212335729142"^^xsd:double ;
+    skos:definition "BRGM IPS class 2 (bas): SGI from the 10th percentile inclusive up to strictly below the 20th percentile (-0.8416212335729142)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:ModeratelyLowLevel a lulcw:SgiClass ; skos:inScheme lulcw:SgiClassScheme ; skos:topConceptOf lulcw:SgiClassScheme ;
+    skos:prefLabel "moderately low"@en , "modérément bas"@fr ;
+    rdfs:label "moderately low"@en , "modérément bas"@fr ;
+    skos:notation "3" ;
+    lulcw:sgiUpperBound "-0.2533471031357998"^^xsd:double ;
+    skos:definition "BRGM IPS class 3 (modérément bas): SGI from the 20th percentile inclusive up to strictly below the 40th percentile (-0.2533471031357998)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:NearAverageLevel a lulcw:SgiClass ; skos:inScheme lulcw:SgiClassScheme ; skos:topConceptOf lulcw:SgiClassScheme ;
+    skos:prefLabel "around average"@en , "autour de la moyenne"@fr ;
+    rdfs:label "around average"@en , "autour de la moyenne"@fr ;
+    skos:notation "4" ;
+    lulcw:sgiUpperBound "0.2533471031357998"^^xsd:double ;
+    skos:definition "BRGM IPS class 4 (autour de la moyenne): SGI from the 40th percentile inclusive up to strictly below the 60th percentile (0.2533471031357998)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:ModeratelyHighLevel a lulcw:SgiClass ; skos:inScheme lulcw:SgiClassScheme ; skos:topConceptOf lulcw:SgiClassScheme ;
+    skos:prefLabel "moderately high"@en , "modérément haut"@fr ;
+    rdfs:label "moderately high"@en , "modérément haut"@fr ;
+    skos:notation "5" ;
+    lulcw:sgiUpperBound "0.8416212335729144"^^xsd:double ;
+    skos:definition "BRGM IPS class 5 (modérément haut): SGI from the 60th percentile inclusive up to strictly below the 80th percentile (0.8416212335729144)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:HighLevel a lulcw:SgiClass ; skos:inScheme lulcw:SgiClassScheme ; skos:topConceptOf lulcw:SgiClassScheme ;
+    skos:prefLabel "high"@en , "haut"@fr ;
+    rdfs:label "high"@en , "haut"@fr ;
+    skos:notation "6" ;
+    lulcw:sgiUpperBound "1.2815515655446008"^^xsd:double ;
+    skos:definition "BRGM IPS class 6 (haut): SGI from the 80th percentile inclusive up to strictly below the 90th percentile (1.2815515655446008)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:VeryHighLevel a lulcw:SgiClass ; skos:inScheme lulcw:SgiClassScheme ; skos:topConceptOf lulcw:SgiClassScheme ;
+    skos:prefLabel "very high"@en , "très haut"@fr ;
+    rdfs:label "very high"@en , "très haut"@fr ;
+    skos:notation "7" ;
+    skos:definition "BRGM IPS class 7 (très haut): SGI at or above the 90th percentile of the standard normal distribution (1.2815515655446008); carries no finite lulcw:sgiUpperBound."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+# CQ10 object properties (xai)
+
+lulcw:usesExportPolicy a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ModelRun ; rdfs:range lulcw:ExportPolicy ;
+    rdfs:label "uses export policy"@en , "utilise la politique d'export"@fr ;
+    skos:definition "The knowledge-graph export policy whose selected influences and graph structure a model run was built from."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:simulatedAt a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( lulcw:SimulatedHead lulcw:ScenarioResult ) ] ;
+    rdfs:range lulcw:Piezometer ;
+    rdfs:label "simulated at"@en , "simulé au piézomètre"@fr ;
+    skos:definition "The monitoring piezometer at which a simulated head or a crop-change scenario result is evaluated."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:sgiClass a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:SimulatedHead ; rdfs:range lulcw:SgiClass ;
+    rdfs:label "has SGI class"@en , "a pour classe IPS"@fr ;
+    skos:definition "The BRGM IPS groundwater level class corresponding to the simulated head's SGI value under the frozen training reference."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:contributionTo a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:DriverContribution ; rdfs:range lulcw:SimulatedHead ;
+    rdfs:label "contribution to"@en , "contribution à"@fr ;
+    skos:definition "The simulated head whose departure from the reference condition a driver contribution decomposes."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:contributionStress a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:DriverContribution ; rdfs:range lulcw:ModelStress ;
+    rdfs:label "contribution stress"@en , "sollicitation de la contribution"@fr ;
+    skos:definition "The model stress (channel or report group) whose response a driver contribution measures."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:referenceCondition a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:DriverContribution ; rdfs:range lulcw:ReferenceCondition ;
+    rdfs:label "has reference condition"@en , "a pour condition de référence"@fr ;
+    skos:definition "The reference baseline (training mean, training seasonal mean, or explicit reference window) against which a driver contribution is measured."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:stressDriverGroup a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ModelStress ; rdfs:range lulcw:DriverGroup ;
+    rdfs:label "stress driver group"@en , "groupe de forçages de la sollicitation"@fr ;
+    skos:definition "The knowledge-graph driver group associated with a model stress (absent for lulcw:SeasonalResidual, which has no driver)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:explains a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ExplanationStatement ; rdfs:range lulcw:SimulatedHead ;
+    rdfs:label "explains"@en , "explique"@fr ;
+    skos:definition "The simulated head that an explanation statement reports on."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:citesContribution a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ExplanationStatement ; rdfs:range lulcw:DriverContribution ;
+    rdfs:label "cites contribution"@en , "cite la contribution"@fr ;
+    skos:definition "The driver contribution whose magnitude, direction and uncertainty an explanation statement reports."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:citesInfluence a owl:ObjectProperty ;
+    rdfs:domain lulcw:ExplanationStatement ; rdfs:range lulcw:Influence ;
+    rdfs:label "cites influence"@en , "cite l'influence"@fr ;
+    skos:definition "A knowledge-graph influence (selected under the run's export policy and targeting the statement's well) supporting an explanation statement."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:statedDirection a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ExplanationStatement ; rdfs:range lulcw:ContributionDirection ;
+    rdfs:label "stated direction"@en , "sens énoncé"@fr ;
+    skos:definition "The head-change direction relative to the reference stated by an explanation statement (raised, lowered or no net change); must agree with the sign of contributionM, never confused with responseSign."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:statementStatus a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ExplanationStatement ; rdfs:range lulcw:StatementStatus ;
+    rdfs:label "has statement status"@en , "a pour statut d'énoncé"@fr ;
+    skos:definition "Whether an explanation statement is accepted, qualified or withheld under the fixed statement rules."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+# CQ10 datatype properties (xai)
+
+lulcw:runIdentifier a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ModelRun ; rdfs:range xsd:string ;
+    rdfs:label "run identifier"@en , "identifiant d'exécution"@fr ;
+    skos:definition "Stable identifier of a fitted model run (the folder name under results/<dataset>/)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:regime a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ModelRun ; rdfs:range xsd:string ;
+    rdfs:label "evaluation regime"@en , "régime d'évaluation"@fr ;
+    skos:definition "Evaluation regime of a model run (e.g. R1, R2, R3_f25, R3_f50, refit)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:pumpingReconstruction a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ModelRun ; rdfs:range xsd:integer ;
+    rdfs:label "pumping reconstruction"@en , "reconstitution des prélèvements"@fr ;
+    skos:definition "Index (1, 2 or 3) of the weekly pumping reconstruction used by a model run (1 = deficit-spread, 2 = flat drinking water, 3 = fixed crop calendar)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:fittingProtocol a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ModelRun ; rdfs:range xsd:string ;
+    rdfs:label "fitting protocol"@en , "protocole d'ajustement"@fr ;
+    skos:definition "Short name of the training and regularisation protocol of a model run (e.g. stageB_gate3_converged)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:startCount a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ModelRun ; rdfs:range xsd:integer ;
+    rdfs:label "start count"@en , "nombre d'initialisations"@fr ;
+    skos:definition "Number of independent random seeds (starts) fitted and averaged in a model run."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:simulatedHeadM a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:SimulatedHead ; rdfs:range xsd:double ;
+    rdfs:label "simulated head (m NGF)"@en , "niveau simulé (m NGF)"@fr ;
+    skos:definition "Mean simulated groundwater head over the window, in metres above the NGF datum, averaged across the run's starts."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:sgiValue a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:SimulatedHead ; rdfs:range xsd:double ;
+    rdfs:label "SGI value"@en , "valeur de l'IPS"@fr ;
+    skos:definition "Standardised Groundwater level Index (dimensionless standard-normal score) of a simulated head against the point's frozen training reference."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:sgiReferenceEnd a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:SimulatedHead ; rdfs:range xsd:date ;
+    rdfs:label "SGI reference end date"@en , "date de fin de référence IPS"@fr ;
+    skos:definition "Last date of the frozen training reference period used to compute a simulated head's SGI value (e.g. 2019-12-31)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:sgiUpperBound a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:SgiClass ; rdfs:range xsd:double ;
+    rdfs:label "SGI upper bound"@en , "borne supérieure de l'IPS"@fr ;
+    skos:definition "Strict upper bound (standard-normal quantile, dimensionless) of a BRGM IPS SGI class: values strictly below this bound fall in the class or a lower one; absent for lulcw:VeryHighLevel."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:referenceStart a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:DriverContribution ; rdfs:range xsd:date ;
+    rdfs:label "reference period start"@en , "début de la période de référence"@fr ;
+    skos:definition "First day of an explicit comparison window when lulcw:referenceCondition is lulcw:ReferenceWindow."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:referenceEnd a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:DriverContribution ; rdfs:range xsd:date ;
+    rdfs:label "reference period end"@en , "fin de la période de référence"@fr ;
+    skos:definition "Last day of an explicit comparison window when lulcw:referenceCondition is lulcw:ReferenceWindow."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:contributionM a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:DriverContribution ; rdfs:range xsd:double ;
+    rdfs:label "driver contribution (m)"@en , "contribution du forçage (m)"@fr ;
+    skos:definition "Mean departure from the reference condition attributed by the model to this stress over the window, in metres (positive = raised the simulated head relative to reference)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:startSdM a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:DriverContribution ; rdfs:range xsd:double ;
+    rdfs:label "across-start standard deviation (m)"@en , "écart-type entre initialisations (m)"@fr ;
+    skos:definition "Standard deviation of the driver contribution across the run's independent starts, in metres."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:startSignAgreement a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:DriverContribution ; rdfs:range xsd:double ;
+    rdfs:label "across-start sign agreement"@en , "accord de signe entre initialisations"@fr ;
+    skos:definition "Share of the run's independent starts (dimensionless, in [0, 1]) whose contribution has the same sign as the mean contribution; accepted statements require at least 0.8."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:imputedPumpingShare a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:DriverContribution ; rdfs:range xsd:double ;
+    rdfs:label "imputed pumping share"@en , "part de prélèvements imputés"@fr ;
+    skos:definition "Volume-weighted share (dimensionless, in [0, 1]) of the well's routed pumping over the explained window coming from imputed facility-weeks; above 0.10 a pumping statement is withheld, and between 0 and 0.10 it is qualified."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:statementReason a owl:DatatypeProperty ;
+    rdfs:domain lulcw:ExplanationStatement ; rdfs:range xsd:string ;
+    rdfs:label "statement reason"@en , "motif de l'énoncé"@fr ;
+    skos:definition "Plain-language reason why an explanation statement is qualified or withheld (e.g. imputed pumping share above 10%, across-start sign agreement below 0.8, or probable links only)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:statementText a owl:DatatypeProperty ;
+    rdfs:domain lulcw:ExplanationStatement ; rdfs:range rdf:langString ;
+    rdfs:label "statement text"@en , "texte de l'énoncé"@fr ;
+    skos:definition "Templated natural-language explanation sentence in English or French (language-tagged literal), phrased as what the model attributes rather than as physical causal proof."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+
+# ----------------------------------------------------------------------------- CQ16 (0.12.0, 2026-11-27)
+# Explicit crop-change scenarios (docs/competency_questions.md §4, CQ16; schema and fixtures only:
+# no numerical ranking is defensible yet). All terms live in the xai module.
+
+lulcw:CropChangeScenario a owl:Class ;
+    rdfs:subClassOf prov:Plan ;
+    rdfs:label "crop-change scenario"@en , "scénario de changement de culture"@fr ;
+    skos:definition "A stated hypothetical substitution of one crop class by another over a crop demand zone and period, together with its stated assumptions and declared ranking metric; a conditional demonstration, never a land-use recommendation or a validated real-world intervention effect."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:ScenarioAssumption a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "scenario assumption"@en , "hypothèse de scénario"@fr ;
+    skos:definition "One explicit quantitative assumption of a crop-change scenario (water-source share, irrigation-demand change, return-flow fraction or climate case), with its value, unit and source record or expert-hypothesis provenance."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:ScenarioEligibility a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "scenario eligibility"@en , "éligibilité du scénario"@fr ;
+    skos:definition "An assessment of whether a crop-change scenario is supported in its zone, with an explicit boolean eligibility flag and reason (for example 'irrigation status heuristic only' from CQ15, or 'no supply evidence')."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:ScenarioResult a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "scenario result"@en , "résultat de scénario"@fr ;
+    skos:definition "A modelled groundwater head change at one monitoring well and window under one crop-change scenario and model run, with its uncertainty range over variants (low, value, high) and optional rank within the scenario's ranking metric. Kept distinct from observed heads and never used as training observations."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:RankingMetric a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "scenario ranking metric"@en , "métrique de classement de scénario"@fr ;
+    skos:definition "The declared metric under which scenario results are compared and ranked; ranks compare only results that share one metric."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:RankingMetricScheme a skos:ConceptScheme ;
+    rdfs:label "scenario ranking metrics"@en , "métriques de classement de scénario"@fr ;
+    skos:definition "Values of lulcw:RankingMetric (CQ16)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:TotalHeadChange a lulcw:RankingMetric ; skos:inScheme lulcw:RankingMetricScheme ; skos:topConceptOf lulcw:RankingMetricScheme ;
+    skos:prefLabel "total head change"@en , "variation totale de niveau"@fr ;
+    rdfs:label "total head change"@en , "variation totale de niveau"@fr ;
+    skos:definition "Ranking by total modelled head change over the substituted area."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:HeadChangePerHectare a lulcw:RankingMetric ; skos:inScheme lulcw:RankingMetricScheme ; skos:topConceptOf lulcw:RankingMetricScheme ;
+    skos:prefLabel "head change per hectare"@en , "variation de niveau par hectare"@fr ;
+    rdfs:label "head change per hectare"@en , "variation de niveau par hectare"@fr ;
+    skos:definition "Ranking by modelled head change per substituted hectare."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:HeadChangeAtWell a lulcw:RankingMetric ; skos:inScheme lulcw:RankingMetricScheme ; skos:topConceptOf lulcw:RankingMetricScheme ;
+    skos:prefLabel "head change at well"@en , "variation de niveau au piézomètre"@fr ;
+    rdfs:label "head change at well"@en , "variation de niveau au piézomètre"@fr ;
+    skos:definition "Ranking by modelled head change at one selected monitoring well."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:AssumptionKind a owl:Class ; rdfs:subClassOf skos:Concept ;
+    rdfs:label "scenario assumption kind"@en , "type d'hypothèse de scénario"@fr ;
+    skos:definition "The role of an explicit assumption in a crop-change scenario (water-source share, irrigation-demand change, return-flow fraction, or climate case)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:AssumptionKindScheme a skos:ConceptScheme ;
+    rdfs:label "scenario assumption kinds"@en , "types d'hypothèses de scénario"@fr ;
+    skos:definition "Values of lulcw:AssumptionKind (CQ16)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:WaterSourceShare a lulcw:AssumptionKind ; skos:inScheme lulcw:AssumptionKindScheme ; skos:topConceptOf lulcw:AssumptionKindScheme ;
+    skos:prefLabel "water-source share"@en , "part de la ressource en eau"@fr ;
+    rdfs:label "water-source share"@en , "part de la ressource en eau"@fr ;
+    skos:definition "Assumed share of the substituted irrigation demand supplied from groundwater (0 = purely surface-water supplied, 1 = purely groundwater supplied)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:IrrigationDemandChange a lulcw:AssumptionKind ; skos:inScheme lulcw:AssumptionKindScheme ; skos:topConceptOf lulcw:AssumptionKindScheme ;
+    skos:prefLabel "irrigation-demand change"@en , "variation de la demande d'irrigation"@fr ;
+    rdfs:label "irrigation-demand change"@en , "variation de la demande d'irrigation"@fr ;
+    skos:definition "Assumed change in irrigation water requirement produced by the crop substitution over the scenario period (negative = lower crop water demand)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:ReturnFlowFraction a lulcw:AssumptionKind ; skos:inScheme lulcw:AssumptionKindScheme ; skos:topConceptOf lulcw:AssumptionKindScheme ;
+    skos:prefLabel "return-flow fraction"@en , "fraction de retour d'irrigation"@fr ;
+    rdfs:label "return-flow fraction"@en , "fraction de retour d'irrigation"@fr ;
+    skos:definition "Assumed fraction of applied irrigation water that returns to the underlying aquifer as recharge."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+lulcw:ClimateCase a lulcw:AssumptionKind ; skos:inScheme lulcw:AssumptionKindScheme ; skos:topConceptOf lulcw:AssumptionKindScheme ;
+    skos:prefLabel "climate case"@en , "cas climatique"@fr ;
+    rdfs:label "climate case"@en , "cas climatique"@fr ;
+    skos:definition "Assumed climatic regime or forcing case (e.g. reference year or drought anomaly) under which the scenario is evaluated."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+# CQ16 object properties (xai)
+
+lulcw:baselineCropClass a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:CropChangeScenario ; rdfs:range lulcw:CropClass ;
+    rdfs:label "baseline crop class"@en , "classe de culture de référence"@fr ;
+    skos:definition "The existing crop class replaced in a crop-change scenario."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:alternativeCropClass a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:CropChangeScenario ; rdfs:range lulcw:CropClass ;
+    rdfs:label "alternative crop class"@en , "classe de culture alternative"@fr ;
+    skos:definition "The replacement crop class proposed in a crop-change scenario (distinct from lulcw:baselineCropClass)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:scenarioZone a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( lulcw:CropChangeScenario lulcw:ScenarioEligibility ) ] ;
+    rdfs:range lulcw:CropDemandZone ;
+    rdfs:label "scenario zone"@en , "zone du scénario"@fr ;
+    skos:definition "The crop demand zone to which a crop-change scenario or a scenario eligibility assessment applies."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:hasAssumption a owl:ObjectProperty ;
+    rdfs:domain lulcw:CropChangeScenario ; rdfs:range lulcw:ScenarioAssumption ;
+    rdfs:label "has scenario assumption"@en , "a pour hypothèse de scénario"@fr ;
+    skos:definition "An explicit assumption stated for a crop-change scenario."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:rankingMetric a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( lulcw:CropChangeScenario lulcw:ScenarioResult ) ] ;
+    rdfs:range lulcw:RankingMetric ;
+    rdfs:label "has ranking metric"@en , "a pour métrique de classement"@fr ;
+    skos:definition "The declared metric under which a crop-change scenario's results are ranked; ranks never compare results across different metrics."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:assumptionKind a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ScenarioAssumption ; rdfs:range lulcw:AssumptionKind ;
+    rdfs:label "has assumption kind"@en , "a pour type d'hypothèse"@fr ;
+    skos:definition "The kind of quantity a scenario assumption states (water-source share, irrigation-demand change, return-flow fraction or climate case)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:scenarioOf a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( lulcw:ScenarioResult lulcw:ScenarioEligibility ) ] ;
+    rdfs:range lulcw:CropChangeScenario ;
+    rdfs:label "scenario of"@en , "scénario de"@fr ;
+    skos:definition "The crop-change scenario that a scenario result simulates or that a scenario eligibility assessment evaluates."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+# CQ16 datatype properties (xai)
+
+lulcw:substitutedAreaM2 a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:CropChangeScenario ; rdfs:range xsd:double ;
+    rdfs:label "substituted area (m²)"@en , "surface substituée (m²)"@fr ;
+    skos:definition "Area, in square metres, over which the baseline crop class is replaced by the alternative crop class in a crop-change scenario (zero for a no-change control)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:assumptionValue a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ScenarioAssumption ; rdfs:range xsd:double ;
+    rdfs:label "assumption value"@en , "valeur de l'hypothèse"@fr ;
+    skos:definition "Numerical value of a stated scenario assumption, in the unit given by lulcw:assumptionUnit."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:assumptionUnit a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ScenarioAssumption ; rdfs:range xsd:string ;
+    rdfs:label "assumption unit"@en , "unité de l'hypothèse"@fr ;
+    skos:definition "Unit of lulcw:assumptionValue (e.g. 'dimensionless', 'm3/yr', 'year')."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:scenarioEligible a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ScenarioEligibility ; rdfs:range xsd:boolean ;
+    rdfs:label "scenario eligible"@en , "scénario éligible"@fr ;
+    skos:definition "Whether a crop-change scenario is supported in its zone (true) or ineligible (false, with the reason stated in lulcw:eligibilityReason); no scenario result may be produced when false."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:headChangeM a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ScenarioResult ; rdfs:range xsd:double ;
+    rdfs:label "modelled head change (m)"@en , "variation modélisée de niveau (m)"@fr ;
+    skos:definition "Central modelled groundwater head change (scenario minus baseline) at the target well over the window, in metres."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:headChangeLowM a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ScenarioResult ; rdfs:range xsd:double ;
+    rdfs:label "modelled head change lower bound (m)"@en , "borne inférieure de variation de niveau (m)"@fr ;
+    skos:definition "Lower bound of the uncertainty or sensitivity range of lulcw:headChangeM across model or assumption variants, in metres (must satisfy headChangeLowM <= headChangeM)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .
+
+lulcw:headChangeHighM a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain lulcw:ScenarioResult ; rdfs:range xsd:double ;
+    rdfs:label "modelled head change upper bound (m)"@en , "borne supérieure de variation de niveau (m)"@fr ;
+    skos:definition "Upper bound of the uncertainty or sensitivity range of lulcw:headChangeM across model or assumption variants, in metres (must satisfy headChangeM <= headChangeHighM)."@en ;
+    lulcw:definedInModule <https://w3id.org/lulcw/xai> .

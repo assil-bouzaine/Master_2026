@@ -7,12 +7,12 @@
 @prefix geo:     <http://www.opengis.net/ont/geosparql#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 
-# Generated from ontology/lulcw.ttl (version 0.11.0) by src.kg.ontology_modules.
+# Generated from ontology/lulcw.ttl (version 0.12.0) by src.kg.ontology_modules.
 # Do not edit by hand: edit ontology/lulcw.ttl and re-run the generator.
 
 <https://w3id.org/lulcw/lulc> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/lulcw/lulc/0.11.0> ;
-    owl:versionInfo "0.11.0" ;
+    owl:versionIRI <https://w3id.org/lulcw/lulc/0.12.0> ;
+    owl:versionInfo "0.12.0" ;
     dcterms:title "LULC-Water land-use and crops module"@en , "Module occupation du sol et cultures LULC-Water"@fr ;
     dcterms:description "Country-agnostic land-use and agricultural water-demand vocabulary: crop codes, harmonised crop classes with FAO-56 parameters, crop demand zones, dated clipped crop areas, potential irrigation demand estimates, and irrigation demand categories."@en ,
         "Vocabulaire d'occupation du sol et de demande agricole en eau indépendant des pays : codes culture, classes de cultures harmonisées avec paramètres FAO-56, zones de demande, surfaces découpées datées, estimations de demande potentielle d'irrigation et catégories de demande."@fr ;
@@ -172,10 +172,10 @@ lulcw:cropClass a owl:FunctionalProperty , owl:ObjectProperty ;
     lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
 
 lulcw:cropCode a owl:FunctionalProperty , owl:ObjectProperty ;
-    rdfs:domain lulcw:CropAreaObservation ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( lulcw:CropAreaObservation lulcw:RegisteredParcel ) ] ;
     rdfs:range lulcw:CropCode ;
     rdfs:label "has crop code"@en , "a pour code culture"@fr ;
-    skos:definition "The RPG crop code whose parcels a crop area observation measures."@en ;
+    skos:definition "The crop code of a land-parcel register (e.g. RPG CODE_CULTU) whose parcels a crop area observation measures, or that is declared on a registered parcel."@en ;
     lulcw:definedInModule <https://w3id.org/lulcw/lulc> .
 
 lulcw:demandCategory a owl:FunctionalProperty , owl:ObjectProperty ;

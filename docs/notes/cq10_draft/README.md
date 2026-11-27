@@ -1,13 +1,14 @@
-# CQ10 draft (ontology 0.9.0, explanations)
+# CQ10 draft (integrated into ontology 0.12.0 on 2026-11-27)
 
-Draft terms for the explanation module decided by Assil on 2026-11-24 (analysis plan §14 item 24;
-design in `docs/notes/step15_explanations.md`). `lulcw_090_terms.ttl` is **not** in the ontology
-catalog: inserting it into `ontology/lulcw.ttl` changes the graph release's hash, so every reader of
-the graph (exports, routing, the replay of routed runs) refuses to run until `src.kg.apply_rules`
-rebuilds the release. Insert it when no worker or run reads the graph.
+**Status: integrated.** All drafted CQ10 terms (updated to v5 with `LocalRechargeStress`,
+`RegionalRechargeStress`, `LeakageRechargeStress`, `TrainingMean`, `NoNetChange`, the seven BRGM
+IPS `SgiClass` members with `lulcw:sgiUpperBound`, and all properties as full Turtle) were
+integrated into `ontology/lulcw.ttl` (version `0.12.0`, module `xai`, generated into
+`ontology/modules/lulcw-xai.ttl`), together with the six CQ10 SHACL shapes in
+`ontology/shapes/lulcw-shapes.ttl`, negative controls in `tests/test_kg_rules.py`, and
+`tests/cq/cq10_explanation.rq` / `cq10_status.rq` with fixtures in `tests/test_cq.py` (task T88).
+`lulcw_090_terms.ttl` stays here as a historical design record only and is **not** in the ontology
+catalog.
 
-Left to do: the seven SGI classes and the properties as full Turtle (listed as comments at the end of
-the draft), version 0.9.0 header and changelog line, the shapes (step 15 note, six checks, each
-with a negative control), `src/explain/result_graph.py`, `tests/cq/cq10_*.rq` with fixtures,
-`python -m tests.test_ontology`, the release rebuild and the export/control regeneration (edges
-must stay identical).
+Remaining work (outside T88): `src/explain/result_graph.py` (real-data fact builder, R5.1) and the
+v5 graph release rebuild / export regeneration handled by the lead.

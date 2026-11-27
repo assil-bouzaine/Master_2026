@@ -1482,6 +1482,515 @@ def test_cq15_fixture(rules, shapes, net):
     return g
 
 
+def build_cq10_fixture(rules):
+    """CQ10 synthetic fixture (step 15 note + v5 channels):
+      - W1 monitors unit U (Confident); F1 (100 m, Probable) is selected by policy/main, while
+        F4 (400 m, Possible) is excluded by policy/main; W2 monitors U 4,999 m away; weather cell
+        c1 covers U's outcrop in W1's search zone (derived DiffuseRecharge influence, selected by main).
+      - run/test-v5-r1 uses policy/main over 2005-01-02 .. 2026-10-18.
+      - sim-head/W1/summer-2024 (sgi -1.50 -> VeryLowLevel):
+          * AttributedPumpingStress: +0.35 m (less pumping than usual RAISED head -> RaisedHead,
+            AcceptedStatement, cites main-selected F1->W1 pumping influence)
+          * LocalRechargeStress: -0.80 m (LoweredHead, AcceptedStatement, cites c1->W1 influence)
+          * UnattributedPumpingStress: +0.12 m, ReferenceWindow, 5% imputed -> QualifiedStatement
+      - sim-head/W1/summer-2009 (sgi -1.2815515655446008 -> LowLevel, exact < boundary):
+          * AttributedPumpingStress: -0.25 m, 100% imputed -> WithheldStatement
+      - sim-head/W1/summer-2023 (all accepted, sgi -0.50 -> ModeratelyLowLevel):
+          * LocalRechargeStress: -0.40 m -> AcceptedStatement
+    Returns (full_graph, refs_dict) after running SHACL-AF rules to derive real Influence nodes.
+    """
+    fx = Fixture()
+    a = fx.g.add
+    dbl = lambda v: Literal(float(v), datatype=XSD.double)  # noqa: E731
+    dt = lambda s: Literal(s, datatype=XSD.date)  # noqa: E731
+    U = fx.unit("U1")
+    a((U, PROV.wasDerivedFrom, fx.rel))
+    a((U, L.mappedOutcropAreaM2, dbl(1.0e6)))
+    p1 = fx.polygon(301, [U])
+    w1 = fx.well("W1", 0, 0, U, L.Confident, depth=50)
+    w2 = fx.well("W2", 4999, 0, U, L.Confident, depth=55)
+    a((w1, L.locatedInPolygon, p1))
+    a((w2, L.locatedInPolygon, p1))
+    fx.facility("F1", 100, 0, U, L.Probable)    # selected under policy/main
+    fx.facility("F4", 400, 0, U, L.Possible)    # excluded under policy/main
+    # Weather cell & outcrop coverage in W1's zone (for a real RechargeProxies influence)
+    c1 = d("weather-cell/c1")
+    a((c1, RDF.type, L.WeatherCell))
+    a((c1, L.safranGridXHm, Literal(100, datatype=XSD.integer)))
+    a((c1, L.safranGridYHm, Literal(200, datatype=XSD.integer)))
+    a((c1, L.inRelease, fx.rel))
+    fx.geometry(c1, "weather-cell", "c1", "POLYGON((0 0, 8000 0, 8000 8000, 0 8000, 0 0))")
+    se = d("series/forcing-cq10/c1/PE")
+    a((se, RDF.type, L.ObservationSeries))
+    a((se, L.seriesVariable, L.EffectiveRainfall))
+    a((c1, L.hasForcingSeries, se))
+    oz = d("outcrop-zone/W1")
+    a((oz, RDF.type, L.OutcropSearchZone))
+    a((oz, L.zoneOf, w1))
+    a((oz, L.zoneRadiusM, dbl(RADIUS)))
+    a((d("extent/forcing-cells"), RDF.type, GEO.Feature))
+    pci = d("polygon-cell/W1/301/c1")
+    for p, v in ((RDF.type, L.PolygonCellIntersection), (L.intersectedPolygon, p1),
+                 (L.withinExtent, oz), (L.intersectedCell, c1),
+                 (L.intersectionAreaM2, dbl(1.0e6)),
+                 (PROV.wasGeneratedBy, d("execution/polygon-cell-intersection"))):
+        a((pci, p, v))
+    a((d("execution/polygon-cell-intersection"), RDF.type, L.RuleExecution))
+
+    records = rule_records(rules, "test", fx.g)
+    g = fx.g + records + run_rules(fx.g, rules, records)
+    ga = g.add
+
+    # Locate derived influences by (mechanism, driver, target)
+    inf_f1_w1 = next(i for i in g.subjects(RDF.type, L.Influence)
+                     if (i, L.mechanism, L.PumpingDrawdown) in g
+                     and (i, L.driverEntity, d("facility/F1")) in g
+                     and (i, L.targetEntity, w1) in g)
+    inf_f4_w1 = next(i for i in g.subjects(RDF.type, L.Influence)
+                     if (i, L.mechanism, L.PumpingDrawdown) in g
+                     and (i, L.driverEntity, d("facility/F4")) in g
+                     and (i, L.targetEntity, w1) in g)
+    inf_f1_w2 = next(i for i in g.subjects(RDF.type, L.Influence)
+                     if (i, L.mechanism, L.PumpingDrawdown) in g
+                     and (i, L.driverEntity, d("facility/F1")) in g
+                     and (i, L.targetEntity, w2) in g)
+    inf_c1_w1 = next(i for i in g.subjects(RDF.type, L.Influence)
+                     if (i, L.mechanism, L.DiffuseRecharge) in g
+                     and (i, L.driverEntity, c1) in g
+                     and (i, L.targetEntity, w1) in g)
+
+    # ModelRun
+    run = d("run/test-v5-r1")
+    for p, v in ((RDF.type, L.ModelRun), (L.runIdentifier, Literal("test_hgnn_D_r1")),
+                 (L.usesExportPolicy, d("policy/main")), (PROV.used, fx.rel),
+                 (L.regime, Literal("R1")), (L.pumpingReconstruction, Literal(1, datatype=XSD.integer)),
+                 (L.fittingProtocol, Literal("stageB_gate3_converged")),
+                 (L.startCount, Literal(10, datatype=XSD.integer)),
+                 (L.periodStart, dt("2005-01-02")), (L.periodEnd, dt("2026-10-18"))):
+        ga((run, p, v))
+
+    # SimulatedHead 1: summer 2024 (VeryLowLevel, less pumping raises head + local recharge lowers head + qualified)
+    sh24 = d("sim-head/W1/summer-2024")
+    for p, v in ((RDF.type, L.SimulatedHead), (PROV.wasGeneratedBy, run), (L.simulatedAt, w1),
+                 (L.periodStart, dt("2024-06-02")), (L.periodEnd, dt("2024-08-25")),
+                 (L.simulatedHeadM, dbl(12.40)), (L.sgiValue, dbl(-1.50)),
+                 (L.sgiClass, L.VeryLowLevel), (L.sgiReferenceEnd, dt("2019-12-31"))):
+        ga((sh24, p, v))
+
+    c_pump24 = d("contrib/W1/2024/pumping")
+    for p, v in ((RDF.type, L.DriverContribution), (L.contributionTo, sh24),
+                 (L.contributionStress, L.AttributedPumpingStress), (L.referenceCondition, L.TrainingMean),
+                 (L.contributionM, dbl(0.35)), (L.startSdM, dbl(0.04)),
+                 (L.startSignAgreement, dbl(0.9)), (L.imputedPumpingShare, dbl(0.0))):
+        ga((c_pump24, p, v))
+    st_pump24 = d("stmt/W1/2024/pumping")
+    for p, v in ((RDF.type, L.ExplanationStatement), (L.explains, sh24),
+                 (L.citesContribution, c_pump24), (L.citesInfluence, inf_f1_w1),
+                 (L.statedDirection, L.RaisedHead), (L.statementStatus, L.AcceptedStatement),
+                 (L.statementText, Literal("The model attributes +0.35 m (raised the head) to lower groundwater pumping on the graph's links.", lang="en")),
+                 (L.statementText, Literal("Le modèle attribue +0,35 m (a relevé le niveau) à la baisse des prélèvements reliés par le graphe.", lang="fr"))):
+        ga((st_pump24, p, v))
+
+    c_rech24 = d("contrib/W1/2024/recharge-local")
+    for p, v in ((RDF.type, L.DriverContribution), (L.contributionTo, sh24),
+                 (L.contributionStress, L.LocalRechargeStress), (L.referenceCondition, L.TrainingMean),
+                 (L.contributionM, dbl(-0.80)), (L.startSdM, dbl(0.08)),
+                 (L.startSignAgreement, dbl(1.0))):
+        ga((c_rech24, p, v))
+    st_rech24 = d("stmt/W1/2024/recharge-local")
+    for p, v in ((RDF.type, L.ExplanationStatement), (L.explains, sh24),
+                 (L.citesContribution, c_rech24), (L.citesInfluence, inf_c1_w1),
+                 (L.statedDirection, L.LoweredHead), (L.statementStatus, L.AcceptedStatement),
+                 (L.statementText, Literal("The model attributes -0.80 m (lowered the head) to the local recharge proxy.", lang="en")),
+                 (L.statementText, Literal("Le modèle attribue -0,80 m (a abaissé le niveau) à l'indicateur de recharge locale.", lang="fr"))):
+        ga((st_rech24, p, v))
+
+    c_qual24 = d("contrib/W1/2024/pumping-unattributed")
+    for p, v in ((RDF.type, L.DriverContribution), (L.contributionTo, sh24),
+                 (L.contributionStress, L.UnattributedPumpingStress),
+                 (L.referenceCondition, L.ReferenceWindow),
+                 (L.referenceStart, dt("2023-06-04")), (L.referenceEnd, dt("2023-08-27")),
+                 (L.contributionM, dbl(0.12)), (L.startSdM, dbl(0.03)),
+                 (L.startSignAgreement, dbl(0.9)), (L.imputedPumpingShare, dbl(0.05))):
+        ga((c_qual24, p, v))
+    st_qual24 = d("stmt/W1/2024/pumping-unattributed")
+    for p, v in ((RDF.type, L.ExplanationStatement), (L.explains, sh24),
+                 (L.citesContribution, c_qual24),
+                 (L.statedDirection, L.RaisedHead), (L.statementStatus, L.QualifiedStatement),
+                 (L.statementReason, Literal("5% of routed pumping volume is imputed (0-10% qualified)")),
+                 (L.statementText, Literal("The model attributes +0.12 m (raised the head) to unattributed nearby pumping (5% imputed).", lang="en")),
+                 (L.statementText, Literal("Le modèle attribue +0,12 m (a relevé le niveau) aux prélèvements voisins non attribués (5 % imputés).", lang="fr"))):
+        ga((st_qual24, p, v))
+
+    # SimulatedHead 2: summer 2009 (exact IPS boundary -> LowLevel; 100% imputed pumping -> Withheld)
+    sh09 = d("sim-head/W1/summer-2009")
+    for p, v in ((RDF.type, L.SimulatedHead), (PROV.wasGeneratedBy, run), (L.simulatedAt, w1),
+                 (L.periodStart, dt("2009-06-07")), (L.periodEnd, dt("2009-08-30")),
+                 (L.simulatedHeadM, dbl(14.10)), (L.sgiValue, dbl(-1.2815515655446008)),
+                 (L.sgiClass, L.LowLevel), (L.sgiReferenceEnd, dt("2019-12-31"))):
+        ga((sh09, p, v))
+    c_pump09 = d("contrib/W1/2009/pumping")
+    for p, v in ((RDF.type, L.DriverContribution), (L.contributionTo, sh09),
+                 (L.contributionStress, L.AttributedPumpingStress), (L.referenceCondition, L.TrainingMean),
+                 (L.contributionM, dbl(-0.25)), (L.startSdM, dbl(0.05)),
+                 (L.startSignAgreement, dbl(0.9)), (L.imputedPumpingShare, dbl(1.0))):
+        ga((c_pump09, p, v))
+    st_pump09 = d("stmt/W1/2009/pumping")
+    for p, v in ((RDF.type, L.ExplanationStatement), (L.explains, sh09),
+                 (L.citesContribution, c_pump09), (L.citesInfluence, inf_f1_w1),
+                 (L.statedDirection, L.LoweredHead), (L.statementStatus, L.WithheldStatement),
+                 (L.statementReason, Literal("pumping over 2009 is 100% imputed (> 10%)")),
+                 (L.statementText, Literal("Withheld: pumping over 2009 is 100% imputed.", lang="en")),
+                 (L.statementText, Literal("Non retenu : les prélèvements de 2009 sont imputés à 100 %.", lang="fr"))):
+        ga((st_pump09, p, v))
+
+    # SimulatedHead 3: summer 2023 (clean all-accepted window -> cq10_status supported)
+    sh23 = d("sim-head/W1/summer-2023")
+    for p, v in ((RDF.type, L.SimulatedHead), (PROV.wasGeneratedBy, run), (L.simulatedAt, w1),
+                 (L.periodStart, dt("2023-06-04")), (L.periodEnd, dt("2023-08-27")),
+                 (L.simulatedHeadM, dbl(13.10)), (L.sgiValue, dbl(-0.50)),
+                 (L.sgiClass, L.ModeratelyLowLevel), (L.sgiReferenceEnd, dt("2019-12-31"))):
+        ga((sh23, p, v))
+    c_rech23 = d("contrib/W1/2023/recharge-local")
+    for p, v in ((RDF.type, L.DriverContribution), (L.contributionTo, sh23),
+                 (L.contributionStress, L.LocalRechargeStress), (L.referenceCondition, L.TrainingMean),
+                 (L.contributionM, dbl(-0.40)), (L.startSdM, dbl(0.05)),
+                 (L.startSignAgreement, dbl(1.0))):
+        ga((c_rech23, p, v))
+    st_rech23 = d("stmt/W1/2023/recharge-local")
+    for p, v in ((RDF.type, L.ExplanationStatement), (L.explains, sh23),
+                 (L.citesContribution, c_rech23), (L.citesInfluence, inf_c1_w1),
+                 (L.statedDirection, L.LoweredHead), (L.statementStatus, L.AcceptedStatement),
+                 (L.statementText, Literal("The model attributes -0.40 m (lowered the head) to the local recharge proxy.", lang="en")),
+                 (L.statementText, Literal("Le modèle attribue -0,40 m (a abaissé le niveau) à l'indicateur de recharge locale.", lang="fr"))):
+        ga((st_rech23, p, v))
+
+    refs = {
+        "run": run, "w1": w1, "w2": w2,
+        "sh24": sh24, "sh09": sh09, "sh23": sh23,
+        "c_pump24": c_pump24, "st_pump24": st_pump24,
+        "c_rech24": c_rech24, "st_rech24": st_rech24,
+        "c_qual24": c_qual24, "st_qual24": st_qual24,
+        "c_pump09": c_pump09, "st_pump09": st_pump09,
+        "inf_f1_w1": inf_f1_w1, "inf_f4_w1": inf_f4_w1,
+        "inf_f1_w2": inf_f1_w2, "inf_c1_w1": inf_c1_w1,
+    }
+    return g, refs
+
+
+def test_cq10_fixture(rules, shapes, net):
+    """CQ10 positive fixture (0 violations) and negative controls for all 6 step-15 shapes."""
+    g, r = build_cq10_fixture(rules)
+    conforms, _, results = check(g, shapes, net)
+    assert conforms and violations(results) == 0, results
+
+    def bad(triples, remove=()):
+        h = rdflib.Graph()
+        for t in g:
+            if t not in remove:
+                h.add(t)
+        for t in triples:
+            h.add(t)
+        return check(h, shapes, net)[2]
+
+    def now(s, p):
+        return list(g.triples((s, p, None)))
+
+    dbl = lambda v: Literal(float(v), datatype=XSD.double)  # noqa: E731
+    dt = lambda s: Literal(s, datatype=XSD.date)  # noqa: E731
+
+    neg = {
+        "1a. cited influence excluded by the run's export policy (Possible under main)": (
+            [(r["st_pump24"], L.citesInfluence, r["inf_f4_w1"])], (),
+            "ExplanationStatementShape", "not selected under the run's export policy"),
+        "1b. cited non-existent entity as influence": (
+            [(r["st_pump24"], L.citesInfluence, d("influence/non-existent"))], (),
+            "ExplanationStatementShape", "must exist as a lulcw:Influence"),
+        "1c. cited influence targeting another well (W2 instead of W1)": (
+            [(r["st_pump24"], L.citesInfluence, r["inf_f1_w2"])], (),
+            "ExplanationStatementShape", "does not target the statement's well"),
+        "2. cited influence driver group disagrees with contribution driver group": (
+            [(r["st_pump24"], L.citesInfluence, r["inf_c1_w1"])], (),
+            "ExplanationStatementShape", "driver group disagrees"),
+        "3a. stated direction confuses response polarity with positive pumping contribution": (
+            [(r["st_pump24"], L.statedDirection, L.LoweredHead)],
+            now(r["st_pump24"], L.statedDirection),
+            "ExplanationStatementShape", "stated direction disagrees"),
+        "3b. NoNetChange stated on a -0.80 m contribution": (
+            [(r["st_rech24"], L.statedDirection, L.NoNetChange)],
+            now(r["st_rech24"], L.statedDirection),
+            "ExplanationStatementShape", "stated direction disagrees"),
+        "4a. pumping statement over 100% imputed weeks marked Accepted instead of Withheld": (
+            [(r["st_pump09"], L.statementStatus, L.AcceptedStatement)],
+            now(r["st_pump09"], L.statementStatus),
+            "ExplanationStatementShape", "must be withheld"),
+        "4b. pumping statement with 5% imputed volume marked Accepted unqualified": (
+            [(r["st_qual24"], L.statementStatus, L.AcceptedStatement)],
+            now(r["st_qual24"], L.statementStatus),
+            "ExplanationStatementShape", "cannot be accepted unqualified"),
+        "5a. wrong SGI class for sgiValue -1.50 (LowLevel instead of VeryLowLevel)": (
+            [(r["sh24"], L.sgiClass, L.LowLevel)],
+            now(r["sh24"], L.sgiClass),
+            "SimulatedHeadShape", "BRGM IPS bounds"),
+        "5b. wrong SGI boundary class (sgiValue == -1.28155... assigned VeryLowLevel)": (
+            [(r["sh09"], L.sgiClass, L.VeryLowLevel)],
+            now(r["sh09"], L.sgiClass),
+            "SimulatedHeadShape", "BRGM IPS bounds"),
+        "5c. simulated head period outside the model run's period": (
+            [(r["sh24"], L.periodEnd, dt("2027-01-01"))],
+            now(r["sh24"], L.periodEnd),
+            "SimulatedHeadShape", "outside its model run's period"),
+        "6. accepted statement with start sign agreement < 0.8": (
+            [(r["c_pump24"], L.startSignAgreement, dbl(0.6))],
+            now(r["c_pump24"], L.startSignAgreement),
+            "ExplanationStatementShape", "start sign agreement at least 0.8"),
+        "7. statement citing a contribution of another simulated head": (
+            [(r["st_pump24"], L.citesContribution, r["c_pump09"])],
+            now(r["st_pump24"], L.citesContribution),
+            "ExplanationStatementShape", "does not belong to the simulated head"),
+    }
+    for name, (add, remove, shape, text) in neg.items():
+        res = bad(add, remove)
+        assert violations(res, shape, text) > 0, f"{name}: not caught\n{res}"
+    print(f"  3d. CQ10 fixture: v5 stresses, positive pumping contribution (RaisedHead), exact IPS "
+          f"boundary, withheld imputed pumping pass with 0 violations; all {len(neg)} CQ10 negative controls caught")
+    return g
+
+
+def build_cq16_fixture(rules):
+    """CQ16 synthetic fixture (schema & acceptance cases; no real-data numbers yet):
+      - scenario/opposing-pathways (zone/W1, eligible, TotalHeadChange, rank 1): orchard -> cereal,
+        demand -100,000 m³, gw share 0.60, return-flow fraction 0.25 -> less abstraction (-60,000 m³)
+        AND less return flow (-25,000 m³), uncertainty range [-0.15, +0.25] spanning 0.
+      - scenario/surface-supplied (zone/W1, eligible, TotalHeadChange, rank 2): gw share 0.0,
+        demand -40,000 m³, return-flow fraction 0.20 -> zero pumping change, -8,000 m³ return flow.
+      - scenario/per-hectare (zone/W1, eligible, HeadChangePerHectare, rank 1): separate ranking
+        metric, never ranked against TotalHeadChange.
+      - scenario/no-change (zone/W1, eligible, HeadChangeAtWell, rank 1): 0 m² / 0 demand change ->
+        zero forcing changes and 0.0 m head change.
+      - scenario/missing-assumptions (zone/W2, eligible, TotalHeadChange, no result): missing both
+        WaterSourceShare and ReturnFlowFraction -> SHACL Warning (0 violations), reported by CQ16.
+      - scenario/ineligible-zone (zone/W3, scenarioEligible false: heuristic only + no supply evidence,
+        no result): 0 violations; any attached result is rejected by SHACL.
+    """
+    fx = Fixture()
+    a = fx.g.add
+    dbl = lambda v: Literal(float(v), datatype=XSD.double)  # noqa: E731
+    dt = lambda s: Literal(s, datatype=XSD.date)  # noqa: E731
+    U = fx.unit("U1")
+    a((d("extent/forcing-cells"), RDF.type, GEO.Feature))
+    w1 = fx.well("W1", 0, 0, U, L.Confident, depth=30)
+    w2 = fx.well("W2", 20000, 0, U, L.Confident, depth=30)
+    w3 = fx.well("W3", 40000, 0, U, L.Confident, depth=30)
+    zones = {}
+    for k, w in (("W1", w1), ("W2", w2), ("W3", w3)):
+        z = zones[k] = d(f"zone/{k}")
+        a((z, RDF.type, L.CropDemandZone))
+        a((z, L.zoneOf, w))
+        a((z, L.zoneRadiusM, dbl(3000.0)))
+
+    cscheme = d("crop-class-scheme/lulcw")
+    a((cscheme, RDF.type, SKOS.ConceptScheme))
+    cls_map = {}
+    for name, assump in (("orchard", L.UsuallyIrrigated), ("vineyard", L.PartlyIrrigated),
+                         ("cereal", L.Rainfed)):
+        c = cls_map[name] = d(f"crop-class/{name}")
+        a((c, RDF.type, L.CropClass))
+        a((c, SKOS.inScheme, cscheme))
+        a((c, SKOS.notation, Literal(name)))
+        a((c, L.irrigationAssumption, assump))
+        for prop, v in ((L.kcInitial, 0.5), (L.kcMid, 0.9), (L.kcEnd, 0.6)):
+            a((c, prop, dbl(v)))
+        for prop, v in ((L.initialStageDays, 30), (L.developmentStageDays, 50),
+                        (L.midSeasonStageDays, 130), (L.lateSeasonStageDays, 30), (L.plantingMonth, 3)):
+            a((c, prop, Literal(v, datatype=XSD.integer)))
+
+    run = d("run/test-v5-r1")
+    for p, v in ((RDF.type, L.ModelRun), (L.runIdentifier, Literal("test_hgnn_D_r1")),
+                 (L.usesExportPolicy, d("policy/main")), (PROV.used, fx.rel),
+                 (L.regime, Literal("R1")), (L.pumpingReconstruction, Literal(1, datatype=XSD.integer)),
+                 (L.fittingProtocol, Literal("stageB_gate3_converged")),
+                 (L.startCount, Literal(10, datatype=XSD.integer)),
+                 (L.periodStart, dt("2005-01-02")), (L.periodEnd, dt("2026-10-18"))):
+        a((run, p, v))
+
+    # Zone eligibilities
+    for k, ok, why in (
+        ("W1", True, "zone has declared groundwater supply and crop-demand data (fixture)"),
+        ("W2", True, "zone has supply context; scenario assumptions incomplete (fixture)"),
+        ("W3", False, "irrigation status heuristic only (CQ15) and no supply evidence"),
+    ):
+        el = d(f"scenario-eligibility/{k}")
+        for p, v in ((RDF.type, L.ScenarioEligibility), (L.scenarioZone, zones[k]),
+                     (L.scenarioEligible, Literal(ok, datatype=XSD.boolean)),
+                     (L.eligibilityReason, Literal(why))):
+            a((el, p, v))
+
+    def add_assumption(sc_key, suffix, kind, val, unit, derived=False):
+        n = d(f"scenario-assumption/{sc_key}/{suffix}")
+        for p, v in ((RDF.type, L.ScenarioAssumption), (L.assumptionKind, kind),
+                     (L.assumptionValue, dbl(val)), (L.assumptionUnit, Literal(unit))):
+            a((n, p, v))
+        if derived:
+            a((n, PROV.wasDerivedFrom, fx.rel))
+        else:
+            a((n, L.evidenceKind, L.ExpertHypothesis))
+        return n
+
+    def add_scenario(key, base, alt, area_m2, z_key, metric, assumptions):
+        sc = d(f"scenario/{key}")
+        for p, v in ((RDF.type, L.CropChangeScenario), (L.baselineCropClass, cls_map[base]),
+                     (L.alternativeCropClass, cls_map[alt]), (L.substitutedAreaM2, dbl(area_m2)),
+                     (L.scenarioZone, zones[z_key]), (L.periodStart, dt("2023-01-01")),
+                     (L.periodEnd, dt("2023-12-31")), (L.rankingMetric, metric)):
+            a((sc, p, v))
+        for suffix, kind, val, unit, derived in assumptions:
+            a((sc, L.hasAssumption, add_assumption(key, suffix, kind, val, unit, derived)))
+        return sc
+
+    def add_result(key, sc, well, val, lo, hi, rank=None):
+        res = d(f"scenario-result/{key}")
+        for p, v in ((RDF.type, L.ScenarioResult), (L.scenarioOf, sc), (PROV.wasGeneratedBy, run),
+                     (L.simulatedAt, well), (L.periodStart, dt("2023-01-01")),
+                     (L.periodEnd, dt("2023-12-31")), (L.headChangeM, dbl(val)),
+                     (L.headChangeLowM, dbl(lo)), (L.headChangeHighM, dbl(hi))):
+            a((res, p, v))
+        if rank is not None:
+            a((res, L.rank, Literal(rank, datatype=XSD.integer)))
+        return res
+
+    sc_opp = add_scenario("opposing-pathways", "orchard", "cereal", 100000.0, "W1", L.TotalHeadChange, (
+        ("ws", L.WaterSourceShare, 0.60, "dimensionless", False),
+        ("rf", L.ReturnFlowFraction, 0.25, "dimensionless", False),
+        ("id", L.IrrigationDemandChange, -100000.0, "m3/yr", True),
+        ("cl", L.ClimateCase, 2023.0, "year", True),
+    ))
+    r_opp = add_result("opposing/W1", sc_opp, w1, 0.05, -0.15, 0.25, rank=1)
+
+    sc_surf = add_scenario("surface-supplied", "orchard", "vineyard", 50000.0, "W1", L.TotalHeadChange, (
+        ("ws", L.WaterSourceShare, 0.0, "dimensionless", False),
+        ("rf", L.ReturnFlowFraction, 0.20, "dimensionless", False),
+        ("id", L.IrrigationDemandChange, -40000.0, "m3/yr", True),
+    ))
+    r_surf = add_result("surface/W1", sc_surf, w1, -0.08, -0.14, -0.02, rank=2)
+
+    sc_ha = add_scenario("per-hectare", "orchard", "cereal", 100000.0, "W1", L.HeadChangePerHectare, (
+        ("ws", L.WaterSourceShare, 0.60, "dimensionless", False),
+        ("rf", L.ReturnFlowFraction, 0.25, "dimensionless", False),
+        ("id", L.IrrigationDemandChange, -100000.0, "m3/yr", True),
+    ))
+    r_ha = add_result("per-ha/W1", sc_ha, w1, 0.005, 0.001, 0.010, rank=1)
+
+    sc_zero = add_scenario("no-change", "orchard", "vineyard", 0.0, "W1", L.HeadChangeAtWell, (
+        ("ws", L.WaterSourceShare, 0.50, "dimensionless", False),
+        ("rf", L.ReturnFlowFraction, 0.20, "dimensionless", False),
+        ("id", L.IrrigationDemandChange, 0.0, "m3/yr", True),
+    ))
+    r_zero = add_result("no-change/W1", sc_zero, w1, 0.0, 0.0, 0.0, rank=1)
+
+    sc_miss = add_scenario("missing-assumptions", "orchard", "cereal", 50000.0, "W2", L.TotalHeadChange, (
+        ("id", L.IrrigationDemandChange, -50000.0, "m3/yr", True),
+    ))
+
+    sc_inel = add_scenario("ineligible-zone", "orchard", "cereal", 50000.0, "W3", L.TotalHeadChange, (
+        ("ws", L.WaterSourceShare, 0.50, "dimensionless", False),
+        ("rf", L.ReturnFlowFraction, 0.20, "dimensionless", False),
+        ("id", L.IrrigationDemandChange, -50000.0, "m3/yr", True),
+    ))
+
+    refs = {
+        "run": run, "w1": w1, "w2": w2, "w3": w3, "zones": zones, "cls": cls_map,
+        "sc_opp": sc_opp, "r_opp": r_opp, "sc_surf": sc_surf, "r_surf": r_surf,
+        "sc_ha": sc_ha, "r_ha": r_ha, "sc_zero": sc_zero, "r_zero": r_zero,
+        "sc_miss": sc_miss, "sc_inel": sc_inel,
+        "a_ws": d("scenario-assumption/opposing-pathways/ws"),
+    }
+    records = rule_records(rules, "test", fx.g)
+    g = fx.g + records + run_rules(fx.g, rules, records)
+    return g, refs
+
+
+def test_cq16_fixture(rules, shapes, net):
+    """CQ16 positive fixture (0 violations, 1 expected Warning on missing-assumptions) and negative
+    controls covering every CQ16 shape."""
+    g, r = build_cq16_fixture(rules)
+    conforms, _, results = check(g, shapes, net)
+    assert conforms and violations(results) == 0, results
+    assert any(k.startswith("Warning") and "CropChangeScenarioAssumptionsShape" in k for k in results), results
+
+    def bad(triples, remove=()):
+        h = rdflib.Graph()
+        for t in g:
+            if t not in remove:
+                h.add(t)
+        for t in triples:
+            h.add(t)
+        return check(h, shapes, net)[2]
+
+    def now(s, p):
+        return list(g.triples((s, p, None)))
+
+    dbl = lambda v: Literal(float(v), datatype=XSD.double)  # noqa: E731
+    dt = lambda s: Literal(s, datatype=XSD.date)  # noqa: E731
+
+    bad_inel_res = d("scenario-result/bad-ineligible")
+    bad_miss_res = d("scenario-result/bad-missing")
+    base_res = lambda node, sc, w: [  # noqa: E731
+        (node, RDF.type, L.ScenarioResult), (node, L.scenarioOf, sc),
+        (node, PROV.wasGeneratedBy, r["run"]), (node, L.simulatedAt, w),
+        (node, L.periodStart, dt("2023-01-01")), (node, L.periodEnd, dt("2023-12-31")),
+        (node, L.headChangeM, dbl(0.1)), (node, L.headChangeLowM, dbl(0.0)),
+        (node, L.headChangeHighM, dbl(0.2)),
+    ]
+
+    neg = {
+        "scenario with identical baseline and alternative crop classes": (
+            [(r["sc_opp"], L.alternativeCropClass, r["cls"]["orchard"])],
+            now(r["sc_opp"], L.alternativeCropClass),
+            "CropChangeScenarioShape", "two different crop classes"),
+        "scenario missing scenarioZone": (
+            [], now(r["sc_opp"], L.scenarioZone),
+            "CropChangeScenarioShape", None),
+        "scenario period ending before it starts": (
+            [(r["sc_opp"], L.periodEnd, dt("2022-01-01"))],
+            now(r["sc_opp"], L.periodEnd),
+            "CropChangeScenarioShape", "ends before it starts"),
+        "assumption missing provenance (neither wasDerivedFrom nor ExpertHypothesis)": (
+            [], now(r["a_ws"], L.evidenceKind),
+            "ScenarioAssumptionShape", "cite its source"),
+        "scenario result for a scenario missing WaterSourceShare/ReturnFlowFraction": (
+            base_res(bad_miss_res, r["sc_miss"], r["w2"]), (),
+            "ScenarioResultShape", "missing a WaterSourceShare or ReturnFlowFraction"),
+        "scenario result missing simulatedAt well": (
+            [], now(r["r_opp"], L.simulatedAt),
+            "ScenarioResultShape", None),
+        "scenario result with headChangeLowM > headChangeM": (
+            [(r["r_opp"], L.headChangeLowM, dbl(0.20))],
+            now(r["r_opp"], L.headChangeLowM),
+            "ScenarioResultShape", "outside [headChangeLowM, headChangeHighM]"),
+        "scenario result with headChangeM > headChangeHighM": (
+            [(r["r_opp"], L.headChangeHighM, dbl(0.01))],
+            now(r["r_opp"], L.headChangeHighM),
+            "ScenarioResultShape", "outside [headChangeLowM, headChangeHighM]"),
+        "scenario result for a zone whose eligibility is false": (
+            base_res(bad_inel_res, r["sc_inel"], r["w3"]), (),
+            "ScenarioResultShape", "eligibility is false"),
+        "cross-metric ranking (rank 2 under HeadChangePerHectare without rank 1 under that metric)": (
+            [(r["r_ha"], L.rank, Literal(2, datatype=XSD.integer))],
+            now(r["r_ha"], L.rank),
+            "ScenarioResultShape", "same ranking metric"),
+        "scenario result declaring a different ranking metric from its scenario": (
+            [(r["r_ha"], L.rankingMetric, L.TotalHeadChange)], (),
+            "ScenarioResultShape", "disagrees with its scenario's ranking metric"),
+    }
+    for name, (add, remove, shape, text) in neg.items():
+        res = bad(add, remove)
+        assert violations(res, shape, text) > 0, f"{name}: not caught\n{res}"
+    print(f"  3e. CQ16 fixture: opposing pathways, surface-supplied, no-change, missing assumptions "
+          f"(Warning, 0 violations) and ineligible zone pass; all {len(neg)} CQ16 negative controls caught")
+    return g
+
+
 # ---------------------------------------------------------------- 4. data-backed regression
 def store_of(*files):
     s = ox.Store()
@@ -2044,6 +2553,8 @@ def main():
     test_negative_controls(g, shapes, net)
     test_leakage_fixture(rules, shapes, net)
     test_cq15_fixture(rules, shapes, net)
+    test_cq10_fixture(rules, shapes, net)
+    test_cq16_fixture(rules, shapes, net)
     facts, derived = KG / f"lulcw_kg_{DATASET}.ttl", KG / f"lulcw_kg_{DATASET}_rules.ttl"
     if facts.exists() and derived.exists():
         m = release.check()        # the files must form a validated release (src.kg.release)

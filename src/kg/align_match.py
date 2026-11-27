@@ -160,17 +160,27 @@ def _fuzzy(data):
     return {row["source"]: [{"target": row["target"], "score": float(row["score"])}] for row in rows}, {}
 
 
+def _snapshot(repo, commit):
+    """Download (or reuse) the model's files at the pinned commit; returns (folder, resolved commit). The Hub
+    cache names a snapshot folder by the commit it resolved, which is the check: sentence-transformers 5 leaves
+    the loaded config's `_commit_hash` empty (Colab, 2026-11-27: the first check read None). The repository's
+    ONNX export (several GB, unused by sentence-transformers) is skipped."""
+    from huggingface_hub import snapshot_download
+    path = Path(snapshot_download(repo, revision=commit, ignore_patterns=["onnx/*", "*.onnx", "*.onnx_data"]))
+    return path, path.name
+
+
 def _retrieve(data):
     _ontoaligner_version()
     from ontoaligner.aligner.retrieval.models import SBERTRetrieval
     from sentence_transformers import SentenceTransformer
 
     retriever = SBERTRetrieval(device="cuda", top_k=min(K, len(data["targets"])), batch_size=16)
-    # OntoAligner.load ignores revision; loading here prevents an unpinned download.
-    retriever.model = SentenceTransformer(RETRIEVAL_MODEL, revision=RETRIEVAL_COMMIT, device="cuda")
-    resolved = getattr(retriever.model[0].auto_model.config, "_commit_hash", None)
+    # OntoAligner.load ignores revision; loading here from the pinned snapshot prevents an unpinned download.
+    path, resolved = _snapshot(RETRIEVAL_MODEL, RETRIEVAL_COMMIT)
     if resolved != RETRIEVAL_COMMIT:
         raise RuntimeError(f"BGE-M3 resolved to {resolved!r}, expected {RETRIEVAL_COMMIT}")
+    retriever.model = SentenceTransformer(str(path), device="cuda")
     rows = retriever.generate(_encoded(data, context=True))
     rankings = {row["source"]: [{"target": t, "score": float(s)}
                 for t, s in zip(row["target-cands"], row["score-cands"])] for row in rows}

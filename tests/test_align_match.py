@@ -194,8 +194,9 @@ def test_component_adapters():
             "score-cands": [row["score"] for row in rows]} for code, rows in expected.items()]
         retriever_class = Mock(return_value=retriever)
         model = MagicMock()
-        model[0].auto_model.config._commit_hash = align_match.RETRIEVAL_COMMIT
         loader = Mock(return_value=model)
+        snap = folder / "snapshots" / align_match.RETRIEVAL_COMMIT
+        snapshot = Mock(return_value=(snap, align_match.RETRIEVAL_COMMIT))
         modules = {
             "ontoaligner.aligner.lightweight.models": SimpleNamespace(SimpleFuzzySMLightweight=fuzzy_class),
             "ontoaligner.aligner.retrieval.models": SimpleNamespace(SBERTRetrieval=retriever_class),
@@ -203,21 +204,22 @@ def test_component_adapters():
         }
         with patch.dict(sys.modules, modules), patch.object(
                 align_match, "_package_version", return_value="1.9.4"), patch.object(
-                torch.cuda, "is_available", return_value=True):
+                torch.cuda, "is_available", return_value=True), patch.object(
+                align_match, "_snapshot", snapshot):
             result, _ = align_match._fuzzy(data)
             assert result == {code: rows[:1] for code, rows in expected.items()}
             fuzzy_class.assert_called_once_with(fuzzy_sm_threshold=0.0)
             assert all("RPG group" not in row["text"] for row in fuzzy.generate.call_args.args[0][0])
             pred, meta = align_match.run_alignment("retrieval", "hcat", folder / "retrieval", inputs_path=path)
             assert len(align_eval.load_predictions(pred, "hcat")["A"]) == 10
-            loader.assert_called_once_with(align_match.RETRIEVAL_MODEL,
-                revision=align_match.RETRIEVAL_COMMIT, device="cuda")
+            snapshot.assert_called_once_with(align_match.RETRIEVAL_MODEL, align_match.RETRIEVAL_COMMIT)
+            loader.assert_called_once_with(str(snap), device="cuda")
             retriever_class.assert_called_once_with(device="cuda", top_k=10, batch_size=16)
             assert meta["resolved_commits"] == {align_match.RETRIEVAL_MODEL: align_match.RETRIEVAL_COMMIT}
             encoded = retriever.generate.call_args.args[0]
             assert "RPG group: Groupe" in encoded[0][0]["text"]
             assert "ancestors: Crops" in encoded[1][0]["text"]
-            model[0].auto_model.config._commit_hash = "wrong revision"
+            snapshot.return_value = (folder / "snapshots" / "wrong revision", "wrong revision")
             _raises(RuntimeError, "resolved", align_match._retrieve, data)
         # Exercise the actual frozen prompt and direct Qwen loader arguments too.
         with patch("torch.cuda.is_available", return_value=True), patch(

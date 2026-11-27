@@ -171,8 +171,8 @@ LEDGER = ONTO / "alignments" / "ledger.csv"
 MODULES = {"gwml2-hyfo": "alignments/lulcw-gwml2-hyfo.ttl", "sweet": "alignments/lulcw-sweet.ttl",
            "hyf": "alignments/lulcw-hyf.ttl", "hyf-import": "imports/hyf_terms.ttl",
            "inspire": "alignments/lulcw-inspire.ttl", "saref": "alignments/lulcw-saref.ttl",
-           "envo": "alignments/lulcw-envo.ttl"}
-OWN_MODULES = ("gwml2-hyfo", "sweet", "hyf", "inspire", "saref", "envo")
+           "envo": "alignments/lulcw-envo.ttl", "gemet": "alignments/lulcw-gemet.ttl"}
+OWN_MODULES = ("gwml2-hyfo", "sweet", "hyf", "inspire", "saref", "envo", "gemet")
 # every SKOS mapping relation counts (broad, narrow and related matches since 2026-11-26, R2.3)
 ALIGN = (RDFS.subClassOf, RDFS.subPropertyOf, SKOS.closeMatch, SKOS.exactMatch, SKOS.broader,
          SKOS.broadMatch, SKOS.narrowMatch, SKOS.relatedMatch, OWL.equivalentClass, OWL.equivalentProperty)
@@ -187,6 +187,7 @@ def ledger():
           "obo": "http://purl.obolibrary.org/obo/", "sohydrobody": "http://sweetontology.net/realmHydroBody/",
           "sophenhydro": "http://sweetontology.net/phenHydro/",
           "sohumanagri": "http://sweetontology.net/humanAgriculture/",
+          "gemet": "http://www.eionet.europa.eu/gemet/concept/",
           "rdfs": str(RDFS), "skos": str(SKOS), "owl": str(OWL)}
     def iri(c):
         p, local = c.split(":", 1)

@@ -185,6 +185,24 @@ owl:topObjectProperty rdf:type owl:ObjectProperty .
                                                          <http://www.w3.org/2004/02/skos/core#scopeNote> "By convention, skos:narrowerTransitive is not used to make assertions. Rather, the properties can be used to draw inferences about the transitive closure of the hierarchical relation, which is useful e.g. when implementing a simple query expansion algorithm in a search application."@en .
 
 
+###  http://www.w3.org/2004/02/skos/core#related
+<http://www.w3.org/2004/02/skos/core#related> rdf:type owl:ObjectProperty ;
+                                              rdfs:subPropertyOf <http://www.w3.org/2004/02/skos/core#semanticRelation> ;
+                                              rdfs:comment "skos:related is disjoint with skos:broaderTransitive"@en ;
+                                              rdfs:isDefinedBy <http://www.w3.org/2004/02/skos/core> ;
+                                              rdfs:label "has related"@en ;
+                                              <http://www.w3.org/2004/02/skos/core#definition> "Relates a concept to a concept with which there is an associative semantic relationship."@en .
+
+
+###  http://www.w3.org/2004/02/skos/core#relatedMatch
+<http://www.w3.org/2004/02/skos/core#relatedMatch> rdf:type owl:ObjectProperty ;
+                                                   rdfs:subPropertyOf <http://www.w3.org/2004/02/skos/core#mappingRelation> ,
+                                                                      <http://www.w3.org/2004/02/skos/core#related> ;
+                                                   rdfs:isDefinedBy <http://www.w3.org/2004/02/skos/core> ;
+                                                   rdfs:label "has related match"@en ;
+                                                   <http://www.w3.org/2004/02/skos/core#definition> "skos:relatedMatch is used to state an associative mapping link between two conceptual resources in different concept schemes."@en .
+
+
 ###  http://www.w3.org/2004/02/skos/core#semanticRelation
 <http://www.w3.org/2004/02/skos/core#semanticRelation> rdf:type owl:ObjectProperty ;
                                                        rdfs:subPropertyOf owl:topObjectProperty ;

@@ -1,0 +1,129 @@
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix gemet: <http://www.eionet.europa.eu/gemet/concept/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+gemet:12104 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:definition "Water that occupies pores, cavities, cracks and other spaces in the crustal rocks. It includes water precipitated from the atmosphere which has percolated through the soil, water that has risen from deep magmatic sources liberated during igneous activity and fossil water retained in sedimentary rocks since their formation. The presence of groundwater is necessary for virtually all weathering processes to operate. Phreatic water is synonymous with groundwater and is the most important source of any water supply."@en ;
+    skos:prefLabel "water table"@en,
+        "nappe phréatique"@fr .
+
+gemet:15334 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:definition "use of water by agriculture, industry, energy production and households, including in-stream uses such as fishing, recreation, transportation and waste disposal."@en ;
+    skos:prefLabel "water use"@en .
+
+gemet:15394 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:definition "removal or diversion of water from the water environment"@en ;
+    skos:prefLabel "water abstraction"@en,
+        "captage d’eau"@fr .
+
+gemet:2343 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:definition "The provision and storage of potable water, or the amount of potable water stored, for the use of a municipality, or other potable water user."@en ;
+    skos:prefLabel "drinking water supply"@en,
+        "approvisionnement en eau potable"@fr .
+
+gemet:2735 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:definition "Generation of energy in a coal fired power station, in an oil fired power station, in a nuclear power station, etc."@en ;
+    skos:prefLabel "energy production"@en,
+        "production d'énergie"@fr .
+
+gemet:3780 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:definition "Water that occupies pores and crevices in rock and soil, below the surface and above a layer of impermeable material. It is free to move gravitationally, either downwards towards the impermeable layer or by following a gradient."@en ;
+    skos:prefLabel "groundwater"@en,
+        "eaux souterraines"@fr .
+
+gemet:3781 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:definition "The process, deliberate or inadvertent, of extracting ground water from a source at a rate so in excess of the replenishment that the ground water level declines persistently, threatening exhaustion of the supply or at least a decline of pumping levels to uneconomic depths."@en ;
+    skos:prefLabel "groundwater extraction"@en,
+        "puisage des eaux souterraines"@fr .
+
+gemet:4291 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:definition "Movement of water through the soil surface into the ground."@en ;
+    skos:prefLabel "infiltration"@en,
+        "infiltration"@fr .
+
+gemet:4505 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:definition "1) To supply land with water so that crops and plants will grow or grow stronger."@en ;
+    skos:prefLabel "irrigation"@en,
+        "irrigation"@fr .
+
+gemet:4507 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:definition "A permanent irrigation conduit constructed to convey water from the source of supply to one or more farms."@en ;
+    skos:prefLabel "irrigation canal"@en,
+        "canal d'irrigation"@fr .
+
+gemet:4731 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:definition "The accidental, uncontrolled discharge or seepage of liquids, gases and other substances to unintended and unwanted locations, frequently causing risks of damage or harm to persons, property or the environment."@en ;
+    skos:prefLabel "leakage"@en,
+        "fuite"@fr .
+
+gemet:518 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:definition "Layers of rock, sand or gravel that can absorb water and allow it to flow. An aquifer acts as a groundwater reservoir when the underlying rock is impermeable. This may be tapped by wells for domestic, agricultural or industrial use. A serious environmental problem arises when the aquifer is contaminated by the seepage of sewage or toxins from waste dumps. If the groundwater in coastal areas is over-used salt water can seep into the aquifer."@en ;
+    skos:prefLabel "aquifer"@en,
+        "aquifère"@fr .
+
+gemet:637 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:definition "The settling out of water from cloud in the form of dew, rain, hail, snow, etc."@en ;
+    skos:prefLabel "atmospheric precipitation"@en,
+        "précipitation atmosphérique"@fr .
+
+gemet:6655 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:definition "Water used in a manufacturing or treatment process or in the actual product manufactured. Examples would include water used for washing, rinsing, direct contact, cooling, solution make-up, chemical reactions, and gas scrubbing in industrial and food processing applications. In many cases, water is specifically treated to produce the quality of water needed for the process."@en ;
+    skos:prefLabel "process water"@en,
+        "eau de traitement"@fr .
+
+gemet:7874 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:definition """1) Water stored in soils.
+2) One of the most important elements involved in pedological processes and plant growth. There are three basic forms: a) water adhering in thin films by molecular attraction to the surface of soil particles and not available for plants is termed hygroscopic water. b) Water forming thicker films and occupying the smaller pore spaces is termed capillary water. Since it is held against the force of gravity it is permanently available for plant growth and it is this type of soil water which contains plant nutrients in solution. c) Water in excess of hygroscopic and capillary water is termed gravitational water, which is of a transitory nature because it flows away under the influence of gravity. When the excess has drained away the amount of water retained in the soil is termed its field capacity, when some of its pore spaces are still free of water."""@en ;
+    skos:prefLabel "soil moisture"@en,
+        "humidité du sol"@fr .
+
+gemet:8229 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:definition "All waters on the surface of the Earth found in streams, rivers, ponds, lakes, marshes or wetlands, and as ice and snow."@en ;
+    skos:prefLabel "surface water"@en,
+        "eau de surface"@fr .
+
+gemet:9161 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:definition "A natural stream arising in a given drainage basin but not wholly dependent for its flow on surface drainage in its immediate area, flowing in a channel with a well-defined bed between visible banks or through a definite depression in the land, having a definite and permanent or periodic supply of water, and usually, but not necessarily, having a perceptible current in a particular direction and discharging at a fixed point into another body of water."@en ;
+    skos:prefLabel "watercourse"@en,
+        "cours d'eau"@fr .
+
+gemet:9164 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:prefLabel "water demand"@en,
+        "besoin en eau"@fr .
+
+gemet:9190 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:definition "The level reached by the surface of a body of water."@en ;
+    skos:prefLabel "water level"@en,
+        "niveau d'eau"@fr .
+
+gemet:9290 a owl:NamedIndividual,
+        skos:Concept ;
+    skos:definition "A hole dug into the earth to reach a supply of water, oil, brine or gas."@en ;
+    skos:prefLabel "well"@en,
+        "puits"@fr .
+
+<https://w3id.org/lulcw/imports/gemet> a owl:Ontology ;
+    dcterms:license <http://creativecommons.org/licenses/by/4.0/> ;
+    rdfs:comment "Copies of the GEMET concepts LULC-Water uses (type, English and French preferred labels, English definition), built by src/kg/build_imports.py from https://www.eionet.europa.eu/gemet/latest/gemet.rdf.gz (GEMET Concepts 4.2.3 of 2021-12-06; Internet Archive copy of 2026-03-09T18:06:56Z, retrieved 2026-11-26, sha256 96002bb7cd1f). Licence: CC BY 4.0 (stated in the file)." .
+

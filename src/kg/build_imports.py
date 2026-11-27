@@ -2,6 +2,7 @@
 
     .venv/bin/python -m src.kg.build_imports          # cached downloads, then ROBOT extracts
     .venv/bin/python -m src.kg.build_imports --only saref envo   # only these sources
+    .venv/bin/python -m src.kg.build_imports --only gemet        # GEMET concepts (rdflib copy)
 
 Each source is downloaded once into data/raw/vocab/ (content negotiation for the W3C
 namespaces; the GeoSPARQL 1.1 file from OGC's 1.1.0 tag, because the OGC server now answers
@@ -61,7 +62,8 @@ SOURCES = {
              [SKOS + t for t in ("Concept", "ConceptScheme", "inScheme", "topConceptOf",
                                  "hasTopConcept", "prefLabel", "altLabel", "definition",
                                  "scopeNote", "notation", "broader", "narrower", "closeMatch",
-                                 "exactMatch", "broadMatch", "narrowMatch")]),
+                                 "exactMatch", "broadMatch", "narrowMatch",
+                                 "relatedMatch")]),     # relatedMatch: GEMET and CLC rows, 2026-11-27
     "geo": ([("geo.ttl", "https://raw.githubusercontent.com/opengeospatial/ogc-geosparql/"
                          "1.1.0-ghpages/geosparql11/geo.ttl", "text/turtle")],
             [GEO + t for t in ("SpatialObject", "Feature", "Geometry", "hasGeometry",
@@ -93,6 +95,61 @@ SOURCES = {
              [OBO + t for t in ("ENVO_00012408", "ENVO_01000002", "ENVO_00000022", "ENVO_00000014",
                                 "ENVO_01001632")]),
 }
+
+# GEMET 4.2.3 (EEA/Eionet thesaurus, CC BY 4.0 as stated in the file), added 2026-11-27 (v5 plan R2.3). Eionet was
+# unreachable, so data/raw/vocab/gemet.rdf.gz is the Internet Archive's raw copy of the official URL (logged in
+# sources.json and data/README.md, 2026-11-26). GEMET is a SKOS thesaurus: its concepts are copied by rdflib (type,
+# English and French preferred labels, English definition; not the broader links, whose targets the
+# copy does not declare), not by ROBOT's MIREOT. Terms: the
+# concepts of ontology/alignments/lulcw-gemet.ttl and its rejected ledger rows.
+GEMET = "http://www.eionet.europa.eu/gemet/concept/"
+GEMET_FILE = ("gemet.rdf.gz", "https://www.eionet.europa.eu/gemet/latest/gemet.rdf.gz")
+GEMET_TERMS = [GEMET + c for c in ("15334", "2343", "4505", "6655", "2735", "3780", "8229", "9161", "4507",
+                                   "9290", "15394", "3781", "9190", "12104", "4291", "4731", "637", "7874",
+                                   "9164", "518")]
+
+
+def extract_gemet(log):
+    """The GEMET concepts LULC-Water names, with their labels and definition, into
+    ontology/imports/gemet_terms.ttl (the file is never downloaded again here: see GEMET_FILE)."""
+    import gzip
+    from rdflib import Literal, URIRef
+    from rdflib.namespace import DCTERMS, RDF, RDFS
+    name, url = GEMET_FILE
+    f = VOCAB / name
+    if not f.exists():
+        sys.exit(f"{f} missing: see data/README.md (GEMET and CORINE from the Internet Archive)")
+    entry = log[name]
+    if hashlib.sha256(f.read_bytes()).hexdigest() != entry["sha256"]:
+        sys.exit(f"{f} differs from its logged sha256")
+    src = rdflib.Graph()
+    with gzip.open(f, "rb") as fh:
+        src.parse(fh, format="xml", publicID="http://www.eionet.europa.eu/gemet/")
+    sk = rdflib.Namespace(SKOS)
+    out = rdflib.Graph()
+    out.bind("skos", sk)
+    out.bind("gemet", GEMET)
+    onto = URIRef("https://w3id.org/lulcw/imports/gemet")
+    out.add((onto, RDF.type, OWL.Ontology))
+    out.add((onto, RDFS.comment, Literal(
+        f"Copies of the GEMET concepts LULC-Water uses (type, English and French preferred labels, English "
+        f"definition), built by src/kg/build_imports.py from {url} (GEMET Concepts 4.2.3 of "
+        f"2021-12-06; Internet Archive copy of {entry.get('archive_snapshot', '?')}, retrieved "
+        f"{entry['retrieved']}, sha256 {entry['sha256'][:12]}). Licence: CC BY 4.0 (stated in the file).")))
+    out.add((onto, DCTERMS.license, URIRef("http://creativecommons.org/licenses/by/4.0/")))
+    for t in GEMET_TERMS:
+        c = URIRef(t)
+        if (c, RDF.type, sk.Concept) not in src:
+            sys.exit(f"{t} is not a skos:Concept of {name}")
+        out.add((c, RDF.type, sk.Concept))
+        out.add((c, RDF.type, OWL.NamedIndividual))     # an OWL declaration: SKOS concepts are individuals
+        for p, langs in ((sk.prefLabel, ("en", "fr")), (sk.definition, ("en",))):
+            for o in src.objects(c, p):
+                if getattr(o, "language", None) in langs:
+                    out.add((c, p, o))
+    target = OUT / "gemet_terms.ttl"
+    out.serialize(target, format="turtle")
+    print(f"{target.relative_to(ROOT)}: {len(GEMET_TERMS)} concepts")
 
 
 HYF = "https://www.opengis.net/def/schema/hy_features/hyf/"
@@ -151,7 +208,7 @@ def main(only=None):
     OUT.mkdir(parents=True, exist_ok=True)
     log_file = VOCAB / "sources.json"
     log = json.loads(log_file.read_text()) if log_file.exists() else {}
-    unknown = set(only or ()) - set(SOURCES)
+    unknown = set(only or ()) - set(SOURCES) - {"gemet"}
     if unknown:
         sys.exit(f"unknown sources: {sorted(unknown)}; known: {sorted(SOURCES)}")
     for name, (files, terms) in SOURCES.items():
@@ -161,6 +218,8 @@ def main(only=None):
             download(f, url, accept, log)
         log_file.write_text(json.dumps(log, indent=1, sort_keys=True))
         extract(name, files, terms, log)
+    if not only or "gemet" in only:
+        extract_gemet(log)
     for f, url in HYF_PAGES.items():       # provenance of the hand-written hyf_terms.ttl
         download(f, url, "text/turtle", log)
     log_file.write_text(json.dumps(log, indent=1, sort_keys=True))

@@ -1,0 +1,56 @@
+@prefix lulcw:   <https://w3id.org/lulcw#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix gemet:   <http://www.eionet.europa.eu/gemet/concept/> .
+
+# Alignment of the lulcw module to GEMET, the General Multilingual Environmental Thesaurus of the European
+# Environment Agency (Concepts 4.2.3 of 2021-12-06, CC BY 4.0), read on 2026-11-27 from the Internet Archive's
+# copy of its official file (Eionet unreachable; data/README.md) (v5 plan R2.3). GEMET is a SKOS thesaurus, so
+# every correspondence is a SKOS mapping relation, never a subclass: close matches where the two definitions
+# name the same thing (water uses and sources, watercourses, aquifer systems), broad matches where GEMET's
+# concept is the more general one (water level, soil moisture, water demand, aquifer), related matches where
+# the two are linked but of different kinds (a facility and the abstraction it performs, a canal reach and an
+# irrigation canal, infiltration and recharge). GEMET concepts are written with their numeric identifiers
+# (labels in imports/gemet_terms.ttl). Every correspondence, the rejected ones included (GEMET's "groundwater
+# extraction" is over-extraction, its "leakage" an accidental discharge, its "water table" entry defines
+# groundwater), is in ledger.csv with the two definitions compared.
+
+<https://w3id.org/lulcw/alignments/gemet> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/lulcw/alignments/gemet/0.1.0> ;
+    dcterms:title "Alignment of LULC-Water to GEMET"@en ,
+        "Alignement de LULC-Water sur GEMET"@fr ;
+    dcterms:description "SKOS mapping relations linking lulcw water uses and sources, watercourses, canal reaches, piezometers, abstraction, groundwater head, recharge, soil wetness, irrigation demand and aquifer types to concepts of GEMET 4.2.3."@en ;
+    dcterms:created "2026-11-27"^^xsd:date ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    owl:imports <https://w3id.org/lulcw> , <https://w3id.org/lulcw/imports/gemet> .
+
+lulcw:WaterUse skos:closeMatch gemet:15334 .
+lulcw:DrinkingWaterUse skos:closeMatch gemet:2343 .
+lulcw:IrrigationUse skos:closeMatch gemet:4505 .
+lulcw:IndustryUse skos:relatedMatch gemet:6655 .
+lulcw:EnergyUse skos:relatedMatch gemet:2735 .
+lulcw:GroundwaterSource skos:closeMatch gemet:3780 .
+lulcw:SurfaceWaterSource skos:closeMatch gemet:8229 .
+lulcw:Watercourse skos:closeMatch gemet:9161 .
+lulcw:CanalReach skos:relatedMatch gemet:4507 .
+lulcw:Piezometer skos:relatedMatch gemet:9290 .
+lulcw:AbstractionFacility skos:relatedMatch gemet:15394 .
+lulcw:DeclaredAnnualVolume skos:relatedMatch gemet:15394 .
+lulcw:GroundwaterHead skos:broadMatch gemet:9190 .
+lulcw:GroundwaterRecharge skos:relatedMatch gemet:4291 .
+lulcw:DiffuseRecharge skos:relatedMatch gemet:4291 .
+lulcw:EffectiveRainfall skos:relatedMatch gemet:637 .
+lulcw:SummerSoilWetness skos:broadMatch gemet:7874 .
+lulcw:PotentialIrrigationDemandMain skos:broadMatch gemet:9164 .
+lulcw:PotentialIrrigationDemandWide skos:broadMatch gemet:9164 .
+lulcw:AlluvialAquifer skos:broadMatch gemet:518 .
+lulcw:KarstAquifer skos:broadMatch gemet:518 .
+lulcw:MultilayerAquiferSystem skos:closeMatch gemet:518 .
+
+dcterms:title a owl:AnnotationProperty .
+dcterms:description a owl:AnnotationProperty .
+dcterms:created a owl:AnnotationProperty .
+dcterms:license a owl:AnnotationProperty .

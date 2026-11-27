@@ -1628,8 +1628,14 @@ SELECT $this ?value WHERE {
            sosa:observedProperty lulcw:SummerNDVI ;
            sosa:hasFeatureOfInterest ?p ;
            lulcw:seasonYear ?y .
+    # $this stays out of the NOT EXISTS patterns: the pattern order inside the block is chosen knowing
+    # only $this as bound, so `?c lulcw:derivationRule $this` would run first and scan every
+    # classification of the rule for each observation (quadratic: 82 min of validation for 13,260
+    # parcel-seasons). Bound to ?rule and compared in a FILTER, the outer-bound ?p pattern runs first
+    # (linear: 9 s; scripts/diag_bench_not_exists.py, step16 note, R2.2).
     FILTER NOT EXISTS {
-        ?c lulcw:classifiedParcel ?p ; lulcw:seasonYear ?y ; lulcw:derivationRule $this .
+        ?c lulcw:classifiedParcel ?p ; lulcw:seasonYear ?y ; lulcw:derivationRule ?rule .
+        FILTER (?rule = $this)
     }
 }""" ] , [
         sh:message "two irrigation classifications share a parcel, a season year and a rule" ;

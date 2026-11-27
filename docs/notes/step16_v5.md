@@ -427,3 +427,28 @@ and the `eo` module's description.
 - The country-neutral refactor of rules and queries (identify wells, units and facilities by node or by a generic
   identifier, not by French codes) would raise the reuse numbers; it changes derived IRIs, so it needs the equality
   tests and exports updated: a design decision for Assil, not done.
+
+### R2.4: the Manouba transfer, what free data can carry (proposal for Assil, 2026-11-27; nothing decided)
+
+Checked in Earth Engine under Assil's project the same day: ERA5-Land monthly (`ECMWF/ERA5_LAND/MONTHLY_AGGR`, 1950-02
+→ 2026-10), ESA WorldCover v200 (2021, one image), Sentinel-2 L2A harmonised (98 summer scenes of 2024 over a box west
+of Tunis). Proposed minimal Manouba graph, all from the same ontology:
+1. **Extent:** the aquifer's outline digitised from a published map (Ferchichi et al. 2017; or Saidi et al. 2017, see
+   above), stored with its figure reference (`configs/manouba_extent.geojson`); nothing is pulled before it exists.
+2. **Unit:** one hydrogeological unit typed by the written mapping rule from the paper's description.
+3. **Weather:** the ERA5-Land 0.1° cells over the extent as `lulcw:WeatherCell`s, monthly rain, actual and potential
+   evaporation, top-layer soil water, 1990–2025. `lulcw:EffectiveRainfall`'s definition names SIM2; it would be made
+   country-neutral (rain minus actual evapotranspiration of a land-surface reanalysis: SIM2 in France, ERA5-Land
+   elsewhere), as the v5 plan's claim C5 asks for definitions whose French source is only an example.
+4. **Land cover:** WorldCover class areas per cell inside the extent (a land-cover area observation and the WorldCover
+   classes as SKOS concepts aligned to CLC and HILUCS: core terms, not a Tunisian profile, since WorldCover is global).
+5. **CQ15 unchanged:** the probable-irrigation rule needs only a feature with an identifier, a summer NDVI
+   observation and a matched weather cell; Tunisia has no open parcel register, so the features would be 100 m blocks
+   of WorldCover cropland (not "registered parcels": a generic land-unit class). The NDVI threshold frozen on
+   Roussillon 2017–2019 is transferred as it is; the soil-wetness test needs ERA5-Land's top-layer water turned into a
+   wetness index with the soil parameters ECMWF documents (to check at the source before use). No irrigation data
+   exist there to validate it: the rule stays a heuristic, reported qualitatively.
+6. **What it cannot carry:** wells and abstraction registers (no open data; the SAVE Water proposal's 979 wells are not
+   published): every well-level CQ answers `unknown` for Manouba, as the answer contract requires.
+7. **Reuse:** `python -m src.kg.reuse_report --kg <manouba graph>` gives the share of the terms the Manouba graph uses
+   that come unchanged from the core.
